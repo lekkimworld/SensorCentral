@@ -5,9 +5,10 @@ const app = express()
 app.use(bodyparser.json())
 
 app.post('/*', (req, res) => {
+  let counter = req.body.counter
+  console.log(`Received counter: ${counter}`)
   res.setHeader('Content-Type', 'text/plain')
-  res.write('you posted:\n')
-  res.end(JSON.stringify(req.body, null, 2))
+  res.send(`Thank you - you posted: ${counter}\n`).end()
 })
 app.get('/*', (req, res) => {
   res.setHeader('Content-Type', 'text/plain')
