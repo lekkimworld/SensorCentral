@@ -12,28 +12,16 @@ const app = express()
 app.use(bodyparser.json())
 
 app.post('/*', (req, res) => {
-  pg.connect(connectionString, (err, client, done) => {
-    // handle connection errors
-    if (err) {
-      done();
-      console.log(err);
-      return res.status(500).json({success: false, data: err});
-    }
-
-    req.body.forEach(element => {
-      client.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${element.sensorId}', ${element.sensorValue});`);
-    });
-    done();
-
-    let j = JSON.stringify(req.body, undefined, 2)
-    console.log(`Received: ${j}`)
-    res.setHeader('Content-Type', 'text/plain')
-    res.send(`Thank you - you posted: ${j}\n`).end()
-  })
+  req.body.forEach(element => {
+    client.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${element.sensorId}', ${element.sensorValue});`);
+  });
+  let j = JSON.stringify(req.body, undefined, 2)
+  console.log(`Received: ${j}`)
+  res.setHeader('Content-Type', 'text/plain')
+  res.send(`Thank you - you posted: ${j}\n`).end()
 })
 app.get('/*', (req, res) => {
-  const minutes = req.param.minutes || 240
-  
+  const minutes = req.param.minutes
   pg.connect(connectionString, (err, client, done) => {
     // handle connection errors
     if (err) {
