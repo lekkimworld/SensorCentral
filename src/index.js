@@ -22,26 +22,17 @@ app.post('/*', (req, res) => {
 })
 app.get('/*', (req, res) => {
   const minutes = req.param.minutes
-  pg.connect(connectionString, (err, client, done) => {
-    // handle connection errors
-    if (err) {
-      done();
-      console.log(err);
-      return res.status(500).json({success: false, data: err});
-    }
+  const results = []
+  const query = client.query(`select s.id id, s.name sensor_name, to_char(d.dt, 'YYYY-MM-DD HH24:MI:SS') dt, d.value from sensor_data d, sensor s where d.id=s.id and current_timestamp - dt < interval '${minutes} minutes' order by id asc, dt asc`)
+  query.on('row', (row) => {
+    results.push(row);
+  });
 
-    const results = []
-    const query = client.query(`select s.id id, s.name sensor_name, to_char(d.dt, 'YYYY-MM-DD HH24:MI:SS') dt, d.value from sensor_data d, sensor s where d.id=s.id and current_timestamp - dt < interval '${minutes} minutes' order by id asc, dt asc`)
-    query.on('row', (row) => {
-      results.push(row);
-    });
-
-    // all data is returned, close connection and return results
-    query.on('end', () => {
-      done();
-      return res.json(results);
-    });
-  })
+  // all data is returned, close connection and return results
+  query.on('end', () => {
+    return res.json(results);
+  });
+  
 })
 
 app.listen(process.env.PORT || 8080)
