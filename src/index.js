@@ -1,15 +1,28 @@
 const express = require('express')
+const exphbs = require("express-handlebars")
+const path = require('path')
 const bodyparser = require('body-parser')
-const terminateListener = require('./terminate-listener.js');
-const pg = require('pg');
-const connectionString = process.env.DATABASE_URL || 'postgres://localhost:5432/todo';
+const terminateListener = require('./terminate-listener.js')
+const pg = require('pg')
+
+// load environment variables for localhost
+try {
+	env(path.join(__dirname, '.env'));
+} catch (e) {}
 
 // connect to db
-const client = new pg.Client(connectionString);
-client.connect();
+const connectionString = process.env.DATABASE_URL
+const client = new pg.Client(connectionString)
+client.connect()
 
+// configure app
 const app = express()
+app.use(express.static(path.join(__dirname, '..', 'public')))
 app.use(bodyparser.json())
+
+// middleware
+app.engine('handlebars', exphbs({defaultLayout: 'main'}))
+app.set('view engine', 'handlebars')
 
 app.post('/*', (req, res) => {
   req.body.forEach(element => {
@@ -20,9 +33,15 @@ app.post('/*', (req, res) => {
   res.setHeader('Content-Type', 'text/plain')
   res.send(`Thank you - you posted: ${j}\n`).end()
 })
-app.get('/*', (req, res) => {
+
+app.get('/', (req, res) => {
+  client.query("select d.dt dt, de.id deviceId, d.id sensorId, s.name sensorName, de.name deviceName, round(cast(d.value as numeric), 1) sensorValue from (select id, dt, value from (select row_number() over (partition by id order by dt desc) as r, t.* from sensor_data t) x where x.r < 2) d left outer join sensor s on d.id=s.id join device de on de.id=s.deviceId order by de.name, s.name;", (err, resultSet) => {
+    res.render('dashboard', {'data': resultSet.rows})
+  })
+})
+
+app.get('/excel/:minutes?', (req, res) => {
   const minutes = req.param.minutes || 240
-  const results = []
   const query = client.query(`select s.id id, s.name sensor_name, to_char(d.dt, 'YYYY-MM-DD HH24:MI:SS') dt, d.value from sensor_data d, sensor s where d.id=s.id and current_timestamp - dt < interval '${minutes} minutes' order by id asc, dt asc`, (err, resultSet) => {
     res.setHeader('Content-Type', 'text/plain')
     if (err) {

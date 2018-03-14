@@ -1,0 +1,18 @@
+.sensorReading {
+    font-family: Arial, Helvetica, sans-serif;
+    height: 8.5em;
+    background-color: #efefef;
+    padding: 0.25em;
+    margin: 0.25em;
+    text-align: center;
+    border-radius: 0.25em;
+    border: 1px solid black;
+}
+
+.sensorReading .value {
+    font-size: 3em;
+}
+
+.sensorReading .name {
+    font-size: 1.5em;
+}
