@@ -25,9 +25,12 @@ app.get('/*', (req, res) => {
   const results = []
   const query = client.query(`select s.id id, s.name sensor_name, to_char(d.dt, 'YYYY-MM-DD HH24:MI:SS') dt, d.value from sensor_data d, sensor s where d.id=s.id and current_timestamp - dt < interval '${minutes} minutes' order by id asc, dt asc`, (err, resultSet) => {
     res.setHeader('Content-Type', 'text/plain')
-    
+    if (err) {
+      return res.send(err).end()
+    }
+
     resultSet.rows.forEach(row => {
-      res.write(`${row[0]};${row[1]};${row[2]};${row[3]}\n`)  
+      res.write(`${row.id};${row.sensor_name};${row.dt};${row.value}\n`)  
     })
     res.end()
   })
@@ -39,6 +42,6 @@ app.listen(process.env.PORT || 8080)
 // setup termination listener
 terminateListener(() => {
   console.log("Closing postgres driver");
-  client.end();
+  client.close();
   console.log("Closed postgres driver");
 });
