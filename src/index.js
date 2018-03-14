@@ -21,17 +21,16 @@ app.post('/*', (req, res) => {
   res.send(`Thank you - you posted: ${j}\n`).end()
 })
 app.get('/*', (req, res) => {
-  const minutes = req.param.minutes
+  const minutes = req.param.minutes || 240
   const results = []
-  const query = client.query(`select s.id id, s.name sensor_name, to_char(d.dt, 'YYYY-MM-DD HH24:MI:SS') dt, d.value from sensor_data d, sensor s where d.id=s.id and current_timestamp - dt < interval '${minutes} minutes' order by id asc, dt asc`)
-  query.on('row', (row) => {
-    results.push(row);
-  });
-
-  // all data is returned, close connection and return results
-  query.on('end', () => {
-    return res.json(results);
-  });
+  const query = client.query(`select s.id id, s.name sensor_name, to_char(d.dt, 'YYYY-MM-DD HH24:MI:SS') dt, d.value from sensor_data d, sensor s where d.id=s.id and current_timestamp - dt < interval '${minutes} minutes' order by id asc, dt asc`, (err, resultSet) => {
+    res.setHeader('Content-Type', 'text/plain')
+    
+    resultSet.rows.forEach(row => {
+      res.write(`${row[0]};${row[1]};${row[2]};${row[3]}\n`)  
+    })
+    res.end()
+  })
   
 })
 
@@ -40,6 +39,6 @@ app.listen(process.env.PORT || 8080)
 // setup termination listener
 terminateListener(() => {
   console.log("Closing postgres driver");
-  pg.end();
+  client.end();
   console.log("Closed postgres driver");
 });
