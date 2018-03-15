@@ -36,8 +36,8 @@ app.post('/*', (req, res) => {
 })
 
 app.get('/', (req, res) => {
-  const parse = (resultSet) => {
-    return resultSet.rows.map(row => {
+  const parse = (rows) => {
+    return rows.map(row => {
       let m = moment(row.dt)
       let strdate = m.format("D-M-YYYY [kl.] k:mm")
       let mins = m.diff(new Date(), 'minutes')
@@ -52,17 +52,17 @@ app.get('/', (req, res) => {
     })
   }
   
-  /*client.query("select d.dt dt, de.id deviceId, d.id sensorId, s.name sensorName, de.name deviceName, round(cast(d.value as numeric), 1) sensorValue from (select id, dt, value from (select row_number() over (partition by id order by dt desc) as r, t.* from sensor_data t) x where x.r < 2) d left outer join sensor s on d.id=s.id join device de on de.id=s.deviceId order by de.name, s.name;", (err, resultSet) => {
+  client.query("select d.dt dt, de.id deviceId, d.id sensorId, s.name sensorName, de.name deviceName, round(cast(d.value as numeric), 1) sensorValue from (select id, dt, value from (select row_number() over (partition by id order by dt desc) as r, t.* from sensor_data t) x where x.r < 2) d left outer join sensor s on d.id=s.id join device de on de.id=s.deviceId order by de.name, s.name;", (err, resultSet) => {
     let data = parse(resultSet.rows)
     res.render('dashboard', {'data': data})
   })
-  */
- 
- let data = parse({'rows': [
+  
+ /*
+ let data = parse([
    {'sensorid': '1', 'sensorname': 'sensor1', 'sensorvalue': 1.1, 'deviceid': 'd1', 'devicename': 'device 1', 'dt': new Date()}
- ]})
+ ])
  res.render('dashboard', {'data': data})
- 
+ */
 })
 
 app.get('/excel/:minutes?', (req, res) => {
