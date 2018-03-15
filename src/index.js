@@ -5,6 +5,7 @@ const bodyparser = require('body-parser')
 const terminateListener = require('./terminate-listener.js')
 const pg = require('pg')
 const moment = require('moment-timezone')
+const Pushover = require('node-pushover')
 
 // load environment variables for localhost
 try {
@@ -15,6 +16,19 @@ try {
 const connectionString = process.env.DATABASE_URL
 const client = new pg.Client(connectionString)
 client.connect()
+
+// get pushover data
+const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
+const PUSHOVER_USERKEY = process.env.PUSHOVER_USERKEY
+let pushoverLastSent = undefined
+const pushover = (function() {
+  if (PUSHOVER_USERKEY && PUSHOVER_APPTOKEN) {
+    return new Pushover({
+        token: PUSHOVER_APPTOKEN,
+        user: PUSHOVER_USERKEY
+    })
+  }
+})()
 
 // configure app
 const app = express()
@@ -28,6 +42,11 @@ app.set('view engine', 'handlebars')
 app.post('/*', (req, res) => {
   req.body.forEach(element => {
     client.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${element.sensorId}', ${element.sensorValue});`);
+
+    if (pushover && element.sensorId === '28FF46C76017059A' && element.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
+      pushoverLastSent = moment()
+      pushover.send('Frostvejr', `Det er frostvejr... (${element.sensorValue})`)
+    }
   });
   let j = JSON.stringify(req.body, undefined, 2)
   console.log(`Received: ${j}`)
