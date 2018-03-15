@@ -12,7 +12,7 @@ try {
 } catch (e) {}
 
 // connect to db
-const connectionString = process.env.HEROKU_POSTGRESQL_SILVER_URL
+const connectionString = process.env.DATABASE_URL
 const client = new pg.Client(connectionString)
 client.connect()
 
