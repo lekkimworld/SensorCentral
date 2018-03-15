@@ -40,14 +40,14 @@ app.get('/', (req, res) => {
     return rows.map(row => {
       let m = moment(row.dt)
       let strdate = m.format("D-M-YYYY [kl.] k:mm")
-      let mins = m.diff(new Date(), 'minutes')
+      let mins = moment().diff(m, 'minutes')
       return {
         'sensorid': row.sensorid,
         'sensorname': row.sensorname,
         'sensorvalue': row.sensorvalue,
         'devicename': row.devicename,
         'dt': strdate,
-        'last': `${mins} minutter siden`
+        'last': mins
       }
     })
   }

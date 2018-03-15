@@ -2,8 +2,8 @@
     {{#each data}}
     <div class="col-lg-3 col-md-3 col-sm-4 sensorReading">
         <div class="value">{{this.sensorvalue}}&deg;C</div>
-        <div class="name">{{this.sensorname}}, {{this.devicename}}</div>
-        <div class="name">{{this.dt}}, {{this.last}}</div>
+        <div class="name">{{this.sensorname}} ({{this.devicename}})</div>
+        <div class="name">{{this.dt}}, {{this.last}} minutter siden</div>
     </div>
     {{/each}}    
 </div>
