@@ -5,15 +5,14 @@ create table HOUSE (id varchar(32) not null primary key, name varchar(128) not n
 alter table DEVICE add foreign key (houseId) references HOUSE (id) on delete cascade;
 alter table SENSOR add foreign key (deviceId) references DEVICE (id) on delete cascade;
 
-
 insert into house (id, name) values ('lekkim1', 'Vejenbrødvej 2B');
-insert into device (id, name, houseId) values ('60:01:94:5D:4C:9D', 'Arduino, varmepumpe', 'lekkim1');
+insert into device (id, name, houseId) values ('60:01:94:5D:4C:9D', 'Varmepumpe', 'lekkim1');
 insert into sensor (id, name, deviceId) values ('28FF181A80140220', 'Varmepumpe, retur', '60:01:94:5D:4C:9D');
 insert into sensor (id, name, deviceId) values ('28FF5D1A8014021B', 'Varmepumpe, frem', '60:01:94:5D:4C:9D');
 insert into sensor (id, name, deviceId) values ('28FF1889B316043F', 'Koldt vand', '60:01:94:5D:4C:9D');
 insert into sensor (id, name, deviceId) values ('28FFB21BB3160509', 'Varmt vand', '60:01:94:5D:4C:9D');
 insert into sensor (id, name, deviceId) values ('28FF46C76017059A', 'Ude', '60:01:94:5D:4C:9D');
-insert into device (id, name, houseId) values ('60:01:94:5d:48:95', 'Arduino, varmeskab', 'lekkim1');
+insert into device (id, name, houseId) values ('60:01:94:5d:48:95', 'Skab', 'lekkim1');
 insert into sensor (id, name, deviceId) values ('28FF5313B3160502', 'Gang, retur', '60:01:94:5d:48:95');
 insert into sensor (id, name, deviceId) values ('28FF6E15B3160563', 'Køkken, retur', '60:01:94:5d:48:95');
 insert into sensor (id, name, deviceId) values ('28FF60AF80140263', 'Varmepumpe, frem', '60:01:94:5d:48:95');
