@@ -4,7 +4,7 @@ const path = require('path')
 const bodyparser = require('body-parser')
 const terminateListener = require('./terminate-listener.js')
 const pg = require('pg')
-const moment = require('moment')
+const moment = require('moment-timezone')
 
 // load environment variables for localhost
 try {
@@ -56,13 +56,12 @@ app.get('/', (req, res) => {
     let data = parse(resultSet.rows)
     res.render('dashboard', {'data': data})
   })
-  
- /*
+  /*
  let data = parse([
    {'sensorid': '1', 'sensorname': 'sensor1', 'sensorvalue': 1.1, 'deviceid': 'd1', 'devicename': 'device 1', 'dt': new Date()}
  ])
  res.render('dashboard', {'data': data})
- */
+*/
 })
 
 app.get('/excel/:minutes?', (req, res) => {
