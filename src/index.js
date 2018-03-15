@@ -39,7 +39,7 @@ app.get('/', (req, res) => {
   const parse = (rows) => {
     return rows.map(row => {
       let m = moment(row.dt)
-      let strdate = m.format("D-M-YYYY [kl.] k:mm")
+      let strdate = m.tz('Europe/Copenhagen').format("D-M-YYYY [kl.] k:mm")
       let mins = moment().diff(m, 'minutes')
       return {
         'sensorid': row.sensorid,
