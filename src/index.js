@@ -45,7 +45,10 @@ app.set('view engine', 'handlebars')
 app.post('/*', (req, res) => {
   req.body.forEach(element => {
     // sanity
-    if (element.sensorValue > MAX_REGISTER_TEMP) return
+    if (element.sensorValue > MAX_REGISTER_TEMP) {
+      console.log(`Ignoring value of ${element.sensorValue} from ${element.sensorId} as value to is too high (> ${MAX_REGISTER_TEMP})`)
+      return
+    }
 
     // insert
     client.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${element.sensorId}', ${element.sensorValue});`);
