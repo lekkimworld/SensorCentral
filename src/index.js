@@ -12,6 +12,9 @@ try {
 	env(path.join(__dirname, '.env'));
 } catch (e) {}
 
+// max temp to register
+const MAX_REGISTER_TEMP = process.env.MAX_REGISTER_TEMP || 60
+
 // connect to db
 const connectionString = process.env.DATABASE_URL
 const client = new pg.Client(connectionString)
@@ -41,6 +44,10 @@ app.set('view engine', 'handlebars')
 
 app.post('/*', (req, res) => {
   req.body.forEach(element => {
+    // sanity
+    if (element.sensorValue > MAX_REGISTER_TEMP) return
+
+    // insert
     client.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${element.sensorId}', ${element.sensorValue});`);
 
     if (pushover && element.sensorId === '28FF46C76017059A' && element.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
