@@ -14,6 +14,7 @@ try {
 
 // max temp to register
 const MAX_REGISTER_TEMP = process.env.MAX_REGISTER_TEMP || 60
+const MIN_REGISTER_TEMP = process.env.MIN_REGISTER_TEMP || -60
 
 // connect to db
 const connectionString = process.env.DATABASE_URL
@@ -45,8 +46,8 @@ app.set('view engine', 'handlebars')
 app.post('/*', (req, res) => {
   req.body.forEach(element => {
     // sanity
-    if (element.sensorValue > MAX_REGISTER_TEMP) {
-      console.log(`Ignoring value of ${element.sensorValue} from ${element.sensorId} as value to is too high (> ${MAX_REGISTER_TEMP})`)
+    if (element.sensorValue > MAX_REGISTER_TEMP || element.sensorValue < MIN_REGISTER_TEMP) {
+      console.log(`Ignoring value of ${element.sensorValue} from ${element.sensorId} as value to is too high (> ${MAX_REGISTER_TEMP}) or too low (< ${MIN_REGISTER_TEMP})`)
       return
     }
 
