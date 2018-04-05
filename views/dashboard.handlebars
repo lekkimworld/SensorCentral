@@ -1,10 +1,10 @@
 <i>Opdateret: {{updated}}</i>
 <div class="row">
     {{#each data}}
-    <div class="col-lg-3 col-md-3 col-sm-4 sensorReading">
+    <div class="col-lg-2 col-md-3 col-sm-4 sensorReading">
         <div class="value">{{this.sensorvalue}}&deg;C</div>
         <div class="name">{{this.sensorname}} ({{this.devicename}})</div>
-        <div class="name">{{this.dt}}, {{this.last}} minutter siden</div>
+        <div class="name">{{this.dt}}, {{this.last}} min. siden</div>
     </div>
     {{/each}}    
 </div>
