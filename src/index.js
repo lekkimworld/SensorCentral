@@ -3,7 +3,7 @@ const exphbs = require("express-handlebars")
 const path = require('path')
 const bodyparser = require('body-parser')
 const terminateListener = require('./terminate-listener.js')
-const pg = require('pg')
+const {Pool, Client} = require('pg')
 const moment = require('moment-timezone')
 const Pushover = require('node-pushover')
 
@@ -18,6 +18,9 @@ const MIN_REGISTER_TEMP = process.env.MIN_REGISTER_TEMP || -60
 
 // connect to db
 const connectionString = process.env.DATABASE_URL
+const pool = new Pool({
+  'connectionString': connectionString
+})
 
 // get pushover data
 const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
@@ -49,12 +52,8 @@ app.post('/*', (req, res) => {
       return
     }
 
-    // get db client
-    const client = new pg.Client(connectionString)
-    client.connect()
-
     // insert
-    client.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${element.sensorId}', ${element.sensorValue});`);
+    pool.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${element.sensorId}', ${element.sensorValue});`);
 
     if (pushover && element.sensorId === '28FF46C76017059A' && element.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
       pushoverLastSent = moment()
@@ -66,9 +65,6 @@ app.post('/*', (req, res) => {
   console.log(`Received: ${j}`)
   res.setHeader('Content-Type', 'text/plain')
   res.send(`Thank you - you posted: ${j}\n`).end()
-
-  // close
-  client.end()
 })
 
 app.get('/', (req, res) => {
@@ -92,13 +88,11 @@ app.get('/', (req, res) => {
     })
   }
   let context = {'updated': formatDate()}
-  const client = new pg.Client(connectionString)
-  client.connect()
-  client.query("select d.dt dt, de.id deviceId, d.id sensorId, s.name sensorName, de.name deviceName, round(cast(d.value as numeric), 1) sensorValue from (select id, dt, value from (select row_number() over (partition by id order by dt desc) as r, t.* from sensor_data t) x where x.r < 2) d left outer join sensor s on d.id=s.id join device de on de.id=s.deviceId order by de.name, s.name;", (err, resultSet) => {
+  
+  pool.query("select d.dt dt, de.id deviceId, d.id sensorId, s.name sensorName, de.name deviceName, round(cast(d.value as numeric), 1) sensorValue from (select id, dt, value from (select row_number() over (partition by id order by dt desc) as r, t.* from sensor_data t) x where x.r < 2) d left outer join sensor s on d.id=s.id join device de on de.id=s.deviceId order by de.name, s.name;", (err, resultSet) => {
     let data = parse(resultSet.rows)
     context.data = data
     res.render('dashboard', context)
-    client.end()
   })
   
   /*
@@ -112,9 +106,7 @@ app.get('/', (req, res) => {
 
 app.get('/excel/:minutes?', (req, res) => {
   const minutes = req.param.minutes || 240
-  const client = new pg.Client(connectionString)
-  client.connect()
-  const query = client.query(`select s.id id, s.name sensor_name, to_char(d.dt, 'YYYY-MM-DD HH24:MI:SS') dt, d.value from sensor_data d, sensor s where d.id=s.id and current_timestamp - dt < interval '${minutes} minutes' order by id asc, dt asc`, (err, resultSet) => {
+  pool.query(`select s.id id, s.name sensor_name, to_char(d.dt, 'YYYY-MM-DD HH24:MI:SS') dt, d.value from sensor_data d, sensor s where d.id=s.id and current_timestamp - dt < interval '${minutes} minutes' order by id asc, dt asc`, (err, resultSet) => {
     res.setHeader('Content-Type', 'text/plain')
     if (err) {
       return res.send(err).end()
@@ -124,7 +116,6 @@ app.get('/excel/:minutes?', (req, res) => {
       res.write(`${row.id};${row.sensor_name};${row.dt};${row.value}\n`)  
     })
     res.end()
-    client.end()
   })
   
 })
@@ -134,6 +125,6 @@ app.listen(process.env.PORT || 8080)
 // setup termination listener
 terminateListener(() => {
   console.log("Closing postgres driver");
-  //client.close();
+  pool.end()
   console.log("Closed postgres driver");
 });
