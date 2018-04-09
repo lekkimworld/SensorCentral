@@ -1,0 +1,10 @@
+{
+  "name": "SensorCentral",
+  "icons": [
+    
+  ],
+  "display": "fullscreen",
+  "orientation": "any",
+  "start_url": "./",
+  "background_color": "#bfb9f3"
+}
