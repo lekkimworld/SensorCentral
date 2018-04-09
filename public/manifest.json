@@ -8,8 +8,20 @@
       "density": 0.75
     },
     {
+      "src": "/images/icon-120.png",
+      "sizes": "120x120",
+      "type": "image/png",
+      "density": 1
+    },
+    {
       "src": "/images/icon-128.png",
       "sizes": "128x128",
+      "type": "image/png",
+      "density": 1
+    },
+    {
+      "src": "/images/icon-180.png",
+      "sizes": "180x180",
       "type": "image/png",
       "density": 1
     },
