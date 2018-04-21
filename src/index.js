@@ -2,10 +2,9 @@ const express = require('express')
 const exphbs = require("express-handlebars")
 const path = require('path')
 const bodyparser = require('body-parser')
-const terminateListener = require('./terminate-listener.js')
-const {Pool, Client} = require('pg')
 const moment = require('moment-timezone')
-const Pushover = require('node-pushover')
+const PubNub = require('pubnub')
+const constants = require('./constants.js')
 
 // load environment variables for localhost
 try {
@@ -16,24 +15,12 @@ try {
 const MAX_REGISTER_TEMP = process.env.MAX_REGISTER_TEMP || 60
 const MIN_REGISTER_TEMP = process.env.MIN_REGISTER_TEMP || -60
 
-// connect to db
-const connectionString = process.env.DATABASE_URL
-const pool = new Pool({
-  'connectionString': connectionString
+// create a pubnub client
+const pubnub = new PubNub({
+  'subscribeKey': process.env.PUBNUB_SUBSCRIBE_KEY,
+  'publishKey': process.env.PUBNUB_PUBLISH_KEY,
+  'ssl': true
 })
-
-// get pushover data
-const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
-const PUSHOVER_USERKEY = process.env.PUSHOVER_USERKEY
-let pushoverLastSent = undefined
-const pushover = (function() {
-  if (PUSHOVER_USERKEY && PUSHOVER_APPTOKEN) {
-    return new Pushover({
-        token: PUSHOVER_APPTOKEN,
-        user: PUSHOVER_USERKEY
-    })
-  }
-})()
 
 // configure app
 const app = express()
@@ -52,15 +39,24 @@ app.post('/*', (req, res) => {
       return
     }
 
-    // insert
-    pool.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${element.sensorId}', ${element.sensorValue});`);
-
-    if (pushover && element.sensorId === '28FF46C76017059A' && element.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
-      pushoverLastSent = moment()
-      pushover.send('Frostvejr', `Det er frostvejr... (${element.sensorValue})`)
-    }
+    // post message about sensor reading
+    pubnub.publish({
+      'message': {
+        'value': element.sensorValue,
+        'sensorId': element.sensorId
+      },
+      'channel': constants.PUBNUB.CHANNEL_NAME
+    }, (status, response) => {
+      if (status.error) {
+        console.log(`ERROR -  could NOT post value of ${element.sensorValue} from ${element.sensorId} as value to channel ${constants.PUBNUB.CHANNEL_NAME}`)
+        console.log(status)
+      } else {
+        console.log(`SUCCESS - posted value of ${element.sensorValue} from ${element.sensorId} as value to channel ${constants.PUBNUB.CHANNEL_NAME}`)
+      }
+    })
   });
 
+  // acknowledge post
   let j = JSON.stringify(req.body, undefined, 2)
   console.log(`Received: ${j}`)
   res.setHeader('Content-Type', 'text/plain')
@@ -122,9 +118,3 @@ app.get('/excel/:minutes?', (req, res) => {
 
 app.listen(process.env.PORT || 8080)
 
-// setup termination listener
-terminateListener(() => {
-  console.log("Closing postgres driver");
-  pool.end()
-  console.log("Closed postgres driver");
-});

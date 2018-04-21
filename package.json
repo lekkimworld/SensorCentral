@@ -16,6 +16,7 @@
     "moment": "^2.21.0",
     "moment-timezone": "^0.5.14",
     "node-pushover": "^0.2.2",
-    "pg": "^7.4.1"
+    "pg": "^7.4.1",
+    "pubnub": "^4.20.2"
   }
 }
