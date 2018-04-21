@@ -1,3 +1,4 @@
+const {Pool} = require('pg')
 const express = require('express')
 const exphbs = require("express-handlebars")
 const path = require('path')
@@ -22,6 +23,12 @@ const pubnub = new PubNub({
   'ssl': true
 })
 
+// connect to db using pool
+const pool = new Pool({
+  'connectionString': process.env.DATABASE_URL,
+  'ssl': true
+})
+
 // configure app
 const app = express()
 app.use(express.static(path.join(__dirname, '..', 'public')))
@@ -32,7 +39,16 @@ app.engine('handlebars', exphbs({defaultLayout: 'main'}))
 app.set('view engine', 'handlebars')
 
 app.post('/*', (req, res) => {
-  req.body.forEach(element => {
+  // see if array
+  let data = req.body
+  if (typeof data === 'object' && Object.keys(data).length === 0) {
+    return res.status(417).end()
+  }
+  // wrap in array if not an array
+  if (!Array.isArray(data)) {
+    data = [data]
+  }
+  data.forEach(element => {
     // sanity
     if (element.sensorValue > MAX_REGISTER_TEMP || element.sensorValue < MIN_REGISTER_TEMP) {
       console.log(`Ignoring value of ${element.sensorValue} from ${element.sensorId} as value to is too high (> ${MAX_REGISTER_TEMP}) or too low (< ${MIN_REGISTER_TEMP})`)
@@ -42,22 +58,22 @@ app.post('/*', (req, res) => {
     // post message about sensor reading
     pubnub.publish({
       'message': {
-        'value': element.sensorValue,
+        'sensorValue': element.sensorValue,
         'sensorId': element.sensorId
       },
-      'channel': constants.PUBNUB.CHANNEL_NAME
+      'channel': constants.PUBNUB.RAW_CHANNEL_NAME
     }, (status, response) => {
       if (status.error) {
-        console.log(`ERROR -  could NOT post value of ${element.sensorValue} from ${element.sensorId} as value to channel ${constants.PUBNUB.CHANNEL_NAME}`)
+        console.log(`ERROR -  could NOT post value of ${element.sensorValue} from ${element.sensorId} as value to channel ${constants.PUBNUB.RAW_CHANNEL_NAME}`)
         console.log(status)
       } else {
-        console.log(`SUCCESS - posted value of ${element.sensorValue} from ${element.sensorId} as value to channel ${constants.PUBNUB.CHANNEL_NAME}`)
+        console.log(`SUCCESS - posted value of ${element.sensorValue} from ${element.sensorId} as value to channel ${constants.PUBNUB.RAW_CHANNEL_NAME}`)
       }
     })
   });
 
   // acknowledge post
-  let j = JSON.stringify(req.body, undefined, 2)
+  let j = JSON.stringify(data, undefined, 2)
   console.log(`Received: ${j}`)
   res.setHeader('Content-Type', 'text/plain')
   res.send(`Thank you - you posted: ${j}\n`).end()
@@ -100,21 +116,6 @@ app.get('/', (req, res) => {
 */
 })
 
-app.get('/excel/:minutes?', (req, res) => {
-  const minutes = req.param.minutes || 240
-  pool.query(`select s.id id, s.name sensor_name, to_char(d.dt, 'YYYY-MM-DD HH24:MI:SS') dt, d.value from sensor_data d, sensor s where d.id=s.id and current_timestamp - dt < interval '${minutes} minutes' order by id asc, dt asc`, (err, resultSet) => {
-    res.setHeader('Content-Type', 'text/plain')
-    if (err) {
-      return res.send(err).end()
-    }
-
-    resultSet.rows.forEach(row => {
-      res.write(`${row.id};${row.sensor_name};${row.dt};${row.value}\n`)  
-    })
-    res.end()
-  })
-  
-})
-
+console.log(`Starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`)
 app.listen(process.env.PORT || 8080)
 

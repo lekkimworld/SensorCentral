@@ -7,7 +7,6 @@ const constants = require('./constants.js')
 // get pushover data
 const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
 const PUSHOVER_USERKEY = process.env.PUSHOVER_USERKEY
-let pushoverLastSent = undefined
 const pushover = (function() {
   if (PUSHOVER_USERKEY && PUSHOVER_APPTOKEN) {
     return new Pushover({
@@ -42,7 +41,7 @@ pubnub.addListener({
     }
 })
 pubnub.subscribe({
-    channels: [constants.PUBNUB.CHANNEL_NAME]
+    channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
 })
 
 // setup termination listener
