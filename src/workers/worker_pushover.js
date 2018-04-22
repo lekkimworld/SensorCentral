@@ -1,8 +1,7 @@
 const Pushover = require('node-pushover')
-const PubNub = require('pubnub')
 const moment = require('moment-timezone')
-const terminateListener = require('./terminate-listener.js')
-const constants = require('./constants.js')
+const constants = require('../constants.js')
+const srvc = require('../configure-services.js')
 
 // get pushover data
 const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
@@ -23,10 +22,7 @@ if (!pushover) {
 }
 
 // subcribe to channel
-const pubnub = new PubNub({
-    'subscribeKey': process.env.PUBNUB_SUBSCRIBE_KEY,
-    'ssl': true
-})
+const pubnub = srvc.events.getInstance()
 let pushoverLastSent = undefined
 pubnub.addListener({
     'message': (msg) => {
@@ -43,11 +39,3 @@ pubnub.addListener({
 pubnub.subscribe({
     channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
 })
-
-// setup termination listener
-terminateListener(() => {
-    console.log("Unsubscribing from PubNub");
-    pubnub.unsubscribeAll()
-    console.log("Unsubscribed from PubNub");
-  });
-  

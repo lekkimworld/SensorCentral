@@ -1,4 +1,4 @@
-web: node src/web_worker.js
-storage: node src/storage_worker.js
-pushover: node src/pushover_worker.js
-log: node src/log_worker.js
+web: node src/workers/worker_web.js
+storage: node src/workers/worker_storage.js
+pushover: node src/workers/worker_pushover.js
+log: node src/workers/worker_log.js
