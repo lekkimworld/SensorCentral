@@ -16,14 +16,19 @@ pubnub.addListener({
 
         // send new event with more data
         global.setImmediate(() => {
-            srvc.db.query("select s.id sensorId, s.name sensorName, d.name deviceName, d.id deviceId from sensor s left outer join device d on d.id=s.deviceId  where s.id=$1", obj.sensorId).then(rs => {
+            let msg = {
+                'sensorName': null,
+                'sensorId': obj.sensorId,
+                'sensorValue': obj.sensorValue,
+                'deviceName': null,
+                'deviceId': null
+            }
+            srvc.db.query("select s.id sensorId, s.name sensorName, d.name deviceName, d.id deviceId from sensor s left outer join device d on d.id=s.deviceId where s.id=$1", obj.sensorId).then(rs => {
                 let row = rs.rows[0]
-                let msg = {
-                    'sensorName': row.sensorname,
-                    'sensorId': row.sensorid,
-                    'sensorValue': obj.sensorValue,
-                    'deviceName': row.devicename,
-                    'deviceId': row.deviceid
+                if (row) {
+                    msg.sensorName = row.sensorname
+                    msg.deviceName = row.devicename
+                    msg.deviceId = row.deviceid
                 }
                 pubnub.publish({
                     'message': msg,
