@@ -25,7 +25,7 @@ router.get('/', (req, res) => {
     }
     let context = {'updated': formatDate()}
     
-    srvc.db.query("select d.dt dt, de.id deviceId, d.id sensorId, s.name sensorName, de.name deviceName, round(cast(d.value as numeric), 1) sensorValue from (select id, dt, value from (select row_number() over (partition by id order by dt desc) as r, t.* from sensor_data t) x where x.r < 2) d left outer join sensor s on d.id=s.id join device de on de.id=s.deviceId order by de.name, s.name;").then(rs => {
+    srvc.db.query("select d.dt dt, de.id deviceId, d.id sensorId, s.name sensorName, de.name deviceName, round(cast(d.value as numeric), 1) sensorValue from (select id, dt, value from (select row_number() over (partition by id order by dt desc) as r, t.* from sensor_data t) x where x.r < 2) d left outer join sensor s on d.id=s.id left outer join device de on de.id=s.deviceId order by de.name, s.name;").then(rs => {
       let data = parse(rs.rows)
       context.data = data
       res.render('dashboard', context)
