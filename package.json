@@ -5,18 +5,25 @@
   "main": "index.js",
   "scripts": {
     "run": "node src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx mocha tests/*.js tests/*/*.js --reporter spec"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.18.2",
-    "express": "^4.16.2",
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3",
     "express-handlebars": "^3.0.0",
-    "moment": "^2.21.0",
-    "moment-timezone": "^0.5.14",
+    "grunt": "^1.0.1",
+    "grunt-browserify": "^5.2.0",
+    "grunt-cli": "^1.2.0",
+    "grunt-contrib-clean": "^1.1.0",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-watch": "^1.0.0",
+    "grunt-rework": "^0.1.0",
+    "moment": "^2.22.1",
+    "moment-timezone": "^0.5.17",
     "node-pushover": "^0.2.2",
-    "pg": "^7.4.1",
-    "pubnub": "^4.20.2"
+    "pg": "^7.4.3",
+    "pubnub": "^4.20.3"
   }
 }
