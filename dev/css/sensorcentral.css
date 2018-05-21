@@ -16,3 +16,11 @@
 .sensorReading .name {
     font-size: 1em;
 }
+
+.white {
+    color: #fff;
+}
+
+body {
+    padding-top: 4.0rem;
+}

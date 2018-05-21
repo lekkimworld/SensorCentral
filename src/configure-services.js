@@ -29,6 +29,16 @@ DatabaseService.prototype.terminate = function() {
 DatabaseService.prototype.query = function(query, ...args) {
     return this._pool.query(query, args)
 }
+DatabaseService.prototype.queryAllLatestSensorValues = function(query, ...args) {
+    if (constants.IS.TEST) {
+        let rows = [
+            {'sensorid': '1', 'sensorname': 'sensor1', 'sensorvalue': 1.1, 'deviceid': 'd1', 'devicename': 'device 1', 'dt': new Date()},
+            {'sensorid': '2', 'sensorname': 'sensor2', 'sensorvalue': 2.1, 'deviceid': null, 'devicename': null, 'dt': new Date()}
+        ]
+        return Promise.resolve({"rows": rows})
+    }
+    return this.query("select d.dt dt, de.id deviceId, d.id sensorId, s.name sensorName, de.name deviceName, round(cast(d.value as numeric), 1) sensorValue from (select id, dt, value from (select row_number() over (partition by id order by dt desc) as r, t.* from sensor_data t) x where x.r < 2) d left outer join sensor s on d.id=s.id left outer join device de on de.id=s.deviceId order by de.name, s.name;")
+}
 
 const EventService = function() {
     this._instances = []

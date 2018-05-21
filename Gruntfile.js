@@ -3,10 +3,18 @@ module.exports = function(grunt) {
         clean: ['public/'],
         copy: {
             main: {
-                expand: true,
-                cwd: 'dev/images',
-                src: '*.*',
-                dest: 'public/images/'
+                "files": [
+                    {
+                        expand: true,
+                        cwd: 'dev/images',
+                        src: '*.*',
+                        dest: 'public/images/'
+                    }, 
+                    {
+                        src: 'dev/manifest.json',
+                        dest: 'public/manifest.json'
+                    }
+                ]
             }
         },
         browserify: {

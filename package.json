@@ -4,22 +4,25 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "run": "node src/index.js",
-    "test": "npx mocha tests/*.js tests/*/*.js --reporter spec"
+    "run": "node src/workers/worker_web.js",
+    "test": "npx mocha tests/*.js tests/*/*.js --reporter spec",
+    "postinstall": "grunt"
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "body-parser": "^1.18.3",
-    "express": "^4.16.3",
-    "express-handlebars": "^3.0.0",
+  "devDependencies": {
     "grunt": "^1.0.1",
     "grunt-browserify": "^5.2.0",
     "grunt-cli": "^1.2.0",
     "grunt-contrib-clean": "^1.1.0",
     "grunt-contrib-copy": "^1.0.0",
     "grunt-contrib-watch": "^1.0.0",
-    "grunt-rework": "^0.1.0",
+    "grunt-rework": "^0.1.0"
+  },
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3",
+    "express-handlebars": "^3.0.0",
     "moment": "^2.22.1",
     "moment-timezone": "^0.5.17",
     "node-pushover": "^0.2.2",
