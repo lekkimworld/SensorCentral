@@ -17,8 +17,12 @@
     font-size: 1em;
 }
 
-.white {
+.color-white {
     color: #fff;
+}
+
+.color-black {
+    color: #000;
 }
 
 body {

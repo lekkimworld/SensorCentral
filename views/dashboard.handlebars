@@ -1,9 +1,12 @@
-<i>Opdateret: {{updated}}</i>
+<span class="clearfix">
+    <i class="float-left">Opdateret: {{updated}}</i>
+    <a href="" class="float-right color-black"><i class="fa fa-sync fa-2x" aria-hidden="true"></i></a>
+</span>
 <div class="row">
     {{#each data}}
     <div class="col-lg-2 col-md-3 col-sm-4 sensorReading">
-        <div class="value">{{this.sensorvalue}}&deg;C</div>
-        <div class="name">{{this.sensorname}} ({{this.devicename}})</div>
+        <div class="value">{{this.value}}</div>
+        <div class="name">{{this.name}}</div>
         <div class="name">{{this.dt}}, {{this.last}} min. siden</div>
     </div>
     {{/each}}    

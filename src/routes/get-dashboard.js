@@ -1,5 +1,6 @@
 const express = require('express')
 const router = express.Router()
+const constants = require('../constants.js')
 const moment = require('moment-timezone')
 const srvc = require('../configure-services.js')
 
@@ -13,13 +14,30 @@ router.get('/dashboard', (req, res) => {
         let m = moment(row.dt)
         let strdate = formatDate(m)
         let mins = moment().diff(m, 'minutes')
+        const sensortype = !row.sensortype ? constants.SENSOR_TYPES.UNKNOWN : Object.keys(constants.SENSOR_TYPES).map(k => constants.SENSOR_TYPES[k]).reduce((prev, obj) => {
+          if (prev) return prev
+          if (obj.type === row.sensortype) return obj
+        }, undefined)
+        const value = `${row.sensorvalue}${sensortype.denominator}`
+        const name = `${row.sensorname ? row.sensorname : 'NN'} (${row.devicename ? row.devicename : 'NN'})`
         return {
-          'sensorid': row.sensorid,
-          'sensorname': row.sensorname,
-          'sensorvalue': row.sensorvalue,
-          'devicename': row.devicename,
+          'value': value,
+          'name': name,
           'dt': strdate,
-          'last': mins
+          'last': mins,
+          'raw': {
+            "sensor": {
+              'id': row.sensorid,
+              'value': row.sensorvalue,
+              'denominator': sensortype.donominator,
+              'name': row.sensorname,
+              'type': sensortype.type,
+            },
+            "device": {
+              "id": row.deviceid,
+              "name": row.devicename
+            }
+          }
         }
       })
     }

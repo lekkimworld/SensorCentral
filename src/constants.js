@@ -13,5 +13,19 @@ module.exports = {
     'SENSOR_VALUES': {
         'MAX_REGISTER_TEMP': 60,
         'MIN_REGISTER_TEMP': -60
+    },
+    'SENSOR_TYPES': {
+        "TEMPERATURE": {
+            "type": "temp",
+            "denominator": "\u00B0C"
+        },
+        "HUMIDITY": {
+            "type": "hum",
+            "denominator": "%"
+        },
+        "UNKNOWN": {
+            "type": "unknown",
+            "denominator": "(??)"
+        }
     }
 }
