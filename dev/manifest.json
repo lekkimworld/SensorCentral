@@ -40,6 +40,6 @@
   ],
   "display": "fullscreen",
   "orientation": "any",
-  "start_url": "./",
+  "start_url": "./dashboard",
   "background_color": "#bfb9f3"
 }
