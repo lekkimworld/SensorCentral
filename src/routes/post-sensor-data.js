@@ -4,7 +4,6 @@ const srvc = require('../configure-services.js')
 const constants = require('../constants.js')
 
 // max temp to register
-const MAX_REGISTER_TEMP = process.env.MAX_REGISTER_TEMP || constants.SENSOR_VALUES.MAX_REGISTER_TEMP
 const MIN_REGISTER_TEMP = process.env.MIN_REGISTER_TEMP || constants.SENSOR_VALUES.MIN_REGISTER_TEMP
 
 // get pubnub instance configured for publishing
@@ -22,8 +21,8 @@ router.post('/*', (req, res) => {
     }
     data.forEach(element => {
       // sanity
-      if (element.sensorValue > MAX_REGISTER_TEMP || element.sensorValue < MIN_REGISTER_TEMP) {
-        console.log(`Ignoring value of ${element.sensorValue} from ${element.sensorId} as value to is too high (> ${MAX_REGISTER_TEMP}) or too low (< ${MIN_REGISTER_TEMP})`)
+      if (element.sensorValue < MIN_REGISTER_TEMP) {
+        console.log(`Ignoring value of ${element.sensorValue} from ${element.sensorId} as value to is too low (< ${MIN_REGISTER_TEMP})`)
         return
       }
   
