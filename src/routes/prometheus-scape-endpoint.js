@@ -34,7 +34,7 @@ router.get('/scrapedata', (req, res) => {
         if (obj.deviceName && obj.sensorName) {
             buffer += `${obj.deviceName}-${obj.sensorName} ${obj.sensorValue}\n`
         }
-        return prev
+        return buffer
     }, '')).end()
 })
 
