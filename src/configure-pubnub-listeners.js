@@ -96,7 +96,7 @@ const postToPushoverIfFreezing = (pubnub) => {
     if (!pushover) {
         // nothing to do here
         console.log('Pushover support not configured - exiting...')
-        process.exit(0)
+        return
     }
 
     // subcribe to channel
@@ -117,11 +117,15 @@ const postToPushoverIfFreezing = (pubnub) => {
 
 module.exports = () => {
     // get instance
-    const pubnub = srvc.events.getInstance()
+    const pubnub = srvc.events.getInstance(true)
 
+    console.log('Adding raw listener')
     logRawEventData(pubnub)
+    console.log('Adding enriched listener')
     logEnrichedEventEventData(pubnub)
+    console.log('Adding insert listener')
     insertDataFromRawEventAndPublishEnrichedEvent(pubnub)
+    console.log('Adding pushover listener')
     postToPushoverIfFreezing(pubnub);
 
     pubnub.subscribe({
