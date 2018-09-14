@@ -130,8 +130,10 @@ const postToPushoverIfFreezing = () => {
 }
 
 module.exports = () => {
+    /*
     logRawEventData()
     logEnrichedEventEventData()
+    */
     insertDataFromRawEventAndPublishEnrichedEvent()
-    postToPushoverIfFreezing();
+    //postToPushoverIfFreezing();
 }
