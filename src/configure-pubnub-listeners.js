@@ -3,18 +3,12 @@ const constants = require('./constants.js')
 const Pushover = require('node-pushover')
 const moment = require('moment-timezone')
 
-// get instance
-const pubnub = srvc.events.getInstance()
-pubnub.subscribe({
-    channels: [constants.PUBNUB.RAW_CHANNEL_NAME, constants.PUBNUB.AUG_CHANNEL_NAME]
-})
-
 /**
  * Suscribe to the raw channel for event data - then insert data in database and 
  * published enriched data event with more info on the sensor from the db.
  * 
  */
-const insertDataFromRawEventAndPublishEnrichedEvent = () => {
+const insertDataFromRawEventAndPublishEnrichedEvent = (pubnub) => {
     pubnub.addListener({
         'message': (msg) => {
             const channelName = msg.channel
@@ -55,7 +49,7 @@ const insertDataFromRawEventAndPublishEnrichedEvent = () => {
 /**
  * Log raw event data.
  */
-const logRawEventData = () => {
+const logRawEventData = (pubnub) => {
     // subcribe to channel
     pubnub.addListener({
         'message': (msg) => {
@@ -71,7 +65,7 @@ const logRawEventData = () => {
 /**
  * Log enriched event data.
  */
-const logEnrichedEventEventData = () => {
+const logEnrichedEventEventData = (pubnub) => {
     // subcribe to channel
     const pubnub = srvc.events.getInstance()
     pubnub.addListener({
@@ -87,7 +81,7 @@ const logEnrichedEventEventData = () => {
 /**
  * Send event to pushover if freezing tempeture outside.
  */
-const postToPushoverIfFreezing = () => {
+const postToPushoverIfFreezing = (pubnub) => {
     // get pushover data
     const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
     const PUSHOVER_USERKEY = process.env.PUSHOVER_USERKEY
@@ -124,8 +118,15 @@ const postToPushoverIfFreezing = () => {
 }
 
 module.exports = () => {
-    logRawEventData()
-    logEnrichedEventEventData()
-    insertDataFromRawEventAndPublishEnrichedEvent()
-    postToPushoverIfFreezing();
+    // get instance
+    const pubnub = srvc.events.getInstance()
+
+    logRawEventData(pubnub)
+    logEnrichedEventEventData(pubnub)
+    insertDataFromRawEventAndPublishEnrichedEvent(pubnub)
+    postToPushoverIfFreezing(pubnub);
+
+    pubnub.subscribe({
+        channels: [constants.PUBNUB.RAW_CHANNEL_NAME, constants.PUBNUB.AUG_CHANNEL_NAME]
+    })
 }
