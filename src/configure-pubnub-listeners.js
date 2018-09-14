@@ -25,15 +25,17 @@ const insertDataFromRawEventAndPublishEnrichedEvent = () => {
             global.setImmediate(() => {
                 let msg = {
                     'sensorName': null,
+                    'sensorLabel': null,
                     'sensorId': obj.sensorId,
                     'sensorValue': obj.sensorValue,
                     'deviceName': null,
                     'deviceId': null
                 }
-                srvc.db.query("select s.id sensorId, s.name sensorName, d.name deviceName, d.id deviceId from sensor s left outer join device d on d.id=s.deviceId where s.id=$1", obj.sensorId).then(rs => {
+                srvc.db.query("select s.id sensorId, s.name sensorName, s.label sensorLabel, d.name deviceName, d.id deviceId from sensor s left outer join device d on d.id=s.deviceId where s.id=$1", obj.sensorId).then(rs => {
                     let row = rs.rows[0]
                     if (row) {
                         msg.sensorName = row.sensorname
+                        msg.sensorLabel = row.sensorlabel
                         msg.deviceName = row.devicename
                         msg.deviceId = row.deviceid
                     }
