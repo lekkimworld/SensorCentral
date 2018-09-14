@@ -67,7 +67,6 @@ const logRawEventData = (pubnub) => {
  */
 const logEnrichedEventEventData = (pubnub) => {
     // subcribe to channel
-    const pubnub = srvc.events.getInstance()
     pubnub.addListener({
         'message': (msg) => {
             const channelName = msg.channel
@@ -101,7 +100,6 @@ const postToPushoverIfFreezing = (pubnub) => {
     }
 
     // subcribe to channel
-    const pubnub = srvc.events.getInstance()
     let pushoverLastSent = undefined
     pubnub.addListener({
         'message': (msg) => {
