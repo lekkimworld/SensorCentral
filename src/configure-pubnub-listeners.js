@@ -3,19 +3,24 @@ const constants = require('./constants.js')
 const Pushover = require('node-pushover')
 const moment = require('moment-timezone')
 
+// get instance
+const pubnub = srvc.events.getInstance()
+pubnub.subscribe({
+    channels: [constants.PUBNUB.RAW_CHANNEL_NAME, constants.PUBNUB.AUG_CHANNEL_NAME]
+})
+
 /**
  * Suscribe to the raw channel for event data - then insert data in database and 
  * published enriched data event with more info on the sensor from the db.
  * 
  */
 const insertDataFromRawEventAndPublishEnrichedEvent = () => {
-    const pubnub = srvc.events.getInstance(true)
     pubnub.addListener({
         'message': (msg) => {
             const channelName = msg.channel
             const obj = msg.message
-            console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
-
+            if (channelName !== constants.PUBNUB.RAW_CHANNEL_NAME) return
+            
             // insert into db
             srvc.db.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${obj.sensorId}', ${obj.sensorValue});`);
             console.log(`db - did INSERT of ${obj.sensorValue} for ${obj.sensorId}`)
@@ -44,9 +49,7 @@ const insertDataFromRawEventAndPublishEnrichedEvent = () => {
             })
         }
     })
-    pubnub.subscribe({
-        channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
-    })
+    
 }
 
 /**
@@ -54,17 +57,14 @@ const insertDataFromRawEventAndPublishEnrichedEvent = () => {
  */
 const logRawEventData = () => {
     // subcribe to channel
-    const pubnub = srvc.events.getInstance()
     pubnub.addListener({
         'message': (msg) => {
             const channelName = msg.channel
             const obj = msg.message
+            if (channelName !== constants.PUBNUB.RAW_CHANNEL_NAME) return
             console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
 
         }
-    })
-    pubnub.subscribe({
-        channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
     })
 }
 
@@ -78,12 +78,9 @@ const logEnrichedEventEventData = () => {
         'message': (msg) => {
             const channelName = msg.channel
             const obj = msg.message
+            if (channelName !== constants.PUBNUB.AUG_CHANNEL_NAME) return
             console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
-
         }
-    })
-    pubnub.subscribe({
-        channels: [constants.PUBNUB.AUG_CHANNEL_NAME]
     })
 }
 
@@ -116,7 +113,7 @@ const postToPushoverIfFreezing = () => {
         'message': (msg) => {
             const channelName = msg.channel
             const obj = msg.message
-            console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
+            if (channelName !== constants.PUBNUB.RAW_CHANNEL_NAME) return
 
             if (obj.sensorId === '28FF46C76017059A' && obj.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
                 pushoverLastSent = moment()
@@ -124,16 +121,11 @@ const postToPushoverIfFreezing = () => {
             }
         }
     })
-    pubnub.subscribe({
-        channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
-    })
 }
 
 module.exports = () => {
-    /*
     logRawEventData()
     logEnrichedEventEventData()
-    */
     insertDataFromRawEventAndPublishEnrichedEvent()
-    //postToPushoverIfFreezing();
+    postToPushoverIfFreezing();
 }
