@@ -27,12 +27,12 @@ router.get('/scrapedata', (req, res) => {
         'Content-Type': 'text/plain'
     })
     res.send(Object.keys(storage).map(key => storage[key]).reduce((buffer, obj) => {
-        prev += `${obj.sensorId} ${obj.sensorValue}\n`
+        buffer += `${obj.sensorId} ${obj.sensorValue}\n`
         if (obj.sensorName) {
-            prev += `${obj.sensorName} ${obj.sensorValue}\n`
+            buffer += `${obj.sensorName} ${obj.sensorValue}\n`
         }
         if (obj.deviceName && obj.sensorName) {
-            prev += `${obj.deviceName}-${obj.sensorName} ${obj.sensorValue}\n`
+            buffer += `${obj.deviceName}-${obj.sensorName} ${obj.sensorValue}\n`
         }
         return prev
     }, '')).end()
