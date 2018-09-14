@@ -19,7 +19,7 @@ pubnub.addListener({
     }
 })
 pubnub.subscribe({
-    channels: [constants.PUBNUB.PUBNUB.AUG_CHANNEL_NAME]
+    channels: [constants.PUBNUB.AUG_CHANNEL_NAME]
 })
 
 router.get('/scrapedata', (req, res) => {
