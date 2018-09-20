@@ -2,10 +2,6 @@ const isTest = (process.env.NODE_ENV !== 'production' || false)
 const isProd = (process.env.NODE_ENV === 'production' || false)
 
 module.exports = {
-    'IS': {
-        'PRODUCTION': isProd, 
-        'TEST': isTest
-    },
     'PUBNUB': {
         'RAW_CHANNEL_NAME': 'rawSensorReading',
         'AUG_CHANNEL_NAME': 'augmentedSensorReading'

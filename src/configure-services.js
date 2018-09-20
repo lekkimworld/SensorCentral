@@ -1,69 +1,124 @@
-const {Pool} = require('pg')
-const PubNub = require('pubnub')
 const util = require('util')
 const constants = require('./constants.js')
 const terminateListener = require('./terminate-listener.js')
 
-const BaseService = function() {}
+const BaseService = function(services) {}
 BaseService.prototype.terminate = function() {}
+BaseService.prototype.init = function(callback) {
+    callback()
+}
 
-const Services = function() {
-    this.db = new DatabaseService()
-    this.events = new EventService()
+const STATE_REGISTERED = 0
+const STATE_STARTING_INIT = 1
+const STATE_DONE_INIT = 2
+const STATE_READY = 3
+const STATE_ERROR = 4
+
+// storage for services
+const _services = {
+
 }
-Services.prototype.terminate = function() {
-    this.db.terminate()
-    this.events.terminate()
-}
-const DatabaseService = function() {
-    this._pool = new Pool({
-        'connectionString': process.env.DATABASE_URL,
-        'ssl': true
-    })
-}
-util.inherits(DatabaseService, BaseService)
-DatabaseService.prototype.terminate = function() {
-    this._pool.end()
-    this._pool = undefined
-}
-DatabaseService.prototype.query = function(query, ...args) {
-    return this._pool.query(query, args)
-}
-DatabaseService.prototype.queryAllLatestSensorValues = function(query, ...args) {
-    if (constants.IS.TEST) {
-        let rows = [
-            {'sensorid': '1', 'sensortype': 'temp', 'sensorname': 'temp sensor1', 'sensorvalue': 1.1, 'deviceid': 't1', 'devicename': 'temp device 1', 'dt': new Date()},
-            {'sensorid': '2', 'sensortype': 'temp', 'sensorname': 'temp sensor2', 'sensorvalue': 2.1, 'deviceid': 't2', 'devicename': 'temp device 2', 'dt': new Date()},
-            {'sensorid': '3', 'sensortype': 'hum', 'sensorname': 'hum sensor2', 'sensorvalue': 2.1, 'deviceid': 'h1', 'devicename': 'hum device 1', 'dt': new Date()},
-            {'sensorid': '4', 'sensortype': null, 'sensorname': null, 'sensorvalue': 3.1, 'deviceid': null, 'devicename': null, 'dt': new Date()}
-        ]
-        return Promise.resolve({"rows": rows})
+const _serviceInit = (svc) => {
+    let f = () => {
+        // init completed (if there) - mark ready
+        _services[svc.name].ready = true
+        _services[svc.name].state = STATE_DONE_INIT
+        _services[svc.name].resolve(svc)
+        
+        // nudge
+        _serviceNudge()
     }
-    return this.query("select d.dt dt, de.id deviceId, d.id sensorId, s.name sensorName, s.type sensorType, de.name deviceName, round(cast(d.value as numeric), 1) sensorValue from (select id, dt, value from (select row_number() over (partition by id order by dt desc) as r, t.* from sensor_data t) x where x.r < 2) d left outer join sensor s on d.id=s.id left outer join device de on de.id=s.deviceId order by de.name, s.name;")
-}
-
-const EventService = function() {
-    this._instances = []
-}
-util.inherits(EventService, BaseService)
-EventService.prototype.terminate = function() {
-    this._instances.forEach(instance => {
-        instance.unsubscribeAll()
-    })
-}
-EventService.prototype.getInstance = function(publish = false) {
-    let cfg = {
-        'ssl': true,
-        'subscribeKey': process.env.PUBNUB_SUBSCRIBE_KEY
+    if (svc['init'] && typeof svc['init'] === 'function') {
+        try {
+            svc.init(f)
+        } catch (err) {
+            _services[svc.name].error = err
+            _services[svc.name].state = STATE_ERROR
+            _services[svc.name].reject(err)
+            _serviceNudge()
+        }
+    } else {
+        f()
     }
-    if (publish) cfg.publishKey = process.env.PUBNUB_PUBLISH_KEY
-    let p = new PubNub(cfg)
-    this._instances.push(p)
-    return p
+}
+const _serviceNudge = () => {
+    // find the first non-ready service
+    let notReadySvcs = Object.values(_services).filter(wrapper => wrapper.state < STATE_STARTING_INIT)
+    if (notReadySvcs && notReadySvcs.length > 0) {
+        // get first service where all dependencies are ready
+        let wrapper = notReadySvcs.reduce((prev, wrapper) => {
+            if (prev) return prev;
+
+            // ensure all dependencies are ready
+            let svc = wrapper.service
+            const dependencies = svc['dependencies'] && Array.isArray(svc.dependencies) ? svc.dependencies : []
+            const readyDependencies = dependencies.filter(dep => _services[dep] && _services[dep].hasOwnProperty('ready') && _services[dep].ready)
+            if (dependencies.length && dependencies.length === readyDependencies.length) {
+                return wrapper
+            }
+        }, undefined)
+        
+        if (wrapper) {
+            // all dependencies are ready - init
+            wrapper.state = STATE_STARTING_INIT
+            _serviceInit(wrapper.service)
+        }
+    }
+}
+const registerService = (svc) => {
+    if (Object.keys(_services).includes(svc.name)) return Promise.reject(new Error(`Service with name <${svc.name}> already registered`))
+
+    // create wrapper object and add promise
+    _services[svc.name] = {
+        'service': svc
+    }
+    let promise = new Promise((resolve, reject) => {
+        _services[svc.name].reject = reject
+        _services[svc.name].resolve = resolve
+    })
+    _services[svc.name].promise = promise
+    _services[svc.name].state = STATE_REGISTERED
+
+    // start to init the service
+    global.setImmediate(() => {
+        // see if any dependencies
+        const dependencies = svc['dependencies'] && Array.isArray(svc.dependencies) ? svc.dependencies : []
+        if (!dependencies.length) {
+            // no dependencies - run init if available
+            _serviceInit(svc)
+        } else {
+            _serviceNudge()
+        }
+    })
+
+    // return the promise
+    return promise
+}
+const lookupService = (name) => {
+    if (!_services[name]) return Promise.reject(`Unknown service <${name}>`)
+    let svc = _services[name]
+    return svc.promise
 }
 
-// create instance
-const srvc = new Services()
-
-// export
-module.exports = srvc
+module.exports = {
+    BaseService, 
+    reset: () => {
+        Object.keys(_services).forEach(name => delete _services[name])
+    },
+    registerService, 
+    lookupService,
+    'isReadyService': (name) => _services[name] && _services[name].ready ? true : false, 
+    'terminate': () => {
+        Object.values(_services).forEach(wrapper => {
+            let svc = wrapper.service
+            if (svc['terminate'] && typeof svc['terminate'] === 'function') {
+                try {
+                    svc.terminate()
+                } catch (err) {
+                    console.log(`Unable to correctly terminate service <${svc.name}>`, err)
+                }
+            }
+            delete _services[wrapper.service.name]
+        })
+    }
+}

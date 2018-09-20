@@ -1,0 +1,6 @@
+create table SENSOR_DATA (dt timestamp with time zone, id varchar(32) not null, value real not null);
+create table SENSOR (id varchar(32) not null primary key, name varchar(128) not null, label varchar(128) not null, deviceId varchar(32) not null);
+create table DEVICE (id varchar(32) not null primary key, name varchar(128) not null, houseId varchar(32) not null);
+create table HOUSE (id varchar(32) not null primary key, name varchar(128) not null);
+alter table DEVICE add foreign key (houseId) references HOUSE (id) on delete cascade;
+alter table SENSOR add foreign key (deviceId) references DEVICE (id) on delete cascade;

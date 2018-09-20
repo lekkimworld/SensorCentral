@@ -1,4 +1,4 @@
-const srvc = require('./configure-services.js')
+const {lookupService} = require('./configure-services.js')
 const constants = require('./constants.js')
 const Pushover = require('node-pushover')
 const moment = require('moment-timezone')
@@ -10,47 +10,48 @@ const moment = require('moment-timezone')
  */
 const insertDataFromRawEventAndPublishEnrichedEvent = () => {
     // get instance
-    const pubnub = srvc.events.getInstance(true)
+    lookupService('event').then(svc => {
+        const pubnub = svc.getInstance(true)
 
-    pubnub.addListener({
-        'message': (msg) => {
-            const channelName = msg.channel
-            const obj = msg.message
-            
-            // insert into db
-            srvc.db.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${obj.sensorId}', ${obj.sensorValue});`);
-            console.log(`db - did INSERT of ${obj.sensorValue} for ${obj.sensorId}`)
+        pubnub.addListener({
+            'message': (msg) => {
+                const channelName = msg.channel
+                const obj = msg.message
+                
+                // insert into db
+                srvc.db.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${obj.sensorId}', ${obj.sensorValue});`);
+                console.log(`db - did INSERT of ${obj.sensorValue} for ${obj.sensorId}`)
 
-            // send new event with more data
-            global.setImmediate(() => {
-                let msg = {
-                    'sensorName': null,
-                    'sensorLabel': null,
-                    'sensorId': obj.sensorId,
-                    'sensorValue': obj.sensorValue,
-                    'deviceName': null,
-                    'deviceId': null
-                }
-                srvc.db.query("select s.id sensorId, s.name sensorName, s.label sensorLabel, d.name deviceName, d.id deviceId from sensor s left outer join device d on d.id=s.deviceId where s.id=$1", obj.sensorId).then(rs => {
-                    let row = rs.rows[0]
-                    if (row) {
-                        msg.sensorName = row.sensorname
-                        msg.sensorLabel = row.sensorlabel
-                        msg.deviceName = row.devicename
-                        msg.deviceId = row.deviceid
+                // send new event with more data
+                global.setImmediate(() => {
+                    let msg = {
+                        'sensorName': null,
+                        'sensorLabel': null,
+                        'sensorId': obj.sensorId,
+                        'sensorValue': obj.sensorValue,
+                        'deviceName': null,
+                        'deviceId': null
                     }
-                    pubnub.publish({
-                        'message': msg,
-                        'channel': constants.PUBNUB.AUG_CHANNEL_NAME
+                    srvc.db.query("select s.id sensorId, s.name sensorName, s.label sensorLabel, d.name deviceName, d.id deviceId from sensor s left outer join device d on d.id=s.deviceId where s.id=$1", obj.sensorId).then(rs => {
+                        let row = rs.rows[0]
+                        if (row) {
+                            msg.sensorName = row.sensorname
+                            msg.sensorLabel = row.sensorlabel
+                            msg.deviceName = row.devicename
+                            msg.deviceId = row.deviceid
+                        }
+                        pubnub.publish({
+                            'message': msg,
+                            'channel': constants.PUBNUB.AUG_CHANNEL_NAME
+                        })
                     })
                 })
-            })
-        }
+            }
+        })
+        pubnub.subscribe({
+            channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
+        })
     })
-    pubnub.subscribe({
-        channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
-    })
-    
 }
 
 /**
@@ -58,19 +59,21 @@ const insertDataFromRawEventAndPublishEnrichedEvent = () => {
  */
 const logRawEventData = () => {
     // get instance
-    const pubnub = srvc.events.getInstance()
+    lookupService('event').then(svc => {
+        const pubnub = svc.getInstance()
 
-    // subcribe to channel
-    pubnub.addListener({
-        'message': (msg) => {
-            const channelName = msg.channel
-            const obj = msg.message
-            console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
+        // subcribe to channel
+        pubnub.addListener({
+            'message': (msg) => {
+                const channelName = msg.channel
+                const obj = msg.message
+                console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
 
-        }
-    })
-    pubnub.subscribe({
-        channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
+            }
+        })
+        pubnub.subscribe({
+            channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
+        })
     })
 }
 
@@ -79,18 +82,20 @@ const logRawEventData = () => {
  */
 const logEnrichedEventEventData = () => {
     // get instance
-    const pubnub = srvc.events.getInstance()
+    lookupService('event').then(svc => {
+        const pubnub = svc.getInstance()
 
-    // subcribe to channel
-    pubnub.addListener({
-        'message': (msg) => {
-            const channelName = msg.channel
-            const obj = msg.message
-            console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
-        }
-    })
-    pubnub.subscribe({
-        channels: [constants.PUBNUB.AUG_CHANNEL_NAME]
+        // subcribe to channel
+        pubnub.addListener({
+            'message': (msg) => {
+                const channelName = msg.channel
+                const obj = msg.message
+                console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
+            }
+        })
+        pubnub.subscribe({
+            channels: [constants.PUBNUB.AUG_CHANNEL_NAME]
+        })
     })
 }
 
@@ -117,23 +122,25 @@ const postToPushoverIfFreezing = () => {
     }
 
     // get instance
-    const pubnub = srvc.events.getInstance(false)
+    lookupService('event').then(svc => {
+        const pubnub = svc.getInstance(false)
 
-    // subcribe to channel
-    let pushoverLastSent = undefined
-    pubnub.addListener({
-        'message': (msg) => {
-            const channelName = msg.channel
-            const obj = msg.message
+        // subcribe to channel
+        let pushoverLastSent = undefined
+        pubnub.addListener({
+            'message': (msg) => {
+                const channelName = msg.channel
+                const obj = msg.message
 
-            if (obj.sensorId === '28FF46C76017059A' && obj.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
-                pushoverLastSent = moment()
-                pushover.send('Frostvejr', `Det er frostvejr... (${obj.sensorValue})`)
+                if (obj.sensorId === '28FF46C76017059A' && obj.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
+                    pushoverLastSent = moment()
+                    pushover.send('Frostvejr', `Det er frostvejr... (${obj.sensorValue})`)
+                }
             }
-        }
-    })
-    pubnub.subscribe({
-        channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
+        })
+        pubnub.subscribe({
+            channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
+        })
     })
 }
 
