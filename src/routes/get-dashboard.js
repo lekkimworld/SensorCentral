@@ -12,9 +12,9 @@ router.get('/dashboard', (req, res) => {
     
     srvc.lookupService('storage').then(svc => {
       let data = Object.values(svc.getInstance()).reduce((prev, sensor) => {
-        let m = moment(sensor.sensorDt)
-        let strdate = formatDate(m)
-        let mins = moment().diff(m, 'minutes')
+        let m = (sensor.sensorDt) ? moment(sensor.sensorDt) : undefined
+        let strdate = m ? formatDate(m) : 'aldrig'
+        let mins = m ? moment().diff(m, 'minutes') : -1
         const sensorType = !sensor.sensorType ? constants.SENSOR_TYPES.UNKNOWN : Object.keys(constants.SENSOR_TYPES).map(k => constants.SENSOR_TYPES[k]).reduce((prev, obj) => {
           if (prev) return prev
           if (obj.type === sensor.sensorType) return obj
@@ -41,7 +41,7 @@ router.get('/dashboard', (req, res) => {
           }
         }
         prev.push(result)
-        return result
+        return prev
       }, [])
 
       // build result object for templte
@@ -50,7 +50,7 @@ router.get('/dashboard', (req, res) => {
       res.render('dashboard', context)
 
     }).catch(err => {
-      console.log(err)  
+      res.status(500).send('Required service not available').end()
     })
 })
 
