@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const {lookupService} = require('../configure-services.js')
+const services = require('../configure-services.js')
 const constants = require('../constants.js')
 
 // max temp to register
@@ -18,7 +18,7 @@ router.post('/*', (req, res) => {
     }
 
     // lookup event service to publish event
-    srvc.lookupService('event').then(svc => {
+    services.lookupService('event').then(svc => {
       // get pubnub instance configured for publishing
       const pubnub = svc.getInstance(true)
 
