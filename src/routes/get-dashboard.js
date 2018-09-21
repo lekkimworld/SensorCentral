@@ -9,44 +9,46 @@ router.get('/dashboard', (req, res) => {
       let m = date && date['diff'] ? date : date ? moment(date) : moment()
       return m.tz('Europe/Copenhagen').format("D-M-YYYY [kl.] k:mm")
     }
-    const parse = (rows) => {
-      return rows.map(row => {
-        let m = moment(row.dt)
+    
+    srvc.lookupService('storage').then(svc => {
+      let data = Object.values(svc.getInstance()).reduce((prev, sensor) => {
+        let m = moment(sensor.sensorDt)
         let strdate = formatDate(m)
         let mins = moment().diff(m, 'minutes')
-        const sensortype = !row.sensortype ? constants.SENSOR_TYPES.UNKNOWN : Object.keys(constants.SENSOR_TYPES).map(k => constants.SENSOR_TYPES[k]).reduce((prev, obj) => {
+        const sensorType = !sensor.sensorType ? constants.SENSOR_TYPES.UNKNOWN : Object.keys(constants.SENSOR_TYPES).map(k => constants.SENSOR_TYPES[k]).reduce((prev, obj) => {
           if (prev) return prev
-          if (obj.type === row.sensortype) return obj
+          if (obj.type === sensor.sensorType) return obj
         }, undefined)
-        const value = `${row.sensorvalue}${sensortype.denominator}`
-        const name = `${row.sensorname ? row.sensorname : 'NN'} (${row.devicename ? row.devicename : 'NN'})`
-        return {
+        const value = `${sensor.sensorValue}${sensortype.denominator}`
+        const name = `${sensor.sensorName ? sensor.sensorName : 'NN'} (${sensor.deviceName ? sensor.deviceName : 'NN'})`
+        let result = {
           'value': value,
           'name': name,
           'dt': strdate,
           'last': mins,
           'raw': {
             "sensor": {
-              'id': row.sensorid,
-              'value': row.sensorvalue,
-              'denominator': sensortype.donominator,
-              'name': row.sensorname,
-              'type': sensortype.type,
+              'id': sensor.sensorId,
+              'value': sensor.sensorValue,
+              'denominator': sensorType.donominator,
+              'name': sensor.sensorName,
+              'type': sensorType.type,
             },
             "device": {
-              "id": row.deviceid,
-              "name": row.devicename
+              "id": sensor.deviceId,
+              "name": sensor.deviceName
             }
           }
         }
-      })
-    }
-    let context = {'updated': formatDate()}
-    
-    srvc.db.queryAllLatestSensorValues().then(rs => {
-      let data = parse(rs.rows)
+        prev.push(result)
+        return result
+      }, [])
+
+      // build result object for templte
+      let context = {'updated': formatDate()}
       context.data = data
       res.render('dashboard', context)
+
     }).catch(err => {
       console.log(err)  
     })
