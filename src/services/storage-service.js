@@ -20,7 +20,7 @@ StorageService.prototype.init = function(callback) {
                 'sensorName': row.sensorname, 
                 'sensorLabel': row.sensorlabel,
                 'sensorType': row.sensortype,
-                'sensorValue': -1, 
+                'sensorValue': Number.MIN_VALUE, 
                 'sensorDt': undefined, 
                 'deviceId': row.deviceid,
                 'deviceName': row.devicename

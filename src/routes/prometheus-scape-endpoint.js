@@ -12,6 +12,7 @@ router.get('/scrapedata', (req, res) => {
             'Content-Type': 'text/plain'
         })
         res.status(200).send(Object.values(storage).reduce((buffer, obj) => {
+            if (!obj.sensorValue || obj.sensorValue === Number.MIN_VALUE) return buffer
             let fixedName = obj.sensorLabel ? obj.sensorLabel : `nolabel${obj.sensorId}`
             let deviceId = obj.deviceId ? obj.deviceId : 'unknown'
             let deviceName = obj.deviceName ? obj.deviceName : 'unknown'
