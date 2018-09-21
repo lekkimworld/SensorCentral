@@ -12,7 +12,10 @@ router.get('/dashboard', (req, res) => {
     
     srvc.lookupService('storage').then(svc => {
       let data = Object.values(svc.getInstance()).reduce((prev, sensor) => {
-        if (!sensor.sensorValue || sensor.sensorValue === Number.MIN_VALUE) return buffer
+        // ignore sensors with no reading
+        if (!sensor.sensorValue || sensor.sensorValue === Number.MIN_VALUE) return prev
+
+        // format date/time value was read
         let m = (sensor.sensorDt) ? moment(sensor.sensorDt) : undefined
         let strdate = m ? formatDate(m) : 'aldrig'
         let mins = m ? moment().diff(m, 'minutes') : -1
