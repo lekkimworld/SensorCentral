@@ -10,8 +10,8 @@ const moment = require('moment-timezone')
  */
 const insertDataFromRawEventAndPublishEnrichedEvent = () => {
     // get instance
-    lookupService('event').then(svc => {
-        const pubnub = svc.getInstance(true)
+    lookupService('event').then(eventSvc => {
+        const pubnub = eventSvc.getInstance(true)
 
         pubnub.addListener({
             'message': (msg) => {
@@ -19,30 +19,32 @@ const insertDataFromRawEventAndPublishEnrichedEvent = () => {
                 const obj = msg.message
                 
                 // insert into db
-                srvc.db.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${obj.sensorId}', ${obj.sensorValue});`);
-                console.log(`db - did INSERT of ${obj.sensorValue} for ${obj.sensorId}`)
+                lookupService('db').then(dbSvc => {
+                    dbSvc.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${obj.sensorId}', ${obj.sensorValue});`);
+                    console.log(`db - did INSERT of ${obj.sensorValue} for ${obj.sensorId}`)
 
-                // send new event with more data
-                global.setImmediate(() => {
-                    let msg = {
-                        'sensorName': null,
-                        'sensorLabel': null,
-                        'sensorId': obj.sensorId,
-                        'sensorValue': obj.sensorValue,
-                        'deviceName': null,
-                        'deviceId': null
-                    }
-                    srvc.db.query("select s.id sensorId, s.name sensorName, s.label sensorLabel, d.name deviceName, d.id deviceId from sensor s left outer join device d on d.id=s.deviceId where s.id=$1", obj.sensorId).then(rs => {
-                        let row = rs.rows[0]
-                        if (row) {
-                            msg.sensorName = row.sensorname
-                            msg.sensorLabel = row.sensorlabel
-                            msg.deviceName = row.devicename
-                            msg.deviceId = row.deviceid
+                    // send new event with more data
+                    global.setImmediate(() => {
+                        let msg = {
+                            'sensorName': null,
+                            'sensorLabel': null,
+                            'sensorId': obj.sensorId,
+                            'sensorValue': obj.sensorValue,
+                            'deviceName': null,
+                            'deviceId': null
                         }
-                        pubnub.publish({
-                            'message': msg,
-                            'channel': constants.PUBNUB.AUG_CHANNEL_NAME
+                        dbSvc.query("select s.id sensorId, s.name sensorName, s.label sensorLabel, d.name deviceName, d.id deviceId from sensor s left outer join device d on d.id=s.deviceId where s.id=$1", obj.sensorId).then(rs => {
+                            let row = rs.rows[0]
+                            if (row) {
+                                msg.sensorName = row.sensorname
+                                msg.sensorLabel = row.sensorlabel
+                                msg.deviceName = row.devicename
+                                msg.deviceId = row.deviceid
+                            }
+                            pubnub.publish({
+                                'message': msg,
+                                'channel': constants.PUBNUB.AUG_CHANNEL_NAME
+                            })
                         })
                     })
                 })
