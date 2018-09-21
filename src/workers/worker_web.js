@@ -2,7 +2,7 @@ const path = require('path')
 const constants = require('../constants.js')
 const terminateListener = require('../terminate-listener.js')
 const configureExpress = require('../configure-express.js')
-const srvc = require('../configure-services.js')
+const services = require('../configure-services.js')
 
 // load environment variables for localhost
 try {
@@ -10,9 +10,9 @@ try {
 } catch (e) {}
 
 // add services
-require('./services/event-service.js')
-require('./services/storage-service.js')
-require('./services/database-service.js')
+services.registerService(new (require('../services/event-service.js'))())
+services.registerService(new (require('../services/storage-service.js'))())
+services.registerService(new (require('../services/database-service.js'))())
 
 // configure express
 const app = configureExpress()
@@ -21,12 +21,12 @@ const app = configureExpress()
 require('../configure-pubnub-listeners.js')()
 
 // start server
-console.log(`Starting to listen for HTTP traffic on port ${process.env.PORT || 8080} (PRODUCTION: ${constants.IS.PRODUCTION})`)
+console.log(`Starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`)
 app.listen(process.env.PORT || 8080)
 
 // setup termination listener
 terminateListener(() => {
   console.log("Terminating services");
-  srvc.terminate()
+  services.terminate()
   console.log("Terminated services");
 });
