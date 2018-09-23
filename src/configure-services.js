@@ -94,7 +94,7 @@ const registerService = (svc) => {
     // return the promise
     return promise
 }
-const lookupService = (name, timeoutService = 50) => {
+const lookupService = (name, timeoutService = constants.DEFAULTS.SERVICE.LOOKUP_TIMEOUT) => {
     if (!_services[name]) return Promise.reject(`Unknown service <${name}>`)
     let svc = _services[name]
     let timeout
