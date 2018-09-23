@@ -109,6 +109,26 @@ describe('configure-services functionality', function() {
                 done()
             })
         })
+
+        it('should reject if lookupService takes too long', function(done) {
+            let service = {
+                name: 'foo',
+                init: (cb) => {
+                    // make a looooon init method
+                    setTimeout(cb, 1000)
+                }
+            }
+            registerService(service).catch(() => {
+                // ignore
+            })
+            lookupService('foo').then(() => {
+                // should not happen
+                expect.fail()
+            }).catch(err => {
+                expect(err.message).to.be.equal('Time out looking up service <foo>')
+                done()
+            })
+        })
     })
     
 })

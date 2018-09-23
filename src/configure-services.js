@@ -94,10 +94,23 @@ const registerService = (svc) => {
     // return the promise
     return promise
 }
-const lookupService = (name) => {
+const lookupService = (name, timeoutService = 50) => {
     if (!_services[name]) return Promise.reject(`Unknown service <${name}>`)
     let svc = _services[name]
-    return svc.promise
+    let timeout
+    return Promise.race([
+        svc.promise,
+        new Promise((resolve, reject) => {
+            timeout = global.setTimeout(() => {
+                reject(new Error(`Time out looking up service <${name}>`))
+            }, timeoutService)
+        })
+    ]).then(svc => {
+        global.clearInterval(timeout)
+        return svc
+    }).catch(err => {
+        throw err
+    })
 }
 
 module.exports = {
