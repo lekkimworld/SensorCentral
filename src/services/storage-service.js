@@ -31,12 +31,12 @@ StorageService.prototype.init = function(callback) {
         return lookupService('event')
     }).then(svc => {
         // listen for events and keep last event data around for each sensor
-        const pubnub = svc.getInstance(true)
+        const pubnub = svc.getInstance()
         pubnub.addListener({
             'message': (msg) => {
                 const channelName = msg.channel
                 const obj = msg.message
-                console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
+                console.log(`Storage service received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
 
                 // put in storage
                 let storageObj = this._storage[obj.sensorId]
@@ -63,6 +63,7 @@ StorageService.prototype.init = function(callback) {
     })
 }
 StorageService.prototype.getInstance = function() {
-    return Object.freeze(this._storage)
+    let result = Object.assign({}, this._storage)
+    return Object.freeze(result)
 }
 module.exports = StorageService

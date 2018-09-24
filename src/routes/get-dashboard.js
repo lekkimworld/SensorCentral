@@ -31,21 +31,21 @@ router.get('/dashboard', (req, res) => {
 				'dt': strdate,
 				'last': mins,
 				'raw': {
-				"sensor": {
-					'id': sensor.sensorId,
-					'value': sensor.sensorValue,
-					'denominator': sensorType.donominator,
-					'name': sensor.sensorName,
-					'type': sensorType.type,
-				},
-				"device": {
-					"id": sensor.deviceId,
-					"name": sensor.deviceName
+					"sensor": {
+						'id': sensor.sensorId,
+						'value': sensor.sensorValue,
+						'denominator': sensorType.donominator,
+						'name': sensor.sensorName,
+						'type': sensorType.type,
+					},
+					"device": {
+						"id": sensor.deviceId,
+						"name": sensor.deviceName
+					}
 				}
 			}
-		}
-		prev.push(result)
-		return prev
+			prev.push(result)
+			return prev
 		}, [])
 
 		// build result object for templte

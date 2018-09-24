@@ -69,7 +69,7 @@ const logRawEventData = () => {
             'message': (msg) => {
                 const channelName = msg.channel
                 const obj = msg.message
-                console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
+                console.log(`Log raw messages received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
 
             }
         })
@@ -92,7 +92,7 @@ const logEnrichedEventEventData = () => {
             'message': (msg) => {
                 const channelName = msg.channel
                 const obj = msg.message
-                console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
+                console.log(`Log augmented messages received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
             }
         })
         pubnub.subscribe({
