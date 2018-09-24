@@ -39,8 +39,19 @@ StorageService.prototype.init = function(callback) {
                 console.log(`Received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
 
                 // put in storage
-                this._storage[obj.sensorId].sensorValue = obj.sensorValue
-                this._storage[obj.sensorId].sensorDt = new Date()
+                let storageObj = this._storage[obj.sensorId]
+                if (!storageObj) {
+                    // we do now know a sensor with this id (i.e. it's not in the db) - create it
+                    storageObj = {}
+                    storageObj.sensorName = obj.sensorName
+                    storageObj.sensorLabel = obj.sensorLabel
+                    storageObj.sensorId = obj.sensorId
+                    storageObj.deviceId = obj.deviceId
+                    storageObj.deviceName = obj.deviceName
+                    this._storage[obj.sensorId] = storageObj
+                }
+                storageObj.sensorValue = obj.sensorValue
+                storageObj.sensorDt = new Date()
             }
         })
         pubnub.subscribe({
