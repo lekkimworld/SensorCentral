@@ -8,6 +8,14 @@ const routes = require('./configure-routes.js')
 const app = express()
 app.use(express.static(path.join(__dirname, '..', 'public')))
 app.use(bodyparser.json())
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        console.log(`Invalid JSON received <${err.message}> - posted body will follow next`)
+        console.log(err.body)
+        return res.status(417).send('Invalid data supplied - expected JSON.').end()
+    }
+    next()
+})
 
 // middleware
 app.engine('handlebars', exphbs({defaultLayout: 'main'}))
