@@ -6,7 +6,7 @@ const services = require('../configure-services.js')
 
 // load environment variables for localhost
 try {
-  env(path.join(__dirname, '.env'));
+	env(path.join(__dirname, '.env'));
 } catch (e) {}
 
 // add services
@@ -26,7 +26,7 @@ app.listen(process.env.PORT || 8080)
 
 // setup termination listener
 terminateListener(() => {
-  console.log("Terminating services");
-  services.terminate()
-  console.log("Terminated services");
+	console.log("Terminating services");
+	services.terminate()
+	console.log("Terminated services");
 });

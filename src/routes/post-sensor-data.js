@@ -10,39 +10,39 @@ router.post('/*', (req, res) => {
     // get data and see if array
     let data = req.body
     if (typeof data === 'object' && Object.keys(data).length === 0) {
-      return res.status(417).end()
+		return res.status(417).end()
     }
     // wrap in array if not an array
     if (!Array.isArray(data)) {
-      data = [data]
+		data = [data]
     }
 
     // lookup event service to publish event
     services.lookupService('event').then(svc => {
-      // get pubnub instance configured for publishing
-      const pubnub = svc.getInstance(true)
+		// get pubnub instance configured for publishing
+		const pubnub = svc.getInstance(true)
 
-      data.forEach(element => {
-        // sanity
-        if (element.sensorValue < MIN_REGISTER_TEMP) {
-          console.log(`Ignoring value of ${element.sensorValue} from ${element.sensorId} as value to is too low (< ${MIN_REGISTER_TEMP})`)
-          return
-        }
+		data.forEach(element => {
+			// sanity
+			if (element.sensorValue < MIN_REGISTER_TEMP) {
+				console.log(`Ignoring value of ${element.sensorValue} from ${element.sensorId} as value to is too low (< ${MIN_REGISTER_TEMP})`)
+				return
+			}
 
-        // post message about sensor reading
-        pubnub.publish({
-          'message': {
-            'sensorValue': element.sensorValue,
-            'sensorId': element.sensorId
-          },
-          'channel': constants.PUBNUB.RAW_CHANNEL_NAME
-        }).then(resp => {
-          console.log(`SUCCESS - posted value of ${element.sensorValue} from ${element.sensorId} as value to channel ${constants.PUBNUB.RAW_CHANNEL_NAME}`)
-        }).catch(err => {
-            console.log(`ERROR -  could NOT post value of ${element.sensorValue} from ${element.sensorId} as value to channel ${constants.PUBNUB.RAW_CHANNEL_NAME}`)
-            console.log(err)
-        })
-      })
+			// post message about sensor reading
+			pubnub.publish({
+					'message': {
+					'sensorValue': element.sensorValue,
+					'sensorId': element.sensorId
+				},
+				'channel': constants.PUBNUB.RAW_CHANNEL_NAME
+			}).then(resp => {
+				console.log(`SUCCESS - posted value of ${element.sensorValue} from ${element.sensorId} as value to channel ${constants.PUBNUB.RAW_CHANNEL_NAME}`)
+			}).catch(err => {
+				console.log(`ERROR -  could NOT post value of ${element.sensorValue} from ${element.sensorId} as value to channel ${constants.PUBNUB.RAW_CHANNEL_NAME}`)
+				console.log(err)
+			})
+		})
     })
   
     // acknowledge post

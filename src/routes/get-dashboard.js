@@ -11,50 +11,50 @@ router.get('/dashboard', (req, res) => {
     }
     
     srvc.lookupService('storage').then(svc => {
-      let data = Object.values(svc.getInstance()).reduce((prev, sensor) => {
-        // ignore sensors with no reading
-        if (undefined === sensor.sensorValue || sensor.sensorValue === Number.MIN_VALUE) return prev
+		let data = Object.values(svc.getInstance()).reduce((prev, sensor) => {
+			// ignore sensors with no reading
+			if (undefined === sensor.sensorValue || sensor.sensorValue === Number.MIN_VALUE) return prev
 
-        // format date/time value was read
-        let m = (sensor.sensorDt) ? moment(sensor.sensorDt) : undefined
-        let strdate = m ? formatDate(m) : 'aldrig'
-        let mins = m ? moment().diff(m, 'minutes') : -1
-        const sensorType = !sensor.sensorType ? constants.SENSOR_TYPES.UNKNOWN : Object.keys(constants.SENSOR_TYPES).map(k => constants.SENSOR_TYPES[k]).reduce((prev, obj) => {
-          if (prev) return prev
-          if (obj.type === sensor.sensorType) return obj
-        }, undefined)
-        const value = `${sensor.sensorValue.toFixed(2)}${sensorType.denominator}`
-        const name = `${sensor.sensorName ? sensor.sensorName : 'NN'} (${sensor.deviceName ? sensor.deviceName : 'NN'})`
-        let result = {
-          'value': value,
-          'name': name,
-          'dt': strdate,
-          'last': mins,
-          'raw': {
-            "sensor": {
-              'id': sensor.sensorId,
-              'value': sensor.sensorValue,
-              'denominator': sensorType.donominator,
-              'name': sensor.sensorName,
-              'type': sensorType.type,
-            },
-            "device": {
-              "id": sensor.deviceId,
-              "name": sensor.deviceName
-            }
-          }
-        }
-        prev.push(result)
-        return prev
-      }, [])
+			// format date/time value was read
+			let m = (sensor.sensorDt) ? moment(sensor.sensorDt) : undefined
+			let strdate = m ? formatDate(m) : 'aldrig'
+			let mins = m ? moment().diff(m, 'minutes') : -1
+			const sensorType = !sensor.sensorType ? constants.SENSOR_TYPES.UNKNOWN : Object.keys(constants.SENSOR_TYPES).map(k => constants.SENSOR_TYPES[k]).reduce((prev, obj) => {
+				if (prev) return prev
+				if (obj.type === sensor.sensorType) return obj
+			}, undefined)
+			const value = `${sensor.sensorValue.toFixed(2)}${sensorType.denominator}`
+			const name = `${sensor.sensorName ? sensor.sensorName : 'NN'} (${sensor.deviceName ? sensor.deviceName : 'NN'})`
+			let result = {
+				'value': value,
+				'name': name,
+				'dt': strdate,
+				'last': mins,
+				'raw': {
+				"sensor": {
+					'id': sensor.sensorId,
+					'value': sensor.sensorValue,
+					'denominator': sensorType.donominator,
+					'name': sensor.sensorName,
+					'type': sensorType.type,
+				},
+				"device": {
+					"id": sensor.deviceId,
+					"name": sensor.deviceName
+				}
+			}
+		}
+		prev.push(result)
+		return prev
+		}, [])
 
-      // build result object for templte
-      let context = {'updated': formatDate()}
-      context.data = data
-      res.render('dashboard', context)
+		// build result object for templte
+		let context = {'updated': formatDate()}
+		context.data = data
+		res.render('dashboard', context)
 
     }).catch(err => {
-      res.status(500).send('Required service not available').end()
+    	res.status(500).send('Required service not available').end()
     })
 })
 
