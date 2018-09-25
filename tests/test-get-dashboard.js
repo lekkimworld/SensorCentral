@@ -4,6 +4,7 @@ const {registerService, reset} = require('../src/configure-services.js')
 const supertest = require('supertest')
 const express = require('express')
 const moment = require('moment')
+const constants = require('../src/constants.js')
 
 const CONTEXT = '/dashboard'
 
@@ -46,19 +47,21 @@ describe('test-get-dashboard', function() {
             getInstance: sinon.fake.returns({
                 'id1': {
                     sensorId: 'id1',
+                    sensorName: 'name1',
                     sensorLabel: 'label1',
-                    sensorValue: 12.34,
-                    sensorDt: moment.utc().days(31).month(12).year(2018).hour(20).minute(45).second(45).valueOf(),
+                    sensorValue: 12.34123,
+                    sensorType: 'temp',
+                    sensorDt: moment().add(-5, 'minutes').valueOf(),
                     deviceId: 'deviceid1',
                     deviceName: 'devicename1'
                 },
                 'id2': {
                     sensorId: 'id2',
-                    sensorLabel: 'label2',
-                    sensorValue: 12.34,
+                    sensorLabel: undefined,
+                    sensorValue: 34.34,
                     sensorDt: undefined, 
-                    deviceId: 'deviceid2',
-                    deviceName: 'devicename2'
+                    deviceId: undefined,
+                    deviceName: undefined
                 }
             })
         })
@@ -72,7 +75,33 @@ describe('test-get-dashboard', function() {
                     let obj = JSON.parse(res.text)
                     expect(obj).to.include.key('updated')
                     expect(obj).to.include.key('data')
-
+                    
+                    let dataElem1 = obj.data.filter(e => e.raw.sensor.id === 'id1')[0]
+                    expect(dataElem1.value).to.equal('12.34\u00B0C')
+                    expect(dataElem1.name).to.equal('name1 (devicename1)')
+                    expect(dataElem1.dt).to.equal(moment().add(-5, 'minutes').tz('Europe/Copenhagen').format("D-M-YYYY [kl.] k:mm"))
+                    expect(dataElem1.last).to.equal(5)
+                    expect(dataElem1.raw.sensor.id).to.equal('id1')
+                    expect(dataElem1.raw.sensor.name).to.equal('name1')
+                    expect(dataElem1.raw.sensor.label).to.equal('label1')
+                    expect(dataElem1.raw.sensor.value).to.equal(12.34123)
+                    expect(dataElem1.raw.sensor.denominator).to.equal(constants.SENSOR_TYPES.TEMPERATURE.denominator)
+                    expect(dataElem1.raw.sensor.type).to.equal(constants.SENSOR_TYPES.TEMPERATURE.type)
+                    expect(dataElem1.raw.device.id).to.equal('deviceid1')
+                    expect(dataElem1.raw.device.name).to.equal('devicename1')
+                    
+                    let dataElem2 = obj.data.filter(e => e.raw.sensor.id === 'id2')[0]
+                    expect(dataElem2.value).to.equal('34.34(??)')
+                    expect(dataElem2.name).to.equal('NN (NN)')
+                    expect(dataElem2.raw.sensor.id).to.equal('id2')
+                    expect(dataElem2.raw.sensor.name).to.be.undefined
+                    expect(dataElem2.raw.sensor.label).to.be.undefined
+                    expect(dataElem2.raw.sensor.value).to.equal(34.34)
+                    expect(dataElem2.raw.sensor.denominator).to.equal(constants.SENSOR_TYPES.UNKNOWN.denominator)
+                    expect(dataElem2.raw.sensor.type).to.equal(constants.SENSOR_TYPES.UNKNOWN.type)
+                    expect(dataElem2.raw.device.id).to.be.undefined
+                    expect(dataElem2.raw.device.name).to.be.undefined
+                    
                 }
                 done()
             })

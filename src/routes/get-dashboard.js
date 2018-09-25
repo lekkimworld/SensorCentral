@@ -19,7 +19,7 @@ router.get('/dashboard', (req, res) => {
 			let m = (sensor.sensorDt) ? moment(sensor.sensorDt) : undefined
 			let strdate = m ? formatDate(m) : 'aldrig'
 			let mins = m ? moment().diff(m, 'minutes') : -1
-			const sensorType = !sensor.sensorType ? constants.SENSOR_TYPES.UNKNOWN : Object.keys(constants.SENSOR_TYPES).map(k => constants.SENSOR_TYPES[k]).reduce((prev, obj) => {
+			let sensorType = !sensor.sensorType ? constants.SENSOR_TYPES.UNKNOWN : Object.keys(constants.SENSOR_TYPES).map(k => constants.SENSOR_TYPES[k]).reduce((prev, obj) => {
 				if (prev) return prev
 				if (obj.type === sensor.sensorType) return obj
 			}, undefined)
@@ -34,8 +34,9 @@ router.get('/dashboard', (req, res) => {
 					"sensor": {
 						'id': sensor.sensorId,
 						'value': sensor.sensorValue,
-						'denominator': sensorType.donominator,
 						'name': sensor.sensorName,
+						'label': sensor.sensorLabel,
+						'denominator': sensorType.denominator,
 						'type': sensorType.type,
 					},
 					"device": {
