@@ -9,7 +9,8 @@ module.exports = {
     },
     'PUBNUB': {
         'RAW_CHANNEL_NAME': 'rawSensorReading',
-        'AUG_CHANNEL_NAME': 'augmentedSensorReading'
+        'AUG_CHANNEL_NAME': 'augmentedSensorReading',
+        'CTRL_CHANNEL_NAME': 'controlMessage'
     },
     'SENSOR_VALUES': {
         'MAX_REGISTER_TEMP': 60,

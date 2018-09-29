@@ -146,9 +146,53 @@ const postToPushoverIfFreezing = () => {
     })
 }
 
+/**
+ * Send event to pushover if device restarted.
+ */
+const postToPushoverIfDeviceRestarted = () => {
+    // get pushover data
+    const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
+    const PUSHOVER_USERKEY = process.env.PUSHOVER_USERKEY
+    const ENVIRONMENT_NAME = process.env.PUSHOVER_ENVIRONMENT || 'prod'
+    const pushover = (function() {
+    if (PUSHOVER_USERKEY && PUSHOVER_APPTOKEN) {
+        return new Pushover({
+            token: PUSHOVER_APPTOKEN,
+            user: PUSHOVER_USERKEY
+        })
+    }
+    })()
+
+    if (!pushover) {
+        // nothing to do here
+        console.log('Pushover support not configured - exiting...')
+        return
+    }
+
+    // get instance
+    lookupService('event').then(svc => {
+        const pubnub = svc.getInstance(false)
+
+        // subcribe to channel
+        let pushoverLastSent = undefined
+        pubnub.addListener({
+            'message': (msg) => {
+                const channelName = msg.channel
+                const obj = msg.message
+
+                pushover.send('Device restart', `Device with ID <${obj.deviceId}> restarted - maybe it didn't pat the watchdog? (environment <${ENVIRONMENT_NAME}>)`)
+            }
+        })
+        pubnub.subscribe({
+            channels: [constants.PUBNUB.CTRL_CHANNEL_NAME]
+        })
+    })
+}
+
 module.exports = () => {
     logRawEventData()
     logEnrichedEventEventData()
     insertDataFromRawEventAndPublishEnrichedEvent()
-    postToPushoverIfFreezing();
+    postToPushoverIfFreezing()
+    postToPushoverIfDeviceRestarted()
 }
