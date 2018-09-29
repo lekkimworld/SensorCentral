@@ -78,7 +78,7 @@ router.post('/*', (req, res) => {
     })
   
     // acknowledge post
-    let j = JSON.stringify(data, undefined, 2)
+    let j = JSON.stringify(dataObj, undefined, 2)
     console.log(`Received: ${j}`)
     res.setHeader('Content-Type', 'text/plain')
     res.send(`Thank you - you posted: ${j}\n`).end()
