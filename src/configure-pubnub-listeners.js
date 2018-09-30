@@ -153,7 +153,6 @@ const postToPushoverIfDeviceRestarted = () => {
     // get pushover data
     const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
     const PUSHOVER_USERKEY = process.env.PUSHOVER_USERKEY
-    const ENVIRONMENT_NAME = process.env.PUSHOVER_ENVIRONMENT || 'prod'
     const pushover = (function() {
     if (PUSHOVER_USERKEY && PUSHOVER_APPTOKEN) {
         return new Pushover({
@@ -180,7 +179,7 @@ const postToPushoverIfDeviceRestarted = () => {
                 const channelName = msg.channel
                 const obj = msg.message
 
-                pushover.send('Device restart', `Device with ID <${obj.deviceId}> restarted - maybe it didn't pat the watchdog? (environment <${ENVIRONMENT_NAME}>)`)
+                pushover.send('Device restart', `Device with ID <${obj.deviceId}> restarted - maybe it didn't pat the watchdog?`)
             }
         })
         pubnub.subscribe({
