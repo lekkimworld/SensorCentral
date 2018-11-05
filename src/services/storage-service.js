@@ -1,19 +1,16 @@
 const util = require('util')
 const constants = require('../constants.js')
-const {lookupService, BaseService} = require('../configure-services.js')
+const {BaseService} = require('../configure-services.js')
 
 const StorageService = function() {
     this._storage = {}
     this.name = 'storage'
-    this.dependencies = ['db', 'event']
+    this.dependencies = ['db', 'log', 'event']
 }
 util.inherits(StorageService, BaseService)
-StorageService.prototype.init = function(callback) {
-    // get the db service
-    lookupService('db').then(svc => {
-        // get the sensors we care about from the db
-        return svc.query("select s.id sensorId, s.name sensorName, s.label sensorLabel, s.type sensorType, d.id deviceId, d.name deviceName from sensor s, device d where s.deviceId=d.id")
-    }).then(rs => {
+StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
+    // get the sensors we care about from the db
+    dbSvc.query("select s.id sensorId, s.name sensorName, s.label sensorLabel, s.type sensorType, d.id deviceId, d.name deviceName from sensor s, device d where s.deviceId=d.id").then(rs => {
         rs.rows.forEach(row => {
             this._storage[row.sensorid] = {
                 'sensorId': row.sensorid,
@@ -26,36 +23,25 @@ StorageService.prototype.init = function(callback) {
                 'deviceName': row.devicename
             }
         })
-    }).then(() => {
-        // get events service 
-        return lookupService('event')
-    }).then(svc => {
+        
         // listen for events and keep last event data around for each sensor
-        const pubnub = svc.getInstance()
-        pubnub.addListener({
-            'message': (msg) => {
-                const channelName = msg.channel
-                const obj = msg.message
-                console.log(`Storage service received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
+        eventSvc.subscribe(constants.PUBNUB.AUG_CHANNEL_NAME, (channel, obj) => {
+            logSvc.info(`Storage service received message on ${channel} channel with payload ${JSON.stringify(obj)}`)
 
-                // put in storage
-                let storageObj = this._storage[obj.sensorId]
-                if (!storageObj) {
-                    // we do now know a sensor with this id (i.e. it's not in the db) - create it
-                    storageObj = {}
-                    storageObj.sensorName = obj.sensorName
-                    storageObj.sensorLabel = obj.sensorLabel
-                    storageObj.sensorId = obj.sensorId
-                    storageObj.deviceId = obj.deviceId
-                    storageObj.deviceName = obj.deviceName
-                    this._storage[obj.sensorId] = storageObj
-                }
-                storageObj.sensorValue = obj.sensorValue
-                storageObj.sensorDt = new Date()
+            // put in storage
+            let storageObj = this._storage[obj.sensorId]
+            if (!storageObj) {
+                // we do now know a sensor with this id (i.e. it's not in the db) - create it
+                storageObj = {}
+                storageObj.sensorName = obj.sensorName
+                storageObj.sensorLabel = obj.sensorLabel
+                storageObj.sensorId = obj.sensorId
+                storageObj.deviceId = obj.deviceId
+                storageObj.deviceName = obj.deviceName
+                this._storage[obj.sensorId] = storageObj
             }
-        })
-        pubnub.subscribe({
-            channels: [constants.PUBNUB.AUG_CHANNEL_NAME]
+            storageObj.sensorValue = obj.sensorValue
+            storageObj.sensorDt = new Date()
         })
 
         // callback

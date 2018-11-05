@@ -13,7 +13,7 @@ DatabaseService.prototype.init = function(callback) {
 DatabaseService.prototype._buildPool = function() {
     return new Pool({
         'connectionString': process.env.DATABASE_URL,
-        'ssl': true
+        'ssl': process.env.NODE_ENV === 'production' ? true : false
     })
 }
 DatabaseService.prototype.terminate = function() {

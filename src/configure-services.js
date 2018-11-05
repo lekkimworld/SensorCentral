@@ -29,14 +29,15 @@ const _serviceInit = (svc) => {
         _serviceNudge()
     }
     if (svc['init'] && typeof svc['init'] === 'function') {
-        try {
-            svc.init(f)
-        } catch (err) {
+        // get all services the service depend on
+        Promise.all((svc.dependencies || []).map(key => lookupService(key))).then(args => {
+            svc.init(f, ...args)
+        }).catch(err => {
             _services[svc.name].error = err
             _services[svc.name].state = STATE_ERROR
             _services[svc.name].reject(err)
             _serviceNudge()
-        }
+        })
     } else {
         f()
     }

@@ -26,4 +26,18 @@ EventService.prototype.getInstance = function(publish = false) {
     this._instances.push(p)
     return p
 }
+EventService.prototype.subscribe = function(channel, callback) {
+    // get instance
+    const pubnub = this.getInstance(false)
+
+    // subcribe to channel
+    pubnub.addListener({
+        'message': (msg) => {
+            callback(msg.channel, msg.message)
+        }
+    })
+    pubnub.subscribe({
+        channels: Array.isArray(channel) ? channel : [channel]
+    })
+}
 module.exports = EventService

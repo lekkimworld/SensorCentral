@@ -1,6 +1,5 @@
 const {lookupService} = require('./configure-services.js')
 const constants = require('./constants.js')
-const Pushover = require('node-pushover')
 const moment = require('moment-timezone')
 
 /**
@@ -102,89 +101,52 @@ const logEnrichedEventEventData = () => {
 }
 
 /**
- * Send event to pushover if freezing tempeture outside.
+ * Send message via notify-service if freezing tempeture outside
  */
-const postToPushoverIfFreezing = () => {
-    // get pushover data
-    const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
-    const PUSHOVER_USERKEY = process.env.PUSHOVER_USERKEY
-    const pushover = (function() {
-    if (PUSHOVER_USERKEY && PUSHOVER_APPTOKEN) {
-        return new Pushover({
-            token: PUSHOVER_APPTOKEN,
-            user: PUSHOVER_USERKEY
-        })
-    }
-    })()
+const notifyIfFreezing = () => {
+    let pushoverLastSent = undefined
 
-    if (!pushover) {
-        // nothing to do here
-        console.log('Pushover support not configured - exiting...')
-        return
-    }
-
-    // get instance
-    lookupService('event').then(svc => {
-        const pubnub = svc.getInstance(false)
-
-        // subcribe to channel
-        let pushoverLastSent = undefined
-        pubnub.addListener({
-            'message': (msg) => {
-                const channelName = msg.channel
-                const obj = msg.message
-
-                if (obj.sensorId === '28FF46C76017059A' && obj.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
-                    pushoverLastSent = moment()
-                    pushover.send('Frostvejr', `Det er frostvejr... (${obj.sensorValue})`)
-                }
+    const listener = (channel, msg) => {
+        const channelName = msg.channel
+        const obj = msg.message
+        
+        lookupService('notify').then(notifySvc => {
+            if (obj.sensorId === '28FF46C76017059A' && obj.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
+                pushoverLastSent = moment()
+                notifySvc.send('Frostvejr', `Det er frostvejr... (${obj.sensorValue})`)
             }
         })
-        pubnub.subscribe({
-            channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
-        })
+    }
+
+    // get event service and subscribe to channel
+    lookupService('event').then(eventSvc => {
+        eventSvc.subscribe(constants.PUBNUB.RAW_CHANNEL_NAME, listener)
     })
 }
 
 /**
- * Send event to pushover if device restarted.
+ * Send message via notify-service if device restarted.
  */
-const postToPushoverIfDeviceRestarted = () => {
-    // get pushover data
-    const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
-    const PUSHOVER_USERKEY = process.env.PUSHOVER_USERKEY
-    const pushover = (function() {
-    if (PUSHOVER_USERKEY && PUSHOVER_APPTOKEN) {
-        return new Pushover({
-            token: PUSHOVER_APPTOKEN,
-            user: PUSHOVER_USERKEY
-        })
-    }
-    })()
-
-    if (!pushover) {
-        // nothing to do here
-        console.log('Pushover support not configured - exiting...')
-        return
-    }
-
-    // get instance
-    lookupService('event').then(svc => {
-        const pubnub = svc.getInstance(false)
-
-        // subcribe to channel
-        let pushoverLastSent = undefined
-        pubnub.addListener({
-            'message': (msg) => {
-                const channelName = msg.channel
-                const obj = msg.message
-
-                pushover.send('Device restart', `Device with ID <${obj.deviceId}> restarted - maybe it didn't pat the watchdog?`)
+const notifyIfDeviceRestarted = () => {
+    const listener = (channel, obj) => {
+        // we received a message from control channel - look at the event
+        if (obj.hasOwnProperty('restart') && true === obj.restart) {
+            // this is restart event - should we notify?
+            const donotify = true
+            if (donotify) {
+                // asked to notify - get the notify service
+                lookupService('notify').then(notifySvc => {
+                    // notify
+                    notifySvc.notify('Device restart', `Device with ID <${obj.deviceId}> restarted - maybe it didn't pat the watchdog?`)
+                })
             }
-        })
-        pubnub.subscribe({
-            channels: [constants.PUBNUB.CTRL_CHANNEL_NAME]
-        })
+        }
+    }
+
+    // get event service
+    lookupService('event').then(eventSvc => {
+        // subscribe to control channel
+        eventSvc.subscribe(constants.PUBNUB.CTRL_CHANNEL_NAME, listener)
     })
 }
 
@@ -192,6 +154,6 @@ module.exports = () => {
     logRawEventData()
     logEnrichedEventEventData()
     insertDataFromRawEventAndPublishEnrichedEvent()
-    postToPushoverIfFreezing()
-    postToPushoverIfDeviceRestarted()
+    notifyIfFreezing()
+    notifyIfDeviceRestarted()
 }
