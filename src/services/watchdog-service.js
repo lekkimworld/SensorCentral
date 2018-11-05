@@ -16,7 +16,7 @@ WatchdogService.prototype.init = function(callback, logSvc, eventSvc, storageSvc
         zet.add(storage[sensorId].deviceId)
         return zet
     }, new Set()).forEach(deviceId => {
-        let w = new Watchdog(5000, deviceId)
+        let w = new Watchdog(process.env.WATCHDOG_INTERVAL || 10*60*1000, deviceId)
         w.on('reset', () => {
             logSvc.info(`Device (${deviceId}) reset (${new Date(w.lastFeed).toISOString()})`)
             w.feed()
