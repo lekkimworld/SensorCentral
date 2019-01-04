@@ -4,26 +4,46 @@ const terminateListener = require('./terminate-listener.js')
 
 const BaseService = function(services) {}
 BaseService.prototype.terminate = function() {}
+/**
+ * Allow service to initiliaze. Service should callback when done. If callback is 
+ * done with an error we set the service state to STATE_RETRY_INIT and retry the initialization 
+ * of the service in INIT_RETRY_SECONDS seconds.
+ */
 BaseService.prototype.init = function(callback) {
     callback()
 }
 
 const STATE_REGISTERED = 0
 const STATE_STARTING_INIT = 1
-const STATE_DONE_INIT = 2
+const STATE_RETRY_INIT = 2
 const STATE_READY = 3
 const STATE_ERROR = 4
+
+const INIT_RETRY_SECONDS = process.env.SERVICES_INIT_RETRY_SECONDS || 5
+const NUDGE_RETRY_SECONDS = process.env.SERVICES_NUDGE_RETRY_SECONDS || 2
 
 // storage for services
 const _services = {
 
 }
 const _serviceInit = (svc) => {
-    let f = () => {
-        // init completed (if there) - mark ready
-        _services[svc.name].ready = true
-        _services[svc.name].state = STATE_DONE_INIT
-        _services[svc.name].resolve(svc)
+    let f = (err) => {
+        // see if called back with error
+        if (err) {
+            // init failed due to dependent service error - retrying
+            console.log(`init-method of ${svc.name}-service did callback to service broker with error - retrying init in ${INIT_RETRY_SECONDS} seconds`, err)
+            _services[svc.name].state = STATE_RETRY_INIT
+            _services[svc.name].retryAfter = Date.now() + (INIT_RETRY_SECONDS*1000)
+        } else {
+            // init completed (if there) - mark ready
+            console.log(`init-method of ${svc.name}-service called back without error`)
+            if (!_services[svc.name]) {
+                console.log('!!!!!! ' + svc.name)
+            }
+            _services[svc.name].ready = true
+            _services[svc.name].state = STATE_READY
+            _services[svc.name].resolve(svc)
+        }
         
         // nudge
         _serviceNudge()
@@ -44,7 +64,7 @@ const _serviceInit = (svc) => {
 }
 const _serviceNudge = () => {
     // find the first non-ready service
-    let notReadySvcs = Object.values(_services).filter(wrapper => wrapper.state < STATE_STARTING_INIT)
+    let notReadySvcs = Object.values(_services).filter(wrapper => wrapper.state < STATE_READY)
     if (notReadySvcs && notReadySvcs.length > 0) {
         // get first service where all dependencies are ready
         let wrapper = notReadySvcs.reduce((prev, wrapper) => {
@@ -59,10 +79,26 @@ const _serviceNudge = () => {
             }
         }, undefined)
         
+        if (wrapper && wrapper.state === STATE_RETRY_INIT) {
+            // found service with all dependencies ready - check state and retryAfter is there
+            // waiting for retry - see if time has passed
+            if (wrapper.hasOwnProperty('retryAfter') && wrapper.retryAfter < Date.now()) {
+                // ready for retry
+                console.log(`Service '${wrapper.service.name}' is ready for retry`)
+            } else {
+                // not enough time has passed
+                console.log(`Service '${wrapper.service.name}' is NOT ready for retry`)
+                wrapper = undefined
+            }
+        }
         if (wrapper) {
-            // all dependencies are ready - init
+            // init
             wrapper.state = STATE_STARTING_INIT
+            delete wrapper.retryAfter
             _serviceInit(wrapper.service)
+        } else {
+            // no service to init - wait a little
+            global.setTimeout(_serviceNudge, NUDGE_RETRY_SECONDS * 1000)
         }
     }
 }

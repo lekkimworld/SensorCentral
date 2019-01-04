@@ -7,9 +7,13 @@ const LEVELS = Object.freeze({
     'WARN': 2,
     'ERROR': 3
 })
-const logit = (level, msg) => {
+const logit = (level, msg, err) => {
     let strlevel = Object.keys(LEVELS)[level]
-    console.log(`${strlevel} - ${msg}`)
+    if (err) {
+        console.log(`${strlevel} - ${msg} (${err.message})`, err)
+    } else {
+        console.log(`${strlevel} - ${msg}`)
+    }
 }
 
 const LogService = function() {
@@ -22,5 +26,19 @@ LogService.prototype.debug = function(msg) {
 }
 LogService.prototype.info = function(msg) {
     logit(LEVELS.INFO, msg)
+}
+LogService.prototype.warn = function(msg, err) {
+    if (err) {
+        logit(LEVELS.WARN, msg, err)
+    } else {
+        logit(LEVELS.WARN, msg)
+    }
+}
+LogService.prototype.error = function(msg, err) {
+    if (err) {
+        logit(LEVELS.ERROR, msg, err)
+    } else {
+        logit(LEVELS.ERROR, msg)
+    }
 }
 module.exports = LogService

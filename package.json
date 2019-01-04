@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "run": "node src/workers/worker_web.js",
-    "test": "npx mocha tests/*.js tests/*/*.js --reporter spec",
+    "test": "npx mocha tests/*.js tests/**/*.js --reporter spec --no-timeouts",
     "postinstall": "grunt"
   },
   "author": "",
