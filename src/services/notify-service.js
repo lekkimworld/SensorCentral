@@ -27,10 +27,10 @@ NotifyService.prototype.init = function(callback, logSvc) {
     this._log = logSvc
     callback()
 }
-NotifyService.prototype.notify = function(payload) {
+NotifyService.prototype.notify = function(title, msg) {
     if (!pushover) return
     
-    this._log.info(`Asked to notify with payload ${typeof payload === 'object' ? JSON.stringify(payload) : payload}`)
-    pushover.send(payload)
+    this._log.info(`Asked to notify with payload title=${title} and msg=${msg}`)
+    pushover.send(title, msg)
 }
 module.exports = NotifyService

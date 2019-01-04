@@ -26,7 +26,7 @@ WatchdogService.prototype.init = function(callback, logSvc, eventSvc, storageSvc
         let w = new Watchdog(constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT, deviceId)
         w.on('reset', () => {
             logSvc.info(`Device (<${deviceId}> / <${deviceName}>) reset (${new Date(w.lastFeed).toISOString()})`)
-            notifySvc.notify(`Watchdog for device (<${deviceId}> / <${deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
+            notifySvc.notify(`Device watchdog`, `Watchdog for device (<${deviceId}> / <${deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
             w.feed()
         })
         w.feed()
