@@ -106,10 +106,7 @@ const logEnrichedEventEventData = () => {
 const notifyIfFreezing = () => {
     let pushoverLastSent = undefined
 
-    const listener = (channel, msg) => {
-        const channelName = msg.channel
-        const obj = msg.message
-        
+    const listener = (channel, obj) => {
         lookupService('notify').then(notifySvc => {
             if (obj.sensorId === '28FF46C76017059A' && obj.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
                 pushoverLastSent = moment()
