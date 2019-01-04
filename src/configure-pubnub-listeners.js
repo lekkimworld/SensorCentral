@@ -86,7 +86,7 @@ const logEnrichedEventEventData = () => {
     lookupService('event').then(svc => {
         const pubnub = svc.getInstance()
 
-        // subcribe to channel
+        // subsribe to channel
         pubnub.addListener({
             'message': (msg) => {
                 const channelName = msg.channel
@@ -95,7 +95,7 @@ const logEnrichedEventEventData = () => {
             }
         })
         pubnub.subscribe({
-            channels: [constants.PUBNUB.AUG_CHANNEL]
+            channels: [constants.PUBNUB.AUG_CHANNEL, constants.PUBNUB.RAW_DEVICEREADING_CHANNEL]
         })
     })
 }

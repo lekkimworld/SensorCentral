@@ -26,6 +26,18 @@ describe('test-post-sensor-data', function() {
                 })
             })
         }).then(() => {
+            return registerService({
+                'name': 'storage',
+                'getInstance': sinon.fake.returns({
+                    'SENSORID1': {
+                        'sensorId': 'sensorId1',
+                        'sensorName': 'Sensor 1',
+                        'deviceId': 'deviceId1',
+                        'deviceName': 'Device Name 1'
+                    }
+                })
+            })
+        }).then(() => {
             const app = express()
             app.use(bodyparser.json())
             app.use(require('../src/routes/post-sensor-data.js'))
@@ -44,7 +56,7 @@ describe('test-post-sensor-data', function() {
             .expect(200)
             .end((err, res) => {
                 if (err) {
-                    expect.fail(err)
+                    return done(err)
                 } else {
                     expect(res.text.substring(0, 24)).to.be.equal('Thank you - you posted: ')
                     let obj = JSON.parse(res.text.substring(24))
@@ -87,6 +99,32 @@ describe('test-post-sensor-data', function() {
                     expect(eventPublishMethod.callCount).to.be.equal(1)
                     expect(eventPublishMethod.firstCall.args[0].channel).to.be.equal(constants.PUBNUB.CTRL_CHANNEL)
                     expect(eventPublishMethod.firstCall.args[0].message.foo).to.be.equal('bar')
+                }
+                done()
+            })
+    })
+
+    it('verify that event even if no device id in payload', function(done) {
+        request.post('/').send({
+            msgtype: 'data',
+            data: [
+                { 
+                    "sensorId": "sensorId1", 
+                    "sensorValue": 35.125
+                }
+            ]
+        }).set('Accept', 'application/json')
+            .expect(200)
+            .end((err, res) => {
+                if (err) {
+                    return done(err)
+                } else {
+                    expect(eventPublishMethod.callCount).to.be.equal(2)
+                    expect(eventPublishMethod.firstCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_DEVICEREADING_CHANNEL)
+                    expect(eventPublishMethod.firstCall.args[0].message.deviceId).to.be.equal('deviceId1')
+
+                    expect(eventPublishMethod.secondCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_SENSORREADING_CHANNEL)
+                    expect(eventPublishMethod.secondCall.args[0].message.sensorId).to.be.equal('sensorId1')
                 }
                 done()
             })

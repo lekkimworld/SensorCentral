@@ -49,10 +49,11 @@ router.post('/*', (req, res) => {
 	}
 
     // lookup event service to publish event
-    services.lookupService(['log', 'event']).then((svcs) => {
+    services.lookupService(['log', 'event', 'storage']).then((svcs) => {
 		// get services
 		const logSvc = svcs[0]
 		const eventSvc = svcs[1]
+		const storageSvc = svcs[2]
 
 		// acknowledge post
 		let j = JSON.stringify(dataObj, undefined, 2)
@@ -75,17 +76,34 @@ router.post('/*', (req, res) => {
 			})
 		} else if (msgtype === 'data') {
 			// data - get device id
-			const deviceId = dataObj.deviceId
-			if (deviceId) {
-				// device id supplied - publish a device event
-				dataObj.deviceId = dataObj.deviceId.toUpperCase()
-				pubnub.publish({
-					'message': dataObj,
-					'channel': constants.PUBNUB.RAW_DEVICEREADING_CHANNEL
-				}).then(() => {
+			let deviceIds
+			if (dataObj.deviceId) {
+				// found device id in payload
+				deviceIds = [dataObj.deviceId]
+			} else {
+				// there is no device id in the payload - get unique device id('s) from sensor ids
+				let storage = storageSvc.getInstance()
+				deviceIds = dataObj.data.filter(element => element.sensorId && element.sensorValue).reduce((prev, element) => {
+					let obj = storage[element.sensorId.toUpperCase()]
+					if (obj && obj.deviceId) {
+						prev.add(obj.deviceId)
+					}
+					return prev
+				}, new Set())
+			}
+			if (deviceIds && deviceIds.size) {
+				// found device id('s) - publish a device event
+				deviceIds.forEach(deviceId => {
+					pubnub.publish({
+						'message': {
+							'deviceId': deviceId
+						},
+						'channel': constants.PUBNUB.RAW_DEVICEREADING_CHANNEL
+					}).then(() => {
 
-				}).catch(err => {
+					}).catch(err => {
 
+					})
 				})
 			}
 
