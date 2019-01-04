@@ -10,6 +10,9 @@ router.post('/*', (req, res) => {
     // get data and see if array
 	const body = req.body
 	const dataObj = (function()  {
+		if (!body) {
+			return undefined
+		}
 		if (Array.isArray(body)) {
 			// received old data format
 			return {
@@ -27,33 +30,66 @@ router.post('/*', (req, res) => {
 			return body
 		}
 	})()
-    	
+	
+	// validate input
+	if (!dataObj) {
+		res.set({
+			'Content-Type': 'text/plain'
+		})
+		return res.status(417).send(`Expected to receive body data`).end()
+	}
+
 	// validate msgtype
 	const msgtype = dataObj.msgtype
 	if (!['control', 'data'].includes(msgtype)) {
 		// invalid message type
-		return res.status(417).send(`Invalid msgtype <${msgtype}> received`).end()
+		return res.set({
+			'Content-Type': 'text/plain'
+		}).status(417).send(`Invalid msgtype <${msgtype}> received`).end()
 	}
 
     // lookup event service to publish event
-    services.lookupService('event').then(svc => {
+    services.lookupService(['log', 'event']).then((svcs) => {
+		// get services
+		const logSvc = svcs[0]
+		const eventSvc = svcs[1]
+
+		// acknowledge post
+		let j = JSON.stringify(dataObj, undefined, 2)
+		logSvc.info(`Received: ${j}`)
+		res.set('Content-Type', 'text/plain').send(`Thank you - you posted: ${j}\n`).end()
+		
 		// get pubnub instance configured for publishing
-		const pubnub = svc.getInstance(true)
+		const pubnub = eventSvc.getInstance(true)
 
 		if (msgtype === 'control') {
 			// control
 			pubnub.publish({
 				'message': dataObj.data,
-				'channel': constants.PUBNUB.CTRL_CHANNEL_NAME
+				'channel': constants.PUBNUB.CTRL_CHANNEL
 			}).then(resp => {
-				console.log(`SUCCESS - posted control message (<${JSON.stringify(dataObj.data)}>) to channel <${constants.PUBNUB.CTRL_CHANNEL_NAME}>`)
+				console.log(`SUCCESS - posted control message (<${JSON.stringify(dataObj.data)}>) to channel <${constants.PUBNUB.CTRL_CHANNEL}>`)
 			}).catch(err => {
-				console.log(`ERROR - could NOT post control message (<${JSON.stringify(dataObj.data)}>) to channel <${constants.PUBNUB.CTRL_CHANNEL_NAME}>`)
+				console.log(`ERROR - could NOT post control message (<${JSON.stringify(dataObj.data)}>) to channel <${constants.PUBNUB.CTRL_CHANNEL}>`)
 				console.log(err)
 			})
-		} else {
-			// data
-			dataObj.data.forEach(element => {
+		} else if (msgtype === 'data') {
+			// data - get device id
+			const deviceId = dataObj.deviceId
+			if (deviceId) {
+				// device id supplied - publish a device event
+				pubnub.publish({
+					'message': dataObj,
+					'channel': constants.PUBNUB.RAW_DEVICEREADING_CHANNEL
+				}).then(() => {
+
+				}).catch(err => {
+
+				})
+			}
+
+			// send a raw event per data element
+			dataObj.data.filter(element => element.sensorId && element.sensorValue).forEach(element => {
 				// sanity
 				if (element.sensorValue < MIN_REGISTER_TEMP) {
 					console.log(`Ignoring value of <${element.sensorValue}> from <${element.sensorId}> as value to is too low (<${MIN_REGISTER_TEMP}>)`)
@@ -66,22 +102,18 @@ router.post('/*', (req, res) => {
 						'sensorValue': element.sensorValue,
 						'sensorId': element.sensorId
 					},
-					'channel': constants.PUBNUB.RAW_CHANNEL_NAME
+					'channel': constants.PUBNUB.RAW_SENSORREADING_CHANNEL
 				}).then(resp => {
-					console.log(`SUCCESS - posted value of <${element.sensorValue}> from <${element.sensorId}> as value to channel <${constants.PUBNUB.RAW_CHANNEL_NAME}>`)
+					console.log(`SUCCESS - posted value of <${element.sensorValue}> from <${element.sensorId}> as value to channel <${constants.PUBNUB.RAW_SENSORREADING_CHANNEL}>`)
 				}).catch(err => {
-					console.log(`ERROR - could NOT post value of <${element.sensorValue}> from <${element.sensorId}> as value to channel <${constants.PUBNUB.RAW_CHANNEL_NAME}>`)
+					console.log(`ERROR - could NOT post value of <${element.sensorValue}> from <${element.sensorId}> as value to channel <${constants.PUBNUB.RAW_SENSORREADING_CHANNEL}>`)
 					console.log(err)
 				})
 			})
 		}
-    })
-  
-    // acknowledge post
-    let j = JSON.stringify(dataObj, undefined, 2)
-    console.log(`Received: ${j}`)
-    res.setHeader('Content-Type', 'text/plain')
-    res.send(`Thank you - you posted: ${j}\n`).end()
+    }).catch(err => {
+		return res.set('Content-Type', 'text/plain; charset=utf-8').status(500).send('Unable to find event bus').end()
+	})
 })
 
 module.exports = router

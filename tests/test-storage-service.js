@@ -13,7 +13,7 @@ describe('storage-service tests', function() {
             expect(new StorageService().name).to.be.equal('storage')
         })
         it('should have correct dependencies', function() {
-            expect(new StorageService().dependencies).to.be.deep.equal(['db', 'event'])
+            expect(new StorageService().dependencies).to.be.deep.equal(['db', 'log', 'event'])
         })
     })
 
@@ -41,9 +41,15 @@ describe('storage-service tests', function() {
                 getInstance: sinon.fake.returns({
                     addListener: sinon.fake(),
                     subscribe: sinon.fake()
-                })
+                }),
+                subscribe: sinon.fake()
+            }
+            let logsvc = {
+                name: 'log',
+                init: sinon.fake.yields()
             }
             registerService(dbsvc)
+            registerService(logsvc)
             registerService(eventsvc)
             
             let ss = new StorageService()

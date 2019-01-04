@@ -96,11 +96,17 @@ const registerService = (svc) => {
     return promise
 }
 const lookupService = (name, timeoutService = constants.DEFAULTS.SERVICE.LOOKUP_TIMEOUT) => {
-    if (!_services[name]) return Promise.reject(`Unknown service <${name}>`)
-    let svc = _services[name]
+    // convert supplied names to promises for services
+    let svcPromise = Promise.all((Array.isArray(name) ? name : [name]).map(svcname => {
+        if (_services[svcname]) {
+            return _services[svcname].promise
+         } else {
+             return Promise.reject(`Unknown service <${svcname}>`)
+         }
+    }))
     let timeout
     return Promise.race([
-        svc.promise,
+        svcPromise,
         new Promise((resolve, reject) => {
             timeout = global.setTimeout(() => {
                 reject(new Error(`Time out looking up service <${name}>`))
@@ -108,7 +114,7 @@ const lookupService = (name, timeoutService = constants.DEFAULTS.SERVICE.LOOKUP_
         })
     ]).then(svc => {
         global.clearInterval(timeout)
-        return svc
+        return Array.isArray(name) ? svc : svc[0]
     }).catch(err => {
         throw err
     })

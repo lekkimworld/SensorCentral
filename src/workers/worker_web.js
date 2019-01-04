@@ -1,13 +1,14 @@
+// load environment variables for localhost
+try {
+	require('dotenv').config()
+} catch (e) {}
+
+// require
 const path = require('path')
 const constants = require('../constants.js')
 const terminateListener = require('../terminate-listener.js')
 const configureExpress = require('../configure-express.js')
 const services = require('../configure-services.js')
-
-// load environment variables for localhost
-try {
-	require('dotenv').config()
-} catch (e) {}
 
 // add services
 services.registerService(new (require('../services/event-service.js'))())

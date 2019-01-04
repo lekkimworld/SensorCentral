@@ -25,7 +25,7 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
         })
         
         // listen for events and keep last event data around for each sensor
-        eventSvc.subscribe(constants.PUBNUB.AUG_CHANNEL_NAME, (channel, obj) => {
+        eventSvc.subscribe(constants.PUBNUB.AUG_CHANNEL, (channel, obj) => {
             logSvc.info(`Storage service received message on ${channel} channel with payload ${JSON.stringify(obj)}`)
 
             // put in storage

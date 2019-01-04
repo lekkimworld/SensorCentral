@@ -129,6 +129,54 @@ describe('configure-services functionality', function() {
                 done()
             })
         })
+
+        it('should be able to lookup service by name', function(done) {
+            let service = {
+                name: 'foo'
+            }
+            registerService(service).catch(() => {
+                // ignore
+            })
+            lookupService('foo').then(result => {
+                expect(result.name).to.be.equal('foo')
+                done()
+            }).catch(err => {
+                expect.fail()
+            })
+        })
+
+        it('should be able to lookup multiple services by array of names', function(done) {
+            let service1 = {
+                name: 'foo'
+            }
+            let service2 = {
+                name: 'bar'
+            }
+            registerService(service1)
+            registerService(service2)
+            lookupService(['foo','bar']).then(result => {
+                expect(result[0].name).to.be.equal('foo')
+                expect(result[1].name).to.be.equal('bar')
+                done()
+            }).catch(err => {
+                console.log(err)
+                expect.fail()
+            })
+        })
+
+        it('expect lookup service to fail if service unknown', function(done) {
+            let service = {
+                name: 'foo'
+            }
+            registerService(service).catch(() => {
+                // ignore
+            })
+            lookupService('bar').then(result => {
+                expect.fail()
+            }).catch(err => {
+                done()
+            })
+        })
     })
     
 })

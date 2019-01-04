@@ -5,12 +5,16 @@ module.exports = {
     'DEFAULTS': {
         'SERVICE': {
             'LOOKUP_TIMEOUT': 50
+        },
+        'WATCHDOG': {
+            'DEFAULT_TIMEOUT': process.env.WATCHDOG_INTERVAL || 10*60*1000
         }
     },
     'PUBNUB': {
-        'RAW_CHANNEL_NAME': 'rawSensorReading',
-        'AUG_CHANNEL_NAME': 'augmentedSensorReading',
-        'CTRL_CHANNEL_NAME': 'controlMessage'
+        'RAW_SENSORREADING_CHANNEL': 'rawSensorReading',
+        'RAW_DEVICEREADING_CHANNEL': 'rawDeviceReading',
+        'AUG_CHANNEL': 'augmentedSensorReading',
+        'CTRL_CHANNEL': 'controlMessage'
     },
     'SENSOR_VALUES': {
         'MAX_REGISTER_TEMP': 60,

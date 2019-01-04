@@ -42,7 +42,7 @@ const insertDataFromRawEventAndPublishEnrichedEvent = () => {
                             }
                             pubnub.publish({
                                 'message': msg,
-                                'channel': constants.PUBNUB.AUG_CHANNEL_NAME
+                                'channel': constants.PUBNUB.AUG_CHANNEL
                             })
                         })
                     })
@@ -50,7 +50,7 @@ const insertDataFromRawEventAndPublishEnrichedEvent = () => {
             }
         })
         pubnub.subscribe({
-            channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
+            channels: [constants.PUBNUB.RAW_SENSORREADING_CHANNEL]
         })
     })
 }
@@ -73,7 +73,7 @@ const logRawEventData = () => {
             }
         })
         pubnub.subscribe({
-            channels: [constants.PUBNUB.RAW_CHANNEL_NAME]
+            channels: [constants.PUBNUB.RAW_SENSORREADING_CHANNEL]
         })
     })
 }
@@ -95,7 +95,7 @@ const logEnrichedEventEventData = () => {
             }
         })
         pubnub.subscribe({
-            channels: [constants.PUBNUB.AUG_CHANNEL_NAME]
+            channels: [constants.PUBNUB.AUG_CHANNEL]
         })
     })
 }
@@ -120,7 +120,7 @@ const notifyIfFreezing = () => {
 
     // get event service and subscribe to channel
     lookupService('event').then(eventSvc => {
-        eventSvc.subscribe(constants.PUBNUB.RAW_CHANNEL_NAME, listener)
+        eventSvc.subscribe(constants.PUBNUB.RAW_SENSORREADING_CHANNEL, listener)
     })
 }
 
@@ -146,7 +146,7 @@ const notifyIfDeviceRestarted = () => {
     // get event service
     lookupService('event').then(eventSvc => {
         // subscribe to control channel
-        eventSvc.subscribe(constants.PUBNUB.CTRL_CHANNEL_NAME, listener)
+        eventSvc.subscribe(constants.PUBNUB.CTRL_CHANNEL, listener)
     })
 }
 
