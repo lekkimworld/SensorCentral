@@ -78,6 +78,7 @@ router.post('/*', (req, res) => {
 			const deviceId = dataObj.deviceId
 			if (deviceId) {
 				// device id supplied - publish a device event
+				dataObj.deviceId = dataObj.deviceId.toUpperCase()
 				pubnub.publish({
 					'message': dataObj,
 					'channel': constants.PUBNUB.RAW_DEVICEREADING_CHANNEL

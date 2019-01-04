@@ -29,7 +29,7 @@ describe('storage-service tests', function() {
                             sensorname: 'name1',
                             sensorlabel: 'label1',
                             sensortype: 'temp',
-                            deviceid: ' deviceid1',
+                            deviceid: 'deviceid1',
                             devicename: ' devicename1',
                         }
                     ]
@@ -58,7 +58,10 @@ describe('storage-service tests', function() {
                 expect(dbsvc.query.firstCall.args[0]).to.be.equal('select s.id sensorId, s.name sensorName, s.label sensorLabel, s.type sensorType, d.id deviceId, d.name deviceName from sensor s, device d where s.deviceId=d.id')
                 expect(ss._storage).not.to.be.empty
                 expect(Object.keys(ss._storage).length).to.be.equal(1)
+
+                // lookup with uppercase ID as we expect it to be uppercased
                 expect(ss._storage['id1']).to.have.keys(['sensorId', 'sensorName', 'sensorLabel', 'sensorType','sensorValue','sensorDt','deviceId','deviceName'])
+                expect(ss._storage['id1'].deviceId).to.be.equal('deviceid1')
                 done()
             })
             
