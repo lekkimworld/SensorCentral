@@ -79,7 +79,7 @@ router.post('/*', (req, res) => {
 			let deviceIds
 			if (dataObj.deviceId) {
 				// found device id in payload
-				deviceIds = [dataObj.deviceId]
+				deviceIds = new Set([dataObj.deviceId])
 			} else {
 				// there is no device id in the payload - get unique device id('s) from sensor ids
 				let storage = storageSvc.getInstance()

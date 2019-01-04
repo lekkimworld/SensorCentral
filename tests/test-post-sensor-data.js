@@ -104,7 +104,7 @@ describe('test-post-sensor-data', function() {
             })
     })
 
-    it('verify that event even if no device id in payload', function(done) {
+    it('verify that device event is sent if no device id in payload', function(done) {
         request.post('/').send({
             msgtype: 'data',
             data: [
@@ -122,6 +122,33 @@ describe('test-post-sensor-data', function() {
                     expect(eventPublishMethod.callCount).to.be.equal(2)
                     expect(eventPublishMethod.firstCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_DEVICEREADING_CHANNEL)
                     expect(eventPublishMethod.firstCall.args[0].message.deviceId).to.be.equal('deviceId1')
+
+                    expect(eventPublishMethod.secondCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_SENSORREADING_CHANNEL)
+                    expect(eventPublishMethod.secondCall.args[0].message.sensorId).to.be.equal('sensorId1')
+                }
+                done()
+            })
+    })
+
+    it('verify that device event is sent based on device id in payload', function(done) {
+        request.post('/').send({
+            msgtype: 'data',
+            deviceId: 'deviceId2',
+            data: [
+                { 
+                    "sensorId": "sensorId1", 
+                    "sensorValue": 35.125
+                }
+            ]
+        }).set('Accept', 'application/json')
+            .expect(200)
+            .end((err, res) => {
+                if (err) {
+                    return done(err)
+                } else {
+                    expect(eventPublishMethod.callCount).to.be.equal(2)
+                    expect(eventPublishMethod.firstCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_DEVICEREADING_CHANNEL)
+                    expect(eventPublishMethod.firstCall.args[0].message.deviceId).to.be.equal('deviceId2')
 
                     expect(eventPublishMethod.secondCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_SENSORREADING_CHANNEL)
                     expect(eventPublishMethod.secondCall.args[0].message.sensorId).to.be.equal('sensorId1')
