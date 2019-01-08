@@ -23,22 +23,43 @@ const INIT_RETRY_SECONDS = process.env.SERVICES_INIT_RETRY_SECONDS || 5
 const NUDGE_RETRY_SECONDS = process.env.SERVICES_NUDGE_RETRY_SECONDS || 2
 
 // storage for services
-const _services = {
-
+const _services = {}
+const doLog = (level, msg) => {
+    if (Object.keys(_services).includes('log')) {
+        if (_services.log.service[level]) {
+            _services.log.service[level](msg)
+        }
+    } else {
+        console.log(`BOOTSTRAP (${level}) - ${msg}`)
+    }
 }
+const logDebug = (msg) => {
+    doLog('debug', msg)
+}
+const logInfo = (msg) => {
+    doLog('info', msg)
+}
+const logWarn = (msg) => {
+    doLog('warn', msg)
+}
+const logError = (msg) => {
+    doLog('error', msg)
+}
+
 const _serviceInit = (svc) => {
     let f = (err) => {
         // see if called back with error
         if (err) {
             // init failed due to dependent service error - retrying
-            console.log(`init-method of ${svc.name}-service did callback to service broker with error - retrying init in ${INIT_RETRY_SECONDS} seconds`, err)
+            logWarn(`init-method of ${svc.name}-service did callback to service broker with error - retrying init in ${INIT_RETRY_SECONDS} seconds`, err)
             _services[svc.name].state = STATE_RETRY_INIT
             _services[svc.name].retryAfter = Date.now() + (INIT_RETRY_SECONDS*1000)
         } else {
             // init completed (if there) - mark ready
-            console.log(`init-method of ${svc.name}-service called back without error`)
+            logDebug(`init-method of ${svc.name}-service called back without error`)
             if (!_services[svc.name]) {
-                console.log('!!!!!! ' + svc.name)
+                logError(`Unable to find ${svc.name}-service - ABORTING!!`)
+                return
             }
             _services[svc.name].ready = true
             _services[svc.name].state = STATE_READY
@@ -84,10 +105,10 @@ const _serviceNudge = () => {
             // waiting for retry - see if time has passed
             if (wrapper.hasOwnProperty('retryAfter') && wrapper.retryAfter < Date.now()) {
                 // ready for retry
-                console.log(`Service '${wrapper.service.name}' is ready for retry`)
+                logDebug(`Service '${wrapper.service.name}' is ready for retry`)
             } else {
                 // not enough time has passed
-                console.log(`Service '${wrapper.service.name}' is NOT ready for retry`)
+                logDebug(`Service '${wrapper.service.name}' is NOT ready for retry`)
                 wrapper = undefined
             }
         }
@@ -158,9 +179,6 @@ const lookupService = (name, timeoutService = constants.DEFAULTS.SERVICE.LOOKUP_
 
 module.exports = {
     BaseService, 
-    reset: () => {
-        Object.keys(_services).forEach(name => delete _services[name])
-    },
     registerService, 
     lookupService,
     'isReadyService': (name) => _services[name] && _services[name].ready ? true : false, 

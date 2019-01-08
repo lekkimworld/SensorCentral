@@ -1,6 +1,6 @@
 const sinon = require('sinon')
 const {expect} = require('chai')
-const {registerService, reset} = require('../src/configure-services.js')
+const {registerService, terminate} = require('../src/configure-services.js')
 const supertest = require('supertest')
 const express = require('express')
 const moment = require('moment')
@@ -11,7 +11,7 @@ const CONTEXT = '/dashboard'
 describe('test-get-dashboard', function() {
     let request
     beforeEach(function() {
-        reset()
+        terminate()
 
         const app = express()
         app.engine('handlebars', (filePath, options, callback) => {

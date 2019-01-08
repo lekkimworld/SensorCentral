@@ -1,36 +1,36 @@
 const util = require('util')
-const Pushover = require('node-pushover')
+const moment = require('moment-timezone')
+const constants = require('../constants.js')
 const {lookupService, BaseService} = require('../configure-services.js')
-
-// get pushover data from env
-const PUSHOVER_APPTOKEN = process.env.PUSHOVER_APPTOKEN
-const PUSHOVER_USERKEY = process.env.PUSHOVER_USERKEY
-const pushover = (function() {
-    if (PUSHOVER_USERKEY && PUSHOVER_APPTOKEN) {
-        return new Pushover({
-            token: PUSHOVER_APPTOKEN,
-            user: PUSHOVER_USERKEY
-        })
-    }
-})()
-if (!pushover) {
-    // nothing to do here
-    console.log('Pushover support not configured...')
-}
 
 const NotifyService = function() {
     this.name = 'notify'
-    this.dependencies = ['log']
+    this.dependencies = ['log','event','pushover']
 }
 util.inherits(NotifyService, BaseService)
-NotifyService.prototype.init = function(callback, logSvc) {
-    this._log = logSvc
+NotifyService.prototype.init = function(callback, logSvc, eventSvc, pushoverSvc) {
+    let pushoverLastSent = undefined
+
+    eventSvc.getInstance().subscribe([constants.PUBNUB.CTRL_CHANNEL, constants.PUBNUB.RAW_SENSORREADING_CHANNEL], (channel, obj) => {
+        logSvc.debug(`Asked to notify on channel ${channel} with payload title=${title} and msg=${msg}`)
+        if (channel === constants.PUBNUB.CTRL_CHANNEL) {
+            if (obj.hasOwnProperty('restart') && true === obj.restart) {
+                // this is restart event - notify
+                pushoverSvc.notify('Device restart', `Device with ID <${obj.deviceId}> restarted - maybe it didn't pat the watchdog?`)
+                
+            } else if (obj.hasOwnProperty('watchdogReset') && obj.watchdogReset === true) {
+                // this is watchdogReset event - notify
+                pushoverSvc.notify(`Device watchdog`, `Watchdog for device (<${device.deviceId}> / <${device.deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
+
+            }
+        } else if (channel === constants.PUBNUB.RAW_SENSORREADING_CHANNEL) {
+            if (obj.sensorId === '28FF46C76017059A' && obj.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
+                pushoverLastSent = moment()
+                pushoverSvc.send('Frostvejr', `Det er frostvejr... (${obj.sensorValue})`)
+            }
+        }
+    })
+
     callback()
-}
-NotifyService.prototype.notify = function(title, msg) {
-    if (!pushover) return
-    
-    this._log.info(`Asked to notify with payload title=${title} and msg=${msg}`)
-    pushover.send(title, msg)
 }
 module.exports = NotifyService

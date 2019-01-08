@@ -1,6 +1,6 @@
 const sinon = require('sinon')
 const {expect} = require('chai')
-const {registerService, lookupService, reset} = require('../src/configure-services.js')
+const {registerService, lookupService, terminate} = require('../src/configure-services.js')
 const supertest = require('supertest')
 const express = require('express')
 const constants = require('../src/constants.js')
@@ -11,7 +11,7 @@ let eventPublishMethod
 describe('test-post-sensor-data', function() {
     let request
     beforeEach(function(done) {
-        reset()
+        terminate()
         
         eventPublishMethod = sinon.stub().returns(Promise.resolve())
         registerService({
@@ -68,7 +68,7 @@ describe('test-post-sensor-data', function() {
     })
 
     it('should send code 500 if no services', function(done) {
-        reset()
+        terminate()
 
         request.post('/').send({
             'foo': 'bar'

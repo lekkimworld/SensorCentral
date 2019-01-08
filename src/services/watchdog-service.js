@@ -7,27 +7,38 @@ const _watchdogs = {}
 
 const WatchdogService = function() {
     this.name = 'watchdog'
-    this.dependencies = ['log','event','storage', 'notify']
+    this.dependencies = ['log','event','storage', 'pushover']
 }
 util.inherits(WatchdogService, BaseService)
 WatchdogService.prototype.init = function(callback, logSvc, eventSvc, storageSvc, notifySvc) {
     // get the storage and get set of device ID's
-    const storage = storageSvc.getInstance()
-    Object.keys(storage).reduce((zet, sensorId) => {
-        zet.add(storage[sensorId].deviceId.toUpperCase())
-        return zet
-    }, new Set()).forEach(deviceId => {
+    storageSvc.getDeviceIds().forEach(deviceId => {
+        // get device
+        let device = storageSvc.getDeviceById(deviceId)
+
         // create a watchdog per device
-        const deviceName = Object.keys(storage).reduce((prev, sensorId) => {
-            if (prev) return prev
-            if (storage[sensorId].deviceId.toUpperCase() === deviceId) return storage[sensorId].deviceName
-        })
-        logSvc.info(`Adding watchdog for device with ID <${deviceId}> and name <${deviceName}> with timeout <${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT}>`)
-        let w = new Watchdog(constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT, deviceId)
+        logSvc.info(`Adding watchdog for device with ID <${device.deviceId}> and name <${device.deviceName}> with timeout <${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT}>`)
+        let w = new Watchdog(constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT, device.deviceId)
+
+        // listen for resets
         w.on('reset', () => {
-            logSvc.info(`Device (<${deviceId}> / <${deviceName}>) reset (${new Date(w.lastFeed).toISOString()})`)
-            notifySvc.notify(`Device watchdog`, `Watchdog for device (<${deviceId}> / <${deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
+            // log
+            logSvc.info(`Device (<${device.deviceId}> / <${device.deviceName}>) reset (${new Date(w.lastFeed).toISOString()})`)
+            
+            // feed watchdog
             w.feed()
+
+            // notify
+            notifySvc.notify(`Device watchdog`, `Watchdog for device (<${device.deviceId}> / <${device.deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
+
+            // publish event
+            eventSvc.getInstance(true).publish({
+                channel: constants.PUBNUB.CTRL_CHANNEL,
+                message: {
+                    'deviceId': deviceId,
+                    'watchdogReset': true
+                }
+            })
         })
         w.feed()
         _watchdogs[deviceId] = w
@@ -37,6 +48,8 @@ WatchdogService.prototype.init = function(callback, logSvc, eventSvc, storageSvc
     eventSvc.subscribe(constants.PUBNUB.RAW_DEVICEREADING_CHANNEL, (channel, msg) => {
         // get device id
         const deviceId = msg.deviceId.toUpperCase()
+
+        // feed watchdog
         if (_watchdogs[deviceId]) _watchdogs[deviceId].feed()
     })
     

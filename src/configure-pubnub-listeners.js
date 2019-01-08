@@ -1,6 +1,5 @@
 const {lookupService} = require('./configure-services.js')
 const constants = require('./constants.js')
-const moment = require('moment-timezone')
 
 /**
  * Suscribe to the raw channel for event data - then insert data in database and 
@@ -100,57 +99,8 @@ const logEnrichedEventEventData = () => {
     })
 }
 
-/**
- * Send message via notify-service if freezing tempeture outside
- */
-const notifyIfFreezing = () => {
-    let pushoverLastSent = undefined
-
-    const listener = (channel, obj) => {
-        lookupService('notify').then(notifySvc => {
-            if (obj.sensorId === '28FF46C76017059A' && obj.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
-                pushoverLastSent = moment()
-                notifySvc.send('Frostvejr', `Det er frostvejr... (${obj.sensorValue})`)
-            }
-        })
-    }
-
-    // get event service and subscribe to channel
-    lookupService('event').then(eventSvc => {
-        eventSvc.subscribe(constants.PUBNUB.RAW_SENSORREADING_CHANNEL, listener)
-    })
-}
-
-/**
- * Send message via notify-service if device restarted.
- */
-const notifyIfDeviceRestarted = () => {
-    const listener = (channel, obj) => {
-        // we received a message from control channel - look at the event
-        if (obj.hasOwnProperty('restart') && true === obj.restart) {
-            // this is restart event - should we notify?
-            const donotify = true
-            if (donotify) {
-                // asked to notify - get the notify service
-                lookupService('notify').then(notifySvc => {
-                    // notify
-                    notifySvc.notify('Device restart', `Device with ID <${obj.deviceId}> restarted - maybe it didn't pat the watchdog?`)
-                })
-            }
-        }
-    }
-
-    // get event service
-    lookupService('event').then(eventSvc => {
-        // subscribe to control channel
-        eventSvc.subscribe(constants.PUBNUB.CTRL_CHANNEL, listener)
-    })
-}
-
 module.exports = () => {
     logRawEventData()
     logEnrichedEventEventData()
     insertDataFromRawEventAndPublishEnrichedEvent()
-    notifyIfFreezing()
-    notifyIfDeviceRestarted()
 }

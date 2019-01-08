@@ -11,10 +11,11 @@ const configureExpress = require('../configure-express.js')
 const services = require('../configure-services.js')
 
 // add services
+services.registerService(new (require('../services/log-service.js'))())
 services.registerService(new (require('../services/event-service.js'))())
 services.registerService(new (require('../services/storage-service.js'))())
 services.registerService(new (require('../services/database-service.js'))())
-services.registerService(new (require('../services/log-service.js'))())
+services.registerService(new (require('../services/pushover-service.js'))())
 services.registerService(new (require('../services/notify-service.js'))())
 services.registerService(new (require('../services/watchdog-service.js'))())
 

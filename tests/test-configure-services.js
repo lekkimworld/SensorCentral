@@ -1,11 +1,11 @@
 const {expect} = require('chai')
 const sinon = require('sinon')
-const {registerService, lookupService, reset} = require('../src/configure-services.js')
+const {registerService, lookupService, terminate} = require('../src/configure-services.js')
 
 describe('configure-services functionality', function() {
     // ensure we reset the services model
     afterEach(function() {
-        reset()
+        terminate()
     })
 
     describe('test registering non-dependant service', function() {
