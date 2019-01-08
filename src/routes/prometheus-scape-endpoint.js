@@ -43,7 +43,7 @@ router.get('/scrapedata', (req, res) => {
         res.set({
             'Content-Type': 'text/plain'
         })
-        res.status(500).send('Required service not available').end()
+        res.status(500).send('Required storage-service not available').end()
     })
 })
 

@@ -113,6 +113,9 @@ StorageService.prototype.getDevices = function() {
     let result = Object.assign({}, _devices)
     return Object.freeze(result)
 }
+StorageService.prototype.getDeviceIds = function() {
+    return Object.keys(_devices)
+}
 StorageService.prototype.getDeviceById = function(deviceId) {
     let d = _devices[deviceId]
     return Object.assign({}, d)
