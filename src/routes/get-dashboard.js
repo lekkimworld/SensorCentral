@@ -25,7 +25,7 @@ router.get('/dashboard', (req, res) => {
 				if (obj.type === sensor.sensorType) return obj
 			}, undefined)
 			const value = `${sensor.sensorValue.toFixed(2)}${sensorType.denominator}`
-			const name = `${sensor.sensorName ? sensor.sensorName : 'NN'} (${sensor.deviceName ? sensor.deviceName : 'NN'})`
+			const name = `${sensor.sensorName ? sensor.sensorName : 'NN'} (${sensor.device.deviceName ? sensor.device.deviceName : 'NN'})`
 			let result = {
 				'value': value,
 				'name': name,
