@@ -103,7 +103,7 @@ StorageService.prototype.getSensors = function() {
     let result = Object.assign({}, _sensors)
     return Object.freeze(result)
 }
-StorageService.prototype.getSensorsIds = function() {
+StorageService.prototype.getSensorIds = function() {
     return Object.keys(_sensors)
 }
 StorageService.prototype.getSensorById = function(sensorId) {
