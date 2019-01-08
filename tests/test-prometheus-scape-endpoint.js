@@ -23,7 +23,7 @@ describe('test-prometheus-scape-endpoint', function() {
                         console.log(err)
                         expect.fail(err)
                     } else {
-                        expect(res.text).to.be.equal('Required service not available')
+                        expect(res.text).to.be.equal('Required storage-service not available')
                     }
                     done()
                 })

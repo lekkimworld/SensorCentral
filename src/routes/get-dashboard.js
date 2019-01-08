@@ -11,8 +11,9 @@ router.get('/dashboard', (req, res) => {
     }
     
     srvc.lookupService('storage').then(svc => {
-		let data = Object.values(svc.getInstance()).reduce((prev, sensor) => {
+		let data = svc.getSensorIds().reduce((prev, sensorId) => {
 			// ignore sensors with no reading
+			let sensor = svc.getSensorById(sensorId)
 			if (undefined === sensor.sensorValue || sensor.sensorValue === Number.MIN_VALUE) return prev
 
 			// format date/time value was read
@@ -55,7 +56,7 @@ router.get('/dashboard', (req, res) => {
 		res.render('dashboard', context)
 
     }).catch(err => {
-    	res.status(500).send('Required service not available').end()
+    	res.status(500).send('Required storage-service not available').end()
     })
 })
 

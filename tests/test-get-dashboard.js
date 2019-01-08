@@ -35,7 +35,7 @@ describe('test-get-dashboard', function() {
                     console.log(err)
                     expect.fail(err)
                 } else {
-                    expect(res.text).to.be.equal('Required service not available')
+                    expect(res.text).to.be.equal('Required storage-service not available')
                 }
                 done()
             })
@@ -44,8 +44,9 @@ describe('test-get-dashboard', function() {
     it('should send data return based on storage data', function(done) {
         registerService({
             name: 'storage',
-            getInstance: sinon.fake.returns({
-                'id1': {
+            getSensorIds: sinon.fake.returns(['id1','id2']),
+            getSensorById: (id) => {
+                if (id === 'id1') return {
                     sensorId: 'id1',
                     sensorName: 'name1',
                     sensorLabel: 'label1',
@@ -54,8 +55,8 @@ describe('test-get-dashboard', function() {
                     sensorDt: moment().add(-5, 'minutes').valueOf(),
                     deviceId: 'deviceid1',
                     deviceName: 'devicename1'
-                },
-                'id2': {
+                }
+                if (id === 'id2') return {
                     sensorId: 'id2',
                     sensorLabel: undefined,
                     sensorValue: 34.34,
@@ -63,7 +64,7 @@ describe('test-get-dashboard', function() {
                     deviceId: undefined,
                     deviceName: undefined
                 }
-            })
+            }
         })
         request.get(CONTEXT)
             .expect('Content-Type', 'text/html; charset=utf-8')

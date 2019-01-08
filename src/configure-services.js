@@ -112,7 +112,7 @@ const _serviceNudge = () => {
                 wrapper = undefined
             }
         }
-        if (wrapper) {
+        if (wrapper && (wrapper.state === STATE_REGISTERED || wrapper.state === STATE_RETRY_INIT)) {
             // init
             wrapper.state = STATE_STARTING_INIT
             delete wrapper.retryAfter

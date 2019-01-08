@@ -93,6 +93,7 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
 
         // callback
         callback()
+        
     }).catch(err => {
         logSvc.error('Storage service is unable to make database query', err)
         callback(err)
