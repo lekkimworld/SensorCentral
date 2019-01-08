@@ -12,7 +12,7 @@ NotifyService.prototype.init = function(callback, logSvc, eventSvc, pushoverSvc)
     let pushoverLastSent = undefined
 
     eventSvc.subscribe([constants.PUBNUB.CTRL_CHANNEL, constants.PUBNUB.RAW_SENSORREADING_CHANNEL], (channel, obj) => {
-        logSvc.debug(`Notify service received message on channel ${channel} with payload title=${title} and msg=${obj}`)
+        logSvc.debug(`Notify service received message on channel ${channel} with payload=${obj}`)
         if (channel === constants.PUBNUB.CTRL_CHANNEL) {
             if (obj.hasOwnProperty('restart') && true === obj.restart) {
                 // this is restart event - notify
