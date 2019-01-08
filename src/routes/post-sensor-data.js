@@ -82,11 +82,10 @@ router.post('/*', (req, res) => {
 				deviceIds = new Set([dataObj.deviceId])
 			} else {
 				// there is no device id in the payload - get unique device id('s) from sensor ids
-				let storage = storageSvc.getInstance()
 				deviceIds = dataObj.data.filter(element => element.sensorId && element.sensorValue).reduce((prev, element) => {
-					let obj = storage[element.sensorId.toUpperCase()]
-					if (obj && obj.deviceId) {
-						prev.add(obj.deviceId)
+					let obj = storageSvc.getSensorById(element.sensorId)
+					if (obj && obj.device.deviceId) {
+						prev.add(obj.device.deviceId)
 					}
 					return prev
 				}, new Set())

@@ -41,8 +41,8 @@ router.get('/dashboard', (req, res) => {
 						'type': sensorType.type,
 					},
 					"device": {
-						"id": sensor.deviceId,
-						"name": sensor.deviceName
+						"id": sensor.device.deviceId,
+						"name": sensor.device.deviceName
 					}
 				}
 			}

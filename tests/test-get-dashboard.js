@@ -53,16 +53,20 @@ describe('test-get-dashboard', function() {
                     sensorValue: 12.34123,
                     sensorType: 'temp',
                     sensorDt: moment().add(-5, 'minutes').valueOf(),
-                    deviceId: 'deviceid1',
-                    deviceName: 'devicename1'
+                    device: {
+                        deviceId: 'deviceid1',
+                        deviceName: 'devicename1'
+                    }
                 }
                 if (id === 'id2') return {
                     sensorId: 'id2',
                     sensorLabel: undefined,
                     sensorValue: 34.34,
                     sensorDt: undefined, 
-                    deviceId: undefined,
-                    deviceName: undefined
+                    device: {
+                        deviceId: undefined,
+                        deviceName: undefined
+                    }
                 }
             }
         })
@@ -70,8 +74,7 @@ describe('test-get-dashboard', function() {
             .expect('Content-Type', 'text/html; charset=utf-8')
             .expect(200, (err, res) => {
                 if (err) {
-                    console.log(err)
-                    expect.fail(err)
+                    return done(err)
                 } else {
                     let obj = JSON.parse(res.text)
                     expect(obj).to.include.key('updated')

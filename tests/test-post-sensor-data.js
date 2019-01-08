@@ -28,14 +28,17 @@ describe('test-post-sensor-data', function() {
         }).then(() => {
             return registerService({
                 'name': 'storage',
-                'getInstance': sinon.fake.returns({
-                    'SENSORID1': {
+                'getSensorIds': sinon.fake.returns(['sensorId1']),
+                'getSensorById': (id) => {
+                    if (id === 'sensorId1') return {
                         'sensorId': 'sensorId1',
                         'sensorName': 'Sensor 1',
-                        'deviceId': 'deviceId1',
-                        'deviceName': 'Device Name 1'
+                        'device': {
+                            'deviceId': 'deviceId1',
+                            'deviceName': 'Device Name 1'
+                        }
                     }
-                })
+                }
             })
         }).then(() => {
             const app = express()
