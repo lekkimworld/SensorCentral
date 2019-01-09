@@ -16,7 +16,7 @@ NotifyService.prototype.init = function(callback, logSvc, eventSvc, pushoverSvc)
         if (channel === constants.PUBNUB.CTRL_CHANNEL) {
             if (obj.hasOwnProperty('restart') && true === obj.restart) {
                 // this is restart event - notify
-                pushoverSvc.notify('Device restart', `Device with ID <${obj.deviceId}> restarted - maybe it didn't pat the watchdog?`)
+                pushoverSvc.notify('Device restart', `Device restart (<${obj.deviceId}> / <${obj.deviceName}>) - maybe it didn't pat the watchdog?`)
                 
             } else if (obj.hasOwnProperty('watchdogReset') && obj.watchdogReset === true) {
                 // this is watchdogReset event - notify
