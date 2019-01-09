@@ -74,8 +74,8 @@ router.post('/*', (req, res) => {
 				console.log(`ERROR - could NOT post control message (<${JSON.stringify(dataObj.data)}>) to channel <${constants.PUBNUB.CTRL_CHANNEL}>`)
 				console.log(err)
 			})
-		} else if (msgtype === 'data') {
-			// data - get device id
+		} else if (msgtype === 'data' && dataObj.data.length) {
+			// got at least one sensor sample in data - get device id
 			let deviceIds
 			if (dataObj.deviceId) {
 				// found device id in payload
