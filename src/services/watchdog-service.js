@@ -28,9 +28,6 @@ WatchdogService.prototype.init = function(callback, logSvc, eventSvc, storageSvc
             // feed watchdog
             w.feed()
 
-            // notify
-            notifySvc.notify(`Device watchdog`, `Watchdog for device (<${device.deviceId}> / <${device.deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
-
             // publish event
             eventSvc.getInstance(true).publish({
                 channel: constants.PUBNUB.CTRL_CHANNEL,
@@ -47,7 +44,7 @@ WatchdogService.prototype.init = function(callback, logSvc, eventSvc, storageSvc
     // listen to event service to feed watchdog on events
     eventSvc.subscribe(constants.PUBNUB.RAW_DEVICEREADING_CHANNEL, (channel, msg) => {
         // get device id
-        const deviceId = msg.deviceId.toUpperCase()
+        const deviceId = msg.deviceId
 
         // feed watchdog
         if (_watchdogs[deviceId]) _watchdogs[deviceId].feed()
