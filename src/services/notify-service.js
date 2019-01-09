@@ -12,7 +12,7 @@ NotifyService.prototype.init = function(callback, logSvc, eventSvc, pushoverSvc)
     let pushoverLastSent = undefined
 
     eventSvc.subscribe([constants.PUBNUB.CTRL_CHANNEL, constants.PUBNUB.RAW_SENSORREADING_CHANNEL], (channel, obj) => {
-        logSvc.debug(`Notify service received message on channel ${channel} with payload=${obj}`)
+        logSvc.debug(`Notify service received message on channel ${channel} with payload=${JSON.stringify(obj)}`)
         if (channel === constants.PUBNUB.CTRL_CHANNEL) {
             if (obj.hasOwnProperty('restart') && true === obj.restart) {
                 // this is restart event - notify
@@ -20,7 +20,7 @@ NotifyService.prototype.init = function(callback, logSvc, eventSvc, pushoverSvc)
                 
             } else if (obj.hasOwnProperty('watchdogReset') && obj.watchdogReset === true) {
                 // this is watchdogReset event - notify
-                pushoverSvc.notify(`Device watchdog`, `Watchdog for device (<${device.deviceId}> / <${device.deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
+                pushoverSvc.notify(`Device watchdog`, `Watchdog for device (<${obj.deviceId}> / <${obj.deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
 
             }
         } else if (channel === constants.PUBNUB.RAW_SENSORREADING_CHANNEL) {
