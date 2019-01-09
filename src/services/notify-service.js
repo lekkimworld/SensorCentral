@@ -16,7 +16,7 @@ NotifyService.prototype.init = function(callback, logSvc, eventSvc, pushoverSvc,
         if (channel === constants.PUBNUB.CTRL_CHANNEL) {
             let device = storageSvc.getDeviceById(obj.deviceId)
             if (!device) return
-            
+
             if (obj.hasOwnProperty('restart') && true === obj.restart) {
                 // this is restart event - notify
                 pushoverSvc.notify('Device restart', `Device restart (<${device.deviceId}> / <${device.deviceName}>) - maybe it didn't pat the watchdog?`)
@@ -29,7 +29,7 @@ NotifyService.prototype.init = function(callback, logSvc, eventSvc, pushoverSvc,
         } else if (channel === constants.PUBNUB.RAW_SENSORREADING_CHANNEL) {
             if (obj.sensorId === '28FF46C76017059A' && obj.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
                 pushoverLastSent = moment()
-                pushoverSvc.send('Frostvejr', `Det er frostvejr... (${obj.sensorValue})`)
+                pushoverSvc.notify('Frostvejr', `Det er frostvejr... (${obj.sensorValue})`)
             }
         }
     })
