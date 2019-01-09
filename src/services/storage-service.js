@@ -11,25 +11,48 @@ const StorageService = function() {
 }
 util.inherits(StorageService, BaseService)
 StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
-    // get the sensors we care about from the db
-    dbSvc.query("select s.id sensorId, s.name sensorName, s.label sensorLabel, s.type sensorType, d.id deviceId, d.name deviceName from sensor s, device d where s.deviceId=d.id").then(rs => {
-        rs.rows.forEach(row => {
-            let device = {
-                'deviceId': row.deviceid,
-                'deviceName': row.devicename,
+    const getOrCreateDevice = (obj) => {
+        let device = _devices[obj.deviceId]
+        if (!device) {
+            device = {
+                'deviceId': obj.deviceId,
+                'deviceName': obj.deviceName,
                 'restarts': 0,
                 'watchdogResets': 0
             }
-            _devices[row.deviceid] = device
-            _sensors[row.sensorid] = {
+            _devices[obj.deviceId] = device
+        }
+        return device
+    }
+    const getOrCreateSensor = (obj) => {
+        let sensor = _sensors[obj.sensorId]
+        if (!sensor) {
+            let device = getOrCreateDevice(obj)
+            sensor = {
+                'sensorName': obj.sensorName,
+                'sensorLabel': obj.sensorLabel,
+                'sensorId': obj.sensorId,
+                'sensorType': obj.sensorType,
+                'sensorValue': obj.sensorValue || Number.MIN_VALUE, 
+                'sensorDt': obj.sensorDt || undefined, 
+                'device': device
+            }
+            _sensors[obj.sensorId] = sensor
+        }
+        return sensor
+    }
+
+    // get the sensors we care about from the db
+    dbSvc.query("select s.id sensorId, s.name sensorName, s.label sensorLabel, s.type sensorType, d.id deviceId, d.name deviceName from sensor s, device d where s.deviceId=d.id").then(rs => {
+        rs.rows.forEach(row => {
+            getOrCreateSensor({
                 'sensorId': row.sensorid,
                 'sensorName': row.sensorname, 
                 'sensorLabel': row.sensorlabel,
                 'sensorType': row.sensortype,
-                'sensorValue': Number.MIN_VALUE, 
-                'sensorDt': undefined, 
-                'device': device
-            }
+                'deviceId': row.deviceid, 
+                'deviceName': row.devicename
+            })
         })
         
         // listen for events and keep last event data around for each sensor
@@ -37,19 +60,6 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
             logSvc.debug(`Storage service received message on ${channel} channel with payload ${JSON.stringify(obj)}`)
             if (channel === constants.PUBNUB.CTRL_CHANNEL) {
                 // control channel
-                const getOrCreateDevice = (obj) => {
-                    let device = _devices[obj.deviceId]
-                    if (!device) {
-                        device = {
-                            'deviceId': obj.deviceId,
-                            'deviceName': undefined,
-                            'restarts': 0,
-                            'watchdogResets': 0
-                        }
-                        _devices[obj.deviceId] = device
-                    }
-                    return device
-                }
                 let device = getOrCreateDevice(obj)
 
                 if (obj.hasOwnProperty("restart") && obj.restart === true) {
@@ -62,33 +72,12 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
 
             } else if (channel === constants.PUBNUB.AUG_CHANNEL) {
                 // sensor data - put in storage
-                let storageObj = _sensors[obj.sensorId]
-                if (!storageObj) {
-                    // we do now know a sensor with this id (i.e. it's not in the db) - create it
-                    let device = _devices[obj.deviceId]
-                    if (!device) {
-                        device = {
-                            'deviceId': obj.deviceId,
-                            'deviceName': obj.deviceName,
-                            'restarts': 0,
-                            'watchdogResets': 0
-                        }
-                        _devices[obj.deviceId] = device
-                    }
-                    storageObj = {
-                        'sensorName': obj.sensorName,
-                        'sensorLabel': obj.sensorLabel,
-                        'sensorId': obj.sensorId,
-                        'device': device
-                    }
-                    _sensors[obj.sensorId] = storageObj
-                }
-
+                let storageObj = getOrCreateSensor(obj)
+                
                 // update sensor with value and last sensor dt
                 storageObj.sensorValue = obj.sensorValue
                 storageObj.sensorDt = new Date()
             }
-            
         })
 
         // callback

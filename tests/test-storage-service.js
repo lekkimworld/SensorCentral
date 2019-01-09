@@ -61,14 +61,17 @@ describe('storage-service tests', function() {
                 
                 // lookup with ID
                 expect(ss.getSensors()).to.have.keys(['id1'])
+                expect(ss.getSensorIds().length).to.be.equal(1)
                 let o = ss.getSensorById('id1')
                 expect(o).to.have.keys(['sensorId', 'sensorName', 'sensorLabel', 'sensorType','sensorValue','sensorDt','device'])
                 expect(o.sensorId).to.be.equal('id1')
                 expect(o.sensorLabel).to.be.equal('label1')
+                expect(o.sensorType).to.be.equal('temp')
                 expect(o.sensorName).to.be.equal('name1')
                 expect(o.device.deviceId).to.be.equal('deviceid1')
                 expect(o.device.deviceName).to.be.equal('devicename1')
 
+                expect(ss.getDeviceIds().length).to.be.equal(1)
                 expect(ss.getDevices()).to.have.keys(['deviceid1'])
                 let d = ss.getDeviceById('deviceid1')
                 expect(d.deviceId).to.be.equal('deviceid1')
@@ -76,6 +79,8 @@ describe('storage-service tests', function() {
 
                 done()
 
+            }).catch(err => {
+                done(err)
             })
             
             
