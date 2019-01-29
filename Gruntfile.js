@@ -18,7 +18,8 @@ module.exports = function(grunt) {
             }
         },
         browserify: {
-            'public/js/index.js': ['dev/js/**.js']
+            'public/js/index.js': ['dev/js/ui/**.js'],
+            'public/js/service-worker.js': ['dev/js/sw/**.js']
         },
         rework: {
             'public/css/styles.css': ['dev/css/**.css'],

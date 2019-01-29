@@ -1,5 +1,11 @@
 {
   "name": "SensorCentral",
+  "short_name": "@Sensors",
+  "display": "fullscreen",
+  "orientation": "any",
+  "start_url": "/",
+  "background_color": "#fff",
+  "theme_color": "#fff",
   "icons": [
     {
       "src": "/images/icon-32.png",
@@ -37,9 +43,5 @@
       "type": "image/png",
       "density": 3
     }
-  ],
-  "display": "fullscreen",
-  "orientation": "any",
-  "start_url": "./dashboard",
-  "background_color": "#fff"
+  ]
 }
