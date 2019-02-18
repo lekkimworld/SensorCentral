@@ -13,7 +13,10 @@ util.inherits(WatchdogService, BaseService)
 WatchdogService.prototype.init = function(callback, logSvc, eventSvc, storageSvc, notifySvc) {
     // get the storage and get set of device ID's
     storageSvc.getDevices().then(devices => {
-        devices.forEach(devices => {
+        for (let deviceId in devices) {
+            // get device
+            const device = devices[deviceId];
+
             // create a watchdog per device
             logSvc.info(`Adding watchdog for device with ID <${device.deviceId}> and name <${device.deviceName}> with timeout <${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT}>`)
             let w = new Watchdog(constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT, device.deviceId)
@@ -37,7 +40,7 @@ WatchdogService.prototype.init = function(callback, logSvc, eventSvc, storageSvc
             })
             w.feed()
             _watchdogs[device.deviceId] = w
-        })
+        }
     })
 
     // listen to event service to feed watchdog on events
