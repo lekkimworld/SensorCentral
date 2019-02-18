@@ -75,36 +75,36 @@ router.post('/*', (req, res) => {
 				console.log(err)
 			})
 		} else if (msgtype === 'data' && dataObj.data.length) {
-			// got at least one sensor sample in data - get device id
-			let deviceIds
-			if (dataObj.deviceId) {
-				// found device id in payload
-				deviceIds = new Set([dataObj.deviceId])
-			} else {
-				// there is no device id in the payload - get unique device id('s) from sensor ids
-				deviceIds = dataObj.data.filter(element => element.sensorId && element.sensorValue).reduce((prev, element) => {
-					let obj = storageSvc.getSensorById(element.sensorId)
-					if (obj && obj.device.deviceId) {
-						prev.add(obj.device.deviceId)
-					}
-					return prev
-				}, new Set())
-			}
-			if (deviceIds && deviceIds.size) {
-				// found device id('s) - publish a device event
-				deviceIds.forEach(deviceId => {
-					pubnub.publish({
-						'message': {
-							'deviceId': deviceId
-						},
-						'channel': constants.PUBNUB.RAW_DEVICEREADING_CHANNEL
-					}).then(() => {
-
-					}).catch(err => {
-
+			// send a message to indicate we heard from the device
+			(function() {
+				if (dataObj.deviceId) {
+					// found device id in payload
+					return Promise.resolve([dataObj.deviceId]);
+				} else {
+					// there is no device id in the payload - get unique device id('s) from sensor ids
+					let sensorIds = dataObj.data.filter(element => element.sensorId && element.sensorValue).reduce((prev, element) => {
+						prev.add(element.sensorId);
+						return prev
+					}, new Set())
+					return storageSvc.getDeviceIdsForSensorsIds(Array.from(sensorIds));
+				}
+			})().then(deviceIds => {
+				if (deviceIds && deviceIds.length) {
+					// found device id('s) - publish a device event
+					deviceIds.forEach(deviceId => {
+						pubnub.publish({
+							'message': {
+								'deviceId': deviceId
+							},
+							'channel': constants.PUBNUB.RAW_DEVICEREADING_CHANNEL
+						}).then(() => {
+	
+						}).catch(err => {
+	
+						})
 					})
-				})
-			}
+				}
+			})
 
 			// send a raw event per data element
 			dataObj.data.filter(element => element.sensorId && element.sensorValue).forEach(element => {

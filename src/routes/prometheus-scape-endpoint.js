@@ -3,46 +3,55 @@ const router = express.Router()
 const {lookupService} = require('../configure-services.js')
 
 router.get('/scrapedata', (req, res) => {
-    lookupService('storage').then(svc => {
-        // set content-type and send response
-        res.set({
-            'Content-Type': 'text/plain'
+    res.set({
+        'Content-Type': 'text/plain'
+    })
+
+    lookupService(['storage', 'log']).then(svcs => {
+        // define common buffer
+        const storage = svcs[0];
+        const buffer = [];
+
+        // get sensors from storage service
+        storage.getSensors().then(sensors => {
+            // traverse and process each sensor in turn
+            for (let sensorId in sensors) {
+                const sensor = sensors[sensorId];
+                if (!sensor.sensorValue || sensor.sensorValue === Number.MIN_VALUE) continue;
+                let fixedName = sensor.sensorLabel ? sensor.sensorLabel : `nolabel${sensor.sensorId}`;
+                let deviceId = sensor.device && sensor.device.deviceId ? sensor.device.deviceId : 'unknown';
+                let deviceName = sensor.device && sensor.device.deviceName ? sensor.device.deviceName : 'unknown';
+                buffer.push(`sensor_${fixedName}\{sensorId="${sensor.sensorId}",deviceId="${deviceId}",deviceName="${deviceName}"\} ${sensor.sensorValue}`);
+            }
+            
+            // get devices
+            return storage.getDevices();
+
+        }).then(devices => {
+            // traverse and process each device restart or watchdog event in turn
+            for (let deviceId in devices) {
+                const device = devices[deviceId];
+                buffer.push(`device_restart\{deviceId="${device.deviceId}",deviceName=\"${device.deviceName}\"\} ${device.restarts ? device.restarts : 0}`)
+            }
+            for (let deviceId in devices) {
+                const device = devices[deviceId];
+                buffer.push(`device_watchdog_reset\{deviceId="${device.deviceId}",deviceName=\"${device.deviceName}\"\} ${device.watchdogResets ? device.watchdogResets : 0}`)
+            }
+
+            return Promise.resolve();
+
+        }).then(() => {
+            // send response
+            res.status(200).send(buffer.join('\n')).end()
+
+        }).catch(err => {
+            // send error response
+            const log = svcs[1];
+            log.error('Unable to get Prometheus scrape target data', err);
+            res.status(500).end();
         })
-        const buffer = []
-
-        if (svc.getSensorIds() && Array.isArray(svc.getSensorIds())) {
-            // add sensors
-            svc.getSensorIds().forEach(sensorId => {
-                let obj = svc.getSensorById(sensorId)
-                if (!obj.sensorValue || obj.sensorValue === Number.MIN_VALUE) return buffer
-                let fixedName = obj.sensorLabel ? obj.sensorLabel : `nolabel${obj.sensorId}`
-                let deviceId = obj.device && obj.device.deviceId ? obj.device.deviceId : 'unknown'
-                let deviceName = obj.device && obj.device.deviceName ? obj.device.deviceName : 'unknown'
-                buffer.push(`sensor_${fixedName}\{sensorId="${obj.sensorId}",deviceId="${deviceId}",deviceName="${deviceName}"\} ${obj.sensorValue}`)
-            })
-        }
-
-        if (svc.getDeviceIds && svc.getDeviceIds() && Array.isArray(svc.getDeviceIds())) {
-            // add devices restarts
-            svc.getDeviceIds().forEach(deviceId => {
-                let obj = svc.getDeviceById(deviceId)
-                buffer.push(`device_restart\{deviceId="${obj.deviceId}",deviceName=\"${obj.deviceName}\"\} ${obj.restarts ? obj.restarts : 0}`)
-            })
-
-            // add devices watchdog resets
-            svc.getDeviceIds().forEach(deviceId => {
-                let obj = svc.getDeviceById(deviceId)
-                buffer.push(`device_watchdog_reset\{deviceId="${obj.deviceId}",deviceName=\"${obj.deviceName}\"\} ${obj.watchdogResets ? obj.watchdogResets : 0}`)
-            })
-        }
-
-        // send to client
-        res.status(200).send(buffer.join('\n')).end()
 
     }).catch(err => {
-        res.set({
-            'Content-Type': 'text/plain'
-        })
         res.status(500).send('Required storage-service not available').end()
     })
 })

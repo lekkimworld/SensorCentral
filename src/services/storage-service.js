@@ -224,6 +224,20 @@ StorageService.prototype.getDeviceById = function(deviceId) {
         return Promise.resolve(device);
     })
 }
+StorageService.prototype.getDeviceIdsForSensorsIds = function(sensorIds) {
+    if (!sensorIds || !Array.isArray(sensorIds) || !sensorIds.length) return Promise.resolve([]);
+    return this._redisClient.mget(sensorIds.filter(sensorId => sensorId && sensorId.length).map(sensorId => `${SENSOR_KEY_PREFIX}${sensorId}`)).then(sensors => {
+        let deviceIds = sensors.reduce((prev, str_sensor) => {
+            if (!str_sensor) return prev;
+            try {
+                let sensor = JSON.parse(str_sensor);
+                if (sensor && sensor.device.deviceId) prev.add(sensor.device.deviceId);
+            } catch (err) {}
+            return prev;
+        }, new Set());
+        return Promise.resolve(Array.from(deviceIds));
+    })
+}
 StorageService.prototype.terminate = function() {
     
 }

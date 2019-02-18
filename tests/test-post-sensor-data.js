@@ -13,7 +13,8 @@ describe('test-post-sensor-data', function() {
     beforeEach(function(done) {
         terminate()
         
-        eventPublishMethod = sinon.stub().returns(Promise.resolve())
+        
+        eventPublishMethod = sinon.stub().resolves()
         registerService({
             'name': 'log',
             'debug': sinon.stub(),
@@ -28,17 +29,7 @@ describe('test-post-sensor-data', function() {
         }).then(() => {
             return registerService({
                 'name': 'storage',
-                'getSensorIds': sinon.fake.returns(['sensorId1']),
-                'getSensorById': (id) => {
-                    if (id === 'sensorId1') return {
-                        'sensorId': 'sensorId1',
-                        'sensorName': 'Sensor 1',
-                        'device': {
-                            'deviceId': 'deviceId1',
-                            'deviceName': 'Device Name 1'
-                        }
-                    }
-                }
+                'getDeviceIdsForSensorsIds': sinon.stub().resolves(['deviceId1'])
             })
         }).then(() => {
             const app = express()
@@ -121,15 +112,22 @@ describe('test-post-sensor-data', function() {
             .end((err, res) => {
                 if (err) {
                     return done(err)
-                } else {
-                    expect(eventPublishMethod.callCount).to.be.equal(2)
-                    expect(eventPublishMethod.firstCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_DEVICEREADING_CHANNEL)
-                    expect(eventPublishMethod.firstCall.args[0].message.deviceId).to.be.equal('deviceId1')
-
-                    expect(eventPublishMethod.secondCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_SENSORREADING_CHANNEL)
-                    expect(eventPublishMethod.secondCall.args[0].message.sensorId).to.be.equal('sensorId1')
                 }
-                done()
+                global.setTimeout(() => {
+                    try {
+                        expect(eventPublishMethod.callCount).to.be.equal(2);
+
+                        expect(eventPublishMethod.secondCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_DEVICEREADING_CHANNEL)
+                        expect(eventPublishMethod.secondCall.args[0].message.deviceId).to.be.equal('deviceId1')
+
+                        expect(eventPublishMethod.firstCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_SENSORREADING_CHANNEL)
+                        expect(eventPublishMethod.firstCall.args[0].message.sensorId).to.be.equal('sensorId1')
+                    
+                        done()
+                    } catch (err) {
+                        done(err)
+                    }
+                }, 500);
             })
     })
 
@@ -150,11 +148,12 @@ describe('test-post-sensor-data', function() {
                     return done(err)
                 } else {
                     expect(eventPublishMethod.callCount).to.be.equal(2)
-                    expect(eventPublishMethod.firstCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_DEVICEREADING_CHANNEL)
-                    expect(eventPublishMethod.firstCall.args[0].message.deviceId).to.be.equal('deviceId2')
 
-                    expect(eventPublishMethod.secondCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_SENSORREADING_CHANNEL)
-                    expect(eventPublishMethod.secondCall.args[0].message.sensorId).to.be.equal('sensorId1')
+                    expect(eventPublishMethod.secondCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_DEVICEREADING_CHANNEL)
+                    expect(eventPublishMethod.secondCall.args[0].message.deviceId).to.be.equal('deviceId2')
+
+                    expect(eventPublishMethod.firstCall.args[0].channel).to.be.equal(constants.PUBNUB.RAW_SENSORREADING_CHANNEL)
+                    expect(eventPublishMethod.firstCall.args[0].message.sensorId).to.be.equal('sensorId1')
                 }
                 done()
             })

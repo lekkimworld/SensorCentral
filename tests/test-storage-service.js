@@ -517,6 +517,56 @@ describe('storage-service tests', function() {
     })
 
     describe('device member methods', function() {
+        it('should return the unique deviceIds for the supplied sensorIds', function(done) {
+            let dbsvc = {
+                name: 'db',
+                init: sinon.fake.yields(),
+                query: sinon.fake.resolves({
+                    rows: []
+                })
+            }
+            let eventsvc = {
+                name: 'event',
+                init: sinon.fake.yields(),
+                getInstance: sinon.fake.returns({
+                    addListener: sinon.fake(),
+                    subscribe: sinon.fake()
+                }),
+                subscribe: sinon.fake()
+            }
+            let logsvc = {
+                init: sinon.fake.yields(),
+                name: 'log'
+            }
+            registerService(dbsvc)
+            registerService(logsvc)
+            registerService(eventsvc)
+            
+            const redisMock = {
+                mget: sinon.stub().resolves([
+                    JSON.stringify({'sensorId': 'id1', 'device': {'deviceId': 'foo1','deviceName':'bar1'}}), 
+                    JSON.stringify({'sensorId': 'id2', 'device': {'deviceId': 'foo2','deviceName':'bar2'}})
+                ])
+            };
+            StorageService.prototype._buildRedisClient = sinon.fake.returns(redisMock)
+            
+            let ss = new StorageService()
+            registerService(ss).then(svc => {
+                ss.getDeviceIdsForSensorsIds(['id1', undefined, 'id2']).then(deviceIds => {
+                    expect(deviceIds).to.deep.equal(['foo1', 'foo2']);
+                    
+                    expect(redisMock.mget.callCount).to.equal(1);
+                    expect(redisMock.mget.firstCall.args[0]).to.deep.equal(['sensor:id1', 'sensor:id2']);
+
+                    done()
+                })
+                
+            }).catch(err => {
+                done(err);
+            })
+            
+        })
+
         it('getDevices (no devices)', function(done) {
             let dbsvc = {
                 name: 'db',

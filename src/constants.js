@@ -12,7 +12,9 @@ module.exports = {
         'REDIS': {
             'DEVICE_EXPIRATION': process.env.REDIS_DEVICE_EXPIRATION || 10 * 60,
             'SENSOR_EXPIRATION': process.env.REDIS_SENSOR_EXPIRATION || 10 * 60
-        }
+        },
+        'TIMEZONE': process.env.TIMEZONE || 'Europe/Copenhagen',
+        'DATETIME_FORMAT': process.env.DATETIME_FORMAT || "D-M-YYYY [kl.] k:mm"
     },
     'PUBNUB': {
         'RAW_SENSORREADING_CHANNEL': 'rawSensorReading',

@@ -44,9 +44,8 @@ describe('test-get-dashboard', function() {
     it('should send data return based on storage data', function(done) {
         registerService({
             name: 'storage',
-            getSensorIds: sinon.fake.returns(['id1','id2']),
-            getSensorById: (id) => {
-                if (id === 'id1') return {
+            getSensors: sinon.stub().resolves({
+                'id1': {
                     sensorId: 'id1',
                     sensorName: 'name1',
                     sensorLabel: 'label1',
@@ -57,8 +56,8 @@ describe('test-get-dashboard', function() {
                         deviceId: 'deviceid1',
                         deviceName: 'devicename1'
                     }
-                }
-                if (id === 'id2') return {
+                },
+                'id2': {
                     sensorId: 'id2',
                     sensorLabel: undefined,
                     sensorValue: 34.34,
@@ -68,7 +67,7 @@ describe('test-get-dashboard', function() {
                         deviceName: undefined
                     }
                 }
-            }
+            })
         })
         request.get(CONTEXT)
             .expect('Content-Type', 'text/html; charset=utf-8')

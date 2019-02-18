@@ -30,20 +30,27 @@ describe('test-prometheus-scape-endpoint', function() {
         })
 
         it('should send code 200 and data if service found (1 sensor)', function(done) {
-            registerService({
+            let ssMock = {
                 name: 'storage',
-                getDeviceIds: sinon.fake.returns([]),
-                getSensorIds: sinon.fake.returns(['id1']),
-                getSensorById: sinon.fake.returns({
-                    sensorId: 'id1',
-                    sensorLabel: 'label1',
-                    sensorValue: 12.34,
-                    device: {
-                        deviceId: 'deviceid1',
-                        deviceName: 'devicename1'
+                getDevices: sinon.stub().resolves({}),
+                getSensors: sinon.stub().resolves({
+                    'id1': {
+                        sensorId: 'id1',
+                        sensorLabel: 'label1',
+                        sensorValue: 12.34,
+                        device: {
+                            deviceId: 'deviceid1',
+                            deviceName: 'devicename1'
+                        }
                     }
                 })
+            }
+            registerService({
+                name: 'log',
+                error: sinon.fake()
             })
+            registerService(ssMock)
+            
             request.get('/scrapedata')
                 .expect('Content-Type', 'text/plain; charset=utf-8')
                 .expect(200, (err, res) => {
@@ -57,34 +64,37 @@ describe('test-prometheus-scape-endpoint', function() {
         })
 
         it('should send code 200 and data if service found (2 sensors)', function(done) {
-            let f = (id) => {
-                if (id === 'id1') return {
-                    sensorId: 'id1',
-                    sensorLabel: 'label1',
-                    sensorValue: 12.34,
-                    device: {
-                        deviceId: 'deviceid1',
-                        deviceName: 'devicename1'
-                    }
-                }
-                if (id === 'id2') return {
-                    sensorId: 'id2',
-                    sensorLabel: 'label2',
-                    sensorValue: 2.34,
-                    device: {
-                        deviceId: 'deviceid2',
-                        deviceName: 'devicename2'
-                    }
-                }
-                return undefined
-            }
-            registerService({
+            let ssMock = {
                 name: 'storage',
-                getDeviceIds: sinon.fake.returns([]),
-                getSensorIds: sinon.fake.returns(['id1','id2']),
-                getSensorById: f
-            })
+                getDevices: sinon.stub(),
+                getSensors: sinon.stub().resolves({
+                    'id1': {
+                        sensorId: 'id1',
+                        sensorLabel: 'label1',
+                        sensorValue: 12.34,
+                        device: {
+                            deviceId: 'deviceid1',
+                            deviceName: 'devicename1'
+                        }
+                    },
+                    'id2': {
+                        sensorId: 'id2',
+                        sensorLabel: 'label2',
+                        sensorValue: 2.34,
+                        device: {
+                            deviceId: 'deviceid2',
+                            deviceName: 'devicename2'
+                        }
+                    }
+                })
+            }
             
+            registerService({
+                name: 'log',
+                error: sinon.fake()
+            })
+            registerService(ssMock)
+
             request.get('/scrapedata')
                 .expect('Content-Type', 'text/plain; charset=utf-8')
                 .expect(200, (err, res) => {
@@ -99,19 +109,28 @@ sensor_label2{sensorId="id2",deviceId="deviceid2",deviceName="devicename2"} 2.34
         })
 
         it('should send code 200 and data if service found (no sensor label etc)', function(done) {
-            registerService({
+            let ssMock = {
                 name: 'storage',
-                getSensorIds: sinon.fake.returns(['id1']),
-                getSensorById: sinon.fake.returns({
-                    sensorId: 'id1',
-                    sensorLabel: undefined,
-                    sensorValue: 12.34,
-                    device: {
-                        deviceId: undefined,
-                        deviceName: undefined
+                getDevices: sinon.stub(),
+                getSensors: sinon.stub().resolves({
+                    'id1': {
+                        sensorId: 'id1',
+                        sensorLabel: undefined,
+                        sensorValue: 12.34,
+                        device: {
+                            deviceId: undefined,
+                            deviceName: undefined
+                        }
                     }
                 })
+            }
+            
+            registerService({
+                name: 'log',
+                error: sinon.fake()
             })
+            registerService(ssMock)
+
             request.get('/scrapedata')
                 .expect('Content-Type', 'text/plain; charset=utf-8')
                 .expect(200, (err, res) => {
@@ -128,20 +147,20 @@ sensor_label2{sensorId="id2",deviceId="deviceid2",deviceName="devicename2"} 2.34
 
     describe('test device', function() {
         it('should send code 200 and device data back for devices (1 device)', function(done) {
-            let f = (id) => {
-                if (id === 'deviceid1') return {
-                    deviceId: 'deviceid1',
-                    deviceName: 'devicename1',
-                    restarts: 5
-                }
-                return undefined
-            }
+            registerService({
+                name: 'log',
+                error: sinon.fake()
+            })
             registerService({
                 name: 'storage',
-                getSensorIds: sinon.fake.returns([]),
-                getSensorById: () => undefined,
-                getDeviceIds: sinon.fake.returns(['deviceid1']),
-                getDeviceById: f
+                getSensors: sinon.stub().resolves({}),
+                getDevices: sinon.stub().resolves({
+                    'deviceid1': {
+                        deviceId: 'deviceid1',
+                        deviceName: 'devicename1',
+                        restarts: 5
+                    }
+                })
             })
             
             request.get('/scrapedata')
@@ -158,25 +177,25 @@ device_watchdog_reset{deviceId="deviceid1",deviceName="devicename1"} 0`)
                 })
         })
         it('should send code 200 and device data back for devices (2 device)', function(done) {
-            let f = (id) => {
-                if (id === 'deviceid1') return {
-                    deviceId: 'deviceid1',
-                    deviceName: 'devicename1',
-                    restarts: 5,
-                    watchdogResets: 3
-                }
-                if (id === 'deviceid2') return {
-                    deviceId: 'deviceid2',
-                    deviceName: 'devicename2'
-                }
-                return undefined
-            }
+            registerService({
+                name: 'log',
+                error: sinon.fake()
+            })
             registerService({
                 name: 'storage',
-                getSensorIds: sinon.fake.returns([]),
-                getSensorById: () => undefined,
-                getDeviceIds: sinon.fake.returns(['deviceid1','deviceid2']),
-                getDeviceById: f
+                getSensors: sinon.stub().resolves({}),
+                getDevices: sinon.stub().resolves({
+                    'deviceid1': {
+                        deviceId: 'deviceid1',
+                        deviceName: 'devicename1',
+                        restarts: 5,
+                        watchdogResets: 3
+                    },
+                    'deviceid2': {
+                        deviceId: 'deviceid2',
+                        deviceName: 'devicename2'
+                    }
+                })
             })
             
             request.get('/scrapedata')
