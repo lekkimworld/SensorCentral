@@ -12,7 +12,7 @@ const WatchdogService = function() {
 util.inherits(WatchdogService, BaseService)
 WatchdogService.prototype.init = function(callback, logSvc, eventSvc, storageSvc, notifySvc) {
     // get the storage and get set of device ID's
-    storageSvc.getDevices().then(devides => {
+    storageSvc.getDevices().then(devices => {
         devices.forEach(devices => {
             // create a watchdog per device
             logSvc.info(`Adding watchdog for device with ID <${device.deviceId}> and name <${device.deviceName}> with timeout <${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT}>`)
