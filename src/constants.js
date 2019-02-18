@@ -8,6 +8,10 @@ module.exports = {
         },
         'WATCHDOG': {
             'DEFAULT_TIMEOUT': process.env.WATCHDOG_INTERVAL || 10*60*1000
+        },
+        'REDIS': {
+            'DEVICE_EXPIRATION': process.env.REDIS_DEVICE_EXPIRATION || 10 * 60,
+            'SENSOR_EXPIRATION': process.env.REDIS_SENSOR_EXPIRATION || 10 * 60
         }
     },
     'PUBNUB': {

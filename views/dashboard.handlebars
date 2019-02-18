@@ -4,10 +4,10 @@
 </span>
 <div class="row">
     {{#each data}}
-    <div class="col-lg-2 col-md-3 col-sm-4 sensorReading">
+    <div class="col-lg-2 col-md-3 col-sm-4"><div class="sensorReading">
         <div class="value">{{this.value}}</div>
         <div class="name">{{this.name}}</div>
         <div class="name">{{this.dt}}, {{this.last}} min. siden</div>
-    </div>
+    </div></div>
     {{/each}}    
 </div>
