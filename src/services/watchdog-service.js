@@ -12,33 +12,32 @@ const WatchdogService = function() {
 util.inherits(WatchdogService, BaseService)
 WatchdogService.prototype.init = function(callback, logSvc, eventSvc, storageSvc, notifySvc) {
     // get the storage and get set of device ID's
-    storageSvc.getDeviceIds().forEach(deviceId => {
-        // get device
-        let device = storageSvc.getDeviceById(deviceId)
+    storageSvc.getDevices().then(devides => {
+        devices.forEach(devices => {
+            // create a watchdog per device
+            logSvc.info(`Adding watchdog for device with ID <${device.deviceId}> and name <${device.deviceName}> with timeout <${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT}>`)
+            let w = new Watchdog(constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT, device.deviceId)
 
-        // create a watchdog per device
-        logSvc.info(`Adding watchdog for device with ID <${device.deviceId}> and name <${device.deviceName}> with timeout <${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT}>`)
-        let w = new Watchdog(constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT, device.deviceId)
+            // listen for resets
+            w.on('reset', () => {
+                // log
+                logSvc.info(`Device (<${device.deviceId}> / <${device.deviceName}>) reset (${new Date(w.lastFeed).toISOString()})`)
+                
+                // feed watchdog
+                w.feed()
 
-        // listen for resets
-        w.on('reset', () => {
-            // log
-            logSvc.info(`Device (<${device.deviceId}> / <${device.deviceName}>) reset (${new Date(w.lastFeed).toISOString()})`)
-            
-            // feed watchdog
-            w.feed()
-
-            // publish event
-            eventSvc.getInstance(true).publish({
-                channel: constants.PUBNUB.CTRL_CHANNEL,
-                message: {
-                    'deviceId': deviceId,
-                    'watchdogReset': true
-                }
+                // publish event
+                eventSvc.getInstance(true).publish({
+                    channel: constants.PUBNUB.CTRL_CHANNEL,
+                    message: {
+                        'deviceId': device.deviceId,
+                        'watchdogReset': true
+                    }
+                })
             })
+            w.feed()
+            _watchdogs[device.deviceId] = w
         })
-        w.feed()
-        _watchdogs[deviceId] = w
     })
 
     // listen to event service to feed watchdog on events
