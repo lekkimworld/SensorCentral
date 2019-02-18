@@ -180,10 +180,12 @@ describe('storage-service tests', function() {
 
                     expect(redisMock.keys.callCount).to.equal(1);
                     expect(redisMock.keys.firstCall.args[0]).to.equal('sensor:*');
-                    expect(redisMock.mget.callCount).to.equal(1);
-                    expect(redisMock.mget.firstCall.args[0]).to.deep.equal([]);
-                });
-                done()
+                    expect(redisMock.mget.callCount).to.equal(0);
+                    
+                    done()
+                }).catch(err => {
+                    done(err);
+                })
 
             }).catch(err => {
                 done(err)
@@ -605,10 +607,13 @@ describe('storage-service tests', function() {
 
                     expect(redisMock.keys.callCount).to.equal(1);
                     expect(redisMock.keys.firstCall.args[0]).to.equal('device:*');
-                    expect(redisMock.mget.callCount).to.equal(1);
-                    expect(redisMock.mget.firstCall.args[0]).to.deep.equal([]);
-                });
-                done()
+                    expect(redisMock.mget.callCount).to.equal(0);
+
+                    done()    
+                }).catch(err => {
+                    done(err);
+                })
+                
 
             }).catch(err => {
                 done(err)

@@ -174,6 +174,10 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
 StorageService.prototype.getSensors = function() {
     // get all sensor ids in redis
     return this._redisClient.keys(`${SENSOR_KEY_PREFIX}*`).then(keys => {
+        // make sure there are keys
+        if (!keys || !Array.isArray(keys) || !keys.length) return Promise.resolve([]);
+
+        // get value for keys
         return this._redisClient.mget(keys);
     }).then(str_sensors => {
         if (!str_sensors || !Array.isArray(str_sensors) || !str_sensors.length) return Promise.resolve({})
@@ -200,10 +204,15 @@ StorageService.prototype.getSensorById = function(sensorId) {
 StorageService.prototype.getDevices = function() {
     // get all device ids in redis
     return this._redisClient.keys(`${DEVICE_KEY_PREFIX}*`).then(keys => {
+        // make sure there are keys
+        if (!keys || !Array.isArray(keys) || !keys.length) return Promise.resolve([]);
+
         // get data for keys
         return this._redisClient.mget(keys)
 
     }).then(str_devices => {
+        if (!str_devices || !Array.isArray(str_devices) || !str_devices.length) return Promise.resolve({})
+
         const devices = str_devices.map(str => JSON.parse(str)).reduce((prev, device) => {
             prev[device.deviceId] = device;
             return prev;
