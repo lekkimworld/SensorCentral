@@ -7,7 +7,7 @@ const constants = require('../constants.js')
 const MIN_REGISTER_TEMP = process.env.MIN_REGISTER_TEMP || constants.SENSOR_VALUES.MIN_REGISTER_TEMP
 
 router.post('/*', (req, res) => {
-    // get data and see if array
+		// get data and see if array
 	const body = req.body
 	const dataObj = (function()  {
 		if (!body) {
@@ -48,8 +48,8 @@ router.post('/*', (req, res) => {
 		}).status(417).send(`Invalid msgtype <${msgtype}> received`).end()
 	}
 
-    // lookup event service to publish event
-    services.lookupService(['log', 'event', 'storage']).then((svcs) => {
+	// lookup event service to publish event
+	services.lookupService(['log', 'event', 'storage']).then((svcs) => {
 		// get services
 		const logSvc = svcs[0]
 		const eventSvc = svcs[1]
@@ -129,7 +129,7 @@ router.post('/*', (req, res) => {
 				})
 			})
 		}
-    }).catch(err => {
+		}).catch(err => {
 		return res.set('Content-Type', 'text/plain; charset=utf-8').status(500).send('Unable to find event bus').end()
 	})
 })
