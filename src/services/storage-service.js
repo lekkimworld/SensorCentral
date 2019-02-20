@@ -164,7 +164,7 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
                 // device data - touch device record in Redis
                 getOrCreateDevice(obj).then(device => {
                     // touch
-                    return this._buildRedisClient.expire(`${DEVICE_KEY_PREFIX}${device.deviceId}`, constants.DEFAULTS.REDIS.DEVICE_EXPIRATION);
+                    return this._redisClient.expire(`${DEVICE_KEY_PREFIX}${device.deviceId}`, constants.DEFAULTS.REDIS.DEVICE_EXPIRATION);
 
                 }).catch(err => {
                     console.log(err);
