@@ -977,7 +977,7 @@ describe('storage-service tests', function() {
             const eventsvc = {
                 'name': 'event',
                 'subscribe': (channel, cb) => {
-                    expect(channel).to.deep.equal([constants.PUBNUB.AUG_CHANNEL, constants.PUBNUB.CTRL_CHANNEL])
+                    expect(channel).to.deep.equal([constants.PUBNUB.AUG_CHANNEL, constants.PUBNUB.CTRL_CHANNEL, constants.PUBNUB.RAW_DEVICEREADING_CHANNEL])
                     expect(typeof cb === 'function')
                     callback = cb
                 },

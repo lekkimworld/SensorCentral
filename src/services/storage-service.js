@@ -57,7 +57,8 @@ StorageService.prototype._buildRedisClient = function() {
         'set': promisify(client.set).bind(client),
         'setex': promisify(client.setex).bind(client),
         'keys': promisify(client.keys).bind(client),
-        'mget': promisify(client.mget).bind(client)
+        'mget': promisify(client.mget).bind(client),
+        'expire': promisify(client.expire).bind(client)
     }
 }
 StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
@@ -124,7 +125,7 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
         if (promiseCancelled) return;
 
         // listen for events and keep last event data around for each sensor
-        eventSvc.subscribe([constants.PUBNUB.AUG_CHANNEL, constants.PUBNUB.CTRL_CHANNEL], (channel, obj) => {
+        eventSvc.subscribe([constants.PUBNUB.AUG_CHANNEL, constants.PUBNUB.CTRL_CHANNEL, constants.PUBNUB.RAW_DEVICEREADING_CHANNEL], (channel, obj) => {
             logSvc.debug(`Storage service received message on ${channel} channel with payload ${JSON.stringify(obj)}`)
             if (channel === constants.PUBNUB.CTRL_CHANNEL) {
                 // control channel
@@ -158,6 +159,15 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
 
                 }).catch(err => {
                     console.log(err)
+                })
+            } else if (channel === constants.PUBNUB.RAW_DEVICEREADING_CHANNEL) {
+                // device data - touch device record in Redis
+                getOrCreateDevice(obj).then(device => {
+                    // touch
+                    return this._buildRedisClient.expire(`${DEVICE_KEY_PREFIX}${device.deviceId}`, constants.DEFAULTS.REDIS.DEVICE_EXPIRATION);
+
+                }).catch(err => {
+                    console.log(err);
                 })
             }
         })
