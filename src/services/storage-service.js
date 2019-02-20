@@ -161,7 +161,10 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
                     console.log(err)
                 })
             } else if (channel === constants.PUBNUB.RAW_DEVICEREADING_CHANNEL) {
-                // device data - touch device record in Redis
+                // device data - sanity check for deviceId
+                if (!obj.deviceId) return;
+
+                // touch device record in Redis
                 getOrCreateDevice(obj).then(device => {
                     // touch
                     return this._redisClient.expire(`${DEVICE_KEY_PREFIX}${device.deviceId}`, constants.DEFAULTS.REDIS.DEVICE_EXPIRATION);

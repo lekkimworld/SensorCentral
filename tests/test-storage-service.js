@@ -948,7 +948,7 @@ describe('storage-service tests', function() {
 
     
 
-    describe('augmented sensor event tests', function() {
+    describe('event tests', function() {
         it('should update sensor dt and value on event', function(done) {
             let dbsvc = {
                 name: 'db',
@@ -1004,7 +1004,7 @@ describe('storage-service tests', function() {
                         } catch (err) {
                             done(err);
                         }
-                    }, 500)
+                    }, 10)
                 }
             }
             registerService(eventsvc)
@@ -1016,6 +1016,68 @@ describe('storage-service tests', function() {
                 })
             })
         })
+        
+        it('should touch device on raw device event', function(done) {
+            let dbsvc = {
+                name: 'db',
+                query: sinon.fake.resolves({
+                    rows: []
+                })
+            }
+            let logsvc = {
+                name: 'log',
+                'debug': sinon.fake(),
+                'info': sinon.fake(),
+                'warn': sinon.fake(),
+                'error': sinon.fake()
+            }
+            
+            const redisMock = {
+                get: sinon.stub().resolves(JSON.stringify({'deviceId': 'foo'})),
+                expire: sinon.stub().resolves(undefined)
+            };
+            StorageService.prototype._buildRedisClient = sinon.fake.returns(redisMock);
+            let ss = new StorageService();
+
+            let callback
+            registerService(dbsvc)
+            registerService(logsvc)
+            const eventsvc = {
+                'name': 'event',
+                'subscribe': (channel, cb) => {
+                    expect(typeof cb === 'function')
+                    callback = cb
+                },
+                'publish': (obj) => {
+                    callback(constants.PUBNUB.RAW_DEVICEREADING_CHANNEL, obj)
+
+                    // wait for promise
+                    global.setTimeout(() => {
+                        try {
+                            expect(redisMock.get.callCount).to.be.equal(1);
+                            expect(redisMock.get.firstCall.args[0]).to.be.equal('device:foo');
+                            
+                            expect(redisMock.expire.callCount).to.be.equal(1);
+                            expect(redisMock.expire.firstCall.args[0]).to.be.equal('device:foo');
+                            expect(redisMock.expire.firstCall.args[1]).to.be.equal(600);
+                            
+                            done()
+    
+                        } catch (err) {
+                            done(err);
+                        }
+                    }, 10)
+                }
+            }
+            registerService(eventsvc)
+
+            registerService(ss).then(svcs => {
+                eventsvc.publish({
+                    'deviceId': 'foo'
+                })
+            })
+        })
+
     })
 
     describe('control messages tests', function() {
@@ -1063,7 +1125,7 @@ describe('storage-service tests', function() {
                         } catch(err) {
                             done(err)
                         }
-                    }, 500)
+                    }, 10)
                 }
             }
             registerService(eventsvc)
