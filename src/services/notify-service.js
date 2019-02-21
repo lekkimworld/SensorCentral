@@ -14,18 +14,21 @@ NotifyService.prototype.init = function(callback, logSvc, eventSvc, pushoverSvc,
     eventSvc.subscribe([constants.PUBNUB.CTRL_CHANNEL, constants.PUBNUB.RAW_SENSORREADING_CHANNEL], (channel, obj) => {
         logSvc.debug(`Notify service received message on channel ${channel} with payload=${JSON.stringify(obj)}`)
         if (channel === constants.PUBNUB.CTRL_CHANNEL) {
-            let device = storageSvc.getDeviceById(obj.deviceId)
-            if (!device) return
-
-            if (obj.hasOwnProperty('restart') && true === obj.restart) {
-                // this is restart event - notify
-                pushoverSvc.notify('Device restart', `Device restart (<${device.deviceId}> / <${device.deviceName}>) - maybe it didn't pat the watchdog?`)
-                
-            } else if (obj.hasOwnProperty('watchdogReset') && obj.watchdogReset === true) {
-                // this is watchdogReset event - notify
-                pushoverSvc.notify(`Device watchdog`, `Watchdog for device (<${device.deviceId}> / <${device.deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
-
-            }
+            storageSvc.getDeviceById(obj.deviceId).then(device => {
+                if (obj.hasOwnProperty('restart') && true === obj.restart) {
+                    // this is restart event - notify
+                    pushoverSvc.notify('Device restart', `Device restart (<${device.deviceId}> / <${device.deviceName}>) - maybe it didn't pat the watchdog?`)
+                    
+                } else if (obj.hasOwnProperty('watchdogReset') && obj.watchdogReset === true) {
+                    // this is watchdogReset event - notify
+                    pushoverSvc.notify(`Device watchdog`, `Watchdog for device (<${device.deviceId}> / <${device.deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
+    
+                }
+            }).catch(err => {
+                console.log(err);
+            })
+            
+            
         } else if (channel === constants.PUBNUB.RAW_SENSORREADING_CHANNEL) {
             if (obj.sensorId === '28FF46C76017059A' && obj.sensorValue < 0 && (!pushoverLastSent || moment().diff(pushoverLastSent, 'minutes') > 60)) {
                 pushoverLastSent = moment()
