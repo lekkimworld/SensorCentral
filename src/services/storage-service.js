@@ -62,13 +62,13 @@ StorageService.prototype._buildRedisClient = function() {
     }
 }
 StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
-    const getOrCreateDevice = (obj) => {
+    const getOrCreateDevice = (obj, forceCreate = false) => {
         const key = this._createRedisDeviceKey(obj);
         if (!key) return Promise.reject('No device supplied or unable to compute device key');
 
         // try and get it
         return this._getObject(key).then(device => {
-            if (!device) {
+            if (forceCreate || !device) {
                 // set
                 return this._setObject(key, {
                     'deviceId': obj.deviceId,
@@ -81,13 +81,13 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
             }
         })
     }
-    const getOrCreateSensor = (obj) => {
+    const getOrCreateSensor = (obj, forceCreate = false) => {
         const key = this._createRedisSensorKey(obj);
         if (!key) return Promise.reject('No sensor supplied or unable to compute sensor key');
 
         return this._getObject(key).then(sensor => {
-            if (!sensor) {
-                return getOrCreateDevice(obj).then(device => {
+            if (forceCreate || !sensor) {
+                return getOrCreateDevice(obj, forceCreate).then(device => {
                     return this._setObject(key, {
                         'sensorName': obj.sensorName,
                         'sensorLabel': obj.sensorLabel,
@@ -114,7 +114,7 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
                 'sensorType': row.sensortype,
                 'deviceId': row.deviceid, 
                 'deviceName': row.devicename
-            })
+            }, true) // forceCreate the sensor to ensure we store new data from database
         ))
     }).catch(err => {
         logSvc.error('Storage service is unable to make database query', err);
