@@ -88,15 +88,19 @@ StorageService.prototype.init = function(callback, dbSvc, logSvc, eventSvc) {
         return this._getObject(key).then(sensor => {
             if (forceCreate || !sensor) {
                 return getOrCreateDevice(obj, forceCreate).then(device => {
-                    return this._setObject(key, {
+                    // create base
+                    let newSensor = {
                         'sensorName': obj.sensorName,
                         'sensorLabel': obj.sensorLabel,
                         'sensorId': obj.sensorId,
                         'sensorType': obj.sensorType,
-                        'sensorValue': obj.sensorValue || Number.MIN_VALUE, 
-                        'sensorDt': obj.sensorDt || undefined, 
                         'device': device
-                    }, constants.DEFAULTS.REDIS.SENSOR_EXPIRATION)
+                    }
+
+                    // set dt and value based on sensor if found (forceCreate=true) and defaults otherwise
+                    newSensor.sensorDt = sensor && sensor.sensorDt ? sensor.sensorDt : obj.sensorDt || undefined;
+                    newSensor.sensorValue = sensor && sensor.sensorValue ? sensor.sensorValue : obj.sensorValue || Number.MIN_VALUE;
+                    return this._setObject(key, newSensor, constants.DEFAULTS.REDIS.SENSOR_EXPIRATION)
                 })
             } else {
                 return Promise.resolve(sensor);
