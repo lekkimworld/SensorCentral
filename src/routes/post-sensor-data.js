@@ -57,7 +57,7 @@ router.post('/*', (req, res) => {
 
 		// acknowledge post
 		let j = JSON.stringify(dataObj, undefined, 2)
-		logSvc.info(`Received: ${j}`)
+		logSvc.debug(`Received: ${j}`)
 		res.set('Content-Type', 'text/plain').send(`Thank you - you posted: ${j}\n`).end()
 		
 		// get pubnub instance configured for publishing
@@ -69,10 +69,9 @@ router.post('/*', (req, res) => {
 				'message': dataObj.data,
 				'channel': constants.PUBNUB.CTRL_CHANNEL
 			}).then(resp => {
-				console.log(`SUCCESS - posted control message (<${JSON.stringify(dataObj.data)}>) to channel <${constants.PUBNUB.CTRL_CHANNEL}>`)
+				logSvc.debug(`Posted message (<${JSON.stringify(dataObj.data)}>) to channel <${constants.PUBNUB.CTRL_CHANNEL}>`)
 			}).catch(err => {
-				console.log(`ERROR - could NOT post control message (<${JSON.stringify(dataObj.data)}>) to channel <${constants.PUBNUB.CTRL_CHANNEL}>`)
-				console.log(err)
+				logSvc.error(`Could NOT post message (<${JSON.stringify(dataObj.data)}>) to channel <${constants.PUBNUB.CTRL_CHANNEL}>`, err)
 			})
 		} else if (msgtype === 'data' && dataObj.data.length) {
 			// send a message to indicate we heard from the device
@@ -92,15 +91,16 @@ router.post('/*', (req, res) => {
 				if (deviceIds && deviceIds.length) {
 					// found device id('s) - publish a device event
 					deviceIds.forEach(deviceId => {
+						const payload = {
+							'deviceId': deviceId
+						}
 						pubnub.publish({
-							'message': {
-								'deviceId': deviceId
-							},
+							'message': payload,
 							'channel': constants.PUBNUB.RAW_DEVICEREADING_CHANNEL
 						}).then(() => {
-	
+							logSvc.debug(`Posted message (<${JSON.stringify(payload)}>) to channel <${constants.PUBNUB.RAW_DEVICEREADING_CHANNEL}>`)
 						}).catch(err => {
-	
+							logSvc.error(`Could NOT post message (<${JSON.stringify(payload)}>) to channel <${constants.PUBNUB.RAW_DEVICEREADING_CHANNEL}>`, err)
 						})
 					})
 				}
@@ -110,22 +110,22 @@ router.post('/*', (req, res) => {
 			dataObj.data.filter(element => element.sensorId && element.sensorValue).forEach(element => {
 				// sanity
 				if (element.sensorValue < MIN_REGISTER_TEMP) {
-					console.log(`Ignoring value of <${element.sensorValue}> from <${element.sensorId}> as value to is too low (<${MIN_REGISTER_TEMP}>)`)
+					logSvc.info(`Ignoring value of <${element.sensorValue}> from <${element.sensorId}> as value to is too low (<${MIN_REGISTER_TEMP}>)`)
 					return
 				}
 	
 				// post message about sensor reading
+				const payload = {
+					'sensorValue': element.sensorValue,
+					'sensorId': element.sensorId
+				}
 				pubnub.publish({
-					'message': {
-						'sensorValue': element.sensorValue,
-						'sensorId': element.sensorId
-					},
+					'message': payload,
 					'channel': constants.PUBNUB.RAW_SENSORREADING_CHANNEL
 				}).then(resp => {
-					console.log(`SUCCESS - posted value of <${element.sensorValue}> from <${element.sensorId}> as value to channel <${constants.PUBNUB.RAW_SENSORREADING_CHANNEL}>`)
+					logSvc.debug(`Posted message (<${JSON.stringify(payload)}>) to channel <${constants.PUBNUB.RAW_SENSORREADING_CHANNEL}>`)
 				}).catch(err => {
-					console.log(`ERROR - could NOT post value of <${element.sensorValue}> from <${element.sensorId}> as value to channel <${constants.PUBNUB.RAW_SENSORREADING_CHANNEL}>`)
-					console.log(err)
+					logSvc.error(`Could NOT post message (<${JSON.stringify(payload)}>) to channel <${constants.PUBNUB.RAW_SENSORREADING_CHANNEL}>`, err)
 				})
 			})
 		}

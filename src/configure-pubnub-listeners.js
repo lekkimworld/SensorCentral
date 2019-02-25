@@ -17,9 +17,11 @@ const insertDataFromRawEventAndPublishEnrichedEvent = () => {
                 const obj = msg.message
                 
                 // insert into db
-                lookupService('db').then(dbSvc => {
+                lookupService(['log','db']).then(services => {
+                    const logSvc = services[0];
+                    const dbSvc = services[1];
                     dbSvc.query(`insert into sensor_data (dt, id, value) values (current_timestamp, '${obj.sensorId}', ${obj.sensorValue});`);
-                    console.log(`db - did INSERT of ${obj.sensorValue} for ${obj.sensorId}`)
+                    logSvc.debug(`db - did INSERT of ${obj.sensorValue} for ${obj.sensorId}`)
 
                     // send new event with more data
                     global.setImmediate(() => {
@@ -59,15 +61,17 @@ const insertDataFromRawEventAndPublishEnrichedEvent = () => {
  */
 const logRawEventData = () => {
     // get instance
-    lookupService('event').then(svc => {
-        const pubnub = svc.getInstance()
+    lookupService(['log','event']).then(services => {
+        const logSvc = services[0];
+        const eventSvc = services[1];
+        const pubnub = eventSvc.getInstance()
 
         // subcribe to channel
         pubnub.addListener({
             'message': (msg) => {
                 const channelName = msg.channel
                 const obj = msg.message
-                console.log(`Log raw messages received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
+                logSvc.debug(`Log raw messages received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
 
             }
         })
@@ -82,15 +86,17 @@ const logRawEventData = () => {
  */
 const logEnrichedEventEventData = () => {
     // get instance
-    lookupService('event').then(svc => {
-        const pubnub = svc.getInstance()
+    lookupService(['log','event']).then(services => {
+        const logSvc = services[0];
+        const eventSvc = services[1];
+        const pubnub = eventSvc.getInstance()
 
         // subsribe to channel
         pubnub.addListener({
             'message': (msg) => {
                 const channelName = msg.channel
                 const obj = msg.message
-                console.log(`Log augmented messages received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
+                logSvc.debug(`Log augmented messages received message on ${channelName} channel with payload ${JSON.stringify(obj)}`)
             }
         })
         pubnub.subscribe({

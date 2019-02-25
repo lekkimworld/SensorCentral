@@ -17,12 +17,19 @@ NotifyService.prototype.init = function(callback, logSvc, eventSvc, pushoverSvc,
             storageSvc.getDeviceById(obj.deviceId).then(device => {
                 if (obj.hasOwnProperty('restart') && true === obj.restart) {
                     // this is restart event - notify
-                    pushoverSvc.notify('Device restart', `Device restart (<${device.deviceId}> / <${device.deviceName}>) - maybe it didn't pat the watchdog?`)
+                    if (device) {
+                        pushoverSvc.notify('Device restart', `Device restart (<${device.deviceId}> / <${device.deviceName}>) - maybe it didn't pat the watchdog?`)
+                    } else {
+                        pushoverSvc.notify('UNKNOWN Device restart', `UNKNOWN Device restart (<${obj.deviceId}>) - maybe it didn't pat the watchdog?`)
+                    }
                     
                 } else if (obj.hasOwnProperty('watchdogReset') && obj.watchdogReset === true) {
                     // this is watchdogReset event - notify
-                    pushoverSvc.notify(`Device watchdog`, `Watchdog for device (<${device.deviceId}> / <${device.deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
-    
+                    if (device) {
+                        pushoverSvc.notify(`Device watchdog`, `Watchdog for device (<${device.deviceId}> / <${device.deviceName}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
+                    } else {
+                        pushoverSvc.notify(`UNKNOWN Device watchdog`, `UNKNOWN Watchdog for device (<${obj.deviceId}>) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`)
+                    }
                 }
             }).catch(err => {
                 console.log(err);
