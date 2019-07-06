@@ -18,11 +18,11 @@ app.use((err, req, res, next) => {
 })
 
 // middleware
-app.engine('handlebars', exphbs({defaultLayout: 'main'}))
-app.set('view engine', 'handlebars')
+app.engine('handlebars', exphbs({defaultLayout: 'main'}));
+app.set('view engine', 'handlebars');
 
 // add routes to app
-routes(app)
+routes.routes(app);
 
 module.exports = () => {
     // return the app

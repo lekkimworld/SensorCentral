@@ -1,6 +1,6 @@
 module.exports = function(grunt) {
     grunt.initConfig({
-        clean: ['public/'],
+        clean: ['public/', "server-dist"],
         copy: {
             main: {
                 "files": [
@@ -13,6 +13,12 @@ module.exports = function(grunt) {
                     {
                         src: 'dev/manifest.json',
                         dest: 'public/manifest.json'
+                    },
+                    {
+                        "expand": true,
+                        "cwd": "src",
+                        "src": "**/*.js",
+                        "dest": "server-dist"
                     }
                 ]
             }
@@ -25,6 +31,15 @@ module.exports = function(grunt) {
             'public/css/styles.css': ['dev/css/**.css'],
             options: {
                 vendors: ['-moz-', '-webkit-']
+            }
+        },
+        ts: {
+            default : {
+                src: ["**/*.ts", "!node_modules/**/*.ts"],
+                outDir: "server-dist",
+                options: {
+                    rootDir: "src"
+                }
             }
         },
         watch: {
@@ -40,6 +55,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-rework');
     grunt.loadNpmTasks('grunt-browserify');
     grunt.loadNpmTasks('grunt-contrib-watch');
+    grunt.loadNpmTasks("grunt-ts");
 
-    grunt.registerTask('default', ['clean', 'copy', 'browserify', 'rework']);
+    grunt.registerTask('default', ['clean', 'copy', 'browserify', 'rework', 'ts']);
 };

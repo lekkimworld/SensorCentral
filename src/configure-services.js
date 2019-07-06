@@ -1,17 +1,7 @@
+const {BaseService} = require("./types");
 const util = require('util')
-const constants = require('./constants.js')
+const {constants} = require('./constants')
 const terminateListener = require('./terminate-listener.js')
-
-const BaseService = function(services) {}
-BaseService.prototype.terminate = function() {}
-/**
- * Allow service to initiliaze. Service should callback when done. If callback is 
- * done with an error we set the service state to STATE_RETRY_INIT and retry the initialization 
- * of the service in INIT_RETRY_SECONDS seconds.
- */
-BaseService.prototype.init = function(callback) {
-    callback()
-}
 
 const STATE_REGISTERED = 0
 const STATE_STARTING_INIT = 1
@@ -72,7 +62,7 @@ const _serviceInit = (svc) => {
     if (svc['init'] && typeof svc['init'] === 'function') {
         // get all services the service depend on
         Promise.all((svc.dependencies || []).map(key => lookupService(key))).then(args => {
-            svc.init(f, ...args)
+            svc.init(f, args)
         }).catch(err => {
             _services[svc.name].error = err
             _services[svc.name].state = STATE_ERROR

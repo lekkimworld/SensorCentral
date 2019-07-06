@@ -8,7 +8,9 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Program",
-            "program": "${workspaceFolder}/src/workers/worker_web.js"
+            "program": "${workspaceFolder}/src/workers/worker_web.js",
+            "preLaunchTask": "tsc: build - tsconfig.json",
+            "outFiles": ["${workspaceFolder}/server-dist/**/*.js"]
         },
         {
             "name": "Run all tests",

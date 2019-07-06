@@ -4,3 +4,6 @@ public
 dump.rdb
 .nyc_output/
 coverage
+.tscache
+server-dist
+src/foo.ts

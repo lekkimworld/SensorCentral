@@ -1,13 +1,18 @@
+<h1>{{title}}</h1>
 <span class="clearfix">
-    <i class="float-left">Opdateret: {{updated}}</i>
+    <i class="float-left">Updated: {{updated}}</i>
     <a href="" class="float-right color-black"><i class="fa fa-sync fa-2x" aria-hidden="true"></i></a>
 </span>
 <div class="row">
     {{#each data}}
     <div class="col-lg-2 col-md-3 col-sm-4"><div class="sensorReading">
-        <div class="value">{{this.value}}</div>
-        <div class="name">{{this.name}}</div>
-        <div class="name">{{this.dt}}, {{this.last}} min. siden</div>
+        <div class="value">{{this.value_string}}</div>
+        {{#if this.name}}
+            <div class="name">{{this.name}}</div>
+        {{else}}
+            <div class="name">{{this.id}}</div>
+        {{/if}}
+        <div class="name">{{this.dt_string}}, {{this.ageMinutes}} min. siden</div>
     </div></div>
     {{/each}}    
 </div>

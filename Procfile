@@ -1,1 +1,1 @@
-web: node src/workers/worker_web.js
+web: npm run serve

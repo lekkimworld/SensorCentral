@@ -55,8 +55,14 @@
           <a class="dropdown-item" href="/build">Configure Sensors</a>
         </div>
       </li>
-      <li class="nav-item {{report_active}}">
-        <a class="nav-link" href="/dashboard">Dashboard</a>
+      <li class="nav-item dropdown {{setup_dashboard}}">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDashboardLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Dashboards
+        </a>
+        <div class="dropdown-menu" aria-labelledby="navbarDashboardLink">
+          <a class="dropdown-item" href="/dashboard/known">Known Devices</a>
+          <a class="dropdown-item" href="/dashboard/unknown">Unknown Devices</a>
+        </div>
       </li>
       <li class="nav-item {{about_active}}">
           <a href="/about" class="nav-link">About</a>
