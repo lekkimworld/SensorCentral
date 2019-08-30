@@ -1,4 +1,4 @@
-import {Pushover} from "node-pushover";
+const {Pushover} = require("node-pushover");
 import { BaseService } from "../types";
 import { LogService } from "./log-service";
 

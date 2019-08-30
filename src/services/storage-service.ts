@@ -146,6 +146,29 @@ export class StorageService extends BaseService {
         return this.getSensorsWithRecentReadings(false);
     }
 
+    /**
+     * Get the sensor reading from Redis from the supplied sensor ids.
+     * 
+     * @param sensorIds 
+     */
+    getRecentReadingBySensorIds(sensorIds : string[]) : Promise<Map<string,RedisSensorMessage>> {
+        if (!sensorIds || !sensorIds.length) return Promise.reject(Error(`No sensor ids supplied`));
+        const redisKeys = sensorIds.map(id => `${SENSOR_KEY_PREFIX}${id}`);
+        return this.redisService!.mget(...redisKeys).then((data : string[]) => {
+            const result = data.reduce((prev, str_redis) => {
+                if (!str_redis) return prev;
+                try {
+                    const redis_obj = JSON.parse(str_redis) as RedisSensorMessage;
+                    prev.set(redis_obj.id, redis_obj);
+                } catch (err) {
+                    this.logService!.warn(`Unable to parse sensor message from Redis <${str_redis}>, error message: ${err.message}`);
+                }
+                return prev;
+            }, new Map<string,RedisSensorMessage>());
+            return Promise.resolve(result);
+        })
+    }
+
     getSensors() : Promise<Sensor[]> {
         return this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id").then(result => {
             const sensors = result.rows.map(row => {

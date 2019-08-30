@@ -3,6 +3,7 @@ import {constants} from "./constants";
 
 export const formatDate = function(date? : unknown) : string {
     // see if already a "moment" instance
+    // @ts-ignore
     let m = (date && date['diff'] ? date : date ? moment(date) : moment()) as moment.Moment;
     return m.tz(constants.DEFAULTS.TIMEZONE).format(constants.DEFAULTS.DATETIME_FORMAT);
 }

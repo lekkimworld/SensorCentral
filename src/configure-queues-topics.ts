@@ -15,9 +15,9 @@ export interface ISubscriptionResult extends IPublishResult {
 }
 export class PublishError extends Error implements IPublishResult {
     exchangeName:string;
-    routingKey:string;
+    routingKey:string|undefined;
     data:object;
-    constructor(msg:string, exchangeName:string, routingKey:string, data:object) {
+    constructor(msg:string, exchangeName:string, routingKey:string|undefined, data:object) {
         super(`Unable to post to exchange: ${msg}`);
         this.exchangeName = exchangeName;
         this.routingKey = routingKey;

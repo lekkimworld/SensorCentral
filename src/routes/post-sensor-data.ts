@@ -1,5 +1,5 @@
 import * as express from 'express';
-import * as services from '../configure-services';
+const services = require('../configure-services');
 import {EventService} from "../services/event-service";
 import {constants} from "../constants";
 import { LogService } from '../services/log-service';

@@ -56,6 +56,7 @@ export class NotifyService extends BaseService {
         this.eventService.subscribeTopic(constants.TOPICS.SENSOR, "known", (result : ISubscriptionResult) => {
             this.logService!.debug(`Notify service received message on exchange <${result.exchangeName}> and routingKey ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
             const payload = result.data as TopicSensorMessage;
+            // @ts-ignore
             if (payload.sensorId === '28FF46C76017059A' && payload.value < 0 && (!this.pushoverLastSent || moment().diff(this.pushoverLastSent, 'minutes') > 60)) {
                 // @ts-ignore
                 this.pushoverLastSent = moment();
