@@ -3,6 +3,7 @@ import { BaseService, Sensor, RedisSensorMessage } from '../../../types';
 import { StorageService } from '../../../services/storage-service';
 import { stringify } from 'querystring';
 import { read } from 'fs';
+import { LogService } from '../../../services/log-service';
 const {lookupService} = require('../../../configure-services');
 
 const router = express.Router();
@@ -61,15 +62,18 @@ router.get('/sensors', (req, res) => {
     let queryKey = req.query.queryKey as string;
     let queryValue = req.query.queryValue as string;
     
-    lookupService('storage').then((svc :  BaseService) => {
-        const storageService = svc as StorageService;
+    lookupService(["log", "storage"]).then((svcs :  BaseService[]) => {
+        const logService = svcs[0] as LogService;
+        const storageService = svcs[1] as StorageService;
+        logService.debug(`API query for sensors with queryKey <${queryKey}> and queryValue <${queryValue}>`);
 
         // get all sensors
-        return Promise.all([Promise.resolve(storageService), storageService.getSensors()]);
+        return Promise.all([Promise.resolve(logService), Promise.resolve(storageService), storageService.getSensors()]);
 
     }).then((data : any) => {
-        const storageService = data[0] as StorageService;
-        const sensors = data[1] as Sensor[];
+        const logService = data[0] as LogService;
+        const storageService = data[1] as StorageService;
+        const sensors = data[2] as Sensor[];
         
         // see if we should send all sensors
         if (!queryKey || !queryValue) {
@@ -78,20 +82,21 @@ router.get('/sensors', (req, res) => {
         }
         
         // filter sensors
-        const filteredSensors : Map<string,Sensor> = sensors.reduce((prev, sensor) => {
-                if (queryKey === "id" && sensor.id === queryValue) prev.set(sensor.id,  sensor);
-                if (queryKey === "label" && sensor.label === queryValue) prev.set(sensor.id,  sensor);
-                if (queryKey === "name" && sensor.name === queryValue) prev.set(sensor.id,  sensor);
+        const filteredSensorIds : string[] = sensors.reduce((prev, sensor) => {
+                if (queryKey === "id" && sensor.id === queryValue) prev.push(sensor.id);
+                if (queryKey === "label" && sensor.label === queryValue) prev.push(sensor.id);
+                if (queryKey === "name" && sensor.name === queryValue) prev.push(sensor.id);
                 return prev;
-            }, new Map<string,Sensor>());
+            }, new Array<string>());
+        logService.debug(`Filtered <${sensors.length}> sensors down to <${filteredSensorIds.length}> sensor id based on queryKey and queryValue`);
             
-        if (!filteredSensors.size) {
+        if (!filteredSensorIds.length) {
             // unable to find sensors after filter
             return Promise.reject(Error(`Unable to find sensor(s) matching ${queryKey}=${queryValue}`));
 
         } else {
             // get recent readings for the selected sensor(s)
-            return Promise.all([Promise.resolve(sensors), storageService.getRecentReadingBySensorIds(sensors.map(sensor => sensor.id))]);
+            return Promise.all([Promise.resolve(sensors), storageService.getRecentReadingBySensorIds(filteredSensorIds)]);
         }
     }).then((data : any) => {
         const sensors = data[0] as Sensor[];
