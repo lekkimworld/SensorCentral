@@ -112,7 +112,7 @@ router.get('/sensors', (req, res) => {
             }
         })
 
-        res.status(200).send(result);
+        res.status(200).send(result.length === 1 ? result[0] : result);
 
     }).catch((err : Error) => {
         console.log('Unable to lookup storage service');
