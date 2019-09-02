@@ -49,7 +49,7 @@ export class WatchdogService extends BaseService {
                         "device": device,
                         "deviceId": device.id
                     }
-                    this.eventService!.publishTopic(constants.TOPICS.CONTROL, "watchdogReset", payload);
+                    this.eventService!.publishTopic(constants.TOPICS.CONTROL, "known.watchdogReset", payload);
                 })
 
                 // feed watchdog
@@ -61,7 +61,7 @@ export class WatchdogService extends BaseService {
         })
 
         // listen to event service to feed watchdog on events
-        this.eventService.subscribeTopic(constants.TOPICS.DEVICE, "#", (result : ISubscriptionResult) => {
+        this.eventService.subscribeTopic(constants.TOPICS.DEVICE, "known.#", (result : ISubscriptionResult) => {
             // get device id
             const msg = result.data as TopicControlMessage;
 

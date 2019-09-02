@@ -26,7 +26,7 @@ export class NotifyService extends BaseService {
         this.pushoverService = services[2] as unknown as PushoverService;
         this.storage = services[3] as unknown as StorageService;
 
-        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, "known", (result : ISubscriptionResult) => {
+        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, "known.#", (result : ISubscriptionResult) => {
             this.logService!.debug(`Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
             const msg = result.data as TopicControlMessage;
 
@@ -53,7 +53,7 @@ export class NotifyService extends BaseService {
             
         });
 
-        this.eventService.subscribeTopic(constants.TOPICS.SENSOR, "known", (result : ISubscriptionResult) => {
+        this.eventService.subscribeTopic(constants.TOPICS.SENSOR, "known.#", (result : ISubscriptionResult) => {
             this.logService!.debug(`Notify service received message on exchange <${result.exchangeName}> and routingKey ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
             const payload = result.data as TopicSensorMessage;
             // @ts-ignore

@@ -84,7 +84,7 @@ router.post('/*', (req, res) => {
 			// create payload and publish to queue
 			const payload : IngestedControlMessage = {
 				"type": type,
-				"deviceId": deviceId
+				"id": deviceId
 			}
 			eventSvc.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
 				logSvc.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)

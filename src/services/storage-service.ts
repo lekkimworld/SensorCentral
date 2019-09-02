@@ -1,6 +1,6 @@
 import * as  util from "util";
 import {constants} from "../constants";
-import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, SensorReading, DeviceStatus} from "../types";
+import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, SensorReading, DeviceStatus, IngestedControlMessage} from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
 import { LogService } from "./log-service";
@@ -35,6 +35,9 @@ export class StorageService extends BaseService {
 
         // listen to sensor queue to persist and augment sensor reading
         this.addListenerToSensorQueue();
+
+        // listen to control queue
+        this.addListenerToControlQueue();
 
         // listen to sensor topic
         this.addListenerToSensorTopic();
@@ -377,6 +380,32 @@ export class StorageService extends BaseService {
         });
     }
 
+    private addListenerToControlQueue() {
+        this.eventService!.subscribeQueue(constants.QUEUES.CONTROL, (result) => {
+            // cast
+            const msg = result.data as IngestedControlMessage;
+
+            // see if we know the device
+            this.getDeviceById(msg.id).catch(err => {
+                return Promise.resolve(null);
+
+            }).then((device : Device | null) => {
+                // mark msg as consumed
+                result.callback();
+
+                // created augmented message
+                const payload = {
+                    "deviceId": msg.id,
+                    "device": device,
+                    "type": msg.type
+                } as TopicControlMessage;
+
+                // publish
+                this.eventService!.publishTopic(constants.TOPICS.CONTROL, device ? `known.${msg.type}` : `unknown/${msg.type}`, payload);
+            })
+        });
+    }
+
     private addListenerToDeviceQueue() {
         this.eventService!.subscribeQueue(constants.QUEUES.DEVICE, (result) => {
             // cast
@@ -387,7 +416,7 @@ export class StorageService extends BaseService {
                 return Promise.resolve(null);
 
             }).then((device : Device | null) => {
-                // mark msg as consumer
+                // mark msg as consumed
                 result.callback();
                 
                 // create augmented device and post to topic
@@ -398,8 +427,6 @@ export class StorageService extends BaseService {
 
                 // publish
                 this.eventService!.publishTopic(constants.TOPICS.DEVICE, device ? "known" : "unknown", payload);
-
-                // we've con
             })
         })
     }

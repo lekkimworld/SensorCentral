@@ -35,8 +35,8 @@ export enum ControlMessageTypes {
  * 
  */
 export interface IngestedControlMessage {
-    type : ControlMessageTypes | null;
-    deviceId : string;
+    id : string;
+    type : ControlMessageTypes;
 }
 
 /**
