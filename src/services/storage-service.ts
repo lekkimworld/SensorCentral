@@ -82,45 +82,6 @@ export class StorageService extends BaseService {
         })
     }
 
-    /*
-    getDeviceStatuses() : Promise<DeviceStatus[]> {
-        return this.redisService!.keys(`${DEVICE_KEY_PREFIX}*`).then(keys => {
-            if (!keys || !keys.length) return Promise.resolve([]);
-            return this.redisService!.mget(...keys);
-        }).then(values => {
-            // parse values from Redis
-            const deviceIdObjMap = values.reduce((prev, value) => {
-                try {
-                    const obj = JSON.parse(value) as RedisDeviceMessage;
-                    prev.set(obj.id, obj);
-                } catch (err) {
-
-                }
-                return prev;
-            }, new Map<string,RedisDeviceMessage>());
-
-            // get the devices from database
-            return Promise.all([Promise.resolve(deviceIdObjMap), this.getDevicesByIds(Array.from(deviceIdObjMap.keys()))]);
-
-        }).then(values => {
-            const deviceIdObjMap = values[0] as Map<string,RedisDeviceMessage>;
-            const devices = values[1] as Device[];
-
-            const deviceWithStatus = devices.map(device => {
-                const result = {
-                    "id": device.id,
-                    "house": device.house,
-                    "name": device.name,
-                    "restarts": deviceIdObjMap.get(device.id) ? deviceIdObjMap.get(device.id)!.restarts : -1,
-                    "watchdogResets": deviceIdObjMap.get(device.id) ? deviceIdObjMap.get(device.id)!.watchdogResets : -1
-                } as DeviceStatus;
-                return result;
-            })
-            return Promise.resolve(deviceWithStatus);
-        })
-    }
-    */
-
     getDevicesByIds(deviceIds : string[]) : Promise<Device[]> {
         // get all devices
         return this.getDevices().then(devices => {
@@ -357,41 +318,6 @@ export class StorageService extends BaseService {
     }
 
     /**
-     * Listen for messages on the control topic and increment counters in redis.
-     * 
-     */
-    private addListenerToControlTopic() {
-        this.eventService!.subscribeTopic(constants.TOPICS.CONTROL, "#", (result : ISubscriptionResult) => {
-            const data = result.data as TopicControlMessage;
-            this.redisService!.get(`${DEVICE_KEY_PREFIX}${data.deviceId}`).then(str_device => {
-                let redis_device : RedisDeviceMessage;
-                if (!str_device) {
-                    redis_device = {
-                        "id": data.deviceId,
-                        "dt": new Date(),
-                        "restarts": 0,
-                        "watchdogResets": 0
-                    }
-                } else {
-                    // parse extracted json and reinit date
-                    redis_device = JSON.parse(str_device) as RedisDeviceMessage;
-                }
-
-                // act on event
-                if (result.routingKey === ControlMessageTypes.restart) {
-                    redis_device.restarts++;
-                } else if (result.routingKey === ControlMessageTypes.watchdogReset) {
-                    redis_device.watchdogResets++;
-                }
-                redis_device.dt = new Date();
-
-                // (re)store in redis
-                this.redisService!.set(`${DEVICE_KEY_PREFIX}${data.deviceId}`, JSON.stringify(redis_device));
-            })
-        })
-    }
-
-    /**
      * Listen for messages on the sensor queue and do as follows:
      * 1. Is the sensor known?
      * 2. If yes: Persist sensor reading
@@ -484,31 +410,74 @@ export class StorageService extends BaseService {
         })
     }
 
+    /**
+     * Listen for messages on the device topic to ensure data in redis.
+     * 
+     */
     private addListenerToDeviceTopic() {
         this.eventService!.subscribeTopic(constants.TOPICS.DEVICE, "#", (result) => {
             // cast
             const data = result.data as TopicDeviceMessage;
-            this.redisService!.get(`${DEVICE_KEY_PREFIX}${data.deviceId}`).then(str_device => {
-                let redis_device : RedisDeviceMessage;
-                if (!str_device) {
-                    redis_device = {
-                        "id": data.deviceId,
-                        "dt": new Date(),
-                        "restarts": 0,
-                        "watchdogResets": 0
-                    }
-                } else {
-                    // parse extracted json and reinit date
-                    redis_device = JSON.parse(str_device) as RedisDeviceMessage;
-                }
 
-                // update timestamp
-                redis_device.dt = new Date();
-
-                // (re)store in redis
-                this.redisService!.set(`${DEVICE_KEY_PREFIX}${data.deviceId}`, JSON.stringify(redis_device));
-            })
+            // call method to create / update device in redis
+            this.getOrCreateRedisDeviceMessage(data.deviceId);
         });
+    }
+
+    /**
+     * Listen for messages on the control topic and increment counters in redis.
+     * 
+     */
+    private addListenerToControlTopic() {
+        this.eventService!.subscribeTopic(constants.TOPICS.CONTROL, "#", (result : ISubscriptionResult) => {
+            const data = result.data as TopicControlMessage;
+            this.getOrCreateRedisDeviceMessage(data.deviceId, (redis_device) => {
+                // act on event
+                if (result.routingKey === ControlMessageTypes.restart) {
+                    redis_device.restarts++;
+                } else if (result.routingKey === ControlMessageTypes.watchdogReset) {
+                    redis_device.watchdogResets++;
+                }
+            });
+        })
+    }
+
+    /**
+     * Gets or creates a message in Redis for the supplied device id and sets the 
+     * current timestamp on the message. Optionally calls a callback to enrich the 
+     * message in redis further.
+     * 
+     * @param deviceId 
+     * @param callback 
+     */
+    private getOrCreateRedisDeviceMessage(deviceId : string, callback? : (redis_device : RedisDeviceMessage) => void) : Promise<void> {
+        // query redis
+        return this.redisService!.get(`${DEVICE_KEY_PREFIX}${deviceId}`).then(str_device => {
+            // see if device is already in redis or create if not
+            let redis_device : RedisDeviceMessage;
+            if (!str_device) {
+                redis_device = {
+                    "id": deviceId,
+                    "dt": new Date(),
+                    "restarts": 0,
+                    "watchdogResets": 0
+                }
+            } else {
+                // parse extracted json and reinit date
+                redis_device = JSON.parse(str_device) as RedisDeviceMessage;
+            }
+
+            // call callback if supplied
+            if (callback) callback(redis_device);
+            
+            // update timestamp
+            redis_device.dt = new Date();
+
+            // (re)store in redis
+            return this.redisService!.set(`${DEVICE_KEY_PREFIX}${deviceId}`, JSON.stringify(redis_device)); 
+        }).then(() => {
+            return Promise.resolve();
+        })
     }
 
     private getSensorsWithRecentReadings(known : boolean) : Promise<SensorReading[]> {
