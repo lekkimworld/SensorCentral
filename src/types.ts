@@ -74,6 +74,7 @@ export interface Device {
 }
 
 export interface DeviceStatus extends Device {
+    dt : Date;
     restarts : number;
     watchdogResets : number;
 }
@@ -133,6 +134,7 @@ export interface RedisSensorMessage {
 
 export interface RedisDeviceMessage {
     id : string;
+    dt : Date;
     restarts : number;
     watchdogResets : number;
 }

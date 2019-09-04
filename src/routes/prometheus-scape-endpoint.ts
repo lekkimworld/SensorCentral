@@ -28,7 +28,7 @@ router.get('/scrapedata', (req, res) => {
             })
             
             // get devices
-            return storage.getDeviceStatuses();
+            return storage.getKnownDevicesStatus();
 
         }).then(devices => {
             // traverse and process each device restart or watchdog event in turn

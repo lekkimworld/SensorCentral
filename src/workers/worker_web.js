@@ -18,6 +18,9 @@ const { RedisService } = require( "../services/redis-service");
 const { StorageService } = require( "../services/storage-service");
 const { WatchdogService } = require( "../services/watchdog-service");
 
+// number of workers we should create
+const WORKERS = process.env.WEB_CONCURRENCY || 1;
+
 // add services
 services.registerService(new LogService());
 services.registerService(new EventService());
@@ -28,19 +31,15 @@ services.registerService(new PushoverService());
 services.registerService(new NotifyService());
 services.registerService(new WatchdogService());
 
-// configure express
-const app = configureExpress()
-
-// configure queue listeners
-require('../configure-listeners.js')()
-
-// start server
-console.log(`Starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`)
-app.listen(process.env.PORT || 8080)
-
 // setup termination listener
 terminateListener(() => {
 	console.log("Terminating services");
 	services.terminate()
 	console.log("Terminated services");
 });
+
+const app = configureExpress()
+
+// start server
+console.log(`Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`)
+app.listen(process.env.PORT || 8080)

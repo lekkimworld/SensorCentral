@@ -70,7 +70,7 @@ export class WatchdogService extends BaseService {
                 _watchdogs.get(msg.deviceId)!.feed({
                     "data": msg.device
                 });
-                this.logService!.debug(`Fed watchdog for device with id <${msg.deviceId}> (<${msg.device}>)`);
+                this.logService!.debug(`Fed watchdog for device with id <${msg.deviceId}> (<${JSON.stringify(msg.device)}>)`);
             }
         });
 
