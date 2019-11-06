@@ -123,7 +123,7 @@ router.get('/sensors', (req, res) => {
     })
 })
 
-router.get("/excel/:sensorLabel/:period/:step", (req, res) => {
+router.get("/excel/:sensorLabel/:period/:step?", (req, res) => {
     // get sensor label
     const sensorLabel = req.params.sensorLabel;
     const period = req.params.period;
