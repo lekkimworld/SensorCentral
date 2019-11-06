@@ -4,6 +4,9 @@ import { StorageService } from '../../../services/storage-service';
 import { stringify } from 'querystring';
 import { read } from 'fs';
 import { LogService } from '../../../services/log-service';
+import * as prometheus from "../../../prometheus-export";
+import Moment from 'moment';
+import moment = require("moment");
 const {lookupService} = require('../../../configure-services');
 
 const router = express.Router();
@@ -117,6 +120,36 @@ router.get('/sensors', (req, res) => {
     }).catch((err : Error) => {
         console.log('Unable to lookup storage service');
         res.status(404).send({'error': true, 'message': err.message});
+    })
+})
+
+router.get("/excel/:sensorLabel/:period/:step", (req, res) => {
+    // get sensor label
+    const sensorLabel = req.params.sensorLabel;
+    const period = req.params.period;
+    let start : Moment.Moment;
+    let end : Moment.Moment; 
+    let step : string | undefined = req.params.step;
+    if (period === "last24hrs") {
+        start = moment().set("minute", 0).set("second", 0).set("millisecond", 0).add(-24, "hour").utc();
+        end = moment().set("minute", 0).set("second", 0).set("millisecond", 0).utc();
+    } else if (period === "lastweek") {
+        start = moment().set("minute", 0).set("second", 0).set("millisecond", 0).add(-1, "week").utc();
+        end = moment().set("minute", 0).set("second", 0).set("millisecond", 0).utc();
+    } else {
+        return res.status(417).end();
+    }
+    prometheus.fetchData({
+        "query": `sensor_${sensorLabel}`,
+        "start": start,
+        "end": end,
+        "step": step
+    }).then((dataset : Array<prometheus.ExportedSensorValue>) => {
+        const buf = prometheus.createExcelWorkbook(dataset);
+        const timestamp = moment().utc().format(prometheus.ISO8601_DATETIME_FORMAT);
+        res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.set("Content-Disposition", `attachment; filename="sensorcentral_export_${sensorLabel}_${timestamp}.xlsx"`);
+        res.send(buf).end();
     })
 })
 

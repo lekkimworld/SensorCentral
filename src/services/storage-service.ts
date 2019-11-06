@@ -7,7 +7,8 @@ import { LogService } from "./log-service";
 import { DatabaseService } from "./database-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
 import * as utils from "../utils";
-import * as moment from "moment";
+import Moment from 'moment';
+import moment = require("moment");
 import { stringify } from "querystring";
 
 const SENSOR_KEY_PREFIX = 'sensor:';
@@ -513,7 +514,7 @@ export class StorageService extends BaseService {
                 if ((known && sensor) || (!known && !sensor)) {
                     const redisObj = sensorIdObjMap.get(sensorId);
                     // @ts-ignore
-                    let m = redisObj && redisObj.dt ? moment(redisObj.dt) : null;
+                    let m = redisObj && redisObj.dt ? Moment(redisObj.dt) : null;
                     // @ts-ignore
                     let denominator = sensor ? constants.SENSOR_DENOMINATORS[sensor.type] : "??";
                     const result = {
@@ -526,8 +527,7 @@ export class StorageService extends BaseService {
                         "value_string": redisObj ? `${redisObj.value.toFixed(2)}${denominator}` : null,
                         "dt": redisObj ? redisObj.dt : null,
                         "dt_string": redisObj && redisObj.dt ? utils.formatDate(redisObj!.dt) : null,
-                        // @ts-ignore
-                        "ageMinutes": m ? moment().diff(m, 'minutes') : -1,
+                        "ageMinutes": m ? Moment().diff(m, 'minutes') : -1,
                         "denominator": denominator
                     } as SensorReading;
                     resultArray.push(result);
@@ -569,7 +569,6 @@ export class StorageService extends BaseService {
             deviceMap.forEach((device, deviceId) => {
                 if ((known && device) || (!known && !device)) {
                     const redisObj = deviceIdObjMap.get(deviceId);
-                    // @ts-ignore
                     let m = redisObj && redisObj.dt ? moment(redisObj.dt) : null;
                     const result = {
                         "id": deviceId,
@@ -578,8 +577,7 @@ export class StorageService extends BaseService {
                         "dt": redisObj ? redisObj.dt : null,
                         "watchdogResets": redisObj ? redisObj.watchdogResets : undefined,
                         "restarts": redisObj ? redisObj.restarts : undefined,
-                        // @ts-ignore
-                        "ageMinutes": m ? moment().diff(m, 'minutes') : -1
+                        "ageMinutes": m ? Moment().diff(m, 'minutes') : -1
                     } as DeviceStatus;
                     resultArray.push(result);
                 }

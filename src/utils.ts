@@ -1,9 +1,9 @@
-import * as moment from "moment-timezone";
+import Moment from 'moment-timezone';
+import moment = require("moment-timezone");
 import {constants} from "./constants";
 
-export const formatDate = function(date? : unknown) : string {
+export const formatDate = function(date? : any) : string {
     // see if already a "moment" instance
-    // @ts-ignore
-    let m = (date && date['diff'] ? date : date ? moment(date) : moment()) as moment.Moment;
+    let m = (date && date['diff'] ? date : date ? Moment(date) : Moment()) as moment.Moment;
     return m.tz(constants.DEFAULTS.TIMEZONE).format(constants.DEFAULTS.DATETIME_FORMAT);
 }

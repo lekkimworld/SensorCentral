@@ -1,3 +1,5 @@
+import { Moment } from "moment";
+
 export abstract class BaseService {
     public readonly name : string;
     dependencies : string[] = [];
