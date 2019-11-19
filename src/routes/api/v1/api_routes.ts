@@ -123,6 +123,36 @@ router.get('/sensors', (req, res) => {
     })
 })
 
+const exportPrometheusData = (res : express.Response, sensorLabel : string, start : Moment.Moment, end : Moment.Moment, step : string) => {
+    prometheus.fetchData({
+        "query": `sensor_${sensorLabel}`,
+        "start": start,
+        "end": end,
+        "step": step
+    }).then((dataset : Array<prometheus.ExportedSensorValue>) => {
+        const buf = prometheus.createExcelWorkbook(dataset);
+        const timestamp = moment().utc().format(prometheus.ISO8601_DATETIME_FORMAT);
+        res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.set("Content-Disposition", `attachment; filename="sensorcentral_export_${sensorLabel}_${timestamp}.xlsx"`);
+        res.send(buf).end();
+    })
+}
+
+router.get("/excel/:sensorLabel/:start/:end/:step?", (req, res) => {
+    const sensorLabel = req.params.sensorLabel;
+    const strstart = req.params.start;
+    const strend = req.params.end;
+    if (!strstart.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z/) || !strend.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z/)) {
+        res.type("json");
+        return res.status(417).send({"status": "error", "message": "Invalid start or end date/time (ISO8601)"});
+    }
+    const start = moment(strstart, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true);
+    const end = moment(strend, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true);
+    const step = req.params.step && req.params.step.match(/\d{1,}[mh]/) ? req.params.step : "60m";
+
+    exportPrometheusData(res, sensorLabel, start, end, step);
+})
+
 router.get("/excel/:sensorLabel/:period/:step?", (req, res) => {
     // get sensor label
     const sensorLabel = req.params.sensorLabel;
@@ -139,18 +169,8 @@ router.get("/excel/:sensorLabel/:period/:step?", (req, res) => {
     } else {
         return res.status(417).end();
     }
-    prometheus.fetchData({
-        "query": `sensor_${sensorLabel}`,
-        "start": start,
-        "end": end,
-        "step": step
-    }).then((dataset : Array<prometheus.ExportedSensorValue>) => {
-        const buf = prometheus.createExcelWorkbook(dataset);
-        const timestamp = moment().utc().format(prometheus.ISO8601_DATETIME_FORMAT);
-        res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        res.set("Content-Disposition", `attachment; filename="sensorcentral_export_${sensorLabel}_${timestamp}.xlsx"`);
-        res.send(buf).end();
-    })
+    
+    exportPrometheusData(res, sensorLabel, start, end, step);
 })
 
 export default router;
