@@ -138,7 +138,7 @@ const exportPrometheusData = (res : express.Response, sensorLabel : string, star
     })
 }
 
-router.get("/excel/:sensorLabel/:start/:end/:step?", (req, res) => {
+router.get("/excel/:sensorLabel/:start(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z)/:end(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z)/:step?", (req, res) => {
     const sensorLabel = req.params.sensorLabel;
     const strstart = req.params.start;
     const strend = req.params.end;
