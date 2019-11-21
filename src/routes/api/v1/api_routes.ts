@@ -138,7 +138,7 @@ const exportPrometheusData = (res : express.Response, sensorLabel : string, star
     })
 }
 
-router.get("/excel/:sensorLabel/:start(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z)/:end(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z)/:step?", (req, res) => {
+router.get("/excel/:sensorLabel/:start(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/:end(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/:step?", (req, res) => {
     const sensorLabel = req.params.sensorLabel;
     const strstart = req.params.start;
     const strend = req.params.end;
@@ -146,8 +146,8 @@ router.get("/excel/:sensorLabel/:start(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3
         res.type("json");
         return res.status(417).send({"status": "error", "message": "Invalid start or end date/time (ISO8601)"});
     }
-    const start = moment(strstart, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true);
-    const end = moment(strend, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true);
+    const start = moment(strstart, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true).set("millisecond", 0);
+    const end = moment(strend, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true).set("millisecond", 0);
     const step = req.params.step && req.params.step.match(/\d{1,}[mh]/) ? req.params.step : "60m";
 
     exportPrometheusData(res, sensorLabel, start, end, step);
