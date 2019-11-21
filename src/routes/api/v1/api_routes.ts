@@ -138,7 +138,7 @@ const exportPrometheusData = (res : express.Response, sensorLabel : string, star
     })
 }
 
-router.get("^/excel/:sensorLabel/:start(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/:end(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/:step?", (req, res) => {
+router.get("/excel/range/custom/:sensorLabel/:start/:end/:step?", (req, res) => {
     const sensorLabel = req.params.sensorLabel;
     const strstart = req.params.start;
     const strend = req.params.end;
@@ -146,7 +146,7 @@ router.get("^/excel/:sensorLabel/:start(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/:e
         res.type("json");
         return res.status(417).send({"status": "error", "message": "Invalid start or end date/time (ISO8601)"});
     }
-    
+
     const start = moment(strstart, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true).set("millisecond", 0);
     const end = moment(strend, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true).set("millisecond", 0);
     const step = req.params.step && req.params.step.match(/\d{1,}[mh]/) ? req.params.step : "60m";
@@ -154,7 +154,7 @@ router.get("^/excel/:sensorLabel/:start(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/:e
     exportPrometheusData(res, sensorLabel, start, end, step);
 })
 
-router.get("/excel/:sensorLabel/:period/:step?", (req, res) => {
+router.get("/excel/range/standard/:sensorLabel/:period/:step?", (req, res) => {
     // get sensor label
     const sensorLabel = req.params.sensorLabel;
     const period = req.params.period;

@@ -13,9 +13,9 @@
             <div class="name">{{this.id}}</div>
         {{/if}}
         <div class="name">{{this.ageMinutes}} min. siden</div>
-        <div class="name"><a href="/api/v1/excel/{{this.label}}/last24hrs/5m">Export last 24 hrs (5 min resolution)</a></div>
-        <div class="name"><a href="/api/v1/excel/{{this.label}}/last24hrs/60m">Export last 24 hrs (1 hrs resolution)</a></div>
-        <div class="name"><a href="/api/v1/excel/{{this.label}}/lastweek">Export last week</a></div>
+        <div class="name"><a href="/api/v1/excel/range/standard/{{this.label}}/last24hrs/5m">Export last 24 hrs (5 min resolution)</a></div>
+        <div class="name"><a href="/api/v1/excel/range/standard/{{this.label}}/last24hrs/60m">Export last 24 hrs (1 hrs resolution)</a></div>
+        <div class="name"><a href="/api/v1/excel/range/standard/{{this.label}}/lastweek">Export last week</a></div>
     </div></div>
     {{/each}}    
 </div>
