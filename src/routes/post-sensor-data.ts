@@ -13,7 +13,7 @@ const router = express.Router();
 router.post('/*', (req, res) => {
 		// get data and see if array
 	const body = req.body
-	const dataObj : any = (function()  {
+	const postObj : any = (function()  {
 		if (!body) {
 			return undefined
 		}
@@ -36,7 +36,7 @@ router.post('/*', (req, res) => {
 	})() as object
 	
 	// validate input
-	if (!dataObj) {
+	if (!postObj) {
 		res.set({
 			'Content-Type': 'text/plain'
 		})
@@ -44,7 +44,7 @@ router.post('/*', (req, res) => {
 	}
 
 	// validate msgtype
-	const msgtype = dataObj["msgtype"]
+	const msgtype = postObj["msgtype"]
 	if (!['control', 'data'].includes(msgtype)) {
 		// invalid message type
 		return res.set({
@@ -60,9 +60,12 @@ router.post('/*', (req, res) => {
 		const storageSvc = svcs[2] as StorageService;
 
 		// acknowledge post to caller
-		let j = JSON.stringify(dataObj, undefined, 2)
+		let j = JSON.stringify(postObj, undefined, 2)
 		logSvc.debug(`Received: ${j}`)
 		res.set('Content-Type', 'text/plain').send(`Thank you - you posted: ${j}\n`).end()
+
+		// get data obj if there
+		const dataObj = postObj.data || undefined;
 
 		// inspect message type
 		if (msgtype === 'control') {
@@ -75,7 +78,7 @@ router.post('/*', (req, res) => {
 			}
 
 			// get device id
-			const deviceId : string = dataObj.data && dataObj.data.deviceId ? dataObj.data.deviceId : undefined;
+			const deviceId : string = dataObj.deviceId ? dataObj.deviceId : undefined;
 			if (!deviceId) {
 				logSvc.warn(`Ignoring control message (type: ${type}) as there is no deviceId attribute (${JSON.stringify(dataObj)})`)
 				return;
