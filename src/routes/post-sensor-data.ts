@@ -95,15 +95,15 @@ router.post('/*', (req, res) => {
 				logSvc.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
 			})
 
-		} else if (msgtype === 'data' && dataObj.data.length) {
+		} else if (msgtype === 'data' && postObj.data.length) {
 			// send a message to indicate we heard from the device
 			(function() : Promise<string> {
-				if (dataObj.deviceId) {
+				if (postObj.deviceId) {
 					// found device id in payload
-					return Promise.resolve(dataObj.deviceId);
+					return Promise.resolve(postObj.deviceId);
 				} else {
 					// there is no device id in the payload - get unique device id('s) from sensor ids
-					let sensorIds : Set<string> = dataObj.data.filter((element : object) => element["sensorId"] && element["sensorValue"]).reduce((prev, element) => {
+					let sensorIds : Set<string> = postObj.data.filter((element : object) => element["sensorId"] && element["sensorValue"]).reduce((prev, element) => {
 						prev.add(element.sensorId) as string;
 						return prev
 					}, new Set<string>())
@@ -122,7 +122,7 @@ router.post('/*', (req, res) => {
 				const msg = resp.data as IngestedDeviceMessage;
 
 				// send out a sensor reading message per reading
-				dataObj.data.filter((element : object) => element["sensorId"] && element["sensorValue"]).forEach((element : object) => {
+				postObj.data.filter((element : object) => element["sensorId"] && element["sensorValue"]).forEach((element : object) => {
 					const payload : IngestedSensorMessage = {
 						'value': element["sensorValue"],
 						'id': element["sensorId"],
