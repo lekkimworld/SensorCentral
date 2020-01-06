@@ -593,8 +593,8 @@ export class StorageService extends BaseService {
                     const result = {
                         "id": deviceId,
                         "name": device ? device.name : undefined,
-                        "notify": device.notify,
-                        "mutedUntil": device.mutedUntil,
+                        "notify": device ? device.notify : WatchdogNotification.no,
+                        "mutedUntil": device ? device.mutedUntil : undefined,
                         "house": device ? device.house : undefined,
                         "dt": redisObj ? redisObj.dt : null,
                         "watchdogResets": redisObj ? redisObj.watchdogResets : undefined,
