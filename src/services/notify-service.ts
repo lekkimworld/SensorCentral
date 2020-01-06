@@ -1,6 +1,6 @@
 import {Moment} from "moment-timezone";
 import {constants} from "../constants";
-import { BaseService, TopicControlMessage, ControlMessageTypes, TopicSensorMessage } from "../types";
+import { BaseService, TopicControlMessage, ControlMessageTypes, TopicSensorMessage, WatchdogNotification } from "../types";
 import { LogService } from "./log-service";
 import { EventService } from "./event-service";
 import { PushoverService } from "./pushover-service";
@@ -29,6 +29,31 @@ export class NotifyService extends BaseService {
         this.eventService.subscribeTopic(constants.TOPICS.CONTROL, "known.#", (result : ISubscriptionResult) => {
             this.logService!.debug(`Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
             const msg = result.data as TopicControlMessage;
+
+            // get muted status
+            const notify = (() => {
+                if (msg.device) {
+                    if (msg.device.notify === WatchdogNotification.no) {
+                        return WatchdogNotification.no;
+                    } else if (msg.device.notify === WatchdogNotification.yes) {
+                        return WatchdogNotification.yes;
+                    } else if (msg.device.notify === WatchdogNotification.muted) {
+                        if (msg.device.mutedUntil!.getTime() < Date.now()) {
+                            // not muted as until reached
+                            return WatchdogNotification.yes;
+                        } else {
+                            // muted due to until
+                            return WatchdogNotification.no;
+                        }
+                    }
+                }
+                // no device so mute
+                return WatchdogNotification.no;
+            })();
+            if (WatchdogNotification.no === notify) {
+                this.logService!.debug(`Notify service ignoring message as notify computed to no`);
+                return;
+            }
 
             // process based on type
             if (msg.type === ControlMessageTypes.restart) {

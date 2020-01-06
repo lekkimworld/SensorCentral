@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { BaseService, Sensor, RedisSensorMessage } from '../../../types';
+import { BaseService, Sensor, RedisSensorMessage, Device, SensorType } from '../../../types';
 import { StorageService } from '../../../services/storage-service';
 import { stringify } from 'querystring';
 import { read } from 'fs';
@@ -19,14 +19,19 @@ router.get('/devices/:deviceId/sensors', (req, res) => {
         const storageService = svc as StorageService;
         return storageService.getSensors();
 
-    }).then(sensors => {
+    }).then((sensors : Sensor[]) => {
         const sensorsForDevice = sensors
             .filter(sensor => sensor.device && sensor.device.id === deviceId)
             .reduce((prev, sensor) => {
-                delete sensor.device;
-                prev[sensor.id] = sensor;
+                const s = {
+                    "id": sensor.id,
+                    "name": sensor.name,
+                    "label": sensor.label,
+                    "type": sensor.type
+                }
+                prev.set(sensor.id, s);
                 return prev;
-            }, new Map<string, Sensor>());
+            }, new Map<string, object>());
         res.status(200).send(sensorsForDevice);
         
     }).catch((err : Error) => {
@@ -51,7 +56,7 @@ router.get('/devices/?*?', (req, res) => {
             return storageService.getDeviceById(deviceId);    
         }
 
-    }).then(devices => {
+    }).then((devices : Device[]) => {
         res.status(200).send(devices);
 
     }).catch((err : Error) => {

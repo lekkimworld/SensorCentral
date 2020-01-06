@@ -1,6 +1,6 @@
 import * as  util from "util";
 import {constants} from "../constants";
-import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, SensorReading, DeviceStatus, IngestedControlMessage} from "../types";
+import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, SensorReading, DeviceStatus, IngestedControlMessage, WatchdogNotification} from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
 import { LogService } from "./log-service";
@@ -54,11 +54,30 @@ export class StorageService extends BaseService {
     }
 
     async getDevices() : Promise<Device[]> {
-        const result = await this.dbService!.query("select d.id deviceid, d.name devicename, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id");
+        const result = await this.dbService!.query(`select d.id deviceid, d.name devicename, d.notify "notify", d.muted_until "until", h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id;`);
         const devices = result.rows.map(row => {
+            // get watchdog status
+            const until = row.until || undefined;
+            const wd : WatchdogNotification = (() => {
+                if (row.notify === 0) return WatchdogNotification.no;
+                if (row.notify === 2) {
+                    if (!until) {
+                        this.logService!.warn(`Notify status for device set to muted but no until date/time - treating as 1`);
+                    } else {
+                        return WatchdogNotification.muted;
+                    }
+                }
+                if (row.notify !== 0) {
+                    this.logService!.error(`Read unknown value for notify from db (${row.notify}) - treating as 1`);
+                }
+                return WatchdogNotification.yes;
+            })();
+
             return {
                 "id": row.deviceid,
                 "name": row.devicename,
+                "notify": wd,
+                "mutedUntil": until,
                 "house": {
                     "id": row.houseid,
                     "name": row.housename
@@ -573,6 +592,8 @@ export class StorageService extends BaseService {
                     const result = {
                         "id": deviceId,
                         "name": device ? device.name : undefined,
+                        "notify": device.notify,
+                        "mutedUntil": device.mutedUntil,
                         "house": device ? device.house : undefined,
                         "dt": redisObj ? redisObj.dt : null,
                         "watchdogResets": redisObj ? redisObj.watchdogResets : undefined,
