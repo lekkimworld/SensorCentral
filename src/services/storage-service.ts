@@ -68,7 +68,7 @@ export class StorageService extends BaseService {
                         return WatchdogNotification.muted;
                     }
                 }
-                if (row.notify !== 1) {
+                if (rowvalue !== 1) {
                     this.logService!.error(`Read unknown value for notify from db (${rowvalue}) - treating as 1`);
                 }
                 return WatchdogNotification.yes;

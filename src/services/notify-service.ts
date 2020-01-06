@@ -47,6 +47,7 @@ export class NotifyService extends BaseService {
                         }
                     }
                 }
+
                 // no device so mute
                 return WatchdogNotification.no;
             })();
@@ -92,4 +93,5 @@ export class NotifyService extends BaseService {
 
         callback();
     }
+
 }

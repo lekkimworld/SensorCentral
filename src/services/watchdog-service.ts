@@ -38,18 +38,21 @@ export class WatchdogService extends BaseService {
                     // log
                     this.logService!.info(`Device (<${device.id}> / <${device.name}>) reset`);
                     
-                    // feed watchdog
-                    w.feed({
-                        "data": device
-                    })
+                    // refetch device from db
+                    this.storageService?.getDeviceById(device.id).then(device => {
+                        // feed watchdog
+                        w.feed({
+                            "data": device
+                        })
 
-                    // publish on topic
-                    const payload : TopicControlMessage = {
-                        "type": ControlMessageTypes.watchdogReset,
-                        "device": device,
-                        "deviceId": device.id
-                    }
-                    this.eventService!.publishTopic(constants.TOPICS.CONTROL, "known.watchdogReset", payload);
+                        // publish on topic
+                        const payload : TopicControlMessage = {
+                            "type": ControlMessageTypes.watchdogReset,
+                            "device": device,
+                            "deviceId": device.id
+                        }
+                        this.eventService!.publishTopic(constants.TOPICS.CONTROL, "known.watchdogReset", payload);
+                    })
                 })
 
                 // feed watchdog
