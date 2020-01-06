@@ -59,7 +59,7 @@ export class StorageService extends BaseService {
             // get watchdog status
             const until = row.until || undefined;
             const wd : WatchdogNotification = (() => {
-                const rowvalue = row.notify as Number;
+                const rowvalue = row.notify;
                 if (rowvalue === 0) return WatchdogNotification.no;
                 if (rowvalue === 2) {
                     if (!until) {
@@ -68,7 +68,7 @@ export class StorageService extends BaseService {
                         return WatchdogNotification.muted;
                     }
                 }
-                if (row.notify !== 0) {
+                if (row.notify !== 1) {
                     this.logService!.error(`Read unknown value for notify from db (${rowvalue}) - treating as 1`);
                 }
                 return WatchdogNotification.yes;
