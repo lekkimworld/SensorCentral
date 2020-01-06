@@ -38,7 +38,9 @@ export class NotifyService extends BaseService {
                     } else if (msg.device.notify === WatchdogNotification.yes) {
                         return WatchdogNotification.yes;
                     } else if (msg.device.notify === WatchdogNotification.muted) {
-                        if (msg.device.mutedUntil!.getTime() < Date.now()) {
+                        //@ts-ignore
+                        const d = Date.parse(msg.device.mutedUntil);
+                        if (d < Date.now()) {
                             // not muted as until reached
                             return WatchdogNotification.yes;
                         } else {
