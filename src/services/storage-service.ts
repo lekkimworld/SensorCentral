@@ -59,8 +59,9 @@ export class StorageService extends BaseService {
             // get watchdog status
             const until = row.until || undefined;
             const wd : WatchdogNotification = (() => {
-                if (row.notify === 0) return WatchdogNotification.no;
-                if (row.notify === 2) {
+                const rowvalue = row.notify as Number;
+                if (rowvalue === 0) return WatchdogNotification.no;
+                if (rowvalue === 2) {
                     if (!until) {
                         this.logService!.warn(`Notify status for device set to muted but no until date/time - treating as 1`);
                     } else {
@@ -68,7 +69,7 @@ export class StorageService extends BaseService {
                     }
                 }
                 if (row.notify !== 0) {
-                    this.logService!.error(`Read unknown value for notify from db (${row.notify}) - treating as 1`);
+                    this.logService!.error(`Read unknown value for notify from db (${rowvalue}) - treating as 1`);
                 }
                 return WatchdogNotification.yes;
             })();
