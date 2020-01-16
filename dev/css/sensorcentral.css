@@ -24,6 +24,15 @@
     color: #000;
 }
 
+.color-gray {
+    color: #818182;
+}
+
+.text-small {
+    font-style: italic;
+    font-size: 0.8rem;
+}
+
 body {
     padding-top: 4.0rem;
 }

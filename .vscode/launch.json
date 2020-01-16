@@ -5,10 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Run worker_web.ts (Typescript)",
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
-            "program": "${workspaceFolder}/src/workers/worker_web.js",
+            "args": ["${workspaceFolder}/src/workers/worker_web.js"],
+            "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+            "sourceMaps": true,
+            "cwd": "${workspaceRoot}",
+            "protocol": "inspector",
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Run worker_web.js (compiled Javascript)",
+            "program": "${workspaceFolder}/server-dist/workers/worker_web.js",
             "preLaunchTask": "tsc: build - tsconfig.json",
             "outFiles": ["${workspaceFolder}/server-dist/**/*.js"]
         },

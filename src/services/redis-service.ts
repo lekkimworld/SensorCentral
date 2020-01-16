@@ -15,7 +15,6 @@ const promisifiedClient = {
 }
 
 export class RedisService extends BaseService {
-    
     constructor() {
         super("redis");
     }
@@ -48,5 +47,12 @@ export class RedisService extends BaseService {
     }
     expire(key:string, expire:number) : Promise<number> {
         return promisifiedClient.expire(key, expire);
+    }
+
+    getClient() {
+        return client;
+    }
+    getPromisifiedClient() {
+        return promisifiedClient;
     }
 }

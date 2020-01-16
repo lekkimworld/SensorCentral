@@ -1,182 +1,153 @@
 import * as express from 'express';
-import { BaseService, Sensor, RedisSensorMessage, Device, SensorType } from '../../../types';
+import { BaseService, Sensor, RedisSensorMessage, Device, SensorType, WatchdogNotification, House, APIUserContext } from '../../../types';
 import { StorageService } from '../../../services/storage-service';
 import { stringify } from 'querystring';
 import { read } from 'fs';
 import { LogService } from '../../../services/log-service';
-import * as prometheus from "../../../prometheus-export";
-import Moment from 'moment';
-import moment = require("moment");
+import { userInfo } from 'os';
 const {lookupService} = require('../../../configure-services');
+import jwt from "jsonwebtoken";
+import {constants} from "../../../constants";
 
 const router = express.Router();
-router.get('/devices/:deviceId/sensors', (req, res) => {
-    res.type('json');
-    const deviceId = req.params.deviceId;
-    
-    lookupService('storage').then((svc : BaseService) => {
-        // get all sensors
-        const storageService = svc as StorageService;
-        return storageService.getSensors();
 
-    }).then((sensors : Sensor[]) => {
-        const sensorsForDevice = sensors
-            .filter(sensor => sensor.device && sensor.device.id === deviceId)
-            .reduce((prev, sensor) => {
-                const s = {
-                    "id": sensor.id,
-                    "name": sensor.name,
-                    "label": sensor.label,
-                    "type": sensor.type
-                }
-                prev.set(sensor.id, s);
-                return prev;
-            }, new Map<string, object>());
-        res.status(200).send(sensorsForDevice);
-        
-    }).catch((err : Error) => {
-        console.log('Unable to lookup storage service');
-        res.status(500).send({'error': true, 'message': err.message});
-    })
+// set default response type to json
+router.use((req, res, next) => {
+    res.type('json');
+    next();
 })
 
-router.get('/devices/?*?', (req, res) => {
-    res.type('json');
-    const params = req.params[0];
-    const deviceId = params ? params.split('/')[0] : undefined;
-    
-    lookupService('storage').then((svc : BaseService) => {
-        const storageService = svc as StorageService;
-
-        if (!deviceId) {
-            // get all devices
-            return storageService.getDevices();
-        } else {
-            // get single device
-            return storageService.getDeviceById(deviceId);    
+// ensure user is authenticated
+router.use((req, res, next) => {
+    // see if we have a user
+    if (req.session && req.session.user) {
+        // create api context to make life easier
+        const scopes = [
+            constants.DEFAULTS.API.JWT.SCOPE_API, 
+            constants.DEFAULTS.API.JWT.SCOPE_ADMIN_JWT, 
+            constants.DEFAULTS.API.JWT.SCOPE_ADMIN,
+            constants.DEFAULTS.API.JWT.SCOPE_READ,
+        ];
+        const apictx : APIUserContext = {
+            "audience": req.session.user.aud,
+            "issuer": req.session.user.iss,
+            "subject": req.session.user.sub,
+            "scopes": scopes,
+            "houseid": "*",
+            "accessAllHouses": () => true,
+            "hasScope": (scope) => scopes.includes(scope)
         }
+        res.locals.api_context = apictx;
+        return next();
+    }
 
-    }).then((devices : Device[]) => {
-        res.status(200).send(devices);
+    if (req.headers && req.headers.authorization && req.headers.authorization.indexOf("Bearer ") === 0) {
+        // get token
+        const token = req.headers.authorization.substring(7);
+        const secret = process.env.API_JWT_SECRET as string;
 
-    }).catch((err : Error) => {
-        console.log('Unable to lookup storage service');
-        res.status(500).send({'error': true, 'message': err.message});
-    })
-})
+        // verify token
+        jwt.verify(token, secret, {
+            "algorithms": ["HS256"],
+            "audience": constants.DEFAULTS.API.JWT.AUDIENCE,
+            "issuer": constants.DEFAULTS.API.JWT.ISSUERS
+        }, (err : Error, decoded : any) => {
+            // abort on error
+            if (err) return res.status(401).send(`Error: ${err.message}`);
 
-router.get('/sensors', (req, res) => {
-    res.type('json');
-    let queryKey = req.query.queryKey as string;
-    let queryValue = req.query.queryValue as string;
-    
-    lookupService(["log", "storage"]).then((svcs :  BaseService[]) => {
-        const logService = svcs[0] as LogService;
-        const storageService = svcs[1] as StorageService;
-        logService.debug(`API query for sensors with queryKey <${queryKey}> and queryValue <${queryValue}>`);
-
-        // get all sensors
-        return Promise.all([Promise.resolve(logService), Promise.resolve(storageService), storageService.getSensors()]);
-
-    }).then((data : any) => {
-        const logService = data[0] as LogService;
-        const storageService = data[1] as StorageService;
-        const sensors = data[2] as Sensor[];
-        
-        // see if we should send all sensors
-        if (!queryKey || !queryValue) {
-            // we should
-            return res.status(200).send(sensors);
-        }
-        
-        // filter sensors
-        const filteredSensorIds : string[] = sensors.reduce((prev, sensor) => {
-                if (queryKey === "id" && sensor.id === queryValue) prev.push(sensor.id);
-                if (queryKey === "label" && sensor.label === queryValue) prev.push(sensor.id);
-                if (queryKey === "name" && sensor.name === queryValue) prev.push(sensor.id);
-                return prev;
-            }, new Array<string>());
-        logService.debug(`Filtered <${sensors.length}> sensors down to <${filteredSensorIds.length}> sensor id based on queryKey and queryValue`);
-            
-        if (!filteredSensorIds.length) {
-            // unable to find sensors after filter
-            return Promise.reject(Error(`Unable to find sensor(s) matching ${queryKey}=${queryValue}`));
-
-        } else {
-            // get recent readings for the selected sensor(s)
-            return Promise.all([Promise.resolve(sensors), storageService.getRecentReadingBySensorIds(filteredSensorIds)]);
-        }
-    }).then((data : any) => {
-        const sensors = data[0] as Sensor[];
-        const readings = data[1] as Map<string,RedisSensorMessage>;
-        const result = sensors.filter(sensor => Array.from(readings.keys()).includes(sensor.id)).map(sensor => {
-            return {
-                "id": sensor.id,
-                "name": sensor.name,
-                "label": sensor.label, 
-                "type": sensor.type,
-                "value": readings.get(sensor.id) ? readings.get(sensor.id)!.value : undefined,
-                "dt":  readings.get(sensor.id) ? readings.get(sensor.id)!.dt : undefined
+            // verify scope contains api
+            if (!decoded.scopes || !decoded.scopes.split(" ").includes(constants.DEFAULTS.API.JWT.SCOPE_API)) {
+                return res.status(401).send("Missing API scope");
             }
+
+            // set context for call
+            const apictx : APIUserContext = {
+                "audience": decoded.aud,
+                "issuer": decoded.iss,
+                "subject": decoded.sub,
+                "houseid": decoded.houseid,
+                "scopes": decoded.scopes.split(" "),
+                "accessAllHouses": () => {
+                    return "*" === decoded.houseid;
+                },
+                "hasScope": (scope) => {
+                    return decoded.scopes.split(" ").includes(scope);
+                }
+            }
+            res.locals.api_context = apictx;
+
+            // forward
+            next();
         })
+        return;
+    }
 
-        res.status(200).send(result.length === 1 ? result[0] : result);
+    // no access
+    return res.status(401).send("Unauthorized");
+})
 
-    }).catch((err : Error) => {
-        console.log('Unable to lookup storage service');
-        res.status(404).send({'error': true, 'message': err.message});
+router.post("/jwt", (req, res) => {
+    // get context
+    const apictx = res.locals.api_context as APIUserContext;
+    if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN_JWT)) return res.status(401).send(`Missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN_JWT} scope`);
+
+    // verify content type and get sensor id
+    if (req.headers["content-type"] !== "application/json") {
+        return res.status(417).send("Only accepts application/json");
+    }
+    const deviceid = req.body.device;
+    const houseid = req.body.house;
+    if (!deviceid) {
+        return res.status(417).send("Missing device ID in \"device\" property");
+    }
+    if (!houseid) {
+        return res.status(417).send("Missing house ID in \"house\" property");
+    }
+
+    const secret = process.env.API_JWT_SECRET as string;
+    jwt.sign({
+        "scopes": constants.DEFAULTS.API.JWT.SCOPE_API,
+        "houseid": houseid
+    }, secret, {
+        "algorithm": "HS256",
+        "issuer": constants.DEFAULTS.API.JWT.OUR_ISSUER,
+        "audience": constants.DEFAULTS.API.JWT.AUDIENCE,
+        "subject": deviceid
+    }, (err, token) => {
+        res.send(token);
     })
 })
 
-const exportPrometheusData = (res : express.Response, sensorLabel : string, start : Moment.Moment, end : Moment.Moment, step : string) => {
-    prometheus.fetchData({
-        "query": `sensor_${sensorLabel}`,
-        "start": start,
-        "end": end,
-        "step": step
-    }).then((dataset : Array<prometheus.ExportedSensorValue>) => {
-        const buf = prometheus.createExcelWorkbook(dataset);
-        const timestamp = moment().utc().format(prometheus.ISO8601_DATETIME_FORMAT);
-        res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        res.set("Content-Disposition", `attachment; filename="sensorcentral_export_${sensorLabel}_${timestamp}.xlsx"`);
-        res.send(buf).end();
-    })
-}
+// *****************************************
+// DATA
+// *****************************************
+import dataRoutes from "./data";
+router.use('/data', dataRoutes);
 
-router.get("/excel/range/custom/:sensorLabel/:start/:end/:step?", (req, res) => {
-    const sensorLabel = req.params.sensorLabel;
-    const strstart = req.params.start;
-    const strend = req.params.end;
-    if (!strstart.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z/) || !strend.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z/)) {
-        res.type("json");
-        return res.status(417).send({"status": "error", "message": "Invalid start or end date/time (ISO8601)"});
-    }
+// *****************************************
+// HOUSES
+// *****************************************
+import houseRoutes from "./houses";
+router.use("/houses", houseRoutes);
 
-    const start = moment(strstart, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true).set("millisecond", 0);
-    const end = moment(strend, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true).set("millisecond", 0);
-    const step = req.params.step && req.params.step.match(/\d{1,}[mh]/) ? req.params.step : "60m";
 
-    exportPrometheusData(res, sensorLabel, start, end, step);
-})
+// *****************************************
+// DEVICES
+// *****************************************
+import deviceRoutes from "./devices";
+router.use("/devices", deviceRoutes);
 
-router.get("/excel/range/standard/:sensorLabel/:period/:step?", (req, res) => {
-    // get sensor label
-    const sensorLabel = req.params.sensorLabel;
-    const period = req.params.period;
-    let start : Moment.Moment;
-    let end : Moment.Moment; 
-    let step : string | undefined = req.params.step;
-    if (period === "last24hrs") {
-        start = moment().set("minute", 0).set("second", 0).set("millisecond", 0).add(-24, "hour").utc();
-        end = moment().set("minute", 0).set("second", 0).set("millisecond", 0).utc();
-    } else if (period === "lastweek") {
-        start = moment().set("minute", 0).set("second", 0).set("millisecond", 0).add(-1, "week").utc();
-        end = moment().set("minute", 0).set("second", 0).set("millisecond", 0).utc();
-    } else {
-        return res.status(417).end();
-    }
-    
-    exportPrometheusData(res, sensorLabel, start, end, step);
-})
+
+// *****************************************
+// SENSORS
+// *****************************************
+import sensorRoutes from "./sensors";
+router.use("/sensors", sensorRoutes);
+
+// *****************************************
+// EXCEL
+// *****************************************
+import excelRoutes from "./excel";
+router.use("/excel", excelRoutes);
 
 export default router;

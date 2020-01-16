@@ -1,0 +1,283 @@
+<a href="/configuration">Back to houses</a>
+<div class="row">
+    <div class="col-10">
+        <h1>Devices</h1>
+    </div>
+    <div class="col-2" id="action-icons">
+        <a href="javascript:void(0)" class="float-right color-black" title="Add"><i class="fa fa-plus fa-2x" aria-hidden="true" rel="add"></i></a>
+    </div>
+</div>
+
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th scope="col"></th>
+            <th scope="col">NAME</th>
+            <th scope="col">NOTIFY</th>
+            <th scope="col">MUTED UNTIL</th>
+            <th scope="col">LAST PING</th>
+            <th scope="col">ID</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each devices}}
+        <tr id="{{this.id}}">
+            <td>
+                <center>
+                    <i class="fa fa-pencil-alt" aria-hidden="true" rel="edit"></i>
+                    <i class="fa fa-key" aria-hidden="true" rel="jwt"></i>
+                    <i class="fa fa-trash" aria-hidden="true" rel="trash"></i>
+                </center>
+            </td>
+            <th scope="row">{{this.name}}</th>
+            <td>
+                {{#if (eq this.notify "off")}}<i class="fa fa-volume-off fa-2x" rel="notify_on"
+                    aria-hidden="true"></i>{{/if}}
+                {{#if (eq this.notify "on")}}<i class="fa fa-volume-up fa-2x" rel="notify_mute"
+                    aria-hidden="true"></i>{{/if}}
+                {{#if (eq this.notify "mute")}}<i class="fa fa-volume-mute fa-2x" rel="notify_off"
+                    aria-hidden="true"></i>{{/if}}
+                <br /><span class="text-small color-gray">Click icon to toggle</span>
+            </td>
+            <td>{{this.mutedUntil}}</td>
+            <td>
+                {{#if (gte this.lastping 0)}}
+                    {{this.lastping}} min. ago
+                {{else}}
+                    Unknown
+                {{/if}}
+            </td>
+            <td>{{this.id}}</td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
+
+<div class="modal fade" id="deviceModal" tabindex="-1" role="dialog" aria-labelledby="deviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deviceModalLabel">Create/Edit Device</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="deviceForm" novalidate>
+                    <div class="form-group">
+                        <label for="idInput">ID</label>
+                        <input type="text" required class="form-control" id="idInput" aria-describedby="nameHelp" placeholder="Enter device ID">
+                        <small id="idHelp" class="form-text text-muted">Specify the ID of the device (maximum 36 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the ID for the device. Must be unique.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="nameInput">Name</label>
+                        <input type="text" required class="form-control" id="nameInput" aria-describedby="nameHelp" placeholder="Enter device name">
+                        <small id="nameHelp" class="form-text text-muted">Specify the name of the device (maximum 128 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the name for the device. Must be unique.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="save_device">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="jwtModal" tabindex="-1" role="dialog" aria-labelledby="jwtModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="jwtModalLabel">Device JWT</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="jwtForm">
+                    <div class="form-group">
+                        <label for="jwtInput">JWT</label>
+                        <input type="text"  class="form-control" id="jwtInput" aria-describedby="jwtHelp">
+                        <small id="jwtHelp" class="form-text text-muted">JSON Web Token for device.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="trashModal" tabindex="-1" role="dialog" aria-labelledby="trashModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="trashModalLabel">Delete Device</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you absolutely sure you want to delete this device?
+                <div class="form-group">
+                    <label for="idInput">ID</label>
+                    <input type="text" required class="form-control" id="trashIdInput" disabled="1">
+                </div>
+                <div class="form-group">
+                    <label for="nameInput">Name</label>
+                    <input type="text" required class="form-control" id="trashNameInput" disabled="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="trash_device">Yes</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const houseid = "{{parentId}}";
+
+    const openForm = function(id, name) {
+        const nameField = $("#nameInput");
+        const idField = $("#idInput");
+        nameField.val(name);
+        idField.val(id);
+        $("#idInput").prop("disabled", id && id.length);
+        $("#deviceModal").modal("show");
+    }
+    $("#action-icons").on("click", ev => {
+        if (ev.target.getAttribute("rel") === "add") {
+            openForm("", "");
+        }
+    })
+    $("tbody").on("click", ev => {
+        let elem = ev.target.parentElement;
+        let id = elem.id;
+        while (!id) {
+            elem = elem.parentElement;
+            id = elem.id;
+        }
+
+        if (ev.target.nodeName === "I") {
+            const rel = ev.target.getAttribute("rel");
+            let p;
+            if (rel.indexOf("notify_") === 0) {
+                p = fetch(`/api/v1/devices/${id}/notify`, {
+                    "method": "put",
+                    "body": JSON.stringify({"notify": rel.substring(7)}),
+                    "headers": {"content-type": "application/json"}
+                });
+            } else if (rel === "edit") {
+                fetch(`/api/v1/devices/${id}`).then(res => res.json()).then(body => {
+                    openForm(body.id, body.name);
+                })
+            } else if (rel === "jwt") {
+                fetch("/api/v1/jwt", {
+                    "method": "post",
+                    "body": JSON.stringify({
+                        "house": houseid,
+                        "device": id
+                    }),
+                    "headers": {
+                        "content-type": "application/json"
+                    }
+                }).then(res => res.text()).then(body => {
+                    const jwtField = $("#jwtInput");
+                    jwtField.val(body);
+                    $("#jwtInput").prop("disabled", true);
+                    $("#jwtModal").modal("show");
+                })
+            } else if (rel === "trash") {
+                // show delete dialog
+                fetch(`/api/v1/devices/${id}`).then(res => res.json()).then(body => {
+                    const nameField = $("#trashNameInput");
+                    const idField = $("#trashIdInput");
+                    nameField.val(body.name);
+                    idField.val(body.id);
+                    $("#trashModal").modal("show");
+                })
+            }
+
+            if (p) {
+                p.then(resp => resp.json()).then(result => {
+                    if (result.error) {
+                        
+                    }
+                    document.location.reload();
+                })
+            }
+
+        } else {
+            document.location.href = `${document.location.href}/${id}`;
+        }
+
+    })
+
+    $("#trash_device").on("click", ev => {
+        const idField = $("#trashIdInput");
+        fetch("/api/v1/devices", {
+            "method": "delete",
+            "body": JSON.stringify({
+                "id": idField.val()
+            }),
+            "headers": {
+                "content-type": "application/json"
+            }
+        }).then(res => res.text()).then(body => {
+            document.location.reload();
+        })
+    })
+
+    $("#save_device").on("click", ev => {
+        const form = document.querySelector("#deviceForm");
+        if (form.checkValidity()) {
+            // get field values
+            const nameField = $("#nameInput");
+            const idField = $("#idInput");
+            let fetchCtx = {
+                "body": {
+                    "name": nameField.val(),
+                    "house": houseid
+                },
+                "headers": {
+                    "Content-Type": "application/json"
+                }
+            }
+            if (idField.val()) {
+                // update
+                fetchCtx.method = "PUT";
+                fetchCtx.body.id = idField.val();
+            } else {
+                // create
+                fetchCtx.method = "POST";
+            }
+            fetchCtx.body = JSON.stringify(fetchCtx.body);
+
+            fetch(`/api/v1/devices`, fetchCtx).then(res => res.json()).then(body => {
+                if (body.hasOwnProperty("error") && body.error) {
+                    form.classList.add('was-validated');
+                } else {
+                    // clear form and close modal
+                    form.classList.remove('was-validated');
+                    $("#sensorModel").modal("hide"); 
+                    document.location.reload();
+                }
+            })
+
+            
+        } else {
+            form.classList.add('was-validated');
+        }
+    });
+     
+</script>

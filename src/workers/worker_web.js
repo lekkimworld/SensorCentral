@@ -38,6 +38,7 @@ terminateListener(() => {
 	console.log("Terminated services");
 });
 
+// configure express
 const app = configureExpress()
 
 // start server

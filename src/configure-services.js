@@ -143,17 +143,31 @@ const registerService = (svc) => {
     return promise
 }
 const lookupService = (name, timeoutService = constants.DEFAULTS.SERVICE.LOOKUP_TIMEOUT) => {
-    // convert supplied names to promises for services
-    let svcPromise = Promise.all((Array.isArray(name) ? name : [name]).map(svcname => {
-        if (_services[svcname]) {
-            return _services[svcname].promise
-         } else {
-             return Promise.reject(`Unknown service <${svcname}>`)
-         }
-    }))
-    let timeout
+    let timeout;
+    logDebug(`lookupServices asked for following services <${name}> with timeout <${timeoutService}>`);
     return Promise.race([
-        svcPromise,
+        Promise.all((Array.isArray(name) ? name : [name]).map(name => {
+                if (_services[name]) {
+                    logDebug(`Found ${name} service right away so simply returning promise for it`);
+                    return _services[name].promise;
+                }
+
+                // service not registered yet - wait for it
+                return new Promise((resolve, reject) => {
+                    const seeIfServiceAdded = () => {
+                        if (_services[name]) {
+                            logInfo(`${name} service NOW FOUND - returning promise for it`);
+                            _services[name].promise.then(resolve);
+                            return;
+                        }
+                        logInfo(`${name} service STILL not found - waiting for it...`);
+                        global.setTimeout(seeIfServiceAdded, 100);
+                    }
+                    logInfo(`${name} service not found during initial lookup - waiting for it...`);
+                    global.setTimeout(seeIfServiceAdded, 100);
+                })
+            })
+        ),
         new Promise((resolve, reject) => {
             timeout = global.setTimeout(() => {
                 reject(new Error(`Time out looking up service <${name}>`))

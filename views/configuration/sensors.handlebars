@@ -1,0 +1,284 @@
+<a href="/configuration/house/{{houseId}}">Back to device</a>
+<div class="row">
+    <div class="col-10">
+        <h1>Sensors</h1>
+    </div>
+    <div class="col-2" id="action-icons">
+        <i class="fa fa-plus fa-2x" aria-hidden="true" rel="add"></i>
+    </div>
+</div>
+{{#if sensors}}
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th scope="col"></th>
+            <th scope="col">NAME</th>
+            <th scope="col">LABEL</th>
+            <th scope="col"><center>TYPE</center></th>
+            <th scope="col">ID</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each sensors}}
+        <tr id="{{this.id}}">
+            <td>
+                <center>
+                    <i class="fa fa-pencil-alt" aria-hidden="true" rel="edit"></i>
+                    <i class="fa fa-trash" aria-hidden="true" rel="trash"></i>
+                </center>
+            </td>
+            <th scope="row">{{this.name}}</th>
+            <td>{{this.label}}</td>
+            <td>
+                <center>
+                {{#if (eq this.type "temp")}}
+                    <i class="fa fa-thermometer-half" aria-hidden="true"></i>
+                {{else if (eq this.type "hum")}}
+                    <i class="fa fa-tint" aria-hidden="true"></i>
+                {{else}}
+                    <i class="fa fa-question-circle" aria-hidden="true"></i>
+                {{/if}}
+                </center>
+            </td>
+            <td>{{this.id}}</td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
+{{else}}
+No sensors on this device.
+{{/if}}
+
+<!-- Unregistered sensors -->
+<div class="row">
+    <div class="col-10">
+        <h3>Unregistered Sensors</h3>
+    </div>
+</div>
+{{#if unregisteredSensors}}
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th scope="col"></th>
+            <th scope="col">ID</th>
+            <th scope="col">LAST PING</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each unregisteredSensors}}
+        <tr id="{{this.id}}">
+            <td><center><i class="fa fa-plus" aria-hidden="true" rel="add"></i></center></td>
+            <th scope="row">{{this.id}}</th>
+            <td>{{this.ageMinutes}} min. ago</td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
+{{else}}
+No unregistered sensors on this device.
+{{/if}}
+
+
+<div class="modal fade" id="sensorModal" tabindex="-1" role="dialog" aria-labelledby="sensorModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sensorModalLabel">Create/Edit Sensor</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="sensorForm" novalidate>
+                    <input type="hidden" id="deviceInput" value="">
+                    <div class="form-group">
+                        <label for="idInput">ID</label>
+                        <input type="text" required class="form-control" id="idInput" aria-describedby="nameHelp" placeholder="Enter device ID">
+                        <small id="idHelp" class="form-text text-muted">Specify the ID of the sensor (maximum 36 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the ID for the sensor. Must be unique.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="nameInput">Name</label>
+                        <input type="text" required class="form-control" id="nameInput" aria-describedby="nameHelp" placeholder="Enter sensor name">
+                        <small id="nameHelp" class="form-text text-muted">Specify the name of the sensor (maximum 128 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the name for the sensor. Must be unique.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="labelInput">Label</label>
+                        <input type="text" required class="form-control" id="labelInput" aria-describedby="nameHelp" placeholder="Enter sensor label">
+                        <small id="labelHelp" class="form-text text-muted">Specify the label of the sensor (maximum 128 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the label for the sensor. Must be unique.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="typeInput">Type</label>
+                        <select class="form-control" id="typeInput" required>
+                            <option></option>
+                            <option value="temp">Temperature</option>
+                            <option value="hum">Humidity</option>
+                        </select>
+                        <small id="typeHelp" class="form-text text-muted">Specify the type of the sensor.</small>
+                        <div class="invalid-feedback">
+                            You must specify the type of the sensor.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="save_sensor">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="trashModal" tabindex="-1" role="dialog" aria-labelledby="trashModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="trashModalLabel">Delete Sensor</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you absolutely sure you want to delete this sensor?
+                <div class="form-group">
+                    <label for="idInput">ID</label>
+                    <input type="text" required class="form-control" id="trashIdInput" disabled="1">
+                </div>
+                <div class="form-group">
+                    <label for="nameInput">Name</label>
+                    <input type="text" required class="form-control" id="trashNameInput" disabled="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="trash_device">Yes</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const houseid = "{{houseId}}";
+    const deviceid = "{{deviceId}}";
+
+    const openForm = function(device, id, name, label, type) {
+        const deviceField = $("#deviceInput");
+        const nameField = $("#nameInput");
+        const idField = $("#idInput");
+        const labelField = $("#labelInput");
+        const typeField = $("#typeInput");
+        deviceField.val(device);
+        nameField.val(name);
+        idField.val(id);
+        labelField.val(label);
+        typeField.val(type);
+        $("#idInput").prop("disabled", !device || !device.length);
+        $("#sensorModal").modal("show");
+    }
+    $("#action-icons").on("click", ev => {
+        if (ev.target.getAttribute("rel") === "add") {
+            openForm(deviceid);
+        }
+    })
+
+    $("tbody").on("click", ev => {
+        let elem = ev.target.parentElement;
+        let id = elem.id;
+        while (!id) {
+            elem = elem.parentElement;
+            id = elem.id;
+        }
+
+        if (ev.target.nodeName === "I") {
+            const rel = ev.target.getAttribute("rel");
+            if (rel === "add") {
+                openForm(deviceid, id);
+            } else if (rel === "edit") {
+                fetch(`/api/v1/sensors/${id}`).then(res => res.json()).then(sensor => {
+                    openForm("", sensor.id, sensor.name, sensor.label, sensor.type);
+                })
+            } else if (rel === "trash") {
+                // show delete dialog
+                fetch(`/api/v1/sensors/${id}`).then(res => res.json()).then(body => {
+                    const nameField = $("#trashNameInput");
+                    const idField = $("#trashIdInput");
+                    nameField.val(body.name);
+                    idField.val(body.id);
+                    $("#trashModal").modal("show");
+                })
+            }
+
+        }
+    })
+
+    $("#save_sensor").on("click", ev => {
+        const form = document.querySelector("#sensorForm");
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        // get field values
+        const deviceField = $("#deviceInput");
+        const nameField = $("#nameInput");
+        const labelField = $("#labelInput");
+        const typeField = $("#typeInput");
+        const idField = $("#idInput");
+        let fetchCtx = {
+            "body": {
+                "id": idField.val(),
+                "name": nameField.val(),
+                "label": labelField.val(),
+                "type": typeField.val()
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "method": "POST"
+        }
+        if (!deviceField.val()) {
+            // update
+            fetchCtx.method = "PUT";
+        } else {
+            fetchCtx.body.device = deviceField.val();
+        }
+        fetchCtx.body = JSON.stringify(fetchCtx.body);
+
+        fetch(`/api/v1/sensors`, fetchCtx).then(res => res.json()).then(body => {
+            if (body.hasOwnProperty("error") && body.error) {
+                form.classList.add('was-validated');
+            } else {
+                // clear form and close modal
+                form.classList.remove('was-validated');
+                $("#sensorModal").modal("hide"); 
+                document.location.reload();
+            }
+        })
+    })
+
+    $("#trash_device").on("click", ev => {
+        const idField = $("#trashIdInput");
+        fetch("/api/v1/sensors", {
+            "method": "delete",
+            "body": JSON.stringify({
+                "id": idField.val()
+            }),
+            "headers": {
+                "content-type": "application/json"
+            }
+        }).then(res => res.text()).then(body => {
+            document.location.reload();
+        })
+    })
+
+            
+        
+</script>

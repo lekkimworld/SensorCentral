@@ -1,0 +1,129 @@
+<div class="row">
+    <div class="col-10">
+        <h1>Houses</h1>
+    </div>
+    <div class="col-2" id="action-icons">
+        <i class="fa fa-plus fa-2x" aria-hidden="true" rel="create"></i>
+    </div>
+</div>
+
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th scope="col"></th>
+            <th scope="col">NAME</th>
+            <th scope="col">ID</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each houses}}
+        <tr id="{{this.id}}">
+            <td><center><i class="fa fa-pencil-alt" aria-hidden="true"></i></center></td>
+            <th scope="row">{{this.name}}</th>
+            <td>{{this.id}}</td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
+
+<div class="modal fade" id="houseModel" tabindex="-1" role="dialog" aria-labelledby="houseModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="houseModalLabel">Create/Edit House</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="houseForm" novalidate>
+                    <input type="hidden" value="" id="idInput">
+                    <div class="form-group">
+                        <label for="nameInput">Name</label>
+                        <input type="text" required class="form-control" id="nameInput" aria-describedby="nameHelp" placeholder="Enter house name">
+                        <small id="nameHelp" class="form-text text-muted">Specify the name of the house (maximum 128 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the name for the house. Must be unique.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="save_house">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const openForm = function(id, name) {
+        const nameField = $("#nameInput");
+        const idField = $("#idInput");
+        nameField.val(name);
+        idField.val(id);
+        $("#houseModel").modal("show");
+    }
+    $("#action-icons").on("click", ev => {
+        if (ev.target.getAttribute("rel") === "create") {
+            openForm("", "");
+        }
+    })
+    $("tbody").on("click", ev => {
+        let elem = ev.target.parentElement;
+        let id = elem.id;
+        while (!id) {
+            elem = elem.parentElement;
+            id = elem.id;
+        }
+        
+        if (ev.target.nodeName === "I") {
+            fetch(`/api/v1/houses/${id}`).then(res => res.json()).then(body => {
+                openForm(body.id, body.name);
+            })
+            
+        } else {
+            document.location.href = `/configuration/house/${id}`;
+        }
+    })
+    $("#save_house").on("click", ev => {
+        const form = document.querySelector("#houseForm");
+        if (form.checkValidity()) {
+            // get field values
+            const nameField = $("#nameInput");
+            const idField = $("#idInput");
+            let fetchCtx = {
+                "body": {
+                    "name": nameField.val()
+                },
+                "headers": {
+                    "Content-Type": "application/json"
+                }
+            }
+            if (idField.val()) {
+                // update
+                fetchCtx.method = "POST";
+                fetchCtx.body.id = idField.val();
+            } else {
+                // create
+                fetchCtx.method = "PUT";
+            }
+            fetchCtx.body = JSON.stringify(fetchCtx.body);
+
+            fetch(`/api/v1/houses`, fetchCtx).then(res => res.json()).then(body => {
+                if (body.hasOwnProperty("error") && body.error) {
+                    form.classList.add('was-validated');
+                } else {
+                    // clear form and close modal
+                    form.classList.remove('was-validated');
+                    $("#houseModel").modal("hide"); 
+                    document.location.reload();
+                }
+            })
+
+            
+        } else {
+            form.classList.add('was-validated');
+        }
+    });
+</script>

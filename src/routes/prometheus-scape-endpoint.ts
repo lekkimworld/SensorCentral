@@ -5,7 +5,7 @@ import { StorageService } from '../services/storage-service';
 import { LogService } from '../services/log-service';
 
 const router = express.Router();
-router.get('/scrapedata', (req, res) => {
+router.get("/", (req, res) => {
     res.set({
         'Content-Type': 'text/plain'
     })

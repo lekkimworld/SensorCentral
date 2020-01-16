@@ -10,8 +10,8 @@ import { BaseService, IngestedControlMessage, Device, IngestedDeviceMessage, Ing
 const MIN_REGISTER_TEMP = process.env.MIN_REGISTER_TEMP || constants.SENSOR_VALUES.MIN_REGISTER_TEMP
 
 const router = express.Router();
-router.post('/*', (req, res) => {
-		// get data and see if array
+router.post('/', (req, res) => {
+	// get data and see if array
 	const body = req.body
 	const postObj : any = (function()  {
 		if (!body) {
@@ -102,9 +102,9 @@ router.post('/*', (req, res) => {
 					// found device id in payload
 					return Promise.resolve(postObj.deviceId);
 				} else {
-					// there is no device id in the payload - get unique device id('s) from sensor ids
-					let sensorIds : Set<string> = postObj.data.filter((element : object) => element["sensorId"] && element["sensorValue"]).reduce((prev, element) => {
-						prev.add(element.sensorId) as string;
+					// there is no device id in t	he payload - get unique device id('s) from sensor ids
+					let sensorIds : Set<string> = postObj.data.filter((element : any) => element["sensorId"] && element["sensorValue"]).reduce((prev : Set<string>, element : any) => {
+						prev.add(element.sensorId) as unknown as string;
 						return prev
 					}, new Set<string>())
 
@@ -122,7 +122,7 @@ router.post('/*', (req, res) => {
 				const msg = resp.data as IngestedDeviceMessage;
 
 				// send out a sensor reading message per reading
-				postObj.data.filter((element : object) => element["sensorId"] && element["sensorValue"]).forEach((element : object) => {
+				postObj.data.filter((element : any) => element["sensorId"] && element["sensorValue"]).forEach((element : any) => {
 					const payload : IngestedSensorMessage = {
 						'value': element["sensorValue"],
 						'id': element["sensorId"],

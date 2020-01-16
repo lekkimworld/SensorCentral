@@ -7,3 +7,9 @@ export const formatDate = function(date? : any) : string {
     let m = (date && date['diff'] ? date : date ? Moment(date) : Moment()) as moment.Moment;
     return m.tz(constants.DEFAULTS.TIMEZONE).format(constants.DEFAULTS.DATETIME_FORMAT);
 }
+
+export const buildBaseHandlebarsContext = (req : Express.Request) : any => {
+    return {
+        "username": req.session!.user.email
+    }
+}

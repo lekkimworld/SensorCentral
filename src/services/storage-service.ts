@@ -9,7 +9,10 @@ import { ISubscriptionResult } from "../configure-queues-topics";
 import * as utils from "../utils";
 import Moment from 'moment';
 import moment = require("moment");
+import uuid from "uuid/v1";
 import { stringify } from "querystring";
+import { lookup, lookupService } from "dns";
+import { QueryResult } from "pg";
 
 const SENSOR_KEY_PREFIX = 'sensor:';
 const DEVICE_KEY_PREFIX = 'device:';
@@ -53,8 +56,90 @@ export class StorageService extends BaseService {
         callback();
     }
 
-    async getDevices() : Promise<Device[]> {
-        const result = await this.dbService!.query(`select d.id deviceid, d.name devicename, d.notify "notify", d.muted_until "until", h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id;`);
+    async getHouses(houseid? : string) : Promise<House[]> {
+        const result = await this.dbService!.query(`select id, name from house ${houseid ? `where id='${houseid}'` : ""}`);
+        const houses = result.rows.map(row => {
+            return {
+                "id": row.id,
+                "name": row.name
+            }
+        })
+        return houses;
+    }
+
+    async createHouse(name : string) : Promise<House> {
+        // validate name
+        const usename = name.trim();
+        if (usename.length > 128) return Promise.reject(Error('Supplied name maybe maximum 128 characters'));
+
+        // generate id
+        const houseid = uuid();
+
+        // ensure unqiue name
+        return this.getHouses().then(houses => {
+            const houseWithSameName = houses.filter(h => h.name === name.trim());
+            if (houseWithSameName.length !== 0) {
+                // found house with same name
+                return Promise.reject(Error('House with that name already exists'));
+            } else {
+                return this.dbService!.query(`insert into house (id, name) values ('${houseid}', '${name.trim()}')`);
+            }
+        }).then(result => {
+            return this.getHouses(houseid);
+        }).then(houses => {
+            return houses[0];
+        })
+    }
+
+    async updateHouse(id : string, name : string) : Promise<House> {
+        // validate
+        const usename = name.trim();
+        if (usename.length > 128) return Promise.reject(Error('Supplied name maybe maximum 128 characters'));
+
+        return this.getHouses().then((houses : House[]) => {
+            // ensure id exists
+            if (houses.filter(h => h.id === id).length !== 1) {
+                // unable to find the house by id
+                return Promise.reject(Error(`Unable to find house with ID <${id}>`));
+            }
+
+            // ensure name is unique
+            if (houses.filter(h => h.name === name).length !== 0) {
+                return Promise.reject(Error(`House name is not unique`));
+            }
+            
+            // update house
+            return this.dbService!.query(`update house set name='${usename}' where id='${id}'`);
+
+        }).then(result => {
+            return this.getHouses(id);
+        }).then(houses => {
+            return Promise.resolve(houses[0]);
+        })
+    }
+
+    async deleteHouse(id : string) : Promise<void> {
+        // validate
+        const use_id = id.trim();
+
+        return this.getHouses().then(houses => {
+            // ensure id exists
+            if (houses.filter(h => h.id === use_id).length !== 1) {
+                // unable to find the house by id
+                return Promise.reject(Error(`Unable to find house with ID <${id}>`));
+            }
+            
+            // delete house
+            return this.dbService!.query(`delete from house where id='${use_id}'`);
+
+        }).then(result => {
+            return Promise.resolve();
+        })
+    }
+
+    async getDevices(houseId? : string) : Promise<Device[]> {
+        const str_query = `select d.id deviceid, d.name devicename, d.notify "notify", d.muted_until "until", h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id${houseId ? ` where h.id='${houseId}'` : ""} order by d.name asc;`;
+        const result = await this.dbService!.query(str_query);
         const devices = result.rows.map(row => {
             // get watchdog status
             const until = row.until || undefined;
@@ -88,6 +173,146 @@ export class StorageService extends BaseService {
         return devices;
     }
 
+    async createDevice(houseid : string, id : string, name : string) : Promise<Device> {
+        // validate name
+        const use_name = name.trim();
+        const use_id = id.trim();
+        const use_house = houseid.trim();
+        if (!use_id || use_id.length > 36) return Promise.reject(Error('Supplied ID id not present or longer than the maximum 36 characters'));
+        if (!use_name || use_name.length > 128) return Promise.reject(Error('Supplied name may not be present or longer than the maximum 128 characters'));
+        if (!use_house || use_house.length > 36) return Promise.reject(Error('Supplied house ID not present or longer than the maximum 36 characters'));
+
+        // get device by id
+        return this.getDeviceById(use_id).then(device => {
+            // we found a device with that ID - this is an error
+            return Promise.reject(new StorageServiceError('Found existing device with ID', "found"));
+
+        }).catch((err : StorageServiceError) => {
+            // reject if own error
+            if (err.code === "found") return Promise.reject(err);
+
+            // success ID not known
+            return this.dbService!.query(`insert into device (id, name, houseid) values ('${use_id}', '${use_name}', '${use_house}')`);
+
+        }).then(result => {
+            // return device
+            return this.getDeviceById(use_id);
+        })
+    }
+
+    async updateDevice(id : string, name : string) : Promise<Device> {
+        // validate
+        const use_name = name.trim();
+        const use_id = id.trim();
+        if (use_name.length > 128) return Promise.reject(Error('Supplied name maybe maximum 128 characters'));
+
+        return this.getDevices().then(devices => {
+            // ensure id exists
+            if (devices.filter(d => d.id === use_id).length !== 1) {
+                // unable to find the device by id
+                return Promise.reject(Error(`Unable to find device with ID <${id}>`));
+            }
+
+            // ensure name is unique
+            if (devices.filter(d => d.name === use_name).length !== 0) {
+                return Promise.reject(Error(`Device name is not unique`));
+            }
+            
+            // update device
+            return this.dbService!.query(`update device set name='${use_name}' where id='${use_id}'`);
+
+        }).then(result => {
+            return this.getDeviceById(use_id);
+        })
+    }
+
+    async deleteDevice(id : string) : Promise<void> {
+        // validate
+        const use_id = id.trim();
+
+        return this.getDevices().then(devices => {
+            // ensure id exists
+            if (devices.filter(d => d.id === use_id).length !== 1) {
+                // unable to find the device by id
+                return Promise.reject(Error(`Unable to find device with ID <${id}>`));
+            }
+            
+            // delete device
+            return this.dbService!.query(`delete from device where id='${use_id}'`);
+
+        }).then(result => {
+            return Promise.resolve();
+        })
+    }
+
+
+    async createSensor(deviceId : string, id : string, name : string, label : string, type : string) : Promise<Sensor> {
+        // validate 
+        const use_id = id.trim();
+        const use_name = name.trim();
+        const use_label = label.trim();
+        const use_type = type.trim();
+        if (use_id.length > 36) return Promise.reject(Error('Supplied ID maybe maximum 36 characters'));
+        if (use_name.length > 128) return Promise.reject(Error('Supplied name maybe maximum 128 characters'));
+        if (use_label.length > 128) return Promise.reject(Error('Supplied label maybe maximum 128 characters'));
+        
+        // ensure unqiue name
+        return this.getDeviceById(deviceId).then((device : Device) => {
+            // found device - good - see if we can find sensor by id
+            return this.getSensorById(id);
+
+        }).then((sensor : Sensor) => {
+            // should not be able to find sensor
+            return Promise.reject(new StorageServiceError(`Sensor with ID <${id}> already exists`, "found"));
+
+        }).catch((err : StorageServiceError) => {
+            // reject if own error
+            if (err.code === "found") return Promise.reject(err);
+
+            // create sensor in db
+            console.log(`insert into sensor (deviceid, id, name, label, type) values ('${deviceId}', '${use_id}', '${use_name}', '${use_label}', '${use_type}')`);
+            this.dbService?.query(`insert into sensor (deviceid, id, name, label, type) values ('${deviceId}', '${use_id}', '${use_name}', '${use_label}', '${use_type}')`);
+
+        }).then(result => {
+            return this.getSensorById(id);
+        })
+    }
+
+    async updateSensor(id : string, name : string, label : string, type : string) : Promise<Sensor> {
+        // validate
+        const use_id = id.trim();
+        const use_name = name.trim();
+        const use_label = label.trim();
+        const use_type = type.trim();
+        if (use_id.length > 36) return Promise.reject(Error('Supplied ID maybe maximum 36 characters'));
+        if (use_name.length > 128) return Promise.reject(Error('Supplied name maybe maximum 128 characters'));
+        if (use_label.length > 128) return Promise.reject(Error('Supplied label maybe maximum 128 characters'));
+        
+        return this.getSensorById(id).then((sensor : Sensor) => {
+            // update sensor
+            return this.dbService!.query(`update sensor set name='${use_name}', label='${use_label}', type='${use_type}' where id='${id}'`);
+
+        }).then(result => {
+            return this.getSensorById(id);
+        })
+    }
+
+    async deleteSensor(id : string) : Promise<void> {
+        // validate
+        const use_id = id.trim();
+
+        return this.getSensorById(id).then(sensor => {
+            // delete sensor
+            return this.dbService!.query(`delete from sensor where id='${use_id}'`);
+
+        }).then(result => {
+            return Promise.resolve();
+        })
+    }
+
+
+
+
     getDeviceIds() : Promise<string[]> {
         return this.getDevices().then(devices => {
             const deviceIds = devices.map(device => device.id) as string[];
@@ -99,7 +324,9 @@ export class StorageService extends BaseService {
         return this.getDevices().then(devices => {
             const filtered = devices.filter(device => device.id === deviceId);
             if (filtered.length === 1) return Promise.resolve(filtered[0]);
-            return Promise.reject(Error(`Unable to find a single device with id <${deviceId}>`));
+
+            const err = new StorageServiceError(`Unable to find a single device with id <${deviceId}>`, "not_found");
+            return Promise.reject(err);
         })
     }
 
@@ -151,6 +378,25 @@ export class StorageService extends BaseService {
         return this.getDevicesStatuses(false);
     }
 
+    updateDeviceNotificationState(device : string | Device, newState : WatchdogNotification, mutedUntil? : Moment.Moment) : Promise<Device> {
+        const device_id = typeof device === "string" ? device : device.id;
+        if (newState === WatchdogNotification.muted && !mutedUntil) {
+            mutedUntil = moment().add(7, "days");
+        }
+        let str_muted_until = newState === WatchdogNotification.muted ? mutedUntil?.toISOString() : undefined;
+        let p : Promise<QueryResult<any>>;
+        switch (newState) {
+            case WatchdogNotification.muted:
+                p = this.dbService!.query(`update device set notify=${newState}, muted_until='${str_muted_until}' where id='${device_id}'`)
+                break;
+            default:
+                p = this.dbService!.query(`update device set notify=${newState}, muted_until=NULL where id='${device_id}'`)
+        }
+        return p.then(result => {
+            return this.getDeviceById(device_id);
+        })
+    }
+
     /**
      * Returns the known sensors we have recently heard from i.e. that has a value in 
      * Redis.
@@ -190,8 +436,8 @@ export class StorageService extends BaseService {
         })
     }
 
-    getSensors() : Promise<Sensor[]> {
-        return this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id").then(result => {
+    getSensors(deviceId? : string) : Promise<Sensor[]> {
+        return this.dbService!.query(`select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id ${deviceId ? ` where s.deviceid='${deviceId}'` : ""} order by s.name asc`).then(result => {
             const sensors = result.rows.map(row => {
                 return {
                     "id": row.sensorid,
@@ -312,13 +558,14 @@ export class StorageService extends BaseService {
         this.eventService!.subscribeTopic(constants.TOPICS.SENSOR, "#", (result : ISubscriptionResult) => {
             const data = result.data as TopicSensorMessage;
             this.logService!.debug(`Storage service received message on ${result.exchangeName} / ${result.routingKey} for sensor id <${data.sensorId}> value <${data.value}>`);
-
+            
             // get sensor from redis if it's there already
             this.redisService!.get(`${SENSOR_KEY_PREFIX}${data.sensorId}`).then(str_sensor => {
                 let redis_sensor : RedisSensorMessage;
                 if (!str_sensor) {
                     // didn't find sensor in redis - create
                     redis_sensor = {
+                        "deviceId": data.deviceId,
                         "id": data.sensorId,
                         "dt": new Date(),
                         "value": data.value
@@ -328,10 +575,11 @@ export class StorageService extends BaseService {
                     redis_sensor = JSON.parse(str_sensor);
                     redis_sensor.dt = new Date();
                     redis_sensor.value = data.value;
+                    redis_sensor.deviceId = data.deviceId;
                 }
 
                 // set sensor in Redis
-                this.logService!.debug(`Adding sensor with key <${SENSOR_KEY_PREFIX}${data.sensorId}> to Redis`);
+                this.logService!.debug(`Adding sensor with key <${SENSOR_KEY_PREFIX}${data.sensorId}> (device <${data.deviceId}>) to Redis`);
                 this.redisService!.setex(`${SENSOR_KEY_PREFIX}${data.sensorId}`, constants.DEFAULTS.REDIS.SENSOR_EXPIRATION, JSON.stringify(redis_sensor));
             })
             
@@ -357,20 +605,23 @@ export class StorageService extends BaseService {
                     result.callback();
 
                     // return promise
-                    return Promise.resolve(sensor);
+                    return Promise.all([sensor, sensor.device]);
                 });
 
             }).catch(err => {
                 // unknown sensor - mark msg as consumed and return promise
                 result.callback();
-                return Promise.resolve(null);
+                return Promise.all([Promise.resolve(undefined), this.getDeviceById(msg.deviceId)]);
 
-            }).then(sensor => {
+            }).then((data : any) => {
+                const sensor : Sensor | undefined = data[0];
+                const device = data[1] as Device;
+
                 // create an augmented sensor reading and post to topic
                 const payload = {
+                    "deviceId": device.id,
                     "value": msg.value,
-                    "sensorId": msg.id,
-                    "sensor": sensor
+                    "sensorId": msg.id
                 } as TopicSensorMessage;
 
                 // publish
@@ -538,6 +789,7 @@ export class StorageService extends BaseService {
                     // @ts-ignore
                     let denominator = sensor ? constants.SENSOR_DENOMINATORS[sensor.type] : "??";
                     const result = {
+                        "deviceId": redisObj && redisObj.deviceId ? redisObj.deviceId : undefined,
                         "device": sensor ? sensor.device : undefined,
                         "id": sensorId,
                         "label": sensor ? sensor.label : undefined,
@@ -606,5 +858,14 @@ export class StorageService extends BaseService {
             })
             return Promise.resolve(resultArray);
         })
+    }
+}
+
+class StorageServiceError extends Error {
+    readonly isStorageServiceError : boolean = true;
+    readonly code : string = "unknown";
+    constructor(msg : string | undefined, code : string) {
+        super(msg);
+        this.code = code;
     }
 }

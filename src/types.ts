@@ -75,15 +75,15 @@ export enum WatchdogNotification {
     /**
      * Do NOT notify based on watchdog.
      */
-    no = "0",
+    no = 0,
     /**
      * Do notify based on watchdog.
      */
-    yes = "1",
+    yes = 1,
     /**
      * Do mute until date/time.
      */
-    muted = "2"
+    muted = 2
 }
 
 /**
@@ -118,11 +118,12 @@ export interface DeviceStatus extends Device {
  * Describes a sensor on a device.
  */
 export interface Sensor {
-    readonly device : Device | null;
+    readonly deviceId : string;
+    readonly device : Device | undefined;
     readonly id : string;
     readonly name : string;
     readonly label : string;
-    readonly type : SensorType | null;
+    readonly type : SensorType | undefined;
 }
 
 /**
@@ -151,7 +152,7 @@ export interface TopicControlMessage {
  * Type for messages publushed on the SENSOR topic.
  */
 export interface TopicSensorMessage {
-    sensor : Sensor | null;
+    deviceId: string;
     sensorId : string;
     value : number;
 }
@@ -168,6 +169,7 @@ export interface TopicDeviceMessage {
  * Type for objects with sensor data in Redis.
  */
 export interface RedisSensorMessage {
+    deviceId : string;
     id : string;
     value : number;
     dt : Date;
@@ -181,4 +183,15 @@ export interface RedisDeviceMessage {
     dt : Date;
     restarts : number;
     watchdogResets : number;
+}
+
+export interface APIUserContext {
+    readonly issuer : string;
+    readonly audience : string;
+    readonly subject : string;
+    readonly scopes : string[];
+    readonly houseid : string;
+    
+    accessAllHouses() : boolean;
+    hasScope(scope : string) : boolean;
 }
