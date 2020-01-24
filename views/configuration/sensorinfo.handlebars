@@ -1,0 +1,96 @@
+<a href="/configuration/house/{{houseId}}/{{deviceId}}">Back to sensors</a>
+<div class="row">
+    <div class="col-10">
+        <h1>Sensor: {{sensorName}}</h1>
+    </div>
+</div>
+
+<h5>Last Reading</h5>
+{{#if reading}}
+{{reading.value_string}}, {{reading.ageMinutes}} min. siden
+{{else}}
+No reading found for sensor
+{{/if}}
+
+<h5 class="mt-4">Graph</h5>
+<canvas id="myChart" width="400px" height="250px"></canvas>
+
+<h5 class="mt-4">Export</h5>
+<div class="name"><a href="/api/v1/excel/range/standard/{{sensor.label}}/last24hrs/5m">Export last 24 hrs (5 min resolution)</a></div>
+<div class="name"><a href="/api/v1/excel/range/standard/{{sensor.label}}/last24hrs/60m">Export last 24 hrs (1 hrs resolution)</a></div>
+<div class="name"><a href="/api/v1/excel/range/standard/{{sensor.label}}/lastweek">Export last week</a></div>
+
+<h5 class="mt-4">Samples</h5>
+{{#if samples}}
+<i>Showing last {{samples.length}} samples</i>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th scope="col">VALUE</th>
+            <th scope="col">TIMESTAMP</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each samples}}
+        <tr id="{{this.id}}">
+            <th scope="row">{{this.value}}</th>
+            <td>{{this.dt_string}}</td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
+{{else}}
+No samples to show.
+{{/if}}
+
+<script>
+    const houseid = "{{houseId}}";
+    const deviceid = "{{deviceId}}";
+    const sensorid = "{{sensorId}}";
+    const sensorname = "{{sensorName}}";
+    
+    $("tbody").on("click", ev => {
+        let elem = ev.target.parentElement;
+        let id = elem.id;
+        while (!id) {
+            elem = elem.parentElement;
+            id = elem.id;
+        }
+
+        
+    })
+    
+    window.addEventListener("DOMContentLoaded", () => {
+        const samples = fetch(`/api/v1/data/samples/${sensorid}/800`).then(res => res.json()).then(samples => {
+            const arr = samples.reverse().map(sample => {
+                return {
+                    "x": new Date(sample.dt),
+                    "y": sample.value
+                }
+            })
+            const formatDate = d => {
+                const m = d.getMonth();
+                const month = m===0 ? "jan" : m===1 ? "feb" : m === 2 ? "mar" : "apr";
+                return `${d.getDate()} ${month}`;
+            }
+            const formatTime = d => {
+                return `${d.getHours() < 10 ? "0" + d.getHours() : d.getHours()}:${d.getMinutes() < 10 ? "0" + d.getMinutes() : d.getMinutes()}`;
+            }
+            window.SC.doChart({
+                "labels": arr.map(d => `${formatDate(d.x)} ${formatTime(d.x)}`),
+                "datasets": [{
+                    "label": sensorname,
+                    "data": arr,
+                    "pointRadius": 0,
+                    "backgroundColor": 'rgba(0, 100, 255, 0.4)'
+                }]}, 
+                "line", {
+                    
+                }
+            );
+        })
+        
+        
+        
+    })
+</script>

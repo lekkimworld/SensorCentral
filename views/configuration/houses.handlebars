@@ -18,7 +18,12 @@
     <tbody>
         {{#each houses}}
         <tr id="{{this.id}}">
-            <td><center><i class="fa fa-pencil-alt" aria-hidden="true"></i></center></td>
+            <td>
+                <center>
+                    <i class="fa fa-pencil-alt" aria-hidden="true"></i>
+                    <i class="fa fa-trash" aria-hidden="true" rel="trash"></i>
+                </center>
+            </td>
             <th scope="row">{{this.name}}</th>
             <td>{{this.id}}</td>
         </tr>
@@ -56,6 +61,34 @@
     </div>
 </div>
 
+<div class="modal fade" id="trashModal" tabindex="-1" role="dialog" aria-labelledby="trashModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="trashModalLabel">Delete House</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you absolutely sure you want to DELETE this house? This will also DELETE all devices and sensors for this house. Sensor samples are not removed from the database.
+                <div class="form-group">
+                    <label for="idInput">ID</label>
+                    <input type="text" required class="form-control" id="trashIdInput" disabled="1">
+                </div>
+                <div class="form-group">
+                    <label for="nameInput">Name</label>
+                    <input type="text" required class="form-control" id="trashNameInput" disabled="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="trash_house">Yes</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     const openForm = function(id, name) {
         const nameField = $("#nameInput");
@@ -78,9 +111,21 @@
         }
         
         if (ev.target.nodeName === "I") {
-            fetch(`/api/v1/houses/${id}`).then(res => res.json()).then(body => {
-                openForm(body.id, body.name);
-            })
+            const rel = ev.target.getAttribute("rel");
+            if (rel === "add") {
+                fetch(`/api/v1/houses/${id}`).then(res => res.json()).then(body => {
+                    openForm(body.id, body.name);
+                })
+            } else if (rel === "trash") {
+                // show delete dialog
+                fetch(`/api/v1/houses/${id}`).then(res => res.json()).then(body => {
+                    const nameField = $("#trashNameInput");
+                    const idField = $("#trashIdInput");
+                    nameField.val(body.name);
+                    idField.val(body.id);
+                    $("#trashModal").modal("show");
+                })
+            }
             
         } else {
             document.location.href = `/configuration/house/${id}`;
@@ -102,11 +147,11 @@
             }
             if (idField.val()) {
                 // update
-                fetchCtx.method = "POST";
+                fetchCtx.method = "PUT";
                 fetchCtx.body.id = idField.val();
             } else {
                 // create
-                fetchCtx.method = "PUT";
+                fetchCtx.method = "POST";
             }
             fetchCtx.body = JSON.stringify(fetchCtx.body);
 
@@ -126,4 +171,19 @@
             form.classList.add('was-validated');
         }
     });
+
+    $("#trash_house").on("click", ev => {
+        const idField = $("#trashIdInput");
+        fetch("/api/v1/houses", {
+            "method": "delete",
+            "body": JSON.stringify({
+                "id": idField.val()
+            }),
+            "headers": {
+                "content-type": "application/json"
+            }
+        }).then(res => res.text()).then(body => {
+            document.location.reload();
+        })
+    })
 </script>

@@ -165,6 +165,13 @@ export interface TopicDeviceMessage {
     device : Device | null;
 }
 
+export interface SensorSample {
+    id : string;
+    value : number;
+    dt : Date;
+    dt_string : string;
+}
+
 /**
  * Type for objects with sensor data in Redis.
  */

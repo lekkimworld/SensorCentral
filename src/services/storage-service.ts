@@ -1,6 +1,6 @@
 import * as  util from "util";
 import {constants} from "../constants";
-import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, SensorReading, DeviceStatus, IngestedControlMessage, WatchdogNotification} from "../types";
+import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, SensorReading, DeviceStatus, IngestedControlMessage, WatchdogNotification, SensorSample} from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
 import { LogService } from "./log-service";
@@ -13,6 +13,7 @@ import uuid from "uuid/v1";
 import { stringify } from "querystring";
 import { lookup, lookupService } from "dns";
 import { QueryResult } from "pg";
+import { RedisError } from "redis";
 
 const SENSOR_KEY_PREFIX = 'sensor:';
 const DEVICE_KEY_PREFIX = 'device:';
@@ -394,6 +395,20 @@ export class StorageService extends BaseService {
         }
         return p.then(result => {
             return this.getDeviceById(device_id);
+        })
+    }
+
+    async getLastNSamplesForSensor(sensorId : string, samples : number = 100) : Promise<SensorSample[] | undefined> {
+        return this.dbService?.query(`select value, dt from sensor_data where id='${sensorId}' order by dt desc limit ${samples}`).then(result => {
+            const arr = result.rows.map(row => {
+                return {
+                    "id": sensorId,
+                    "dt": row.dt,
+                    "dt_string": utils.formatDate(row.dt),
+                    "value": row.value
+                } as SensorSample;
+            })
+            return Promise.resolve(arr);
         })
     }
 
@@ -784,25 +799,7 @@ export class StorageService extends BaseService {
             sensorMap.forEach((sensor, sensorId) => {
                 if ((known && sensor) || (!known && !sensor)) {
                     const redisObj = sensorIdObjMap.get(sensorId);
-                    // @ts-ignore
-                    let m = redisObj && redisObj.dt ? Moment(redisObj.dt) : null;
-                    // @ts-ignore
-                    let denominator = sensor ? constants.SENSOR_DENOMINATORS[sensor.type] : "??";
-                    const result = {
-                        "deviceId": redisObj && redisObj.deviceId ? redisObj.deviceId : undefined,
-                        "device": sensor ? sensor.device : undefined,
-                        "id": sensorId,
-                        "label": sensor ? sensor.label : undefined,
-                        "name": sensor ? sensor.name : undefined,
-                        "type": sensor ? sensor.type : undefined,
-                        "value": redisObj ? redisObj!.value : null,
-                        "value_string": redisObj ? `${redisObj.value.toFixed(2)}${denominator}` : null,
-                        "dt": redisObj ? redisObj.dt : null,
-                        "dt_string": redisObj && redisObj.dt ? utils.formatDate(redisObj!.dt) : null,
-                        "ageMinutes": m ? Moment().diff(m, 'minutes') : -1,
-                        "denominator": denominator
-                    } as SensorReading;
-                    resultArray.push(result);
+                    if (redisObj) resultArray.push(utils.convert(redisObj, sensor));
                 }
             })
             return Promise.resolve(resultArray);

@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { WatchdogNotification, Sensor, DeviceStatus, Device, SensorReading } from '../types';
+import { WatchdogNotification, Sensor, DeviceStatus, Device, SensorReading, RedisSensorMessage, SensorSample } from '../types';
 import { StorageService } from '../services/storage-service';
 import * as utils from "../utils";
 const {lookupService} = require('../configure-services');
@@ -72,6 +72,39 @@ router.get("/house/:houseid/:deviceid", (req, res) => {
 			"sensors": sensors,
 			"unregisteredSensors": unknown.filter(u => u.deviceId && u.deviceId === deviceid)
 		}, utils.buildBaseHandlebarsContext(req)));
+	})
+})
+
+router.get("/house/:houseid/:deviceid/:sensorid", (req, res) => {
+	if (!req.params.houseid) return res.status(417).send("Expected house id");
+	if (!req.params.deviceid) return res.status(417).send("Expected device id");
+	if (!req.params.sensorid) return res.status(417).send("Expected sensor id");
+	const houseid = req.params.houseid;
+	const deviceid = req.params.deviceid;
+	const sensorid = req.params.sensorid;
+
+	lookupService("storage").then((svc : StorageService) => {
+		svc.getKnownSensorsWithRecentReadings
+		svc.getSensorById(sensorid).then((sensor:Sensor) => {
+			Promise.all([
+				svc.getLastNSamplesForSensor(sensor.id),
+				svc.getRecentReadingBySensorIds([sensor.id])
+			]).then((data : any[]) => {
+				const samples = data[0] as SensorSample[];
+				const readings = data[1] as Map<string,RedisSensorMessage>;
+
+				const reading = readings.get(sensor.id);
+				res.render("configuration/sensorinfo", Object.assign({
+					"houseId": houseid,
+					"deviceId": deviceid,
+					"sensorId": sensor.id,
+					"sensorName": sensor.name,
+					"sensor": sensor,
+					"reading": reading ? utils.convert(reading, sensor) : undefined,
+					"samples": samples
+				}, utils.buildBaseHandlebarsContext(req)));
+			})
+		})
 	})
 })
 

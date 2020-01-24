@@ -7,3 +7,6 @@ if ('serviceWorker' in navigator) {
             console.log(`[ServiceWorker] Registered (${nameVersion})`); 
         });
 }
+
+window.SC = {};
+window.SC.doChart = require("./democharts").doChart;

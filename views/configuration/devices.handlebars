@@ -64,6 +64,7 @@
             </div>
             <div class="modal-body">
                 <form id="deviceForm" novalidate>
+                    <intput type="hidden" id="houseInput">
                     <div class="form-group">
                         <label for="idInput">ID</label>
                         <input type="text" required class="form-control" id="idInput" aria-describedby="nameHelp" placeholder="Enter device ID">
@@ -126,7 +127,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                Are you absolutely sure you want to delete this device?
+                Are you absolutely sure you want to DELETE this device? This will also DELETE all sensors for this device. Sensor samples are not deleted from the database.
                 <div class="form-group">
                     <label for="idInput">ID</label>
                     <input type="text" required class="form-control" id="trashIdInput" disabled="1">
@@ -147,9 +148,15 @@
 <script>
     const houseid = "{{parentId}}";
 
-    const openForm = function(id, name) {
+    const openForm = function(houseid, id, name) {
+        const houseField = $("#houseInput");
         const nameField = $("#nameInput");
         const idField = $("#idInput");
+        if (houseid) {
+            houseField.val(houseid);
+        } else {
+            houseField.val("");
+        }
         nameField.val(name);
         idField.val(id);
         $("#idInput").prop("disabled", id && id.length);
@@ -157,7 +164,7 @@
     }
     $("#action-icons").on("click", ev => {
         if (ev.target.getAttribute("rel") === "add") {
-            openForm("", "");
+            openForm(houseid, "");
         }
     })
     $("tbody").on("click", ev => {
@@ -179,7 +186,7 @@
                 });
             } else if (rel === "edit") {
                 fetch(`/api/v1/devices/${id}`).then(res => res.json()).then(body => {
-                    openForm(body.id, body.name);
+                    openForm("", body.id, body.name);
                 })
             } else if (rel === "jwt") {
                 fetch("/api/v1/jwt", {
@@ -242,24 +249,25 @@
         const form = document.querySelector("#deviceForm");
         if (form.checkValidity()) {
             // get field values
+            const houseField = $("#houseInput");
             const nameField = $("#nameInput");
             const idField = $("#idInput");
             let fetchCtx = {
                 "body": {
                     "name": nameField.val(),
-                    "house": houseid
+                    "id": idField.val()
                 },
                 "headers": {
                     "Content-Type": "application/json"
                 }
             }
-            if (idField.val()) {
-                // update
-                fetchCtx.method = "PUT";
-                fetchCtx.body.id = idField.val();
-            } else {
+            if (houseField.val()) {
                 // create
                 fetchCtx.method = "POST";
+                fetchCtx.body.house = houseField.val();
+            } else {
+                // update
+                fetchCtx.method = "PUT";
             }
             fetchCtx.body = JSON.stringify(fetchCtx.body);
 
@@ -269,7 +277,7 @@
                 } else {
                     // clear form and close modal
                     form.classList.remove('was-validated');
-                    $("#sensorModel").modal("hide"); 
+                    $("#deviceModal").modal("hide"); 
                     document.location.reload();
                 }
             })
