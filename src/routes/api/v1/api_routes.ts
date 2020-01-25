@@ -106,7 +106,7 @@ router.post("/jwt", (req, res) => {
 
     const secret = process.env.API_JWT_SECRET as string;
     jwt.sign({
-        "scopes": constants.DEFAULTS.API.JWT.SCOPE_API,
+        "scopes": `${constants.DEFAULTS.API.JWT.SCOPE_API} ${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}`,
         "houseid": houseid
     }, secret, {
         "algorithm": "HS256",

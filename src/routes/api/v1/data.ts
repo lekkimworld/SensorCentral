@@ -39,7 +39,7 @@ router.post("/", (req, res) => {
 		// ensure correct scope
 		const apictx = res.locals.api_context as APIUserContext;
 		if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA)) {
-			logService.warn(`Calling user does not have required scopes - has scopes <${apictx.scopes.join()}>`);
+			logService.warn(`Calling user does not have required scopes - has scopes <${apictx.scopes.join()}> - needs <${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}>`);
 			return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA} scope`});
 		} else {
 			logService.debug(`Confirmed caller has <${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}> scope`)
