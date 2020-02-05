@@ -40,12 +40,10 @@ router.get("/", (req, res) => {
         }).then(devices => {
             // traverse and process each device restart or watchdog event in turn
             devices.filter(d => d.house).forEach(device => {
-                buffer.push(`device\{houseId="${device.house.id}",houseName="${device.house.name}",deviceId="${device.id}",deviceName="${device.name}",type="restart"\} ${device.restarts ? device.restarts : 0}`)
+                buffer.push(`device\{houseId="${device.house.id}",houseName="${device.house.name}",deviceId="${device.id}",deviceName="${device.name}",type="restart"\} ${device.restarts ? device.restarts : 0}`);
+                buffer.push(`device\{houseId="${device.house.id}",houseName="${device.house.name}",deviceId="${device.id}",deviceName="${device.name}",type="watchdog"\} ${device.watchdogResets ? device.watchdogResets : 0}`);
             })
-            devices.filter(d => d.house).forEach(device => {
-                buffer.push(`device\{houseId="${device.house.id}",houseName="${device.house.name}",deviceId="${device.id}",deviceName="${device.name}",type="watchdog"\} ${device.watchdogResets ? device.watchdogResets : 0}`)
-            })
-
+            
             return Promise.resolve();
 
         }).then(() => {
