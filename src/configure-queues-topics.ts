@@ -8,7 +8,7 @@ const constants = require("./constants");
 export interface IPublishResult {
     "exchangeName":string,
     "routingKey"?:string,
-    "data":object
+    "data":any
 }
 export interface ISubscriptionResult extends IPublishResult {
     "callback": () => void;

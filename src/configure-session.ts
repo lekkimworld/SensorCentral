@@ -14,7 +14,7 @@ const ttl = (function() {
         } catch (err) {}
     }
     if (!hours) {
-        console.log(`ERROR reading SESSION_TTL from environment (${process.env.SESSION_TTL}) - session TTL is set to default (${DEFAULT_SESSION_TTL}) hours`);
+        console.log(`Unable to find SESSION_TTL in environment - session TTL is set to default (${DEFAULT_SESSION_TTL}) hours`);
         hours = DEFAULT_SESSION_TTL;
     }
     return hours * 60 * 60;

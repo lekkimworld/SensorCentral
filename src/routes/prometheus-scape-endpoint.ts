@@ -21,10 +21,15 @@ router.get("/", (req, res) => {
             // traverse and process each sensor in turn
             sensors.forEach(sensor => {
                 if (!sensor.value || sensor.value === Number.MIN_VALUE) return;
-                let fixedName = sensor.label ? sensor.label : `nolabel${sensor.id}`;
-                let deviceId = sensor.device && sensor.device.id ? sensor.device.id : 'unknown';
-                let deviceName = sensor.device && sensor.device.name ? sensor.device.name : 'unknown';
-                buffer.push(`sensor_${fixedName}\{sensorId="${sensor.id}",deviceId="${deviceId}",deviceName="${deviceName}"\} ${sensor.value}`);
+                if (!sensor.device) return;
+                if (!sensor.device.house) return;
+                const sensorId = sensor.id;
+                const sensorName = sensor.name;
+                const sensorLabel = sensor.label;
+                const deviceId = sensor.device.id;
+                const deviceName = sensor.device.name;
+                const houseId = sensor.device.house.id;
+                buffer.push(`sensor\{houseId="${houseId}",deviceId="${deviceId}",deviceName="${deviceName}",sensorId="${sensor.id}",sensorName="${sensorName}",sensorLabel="${sensorLabel}"\} ${sensor.value}`);
             })
             
             // get devices
@@ -32,11 +37,11 @@ router.get("/", (req, res) => {
 
         }).then(devices => {
             // traverse and process each device restart or watchdog event in turn
-            devices.forEach(device => {
-                buffer.push(`device_restart\{deviceId="${device.id}",deviceName=\"${device.name}\"\} ${device.restarts ? device.restarts : 0}`)
+            devices.filter(d => d.house).forEach(device => {
+                buffer.push(`device_restart\{houseId="${device.house.id}",deviceId="${device.id}",deviceName="${device.name}"\} ${device.restarts ? device.restarts : 0}`)
             })
-            devices.forEach(device => {
-                buffer.push(`device_watchdog_reset\{deviceId="${device.id}",deviceName=\"${device.name}\"\} ${device.watchdogResets ? device.watchdogResets : 0}`)
+            devices.filter(d => d.house).forEach(device => {
+                buffer.push(`device_watchdog_reset\{houseId="${device.house.id}",deviceId="${device.id}",deviceName="${device.name}"\} ${device.watchdogResets ? device.watchdogResets : 0}`)
             })
 
             return Promise.resolve();

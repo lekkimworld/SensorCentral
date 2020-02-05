@@ -667,7 +667,7 @@ export class StorageService extends BaseService {
                 } as TopicControlMessage;
 
                 // publish
-                this.eventService!.publishTopic(constants.TOPICS.CONTROL, device ? `known.${msg.type}` : `unknown/${msg.type}`, payload);
+                this.eventService!.publishTopic(constants.TOPICS.CONTROL, device ? `known.${msg.type}` : `unknown.${msg.type}`, payload);
             })
         });
     }
@@ -720,9 +720,11 @@ export class StorageService extends BaseService {
             const data = result.data as TopicControlMessage;
             this.getOrCreateRedisDeviceMessage(data.deviceId, (redis_device) => {
                 // act on event
-                if (result.routingKey === ControlMessageTypes.restart) {
+                if (!result.routingKey) {
+                    this.logService?.debug("Ignoring control topic message as no routing key");
+                } else if (result.routingKey?.indexOf(`.${ControlMessageTypes.restart}`) > 0) {
                     redis_device.restarts++;
-                } else if (result.routingKey === ControlMessageTypes.watchdogReset) {
+                } else if (result.routingKey?.indexOf(`.${ControlMessageTypes.watchdogReset}`) > 0) {
                     redis_device.watchdogResets++;
                 }
             });
