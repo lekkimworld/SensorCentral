@@ -26,10 +26,11 @@ router.get("/", (req, res) => {
                 const sensorId = sensor.id;
                 const sensorName = sensor.name;
                 const sensorLabel = sensor.label;
+                const sensorType = sensor.type;
                 const deviceId = sensor.device.id;
                 const deviceName = sensor.device.name;
                 const houseId = sensor.device.house.id;
-                buffer.push(`sensor\{houseId="${houseId}",deviceId="${deviceId}",deviceName="${deviceName}",sensorId="${sensor.id}",sensorName="${sensorName}",sensorLabel="${sensorLabel}"\} ${sensor.value}`);
+                buffer.push(`sensor\{houseId="${houseId}",deviceId="${deviceId}",deviceName="${deviceName}",sensorId="${sensor.id}",sensorName="${sensorName}",sensorLabel="${sensorLabel}",sensorType="${sensorType}"\} ${sensor.value}`);
             })
             
             // get devices
