@@ -64,7 +64,7 @@ export const fetchData = (options : FetchOption) : Promise<Array<ExportedSensorV
     const endstr = options.end.format(ISO8601_DATETIME_FORMAT);
     const step = options.step || DEFAULT_STEP;
     const result : Array<ExportedSensorValue> = [];
-    return fetch(`${process.env.PROMETHEUS_URL}/query_range?query=${options.query}&start=${startstr}&end=${endstr}&step=${step}`, {
+    return fetch(`${process.env.PROMETHEUS_URL}/query_range?query=${encodeURIComponent(options.query)}&start=${encodeURIComponent(startstr)}&end=${encodeURIComponent(endstr)}&step=${encodeURIComponent(step)}`, {
         "headers": {
             "Authorization": process.env.PROMETHEUS_AUTH_HEADER as string
         }

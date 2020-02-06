@@ -9,7 +9,7 @@ const router = express.Router();
 
 const exportPrometheusData = (res : express.Response, sensorLabel : string, start : Moment.Moment, end : Moment.Moment, step : string) => {
     prometheus.fetchData({
-        "query": `sensor_${sensorLabel}`,
+        "query": `sensor{sensorLabel="${sensorLabel}"}`,
         "start": start,
         "end": end,
         "step": step
