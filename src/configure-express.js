@@ -53,7 +53,13 @@ Issuer.discover("https://accounts.google.com").then(googleIssuer => {
 
             // save in session and redirect
             req.session.user = claims;
-            res.redirect("/");
+
+            // see if we have a url saved from when user made request before auth dance
+            if (req.session && req.session.temp_url) {
+                res.redirect(req.session.temp_url);
+            } else {
+                res.redirect("/");
+            }
         });
     })
     app.get("/openid/logout", (req, res) => {
@@ -103,6 +109,9 @@ Issuer.discover("https://accounts.google.com").then(googleIssuer => {
             })
             return next();
         }
+
+        // get requested url
+        req.session.temp_url = req.originalUrl;
 
         // send to login page
         res.redirect("/openid/login");
