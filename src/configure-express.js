@@ -39,9 +39,9 @@ Issuer.discover("https://accounts.google.com").then(googleIssuer => {
     })
     app.get("/openid/callback", (req, res) => {
         const nonce = req.session.nonce;
-        if (!nonce) return res.status(417).send("No nonce found");
+        if (!nonce) return res.status(417).send(`No nonce found (<${nonce}>)`);
         delete req.session.nonce;
-
+        
         // get params
         const params = client.callbackParams(req);
         client.callback(process.env.GOOGLE_REDIRECT_URI, params, { nonce }).then((tokenSet) => {
@@ -69,16 +69,27 @@ Issuer.discover("https://accounts.google.com").then(googleIssuer => {
         }
     })
     app.get("/openid/login", (req, res) => {
-        req.session.nonce = generators.nonce();
+        // generate nonce and auth url
+        const nonce = generators.nonce();
         const url = client.authorizationUrl({
             "scope": process.env.GOOGLE_SCOPES || "openid email profile",
-            "nonce": req.session.nonce,
+            "nonce": nonce
         });
-        if (process.env.GOOGLE_HOSTED_DOMAIN) {
-            return res.redirect(`${url}&hd=${process.env.GOOGLE_HOSTED_DOMAIN}`);
-        } else {
-            return res.redirect(url);
-        }
+
+        // store in session
+        req.session.nonce = nonce;
+        req.session.save(err => {
+            if (err) {
+                return res.status(500).send({"error": true, "message": "Unable to save session"});
+            }
+
+            // redirect
+            if (process.env.GOOGLE_HOSTED_DOMAIN) {
+                return res.redirect(`${url}&hd=${process.env.GOOGLE_HOSTED_DOMAIN}`);
+            } else {
+                return res.redirect(url);
+            }
+        });
     })
 
     /**

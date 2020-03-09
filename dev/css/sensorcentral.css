@@ -40,3 +40,16 @@ body {
 .sensorColumn {
     margin-bottom: 10px;
 }
+
+.font-small {
+    font-size: 0.8rem;;
+}
+
+.page-footer {
+    margin-top: 20px;
+    background-color: #efefef;
+}
+
+.main-body {
+    min-height: 400px;
+}
