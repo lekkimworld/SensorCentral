@@ -10,6 +10,7 @@ const { Issuer, generators } = require('openid-client');
 const configureSessionWithRedis = require("./configure-session");
 const { lookupService } = require("./configure-services");
 const { RedisService } = require("./services/redis-service");
+const { LogService } = require("./services/log-service");
 
 // configure app
 const app = express()
@@ -40,7 +41,6 @@ Issuer.discover("https://accounts.google.com").then(googleIssuer => {
     app.get("/openid/callback", (req, res) => {
         const nonce = req.session.nonce;
         if (!nonce) return res.status(417).send(`No nonce found (<${nonce}>)`);
-        delete req.session.nonce;
         
         // get params
         const params = client.callbackParams(req);
@@ -79,6 +79,11 @@ Issuer.discover("https://accounts.google.com").then(googleIssuer => {
         // store in session
         req.session.nonce = nonce;
         req.session.save(err => {
+            lookupService("log").then(logger => {
+                logger.info(`Starting redirect for authentication - nonce <${nonce}>`);
+            })
+
+            // abort if errror
             if (err) {
                 return res.status(500).send({"error": true, "message": "Unable to save session"});
             }
