@@ -19,6 +19,24 @@ module.exports = function(grunt) {
                         "cwd": "src",
                         "src": "**/*.js",
                         "dest": "server-dist"
+                    },
+                    {
+                        expand: true,
+                        cwd: "node_modules/eonasdan-bootstrap-datetimepicker/build/js",
+                        src: "**",
+                        dest: "public/js"
+                    },
+                    {
+                        expand: true,
+                        cwd: "node_modules/eonasdan-bootstrap-datetimepicker/build/css",
+                        src: "**",
+                        dest: "public/css"
+                    },
+                    {
+                        expand: true,
+                        cwd: "node_modules/moment/min",
+                        src: "moment-with-locales.min.js",
+                        dest: "public/js"
                     }
                 ]
             }

@@ -5,6 +5,7 @@ import { EventService } from '../../../services/event-service';
 import { StorageService } from '../../../services/storage-service';
 const {lookupService} = require('../../../configure-services');
 import {constants} from "../../../constants";
+import moment from 'moment';
 
 const router = express.Router();
 
@@ -27,6 +28,48 @@ router.get("/samples/:sensorId/:samples", (req, res) => {
 		res.send(samples);
 	}).catch((err : Error) => {
 		res.status(404).send({"error": true, "message": `Unable to find sensor (${err.message})`});
+	})
+})
+
+router.post("/samples", (req, res) => {
+	lookupService(["log", "storage"]).then((services : BaseService[]) => {
+		const logService = services[0] as LogService;
+		const storageService = services[1] as StorageService;
+
+		// ensure correct scope
+		const apictx = res.locals.api_context as APIUserContext;
+		if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA)) {
+			logService.warn(`Calling user does not have required scopes - has scopes <${apictx.scopes.join()}> - needs <${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}>`);
+			return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA} scope`});
+		} else {
+			logService.debug(`Confirmed caller has <${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}> scope`)
+		}
+		const body = req.body
+
+		// validate
+		const str_dt = body.dt;
+		const value = body.value;
+		const id = body.id;
+		if (!id) return res.status(417).send({"error": true, "message": "Missing id"});
+		if (!value || Number.isNaN(value)) return res.status(417).send({"error": true, "message": "Missing value or value is not a number"});
+		if (!str_dt || !str_dt.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)) return  res.status(417).send({"error": true, "message": "Missing sample date/time or date/time is not in ISO8601 format"});
+
+		const dt = moment.utc(str_dt);
+		storageService.addSample(id, value, dt).then(() => {
+			return res.status(201).send({
+				"id": id, 
+				"value": value,
+				"dt": str_dt
+			})
+		}).catch((err:Error) => {
+			logService.warn(`Unable to add sample for sensor with ID <${id}> in database...`);
+			res.status(500).send({
+				"error": true,
+				"message": `Unable to add sample to database (${err.message})`
+			})
+		})
+	}).catch((err:Error) => {
+		return res.status(500).send({"error": true, "message": `Unable to find required services (${err.message})`});
 	})
 })
 

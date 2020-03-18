@@ -27,6 +27,7 @@ router.use((req, res, next) => {
             constants.DEFAULTS.API.JWT.SCOPE_ADMIN_JWT, 
             constants.DEFAULTS.API.JWT.SCOPE_ADMIN,
             constants.DEFAULTS.API.JWT.SCOPE_READ,
+            constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA
         ];
         const apictx : APIUserContext = {
             "audience": req.session.user.aud,

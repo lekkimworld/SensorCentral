@@ -311,6 +311,16 @@ export class StorageService extends BaseService {
         })
     }
 
+    /**
+     * Add sample for a sensor.
+     * 
+     * @param id 
+     * @param value 
+     * @param dt 
+     */
+    addSample(id : string, value : number, dt : moment.Moment) : Promise<void> {
+        return this.persistSensorReading(id, value, dt);
+    }
 
 
 
@@ -559,9 +569,18 @@ export class StorageService extends BaseService {
      * 
      * @param id 
      * @param value 
+     * @param dt
      */
-    private persistSensorReading(id : string, value : number) : Promise<void> {
-        return this.dbService!.query("insert into sensor_data (dt, id, value) values (current_timestamp, $1, $2)", id, value).then(result => {
+    private persistSensorReading(id : string, value : number, dt? : moment.Moment) : Promise<void> {
+        let str_sql;
+        let args = [id, value];
+        if (dt) {
+            args.push(dt.toISOString());
+            str_sql = "insert into sensor_data (id, value, dt) values ($1, $2, $3)";
+        } else {
+            str_sql = "insert into sensor_data (id, value, dt) values ($1, $2, current_timestamp)";
+        }
+        return this.dbService!.query(str_sql, ...args).then(result => {
             return Promise.resolve();
         })
     }

@@ -1,7 +1,10 @@
 <a href="/configuration/house/{{houseId}}/{{deviceId}}">Back to sensors</a>
 <div class="row">
     <div class="col-10">
-        <h1>Sensor: {{sensorName}}</h1>
+        <h3>Sensor: {{sensorName}}</h3>
+    </div>
+    <div class="col-2" id="action-icons">
+        <i class="fa fa-plus fa-2x" aria-hidden="true" rel="add"></i>
     </div>
 </div>
 
@@ -13,7 +16,7 @@ No reading found for sensor
 {{/if}}
 
 <h5 class="mt-4">Graph</h5>
-<canvas id="myChart" width="400px" height="250px"></canvas>
+<canvas id="myChart" width="650px" height="250px"></canvas>
 
 <h5 class="mt-4">Export</h5>
 <div class="name"><a href="/api/v1/excel/range/standard/{{sensor.label}}/last24hrs/5m">Export last 24 hrs (5 min resolution)</a></div>
@@ -43,6 +46,52 @@ No reading found for sensor
 No samples to show.
 {{/if}}
 
+<div class="modal fade" id="sampleModal" tabindex="-1" role="dialog" aria-labelledby="sampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sampleModalLabel">Create/Edit Sample</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="sampleForm" novalidate>
+                    <div class="form-group">
+                        <label for="idInput">Sensor ID</label>
+                        <input type="text" required class="form-control" id="idInput" aria-describedby="nameHelp">
+                    </div>
+                    <div class="form-group">
+                        <label for="dtInput">Date/time</label>
+                        <div class='input-group date' id='datetimepicker1'>
+                            <input type='text' class="form-control" />
+                            <span class="input-group-addon">
+                                <span class="fa fa-calendar"></span>
+                            </span>
+                        </div>
+                        <small id="dtHelp" class="form-text text-muted">Specify the sample date/time.</small>
+                        <div class="invalid-feedback">
+                            You must specify the date/time for the sample.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="sampleInput">Sample</label>
+                        <input type="number" step=".0001" required class="form-control" id="sampleInput" aria-describedby="sampleHelp" placeholder="Enter sample value">
+                        <small id="sampleHelp" class="form-text text-muted">Specify the sample value (must be a number).</small>
+                        <div class="invalid-feedback">
+                            You must specify the sample value for the sensor. Must be a number.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="save_sample">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     const houseid = "{{houseId}}";
     const deviceid = "{{deviceId}}";
@@ -56,10 +105,71 @@ No samples to show.
             elem = elem.parentElement;
             id = elem.id;
         }
+    })
+    const openForm = function(id, value, dt) {
+        $('#datetimepicker1').datetimepicker({
+            locale: 'da_dk',
+            inline: true,
+            sideBySide: true,
+            icons: {
+                time: "fa fa-clock-o",
+                date: "fa fa-calendar",
+                up: "fa fa-arrow-up",
+                down: "fa fa-arrow-down",
+                next: "fa fa-arrow-right",
+                previous: "fa fa-arrow-left"
+            }
+        });
 
-        
+        const idField = $("#idInput");
+        const valueField = $("#sampleInput");
+        const dtField = $("#dtInput");
+        idField.val(id);
+        valueField.val(value);
+        dtField.val(dt);
+        $("#idInput").prop("disabled", true);
+        $("#sampleModal").modal("show");
+    }
+    $("#action-icons").on("click", ev => {
+        if (ev.target.getAttribute("rel") === "add") {
+            openForm(sensorid);
+        }
     })
     
+    $("#save_sample").on("click", ev => {
+        const form = document.querySelector("#sampleForm");
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        // get field values
+        const idField = $("#idInput");
+        const valueField = $("#sampleInput");
+        const dtField = $('#datetimepicker1');
+        let fetchCtx = {
+            "body": JSON.stringify({
+                "id": idField.val(),
+                "value": Number.parseFloat(valueField.val()),
+                "dt": dtField.data("DateTimePicker").date().toISOString()
+            }),
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "method": "POST"
+        }
+        fetch(`/api/v1/data/samples`, fetchCtx).then(res => res.json()).then(body => {
+            if (body.hasOwnProperty("error") && body.error) {
+                form.classList.add('was-validated');
+            } else {
+                // clear form and close modal
+                form.classList.remove('was-validated');
+                $("#sensorModal").modal("hide"); 
+                document.location.reload();
+            }
+        })
+    })
+
     window.addEventListener("DOMContentLoaded", () => {
         const samples = fetch(`/api/v1/data/samples/${sensorid}/800`).then(res => res.json()).then(samples => {
             const arr = samples.reverse().map(sample => {
@@ -86,7 +196,7 @@ No samples to show.
                     "backgroundColor": 'rgba(0, 100, 255, 0.4)'
                 }]}, 
                 "line", {
-                    
+                    "responsive": false
                 }
             );
         })
