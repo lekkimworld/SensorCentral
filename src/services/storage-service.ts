@@ -311,19 +311,6 @@ export class StorageService extends BaseService {
         })
     }
 
-    /**
-     * Add sample for a sensor.
-     * 
-     * @param id 
-     * @param value 
-     * @param dt 
-     */
-    addSample(id : string, value : number, dt : moment.Moment) : Promise<void> {
-        return this.persistSensorReading(id, value, dt);
-    }
-
-
-
     getDeviceIds() : Promise<string[]> {
         return this.getDevices().then(devices => {
             const deviceIds = devices.map(device => device.id) as string[];
@@ -633,8 +620,12 @@ export class StorageService extends BaseService {
             
             // see if we know the sensor
             this.getSensorById(msg.id).then(sensor => {
-                // known sensor - persist reading
-                return this.persistSensorReading(sensor.id, msg.value).then(() => {
+                // known sensor - persist reading (with dt if supplied)
+                let dt : Moment.Moment | undefined;
+                if (msg.dt) {
+                    dt = moment.utc(msg.dt)
+                }
+                return this.persistSensorReading(sensor.id, msg.value, dt).then(() => {
                     // mark msg as consumed
                     result.callback();
 

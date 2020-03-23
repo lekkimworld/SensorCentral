@@ -32,9 +32,10 @@ router.get("/samples/:sensorId/:samples", (req, res) => {
 })
 
 router.post("/samples", (req, res) => {
-	lookupService(["log", "storage"]).then((services : BaseService[]) => {
+	lookupService(["log", "event", "storage"]).then((services : BaseService[]) => {
 		const logService = services[0] as LogService;
-		const storageService = services[1] as StorageService;
+		const eventService = services[1] as EventService;
+		const storageService = services[2] as StorageService;
 
 		// ensure correct scope
 		const apictx = res.locals.api_context as APIUserContext;
@@ -45,24 +46,35 @@ router.post("/samples", (req, res) => {
 			logService.debug(`Confirmed caller has <${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}> scope`)
 		}
 		const body = req.body
+		const deviceId = body.deviceId;
 
 		// validate
 		const str_dt = body.dt;
 		const value = body.value;
 		const id = body.id;
 		if (!id) return res.status(417).send({"error": true, "message": "Missing id"});
+		if (!deviceId) return res.status(417).send({"error": true, "message": "Missing device id"});
 		if (!value || Number.isNaN(value)) return res.status(417).send({"error": true, "message": "Missing value or value is not a number"});
 		if (!str_dt || !str_dt.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)) return  res.status(417).send({"error": true, "message": "Missing sample date/time or date/time is not in ISO8601 format"});
+		
+		// ensure we know the device still (device may have an JWT for a deleted device)
+		storageService.getDeviceById(deviceId).then((device : Device) => {
+			const queueObj = {
+				id,
+				value,
+				deviceId,
+				dt: str_dt
+			} as IngestedSensorMessage;
+			return eventService.publishQueue(constants.QUEUES.SENSOR, queueObj);
 
-		const dt = moment.utc(str_dt);
-		storageService.addSample(id, value, dt).then(() => {
+		}).then(resp => {
+			logService.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
 			return res.status(201).send({
-				"id": id, 
-				"value": value,
-				"dt": str_dt
-			})
+				id, value, deviceId, "dt": str_dt
+			});
+
 		}).catch((err:Error) => {
-			logService.warn(`Unable to add sample for sensor with ID <${id}> in database...`);
+			logService.warn(`Unable to send sample for sensor with ID <${id}> to queue...`);
 			res.status(500).send({
 				"error": true,
 				"message": `Unable to add sample to database (${err.message})`

@@ -151,6 +151,7 @@ No samples to show.
             "body": JSON.stringify({
                 "id": idField.val(),
                 "value": Number.parseFloat(valueField.val()),
+                "deviceId": deviceid,
                 "dt": dtField.data("DateTimePicker").date().toISOString()
             }),
             "headers": {

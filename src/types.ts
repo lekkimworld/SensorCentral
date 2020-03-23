@@ -57,6 +57,7 @@ export interface IngestedSensorMessage {
     id : string;
     value : number;
     deviceId : string;
+    dt? : string;
 }
 
 /**
