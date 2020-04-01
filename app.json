@@ -8,9 +8,6 @@
     "website": "https://lekkimworld.com/",
     "repository": "https://github.com/lekkimworld/sensorcentral",
     "success_url": "/",
-    "scripts": {
-        "postdeploy": "bundle exec rake bootstrap"
-    },
     "env": {
         "API_JWT_SECRET": {
             "generator": "secret"
@@ -40,7 +37,7 @@
         }
     ],
     "environments": {
-        "test": {
+        "review": {
             "env": {
                 "DUMMY_AUTHENTICATION": "test-secret"
             },
