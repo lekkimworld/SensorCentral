@@ -15,6 +15,16 @@
             "protocol": "inspector",
         },
         {
+            "name": "Run postdeploy/create_database.ts (Typescript)",
+            "type": "node",
+            "request": "launch",
+            "args": ["${workspaceFolder}/src/postdeploy/create_database.ts"],
+            "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+            "sourceMaps": true,
+            "cwd": "${workspaceRoot}",
+            "protocol": "inspector",
+        },
+        {
             "type": "node",
             "request": "launch",
             "name": "Run worker_web.js (compiled Javascript)",
