@@ -38,7 +38,9 @@ router.get("/login", (req, res) => {
 router.get("/login/jwt", (req, res) => {
     const secret = process.env.API_JWT_SECRET as string;
     jwt.sign({
-        "scopes": `${constants.DEFAULTS.API.JWT.SCOPE_API} ${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}`,
+        "scopes": [
+            constants.DEFAULTS.API.JWT.SCOPE_API
+        ].join(" "),
         "houseid": "*"
     }, secret, {
         "algorithm": "HS256",

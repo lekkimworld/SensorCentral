@@ -34,13 +34,16 @@
     "environments": {
         "review": {
             "env": {
-                "DUMMY_AUTHENTICATION": "test-secret",
                 "API_JWT_SECRET": {
                     "generator": "secret"
                 },
                 "SESSION_SECRET": {
                     "generator": "secret"
-                }
+                },
+                "OIDC_CLIENT_ID": "stubOidcClient",
+                "OIDC_CLIENT_SECRET": "secretsarehardtokeep",
+                "OIDC_REDIRECT_URI": "https://sensorcentra-pwa-ivbqgndom3qip.herokuapp.com/openid/callback",
+                "OIDC_PROVIDER_URL": "https://cryptic-dawn-16980.herokuapp.com"
             },
             "scripts": {
                 "postdeploy": "node server-dist/postdeploy/create_database.js"
