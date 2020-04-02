@@ -46,7 +46,7 @@ router.get("/login/jwt", (req, res) => {
         "algorithm": "HS256",
         "issuer": constants.DEFAULTS.API.JWT.OUR_ISSUER,
         "audience": constants.DEFAULTS.API.JWT.AUDIENCE,
-        "subject": req.session!.user.email
+        "subject": req.session!.user.email || process.env.OIDC_POST_CLIENT_SECRET
     }, (err, token) => {
         if (err) {
             res.status(500).send({"error": true, "message": "Unable to generate JWT"});
