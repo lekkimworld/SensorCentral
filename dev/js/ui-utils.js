@@ -1,4 +1,43 @@
 const $ = require("jquery");
+const storage = require("./storage-utils.js");
+const log = require("./logger.js");
+
+const fillMenus = () => {
+    const user = storage.getUser();
+    const elemUsername = $("#navbarUsernameDropdown");
+    const elemMenuitems = $("#navbarMenuItems");
+    
+    if (user) {
+        elemMenuitems.html(`<li class="nav-item {{home_active}}">
+            <a class="nav-link" href="/#root">Home</a>
+            </li>
+            <li class="nav-item {{config_active}}">
+            <a class="nav-link" href="/#houses">Houses</a>
+            </li>
+            <li class="nav-item {{dash_active}}">
+            <a class="nav-link" href="/#dashboard">Dashboard</a>
+            </li>
+            <li class="nav-item {{about_active}}">
+            <a href="/#about" class="nav-link">About</a>
+            </li>`
+        );
+
+        elemUsername.html(`<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Username: ${user.email}
+            </a>
+            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
+                <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>
+            </div>`
+        );
+        $("#logout").on("click", () => {
+            storage.logout();
+            document.location.reload();
+        })
+    } else {
+        elemMenuitems.html("");
+        elemUsername.html("");
+    }
+}
 
 const htmlTitleRow = (title, ...actions) => {
     const htmlTitle = htmlPageTitle(title);
@@ -85,5 +124,6 @@ module.exports = {
     htmlPageTitle,
     htmlActionBar,
     htmlDataTable,
-    appendDataTable
+    appendDataTable,
+    fillMenus
 }

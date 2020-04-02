@@ -31,11 +31,11 @@ lookupService("redis").then(redisService => {
 })
 
 // build OpenID client
-Issuer.discover("https://accounts.google.com").then(googleIssuer => {
+Issuer.discover(process.env.OIDC_PROVIDER_URL).then(googleIssuer => {
     const client = new googleIssuer.Client({
-        "client_id": process.env.GOOGLE_CLIENT_ID,
-        "client_secret": process.env.GOOGLE_CLIENT_SECRET,
-        "redirect_uris": [process.env.GOOGLE_REDIRECT_URI],
+        "client_id": process.env.OIDC_CLIENT_ID,
+        "client_secret": process.env.OIDC_CLIENT_SECRET,
+        "redirect_uris": [process.env.OIDC_REDIRECT_URI],
         "response_types": ["code"]
     })
     app.get("/openid/callback", (req, res) => {
@@ -43,8 +43,13 @@ Issuer.discover("https://accounts.google.com").then(googleIssuer => {
         if (!nonce) return res.status(417).send(`No nonce found (<${nonce}>)`);
         
         // get params
-        const params = client.callbackParams(req);
-        client.callback(process.env.GOOGLE_REDIRECT_URI, params, { nonce }).then((tokenSet) => {
+        const callbackParams = client.callbackParams(req);
+        const callbackExtras = process.env.OIDC_POST_CLIENT_SECRET ? {
+            "exchangeBody": {
+                "client_secret": process.env.OIDC_CLIENT_SECRET
+            }
+        } : {};
+        client.callback(process.env.OIDC_REDIRECT_URI, callbackParams, { nonce }, callbackExtras).then((tokenSet) => {
             // get claims and validate hosted domain
             const claims = tokenSet.claims();
             if (process.env.GOOGLE_HOSTED_DOMAIN && (!claims.hd || claims.hd !== process.env.GOOGLE_HOSTED_DOMAIN)) {
@@ -54,47 +59,20 @@ Issuer.discover("https://accounts.google.com").then(googleIssuer => {
             // save in session and redirect
             req.session.user = claims;
 
-            // see if we have a url saved from when user made request before auth dance
-            if (req.session && req.session.temp_url) {
-                res.redirect(req.session.temp_url);
-            } else {
-                res.redirect("/");
-            }
+            // redirect
+            res.redirect("/openid/loggedin");
+            
         });
+    })
+    app.get("/openid/loggedin", (req, res) => {
+        return res.render("loggedin");
     })
     app.get("/openid/logout", (req, res) => {
         if (req.session || req.session.user) {
             delete req.session.user;
+            delete req.session.nonce;
             res.redirect("/openid/loggedout");
         }
-    })
-    app.get("/openid/login", (req, res) => {
-        // generate nonce and auth url
-        const nonce = generators.nonce();
-        const url = client.authorizationUrl({
-            "scope": process.env.GOOGLE_SCOPES || "openid email profile",
-            "nonce": nonce
-        });
-
-        // store in session
-        req.session.nonce = nonce;
-        req.session.save(err => {
-            lookupService("log").then(logger => {
-                logger.info(`Starting redirect for authentication - nonce <${nonce}>`);
-            })
-
-            // abort if errror
-            if (err) {
-                return res.status(500).send({"error": true, "message": "Unable to save session"});
-            }
-
-            // redirect
-            if (process.env.GOOGLE_HOSTED_DOMAIN) {
-                return res.redirect(`${url}&hd=${process.env.GOOGLE_HOSTED_DOMAIN}`);
-            } else {
-                return res.redirect(url);
-            }
-        });
     })
 
     /**

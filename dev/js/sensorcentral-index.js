@@ -1,7 +1,9 @@
 const package = require('../../package.json');
 const nameVersion = `${package.name}-${package.version}-${Date.now()}`;
 const $ = require("jquery");
-const log = require("roarr").default;
+const log = require("./logger.js");
+const uiutils = require("./ui-utils.js");
+const storage = require("./storage-utils");
 
 // register service worder
 if ('serviceWorker' in navigator) {
@@ -11,27 +13,40 @@ if ('serviceWorker' in navigator) {
         });
 }
 
-// Ensure that `globalThis.ROARR` is configured.
-globalThis.ROARR = globalThis.ROARR || {};
-globalThis.ROARR.write = (message) => {
-    const payload = JSON.parse(message);
-    const idx = document.location.search ? document.location.search.indexOf("?loglevel=") : -1;
-    let logLevel = 30;
-    if (idx >= 0) {
-        logLevel = document.location.search.substr(idx+10, 2) - 0;
-        console.log(`Log level <${logLevel}>`);
-    }
-    if (payload.context.logLevel > logLevel) {
-        console.log(payload.message, payload);
-    }
-};
-
 const navigationChange = () => {
+    // set / clear username dropdown and menus
+    uiutils.fillMenus();
+    
+    // get hash
     const hash = document.location.hash;
+    const path = document.location.pathname;
+    if ("/openid/loggedin" === path) {
+        // user has been logged it
+        return fetch("/api/v1/login/jwt").then(resp => resp.json()).then(body => {
+            storage.setUser(body);
+            document.location.pathname = "/";
+            document.location.hash = "#root";
+        })
+    }
     const elemRoot = $("#main-body");
+    const user = storage.getUser();
     log.debug(`navigationChange - hash <${hash}>`);
     
-    if (!hash || "" === hash || "#root" === hash) {
+    if ("#login" === hash) {
+        console.log("hash is login")
+        fetch("/api/v1/login").then(resp => resp.json()).then(body => {
+            console.log(body);
+            if (body.hasOwnProperty("error")) {
+                log.warn(`Received error back from login api <${body.message}>`);
+                console.log(body);
+            } else {
+                log.debug(`Received URL for login back from API - redirecting to it...`);
+                document.location.href = body.url;
+            }
+        }).catch(err => {
+            console.log(err)
+        })
+    } else if (!user || !hash || "" === hash || "#root" === hash) {
         require("./sensorcentral-root")(document, elemRoot);
     } else if ("#about" === hash) {
         require("./sensorcentral-about")(document, elemRoot);

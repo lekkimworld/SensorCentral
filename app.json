@@ -9,12 +9,7 @@
     "repository": "https://github.com/lekkimworld/sensorcentral",
     "success_url": "/",
     "env": {
-        "API_JWT_SECRET": {
-            "generator": "secret"
-        },
-        "SESSION_SECRET": {
-            "generator": "secret"
-        }
+        
     },
     "formation": {
         "web": {
@@ -39,7 +34,13 @@
     "environments": {
         "review": {
             "env": {
-                "DUMMY_AUTHENTICATION": "test-secret"
+                "DUMMY_AUTHENTICATION": "test-secret",
+                "API_JWT_SECRET": {
+                    "generator": "secret"
+                },
+                "SESSION_SECRET": {
+                    "generator": "secret"
+                }
             },
             "scripts": {
                 "postdeploy": "node server-dist/postdeploy/create_database.js"

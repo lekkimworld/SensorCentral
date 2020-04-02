@@ -45,10 +45,17 @@ self.addEventListener('activate', function(e) {
 });
 
 self.addEventListener('fetch', function(event) {
-    if (event.request.url.indexOf("/api/v1/data/samples") >= 1) {
+    if (event.request.url.indexOf("/api/v1/login") > 0) {
+        console.log("Service worker deteced login request");
+        event.respondWith(fetch(event.request).catch(err => {
+            const resp = new Response(`{"dummy": 2, "error": true, "message": "You are not online and cannot login."}`);
+            resp.headers.set("Content-Type", "application/json");
+            return resp;
+        }));
+    } else if (event.request.url.indexOf("/api/v1/data/samples") >= 1) {
         event.respondWith(fetch(event.request).catch(err => {
             return new Response(`[{"id":"sensor_foo","dt":"2020-04-24T07:23:34.567Z","dt_string":"24-4-2020 kl. 8:23","value":24.123},{"id":"sensor_foo","dt":"2020-04-24T07:23:34.567Z","dt_string":"24-4-2020 kl. 8:23","value":24.123},{"id":"sensor_foo","dt":"2020-04-23T20:10:36.919Z","dt_string":"23-4-2020 kl. 21:10","value":19.8},{"id":"sensor_foo","dt":"2020-04-23T20:04:43.187Z","dt_string":"23-4-2020 kl. 21:04","value":22.22}]`);
-        }))
+        }));
     } else {
         event.respondWith(
             caches.match(event.request, {ignoreSearch:true}).then(response => {

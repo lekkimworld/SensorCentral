@@ -1,6 +1,7 @@
 const $ = require("jquery");
 const doChart = require("./charts-util").doChart;
 const uiutils = require("./ui-utils");
+const fetcher = require("./fetch-util");
 
 module.exports = (document, elemRoot) => {
     const header = uiutils.htmlTitleRow("Dashboards"
@@ -11,7 +12,7 @@ module.exports = (document, elemRoot) => {
 
     const sensorid = "sensor_foo";
     const sensorname = "foo";
-    const samples = fetch(`/api/v1/data/samples/${sensorid}/800`).then(res => res.json()).then(samples => {
+    const samples = fetcher.get(`/api/v1/data/samples/${sensorid}/800`).then(samples => {
         const arr = samples.reverse().map(sample => {
             return {
                 "x": new Date(sample.dt),

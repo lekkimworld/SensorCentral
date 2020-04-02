@@ -1,8 +1,9 @@
 const uiutils = require("./ui-utils");
 const $ = require("jquery");
+const fetcher = require("./fetch-util");
 
 module.exports = (document, elemRoot) => {
-    fetch(`/api/v1/houses`).then(resp => resp.json()).then(houses => {
+    fetcher.get(`/api/v1/houses`).then(houses => {
         elemRoot.html(
             uiutils.htmlTitleRow(
                 "Houses", 

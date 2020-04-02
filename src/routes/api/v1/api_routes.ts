@@ -8,6 +8,7 @@ import { userInfo } from 'os';
 const {lookupService} = require('../../../configure-services');
 import jwt from "jsonwebtoken";
 import {constants} from "../../../constants";
+import { AuthenticationParameters, authenticationUrl } from "../../../authentication-utils";
 
 const router = express.Router();
 
@@ -15,6 +16,45 @@ const router = express.Router();
 router.use((req, res, next) => {
     res.type('json');
     next();
+})
+
+router.get("/login", (req, res) => {
+    authenticationUrl().then(result => {
+        req.session!.nonce = result.nonce;
+        req.session!.save(err => {
+            // abort if errror
+            if (err) {
+                return res.status(500).send({"error": true, "message": "Unable to save session"});
+            }
+
+            // return response
+            res.send({
+                "url": result.url
+            })
+        })
+    })
+})
+
+router.get("/login/jwt", (req, res) => {
+    const secret = process.env.API_JWT_SECRET as string;
+    jwt.sign({
+        "scopes": `${constants.DEFAULTS.API.JWT.SCOPE_API} ${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}`,
+        "houseid": "*"
+    }, secret, {
+        "algorithm": "HS256",
+        "issuer": constants.DEFAULTS.API.JWT.OUR_ISSUER,
+        "audience": constants.DEFAULTS.API.JWT.AUDIENCE,
+        "subject": req.session!.user.email
+    }, (err, token) => {
+        if (err) {
+            res.status(500).send({"error": true, "message": "Unable to generate JWT"});
+        } else {
+            res.send({
+                "jwt": token,
+                "user": req.session!.user
+            });
+        }
+    })
 })
 
 // ensure user is authenticated
