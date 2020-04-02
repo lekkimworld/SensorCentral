@@ -75,7 +75,7 @@ const htmlDataTable = (input = {}) => {
         </tr>
     </thead>
     <tbody>
-        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td><center>${ctx.actions.map(a => `<i class="btn fa fa-${a.icon}" aria-hidden="true" rel="${a.rel}"></i>`).join("")}</center></td>` : ""}${r.data.map((d, idx) => idx===0 ? `<th scope="row">${d}</th>` : `<td>${d}</td>`).join("")}</tr>`)}
+        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td><center>${ctx.actions.map(a => `<i class="btn fa fa-${a.icon}" aria-hidden="true" rel="${a.rel}"></i>`).join("")}</center></td>` : ""}${r.data.map((d, idx) => idx===0 ? `<th scope="row">${d}</th>` : `<td>${d}</td>`).join("")}</tr>`).join("")}
     </tbody>
 </table>`;
     return html;

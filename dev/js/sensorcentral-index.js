@@ -50,8 +50,15 @@ const navigationChange = () => {
         require("./sensorcentral-about")(document, elemRoot);
     } else if ("#dashboard" === hash) {
         require("./sensorcentral-dashboard")(document, elemRoot);
-    } else if ("#houses" === hash) {
-        require("./sensorcentral-houses")(document, elemRoot);
+    } else if (hash.indexOf("#houses") === 0) {
+        const parts = hash.split("/");
+        if (parts.length === 1) {
+            // list houses
+            require("./sensorcentral-houses")(document, elemRoot);
+        } else if (parts.length === 2) {
+            // list devuces for house
+            require("./sensorcentral-devices")(document, elemRoot, {"houseId": parts[1]});
+        }
     } else {
         elemRoot.html(`<h1>Oh no!!</h1>
         <p>
