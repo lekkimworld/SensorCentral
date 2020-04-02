@@ -75,42 +75,6 @@ Issuer.discover(process.env.OIDC_PROVIDER_URL).then(googleIssuer => {
         }
     })
 
-    /**
-     * Ensure requests are authenticated
-     */
-    app.use((req, res, next) => {
-        // see if we have a user in the session and it's not expired
-        if (req.session.user && req.session.user.exp < Date.now()) return next();
-
-        // see if api - it has separate auth requirements
-        if (req.originalUrl.startsWith("/api/")) return next();
-
-        // see if posting to root as it's the legacy post endpoint for devices
-        if (req.originalUrl === "/" && req.method === "POST" && req.headers["content-type"] === "application/json") {
-            // legacy post
-            lookupService("log").then(log => {
-                const deviceid = req.body.deviceId;
-                log.warn(`Received LEGACY POST from device (ip <${req.ip}>, device <${deviceid}>)`);
-            })
-            return next();
-        }
-
-        // see if legacy scrapedata for prometheus
-        if (req.originalUrl === "/scrapedata" && req.method === "GET") {
-            // legacy post
-            lookupService("log").then(log => {
-                log.warn(`Received LEGACY GET for scrapedata endpoint (ip <${req.ip}>)`);
-            })
-            return next();
-        }
-
-        // get requested url
-        req.session.temp_url = req.originalUrl;
-
-        // send to login page
-        res.redirect("/openid/login");
-    })
-
     // add routes to app
     routes.routes(app);
 })

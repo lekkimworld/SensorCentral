@@ -24,8 +24,7 @@ const navigationChange = () => {
         // user has been logged it
         return fetch("/api/v1/login/jwt").then(resp => resp.json()).then(body => {
             storage.setUser(body);
-            document.location.pathname = "/";
-            document.location.hash = "#root";
+            document.location.href = "/#root";
         })
     }
     const elemRoot = $("#main-body");
@@ -33,12 +32,11 @@ const navigationChange = () => {
     log.debug(`navigationChange - hash <${hash}>`);
     
     if ("#login" === hash) {
-        console.log("hash is login")
         fetch("/api/v1/login").then(resp => resp.json()).then(body => {
             console.log(body);
             if (body.hasOwnProperty("error")) {
                 log.warn(`Received error back from login api <${body.message}>`);
-                console.log(body);
+                require("./sensorcentral-offline")(document, elemRoot);
             } else {
                 log.debug(`Received URL for login back from API - redirecting to it...`);
                 document.location.href = body.url;

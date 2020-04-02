@@ -1,5 +1,5 @@
 import express from 'express';
-const router = express.Router()
+const router = express.Router();
 import * as utils from "../utils";
 
 router.get('/', (req, res) => {

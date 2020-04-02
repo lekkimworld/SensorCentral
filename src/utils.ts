@@ -12,7 +12,6 @@ export const formatDate = function(date? : any) : string {
 
 export const buildBaseHandlebarsContext = (req : Express.Request) : any => {
     return {
-        "username": req.session!.user.email,
         "app_name": pckg.name,
         "app_version": pckg.version
     }
