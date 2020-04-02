@@ -2,7 +2,7 @@ import { Issuer, generators } from "openid-client";
 import express from "express-session";
 
 // build OpenID client
-const oidcIssuerPromise = Issuer.discover(process.env.OIDC_PROVIDER_URL as string).then(oidcIssuer => {
+export const oidcIssuerPromise = Issuer.discover(process.env.OIDC_PROVIDER_URL as string).then(oidcIssuer => {
     // create client
     const client = new oidcIssuer.Client({
         "client_id": process.env.OIDC_CLIENT_ID as string,

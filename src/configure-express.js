@@ -11,6 +11,7 @@ const configureSessionWithRedis = require("./configure-session");
 const { lookupService } = require("./configure-services");
 const { RedisService } = require("./services/redis-service");
 const { LogService } = require("./services/log-service");
+const { oidcIssuerPromise } = require("./authentication-utils");
 
 // configure app
 const app = express()
@@ -31,13 +32,7 @@ lookupService("redis").then(redisService => {
 })
 
 // build OpenID client
-Issuer.discover(process.env.OIDC_PROVIDER_URL).then(googleIssuer => {
-    const client = new googleIssuer.Client({
-        "client_id": process.env.OIDC_CLIENT_ID,
-        "client_secret": process.env.OIDC_CLIENT_SECRET,
-        "redirect_uris": [process.env.OIDC_REDIRECT_URI],
-        "response_types": ["code"]
-    })
+oidcIssuerPromise.then(client => {
     app.get("/openid/callback", (req, res) => {
         const nonce = req.session.nonce;
         if (!nonce) return res.status(417).send(`No nonce found (<${nonce}>)`);
