@@ -33,6 +33,11 @@ const fillMenus = () => {
             storage.logout();
             document.location.reload();
         })
+
+        // ensure responsive menu closes after click
+        $('.navbar-nav>li>a').on('click', function(){
+            $('.navbar-collapse').removeClass('show');
+        });
     } else {
         elemMenuitems.html("");
         elemUsername.html("");

@@ -69,7 +69,3 @@ const navigationChange = () => {
 window.addEventListener("DOMContentLoaded", navigationChange);
 window.addEventListener("hashchange", navigationChange);
 
-// ensure responsive menu closes after click
-$('.navbar-nav>li>a').on('click', function(){
-    $('.navbar-collapse').removeClass('show');
-});
