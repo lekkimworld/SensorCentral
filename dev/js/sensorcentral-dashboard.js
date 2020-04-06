@@ -4,15 +4,16 @@ const uiutils = require("./ui-utils");
 const fetcher = require("./fetch-util");
 
 module.exports = (document, elemRoot) => {
-    const header = uiutils.htmlTitleRow("Dashboards"
-    );
+    const header = uiutils.htmlTitleRow("Dashboards");
     elemRoot.html(`${header}
     <canvas id="myChart" width="600px" height="250px"></canvas>`
     )
 
     const sensorid = "sensor_foo";
     const sensorname = "foo";
-    const samples = fetcher.get(`/api/v1/data/samples/${sensorid}/800`).then(samples => {
+    const samples = fetcher.getSamples(sensorid, 800).then(samples => {
+        doChart("myChart", sensorname, samples);
+        /*
         const arr = samples.reverse().map(sample => {
             return {
                 "x": new Date(sample.dt),
@@ -40,5 +41,6 @@ module.exports = (document, elemRoot) => {
                 "responsive": false
             }
         );
+        */
     })
 }

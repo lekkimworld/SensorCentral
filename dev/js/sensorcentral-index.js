@@ -50,14 +50,24 @@ const navigationChange = () => {
         require("./sensorcentral-about")(document, elemRoot);
     } else if ("#dashboard" === hash) {
         require("./sensorcentral-dashboard")(document, elemRoot);
-    } else if (hash.indexOf("#houses") === 0) {
+    } else if (hash.indexOf("#configuration") === 0) {
         const parts = hash.split("/");
-        if (parts.length === 1) {
+        if (parts.length === 2 && parts[1] === "houses") {
             // list houses
+            log.debug(`Rendering sensorcentral-houses with parts <${parts.join()}>`);
             require("./sensorcentral-houses")(document, elemRoot);
-        } else if (parts.length === 2) {
-            // list devuces for house
-            require("./sensorcentral-devices")(document, elemRoot, {"houseId": parts[1]});
+        } else if (parts.length === 3 && parts[1] === "house") {
+            // list devices for house
+            log.debug(`Rendering sensorcentral-devices with parts <${parts.join()}>`);
+            require("./sensorcentral-devices")(document, elemRoot, {"houseId": parts[2]});
+        } else if (parts.length === 5 && parts[1] === "house" && parts[3] === "device") {
+            // list sensors for device
+            log.debug(`Rendering sensorcentral-sensors with parts <${parts.join()}>`);
+            require("./sensorcentral-sensors")(document, elemRoot, {"houseId": parts[2], "deviceId": parts[4]});
+        } else if (parts.length === 7 && parts[1] === "house" && parts[3] === "device" && parts[5] === "sensor") {
+            // sensor details
+            log.debug(`Rendering sensorcentral-sensordetails with parts <${parts.join()}>`);
+            require("./sensorcentral-sensordetails")(document, elemRoot, {"houseId": parts[2], "deviceId": parts[4], "sensorId": parts[6]});
         }
     } else {
         elemRoot.html(`<h1>Oh no!!</h1>

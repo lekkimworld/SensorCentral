@@ -3,14 +3,15 @@ const $ = require("jquery");
 const fetcher = require("./fetch-util");
 
 module.exports = (document, elemRoot, ctx) => {
-    fetcher.get(`/api/v1/devices`).then(devices => {
+    fetcher.get(`/api/v1/devices/${ctx.deviceId}/sensors`).then(sensors => {
         elemRoot.html(uiutils.htmlBreadcrumbs([
             {"text": "Houses", "id": "houses"},
-            {"text": devices[0].house.name}
+            {"text": sensors[0].device.house.name, "id": `house/${sensors[0].device.house.id}`},
+            {"text": sensors[0].device.name}
         ]));
         elemRoot.append(
             uiutils.htmlTitleRow(
-                "Devices", 
+                "Sensors", 
                 [
                     {"rel": "create", "icon": "plus"},
                     {"rel": "edit", "icon": "minus"}
@@ -23,18 +24,15 @@ module.exports = (document, elemRoot, ctx) => {
                 }},
                 {"icon": "trash", "rel": "trash", "click": function(ctx) {
                     console.log(ctx, this);
-                }},
-                {"icon": "key", "rel": "jwt", "click": function(ctx) {
-                    console.log(ctx, this);
                 }}
             ],
-            "headers": ["NAME", "NOTIFY", "ID"],
-            "rows": devices.map(device => {
+            "headers": ["NAME", "LABEL", "ID"],
+            "rows": sensors.map(sensor => {
                 return {
-                    "id": device.id,
-                    "data": [device.name, "", device.id],
+                    "id": sensor.id,
+                    "data": [sensor.name, sensor.label, sensor.id],
                     "click": function() {
-                        document.location.hash = `configuration/house/${device.house.id}/device/${this.id}`
+                        document.location.hash = `configuration/house/${ctx.houseId}/device/${ctx.deviceId}/sensor/${sensor.id}`
                     }
                 }
             })

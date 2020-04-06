@@ -2,6 +2,8 @@ const $ = require("jquery");
 const storage = require("./storage-utils.js");
 const log = require("./logger.js");
 
+const ID_ACTION_ITEMS = "action-icons";
+
 const fillMenus = () => {
     const user = storage.getUser();
     const elemUsername = $("#navbarUsernameDropdown");
@@ -12,7 +14,7 @@ const fillMenus = () => {
             <a class="nav-link" href="/#root">Home</a>
             </li>
             <li class="nav-item {{config_active}}">
-            <a class="nav-link" href="/#houses">Houses</a>
+            <a class="nav-link" href="/#configuration/houses">Houses</a>
             </li>
             <li class="nav-item {{dash_active}}">
             <a class="nav-link" href="/#dashboard">Dashboard</a>
@@ -44,7 +46,12 @@ const fillMenus = () => {
     }
 }
 
-const htmlTitleRow = (title, ...actions) => {
+const htmlBreadcrumbs = (objs) => {
+    return objs.map(o => o.id ? `<a href="#configuration/${o.id}">${o.text}</a>` : o.text).join(" &gt; ");
+    
+}
+
+const htmlTitleRow = (title, actions) => {
     const htmlTitle = htmlPageTitle(title);
     const htmlActions = htmlActionBar(actions);
     const html = `<div class="row">
@@ -54,6 +61,10 @@ const htmlTitleRow = (title, ...actions) => {
     return html;
 }
 
+const htmlSectionTitle = (title) => {
+    return `<h5 class="mt-4">${title}</h5>`;
+}
+
 const htmlPageTitle = (title) => {
     const html = `<div class="col-10">
         <h3>${title}</h3>
@@ -61,11 +72,12 @@ const htmlPageTitle = (title) => {
     return html;
 }
 
-const htmlActionBar = ([...actions]) => {
+const htmlActionBar = (actions) => {
+    if (!actions || !actions.length) return "";
     const html = actions.map(action => {
         return `<i class="fa fa-${action.icon} fa-2x mr-2" aria-hidden="true" rel="${action.rel}"></i>`
     }).join("");
-    return `<div class="col-2" id="action-icons">${html}</div>`;
+    return `<div class="col-2" id="${ID_ACTION_ITEMS}">${html}</div>`;
 }
 
 const htmlDataTable = (input = {}) => {
@@ -73,7 +85,7 @@ const htmlDataTable = (input = {}) => {
     if (!ctx.hasOwnProperty("headers")) ctx.headers = [];
     if (!ctx.hasOwnProperty("rows")) ctx.rows = [];
     if (!ctx.hasOwnProperty("actions")) ctx.actions = undefined;
-    const html = `<table class="table table-bordered table-hover">
+    const html = `<table class="table table-bordered table-hover" ${input.id ? `id="${input.id}"` : ""}>
     <thead>
         <tr>
             ${ctx.actions ? `<th scope="col"></th>` : ""}${ctx.headers.map(h => `<th scope="col">${h}</th>`).join("")}
@@ -84,6 +96,23 @@ const htmlDataTable = (input = {}) => {
     </tbody>
 </table>`;
     return html;
+}
+
+const appendTitleRow = (elem, title, actions = []) => {
+    const html = htmlTitleRow(title, actions);
+    elem.append(html);
+
+    // add click handler
+    if (!actions || !actions.length) return;
+    $(`#${ID_ACTION_ITEMS}`).on("click", ev => {
+        const rel = ev.target.getAttribute("rel");
+        const filteredActions = actions.filter(action => action.rel === rel);
+        if (!filteredActions.length) return;
+        const action = filteredActions[0];
+        if (action.hasOwnProperty("click") && typeof action.click === "function") {
+            action.click.call(ev.target, action);
+        }
+    })
 }
 
 const appendDataTable = (elem, input = {}) => {
@@ -127,8 +156,11 @@ const appendDataTable = (elem, input = {}) => {
 module.exports = {
     htmlTitleRow,
     htmlPageTitle,
+    htmlSectionTitle, 
     htmlActionBar,
     htmlDataTable,
     appendDataTable,
-    fillMenus
+    appendTitleRow,
+    fillMenus,
+    htmlBreadcrumbs
 }

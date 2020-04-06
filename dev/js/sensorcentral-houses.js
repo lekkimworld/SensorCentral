@@ -7,8 +7,10 @@ module.exports = (document, elemRoot) => {
         elemRoot.html(
             uiutils.htmlTitleRow(
                 "Houses", 
-                {"rel": "create", "icon": "plus"},
-                {"rel": "edit", "icon": "minus"}
+                [
+                    {"rel": "create", "icon": "plus"},
+                    {"rel": "edit", "icon": "minus"}
+                ]
             ));
         uiutils.appendDataTable(elemRoot, {
             "actions": [
@@ -25,7 +27,7 @@ module.exports = (document, elemRoot) => {
                     "id": house.id,
                     "data": [house.name, house.id],
                     "click": function() {
-                        document.location.hash = `houses/${this.id}`
+                        document.location.hash = `configuration/house/${this.id}`
                     }
                 }
             })
