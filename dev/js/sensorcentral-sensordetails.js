@@ -75,10 +75,17 @@ module.exports = (document, elemRoot, ctx) => {
                         "dt": data.date.toISOString()
                     }
                     fetcher.post(`/api/v1/data/samples`, postbody).then(body => {
+                        // convert date to a javascript date and push in cache
                         body.dt = moment.utc(body.dt).toDate();
                         samplesCache.push(body);
+
+                        // rebuild chart and table
                         samplesChart(sensor, samplesCache);
                         samplesTable(sensor, samplesCache);
+
+                        formutils.showToastError(`Unable to save sample 2)`);
+                    }).catch(err => {
+                        formutils.showToastError(`Unable to save sample (${err.message})`);
                     })
                 })
             }}]
