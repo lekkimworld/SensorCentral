@@ -53,3 +53,11 @@ body {
 .main-body {
     min-height: 400px;
 }
+
+.sensorcentral-size-2x {
+    font-size: 2rem !important;
+}
+
+.sensorcentral-size-3x {
+    font-size: 3rem !important;
+}

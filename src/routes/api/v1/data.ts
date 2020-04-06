@@ -5,6 +5,7 @@ import { EventService } from '../../../services/event-service';
 import { StorageService } from '../../../services/storage-service';
 const {lookupService} = require('../../../configure-services');
 import {constants} from "../../../constants";
+import {formatDate} from "../../../utils";
 import moment from 'moment';
 
 const router = express.Router();
@@ -70,7 +71,10 @@ router.post("/samples", (req, res) => {
 		}).then(resp => {
 			logService.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
 			return res.status(201).send({
-				id, value, deviceId, "dt": str_dt
+				id, 
+				value, 
+				"dt": str_dt,
+				"dt_string": formatDate(moment.utc(str_dt))
 			});
 
 		}).catch((err:Error) => {

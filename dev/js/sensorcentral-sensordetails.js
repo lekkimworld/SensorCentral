@@ -2,7 +2,11 @@ const uiutils = require("./ui-utils");
 const $ = require("jquery");
 const fetcher = require("./fetch-util");
 const doChart = require("./charts-util").doChart;
+const formutils = require("./forms-util");
+const moment = require("moment");
 
+const ID_FORMS = "sensorForms";
+const ID_CHART = "sensorChart";
 const ID_SAMPLES_DIV = "samples";
 const ID_SAMPLES_TABLE = "samples_table";
 const ID_SAMPLES_LINK = "samples_link";
@@ -23,7 +27,7 @@ const loadSamples = (sensorId) => {
 }
 
 const samplesChart = (sensor, samples) => {
-    doChart("myChart", sensor.name, samples);
+    doChart(ID_CHART, sensor.name, samples);
 }
 
 const samplesTable = (sensor, samples) => {
@@ -36,7 +40,7 @@ const samplesTable = (sensor, samples) => {
     uiutils.appendDataTable(samplesTable, {
         "id": ID_SAMPLES_TABLE,
         "headers": ["DATE/TIME", "VALUE"],
-        "rows": samples.map(s => {
+        "rows": samples.sort((a,b) => b.dt-a.dt).map(s => {
             return {
                 "data": [s.dt_string, s.value]
             }
@@ -62,17 +66,34 @@ module.exports = (document, elemRoot, ctx) => {
             elemRoot, 
             `Sensor: ${sensor.name}`, 
             [{"rel": "create", "icon": "plus", "click": (action) => {
-                
+                formutils.appendManualSampleForm($(`#${ID_FORMS}`), sensor, (data) => {
+                    // get field values
+                    let postbody = {
+                        "id": sensor.id,
+                        "value": data.value,
+                        "deviceId": sensor.device.id,
+                        "dt": data.date.toISOString()
+                    }
+                    fetcher.post(`/api/v1/data/samples`, postbody).then(body => {
+                        body.dt = moment.utc(body.dt).toDate();
+                        samplesCache.push(body);
+                        samplesChart(sensor, samplesCache);
+                        samplesTable(sensor, samplesCache);
+                    })
+                })
             }}]
         );
 
         // create div for graph
         elemRoot.append(uiutils.htmlSectionTitle("Graph"));
-        elemRoot.append(`<canvas id="myChart" width="650px" height="250px"></canvas>`);
+        elemRoot.append(`<canvas id="${ID_CHART}" width="650px" height="250px"></canvas>`);
         
         // create div's for samples table and load samples
         elemRoot.append(uiutils.htmlSectionTitle("Samples"));
         elemRoot.append(`<div id="${ID_SAMPLES_DIV}" ${ATTR_SAMPLES_COUNT}="0"><div id="${ID_SAMPLES_LINK}"><a href="javascript:void(0)">Load More</a></div><div id="${ID_SAMPLES_TABLE}"></div></div>`);
+
+        // apend div for forms
+        elemRoot.append(`<div id="${ID_FORMS}"></div>`);
 
         loadSamples(sensor.id).then(samples => {
             samplesChart(sensor, samples);

@@ -28,13 +28,13 @@ module.exports = function(grunt) {
                         expand: true,
                         cwd: "node_modules/eonasdan-bootstrap-datetimepicker/build/js",
                         src: "**",
-                        dest: "build-temp/js"
+                        dest: "public/js"
                     },
                     {
                         expand: true,
                         cwd: "node_modules/moment/min",
                         src: "moment-with-locales.min.js",
-                        dest: "build-temp/js"
+                        dest: "public/js"
                     },
 
                     // client side dependencies

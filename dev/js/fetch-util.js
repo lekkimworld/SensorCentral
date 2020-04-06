@@ -14,7 +14,10 @@ const get = url => {
     return fetch(url, buildContext()).then(resp => resp.json());
 }
 const post = (url, body) => {
-    return fetch(url, buildContext("post", body)).then(resp => resp.json());
+    const ctx = buildContext("post");
+    ctx.body = JSON.stringify(body);
+    ctx.headers["Content-Type"] = "application/json";
+    return fetch(url, ctx).then(resp => resp.json());
 }
 const getSamples = (sensorId, samplesCount) => {
     return get(`/api/v1/data/samples/${sensorId}/${samplesCount}`).then(samples => {

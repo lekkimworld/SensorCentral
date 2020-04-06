@@ -66,7 +66,7 @@ const htmlSectionTitle = (title) => {
 }
 
 const htmlPageTitle = (title) => {
-    const html = `<div class="col-10">
+    const html = `<div class="col-9">
         <h3>${title}</h3>
     </div>`;
     return html;
@@ -75,9 +75,10 @@ const htmlPageTitle = (title) => {
 const htmlActionBar = (actions) => {
     if (!actions || !actions.length) return "";
     const html = actions.map(action => {
-        return `<i class="fa fa-${action.icon} fa-2x mr-2" aria-hidden="true" rel="${action.rel}"></i>`
+        return `<button type="button" class="btn fa fa-${action.icon} sensorcentral-size-2x" aria-hidden="true" rel="${action.rel}"></button>`
     }).join("");
-    return `<div class="col-2" id="${ID_ACTION_ITEMS}">${html}</div>`;
+
+    return `<div class="col-3 float-right" id="${ID_ACTION_ITEMS}">${html}</div>`;
 }
 
 const htmlDataTable = (input = {}) => {

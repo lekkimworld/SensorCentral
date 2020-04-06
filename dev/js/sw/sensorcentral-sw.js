@@ -48,7 +48,7 @@ self.addEventListener('fetch', function(event) {
     if (event.request.url.indexOf("/api/v1/login") > 0) {
         console.log("Service worker deteced login request");
         event.respondWith(fetch(event.request).catch(err => {
-            const resp = new Response(`{"dummy": 2, "error": true, "message": "You are not online and cannot login."}`);
+            const resp = new Response(JSON.stringify({"error": true, "message": "You are not online and cannot login."}));
             resp.headers.set("Content-Type", "application/json");
             return resp;
         }));
