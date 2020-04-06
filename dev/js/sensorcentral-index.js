@@ -44,12 +44,12 @@ const navigationChange = () => {
         }).catch(err => {
             console.log(err)
         })
-    } else if (!user || !hash || "" === hash || "#root" === hash) {
+    } else if (!hash || "" === hash || "#root" === hash) {
         require("./sensorcentral-root")(document, elemRoot);
     } else if ("#about" === hash) {
         require("./sensorcentral-about")(document, elemRoot);
-    } else if ("#dashboard" === hash) {
-        require("./sensorcentral-dashboard")(document, elemRoot);
+    } else if (!user) {
+        require("./sensorcentral-root")(document, elemRoot);
     } else if (hash.indexOf("#configuration") === 0) {
         const parts = hash.split("/");
         if (parts.length === 2 && parts[1] === "houses") {

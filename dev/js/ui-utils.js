@@ -9,41 +9,43 @@ const fillMenus = () => {
     const elemUsername = $("#navbarUsernameDropdown");
     const elemMenuitems = $("#navbarMenuItems");
     
+    let htmlMenu = "";
+    let htmlUsername = "";
     if (user) {
-        elemMenuitems.html(`<li class="nav-item {{home_active}}">
+        htmlMenu = 
+            `<li class="nav-item {{home_active}}">
             <a class="nav-link" href="/#root">Home</a>
             </li>
             <li class="nav-item {{config_active}}">
             <a class="nav-link" href="/#configuration/houses">Houses</a>
-            </li>
-            <li class="nav-item {{dash_active}}">
-            <a class="nav-link" href="/#dashboard">Dashboard</a>
-            </li>
-            <li class="nav-item {{about_active}}">
-            <a href="/#about" class="nav-link">About</a>
-            </li>`
-        );
-
-        elemUsername.html(`<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            </li>`;
+        htmlUsername = `<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             Username: ${user.email}
             </a>
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
                 <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>
-            </div>`
-        );
+            </div>`;
+    }
+    htmlMenu += `<li class="nav-item {{about_active}}">
+        <a href="/#about" class="nav-link">About</a>
+        </li>`;
+
+    // set into dom
+    elemMenuitems.html(htmlMenu);
+    elemUsername.html(htmlUsername);
+
+    // add logout handler
+    if (user) {
         $("#logout").on("click", () => {
             storage.logout();
             document.location.reload();
         })
-
-        // ensure responsive menu closes after click
-        $('.navbar-nav>li>a').on('click', function(){
-            $('.navbar-collapse').removeClass('show');
-        });
-    } else {
-        elemMenuitems.html("");
-        elemUsername.html("");
     }
+
+    // ensure responsive menu closes after click
+    $('.navbar-nav>li>a').on('click', function(){
+        $('.navbar-collapse').removeClass('show');
+    });
 }
 
 const htmlBreadcrumbs = (objs) => {
