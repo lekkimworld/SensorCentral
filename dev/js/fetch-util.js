@@ -10,17 +10,35 @@ const buildContext = (method) => {
     }
     return ctx;
 }
-const get = url => {
-    return fetch(url, buildContext()).then(resp => resp.json());
+const doFetch = (url, ctx, type) => {
+    return fetch(url, ctx).then(resp => {
+        if (type === "text") return resp.text();
+        return resp.json();
+    })
 }
-const post = (url, body) => {
+const doGet = (url, type = "json") => {
+    return doFetch(url, buildContext());
+}
+const doPost = (url, body, type = "json") => {
     const ctx = buildContext("post");
-    ctx.body = JSON.stringify(body);
+    ctx.body = typeof body === "string" ? body : JSON.stringify(body);
     ctx.headers["Content-Type"] = "application/json";
-    return fetch(url, ctx).then(resp => resp.json());
+    return doFetch(url, ctx, type);
+}
+const doPut = (url, body, type = "json") => {
+    const ctx = buildContext("put");
+    ctx.body = typeof body === "string" ? body : JSON.stringify(body);
+    ctx.headers["Content-Type"] = "application/json";
+    return doFetch(url, ctx, type);
+}
+const doDelete = (url, body, type = "json") => {
+    const ctx = buildContext("delete");
+    ctx.body = typeof body === "string" ? body : JSON.stringify(body);
+    ctx.headers["Content-Type"] = "application/json";
+    return doFetch(url, ctx, type);
 }
 const getSamples = (sensorId, samplesCount) => {
-    return get(`/api/v1/data/samples/${sensorId}/${samplesCount}`).then(samples => {
+    return doGet(`/api/v1/data/samples/${sensorId}/${samplesCount}`).then(samples => {
         return Promise.resolve(samples.map(sample => {
             const s = {
                 "id": sample.id,
@@ -33,7 +51,9 @@ const getSamples = (sensorId, samplesCount) => {
     })
 }
 module.exports = {
-    get,
-    post,
+    "get": doGet,
+    "post": doPost,
+    "delete": doDelete,
+    "put": doPut,
     getSamples
 }

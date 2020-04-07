@@ -95,7 +95,7 @@ const htmlDataTable = (input = {}) => {
         </tr>
     </thead>
     <tbody>
-        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td><center>${ctx.actions.map(a => `<i class="btn fa fa-${a.icon}" aria-hidden="true" rel="${a.rel}"></i>`).join("")}</center></td>` : ""}${r.data.map((d, idx) => idx===0 ? `<th scope="row">${d}</th>` : `<td>${d}</td>`).join("")}</tr>`).join("")}
+        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td><center>${ctx.actions.map(a => `<i class="btn fa fa-${a.icon}" aria-hidden="true" rel="${a.rel}"></i>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<th scope="row">${d}</th>` : `<td>${d}</td>`).join("")}</tr>`).join("")}
     </tbody>
 </table>`;
     return html;
@@ -131,6 +131,14 @@ const appendDataTable = (elem, input = {}) => {
             elem = elem.parentElement;
             id = elem.id;
         }
+
+        // get data object for row
+        const filteredRows = input.rows.filter(r => r.id === id);
+        let row;
+        if (filteredRows && filteredRows.length) {
+            row = filteredRows[0];
+        }
+        if (!row) return;
         
         if (input.actions && ev.target.nodeName === "I") {
             // get rel and find action
@@ -141,16 +149,13 @@ const appendDataTable = (elem, input = {}) => {
             
             // invoke if there is a click handler
             if (action.hasOwnProperty("click") && typeof action.click === "function") {
-                action.click.call(ev.target, {"id": id, "action": action});
+                const filteredRows = input.rows.filter(r => r.id === id);
+                action.click.call(ev.target, {"id": id, "data": row.data, "action": action});
             }
         } else {
             // click on row - see if there is a row click handler
-            const filteredRows = input.rows.filter(r => r.id === id);
-            if (filteredRows && filteredRows.length) {
-                const row = filteredRows[0];
-                if (row.hasOwnProperty("click") && typeof row.click === "function") {
-                    row.click.call(row);
-                }
+            if (row.hasOwnProperty("click") && typeof row.click === "function") {
+                row.click.call(row);
             }
         }
     })

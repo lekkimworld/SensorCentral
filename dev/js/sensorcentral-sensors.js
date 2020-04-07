@@ -30,7 +30,8 @@ module.exports = (document, elemRoot, ctx) => {
             "rows": sensors.map(sensor => {
                 return {
                     "id": sensor.id,
-                    "data": [sensor.name, sensor.label, sensor.id],
+                    "data": sensor,
+                    "columns": [sensor.name, sensor.label, sensor.id],
                     "click": function() {
                         document.location.hash = `configuration/house/${ctx.houseId}/device/${ctx.deviceId}/sensor/${sensor.id}`
                     }

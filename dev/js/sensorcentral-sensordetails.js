@@ -5,7 +5,6 @@ const doChart = require("./charts-util").doChart;
 const formutils = require("./forms-util");
 const moment = require("moment");
 
-const ID_FORMS = "sensorForms";
 const ID_CHART = "sensorChart";
 const ID_SAMPLES_DIV = "samples";
 const ID_SAMPLES_TABLE = "samples_table";
@@ -42,7 +41,8 @@ const samplesTable = (sensor, samples) => {
         "headers": ["DATE/TIME", "VALUE"],
         "rows": samples.sort((a,b) => b.dt-a.dt).map(s => {
             return {
-                "data": [s.dt_string, s.value]
+                "data": s,
+                "columns": [s.dt_string, s.value]
             }
         })
     });
@@ -66,7 +66,7 @@ module.exports = (document, elemRoot, ctx) => {
             elemRoot, 
             `Sensor: ${sensor.name}`, 
             [{"rel": "create", "icon": "plus", "click": (action) => {
-                formutils.appendManualSampleForm($(`#${ID_FORMS}`), sensor, (data) => {
+                formutils.appendManualSampleForm(sensor, (data) => {
                     // get field values
                     let postbody = {
                         "id": sensor.id,
@@ -83,9 +83,9 @@ module.exports = (document, elemRoot, ctx) => {
                         samplesChart(sensor, samplesCache);
                         samplesTable(sensor, samplesCache);
 
-                        formutils.showToastError(`Unable to save sample 2)`);
+                        
                     }).catch(err => {
-                        formutils.showToastError(`Unable to save sample (${err.message})`);
+                        
                     })
                 })
             }}]
@@ -98,9 +98,6 @@ module.exports = (document, elemRoot, ctx) => {
         // create div's for samples table and load samples
         elemRoot.append(uiutils.htmlSectionTitle("Samples"));
         elemRoot.append(`<div id="${ID_SAMPLES_DIV}" ${ATTR_SAMPLES_COUNT}="0"><div id="${ID_SAMPLES_LINK}"><a href="javascript:void(0)">Load More</a></div><div id="${ID_SAMPLES_TABLE}"></div></div>`);
-
-        // apend div for forms
-        elemRoot.append(`<div id="${ID_FORMS}"></div>`);
 
         loadSamples(sensor.id).then(samples => {
             samplesChart(sensor, samples);
