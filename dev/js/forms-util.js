@@ -155,6 +155,7 @@ const HOUSE_CREATE_EDIT = {
             const idField = $("#idInput");
             nameField.val(ctx.house.name);
             idField.val(ctx.house.id);
+            idField.prop("disabled", true);
         }
         return Promise.resolve();
     },
@@ -164,6 +165,150 @@ const HOUSE_CREATE_EDIT = {
         return {
             "id": idField.val(),
             "name": nameField.val()
+        }
+    }
+}
+
+const DEVICE_CREATE_EDIT = {
+    "name": "device",
+    "html": `<div class="modal fade" id="deviceModal" tabindex="-1" role="dialog" aria-labelledby="deviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deviceModalLabel">Create/Edit Device</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="deviceForm" novalidate>
+                    <div class="form-group">
+                        <label for="idInput">ID</label>
+                        <input type="text" required class="form-control" id="idInput" aria-describedby="nameHelp" placeholder="Enter device ID">
+                        <small id="idHelp" class="form-text text-muted">Specify the ID of the device (maximum 36 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the ID for the device. Must be unique.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="nameInput">Name</label>
+                        <input type="text" required class="form-control" id="nameInput" aria-describedby="nameHelp" placeholder="Enter device name">
+                        <small id="nameHelp" class="form-text text-muted">Specify the name of the device (maximum 128 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the name for the device. Must be unique.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="performAction">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>`,
+    "fnInit": (ctx) => {
+        const idField = $("#idInput");
+        const nameField = $("#nameInput");
+        if (ctx.device) {
+            idField.val(ctx.device.id);
+            idField.prop("disabled", true);
+            nameField.val(ctx.device.name);
+        }
+        return Promise.resolve();
+    },
+    "fnGetData": () => {
+        const idField = $("#idInput");
+        const nameField = $("#nameInput");
+        return {
+            "id": idField.val(),
+            "name": nameField.val()
+        }
+    }
+}
+
+const SENSOR_CREATE_EDIT = {
+    "name": "sensor",
+    "html": `<div class="modal fade" id="sensorModal" tabindex="-1" role="dialog" aria-labelledby="sensorModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sensorModalLabel">Create/Edit Sensor</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="sensorForm" novalidate>
+                    <div class="form-group">
+                        <label for="idInput">ID</label>
+                        <input type="text" required class="form-control" id="idInput" aria-describedby="nameHelp" placeholder="Enter sensor ID">
+                        <small id="idHelp" class="form-text text-muted">Specify the ID of the sensor (maximum 36 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the ID for the sensor. Must be unique.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="nameInput">Name</label>
+                        <input type="text" required class="form-control" id="nameInput" aria-describedby="nameHelp" placeholder="Enter sensor name">
+                        <small id="nameHelp" class="form-text text-muted">Specify the name of the sensor (maximum 128 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the name for the sensor. Must be unique.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="labelInput">Label</label>
+                        <input type="text" required class="form-control" id="labelInput" aria-describedby="nameHelp" placeholder="Enter sensor label">
+                        <small id="labelHelp" class="form-text text-muted">Specify the label of the sensor (maximum 128 characters).</small>
+                        <div class="invalid-feedback">
+                            You must specify the label for the sensor. Must be unique.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="typeInput">Type</label>
+                        <select class="form-control" id="typeInput" required>
+                            <option></option>
+                            <option value="temp">Temperature</option>
+                            <option value="hum">Humidity</option>
+                        </select>
+                        <small id="typeHelp" class="form-text text-muted">Specify the type of the sensor.</small>
+                        <div class="invalid-feedback">
+                            You must specify the type of the sensor.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="performAction">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>`,
+    "fnInit": (ctx) => {
+        if (ctx.sensor) {
+            const idField = $("#idInput");
+            const nameField = $("#nameInput");
+            const labelField = $("#labelInput");
+            const typeField = $("#typeInput");
+            idField.val(ctx.sensor.id);
+            idField.prop("disabled", true);
+            nameField.val(ctx.sensor.name);
+            labelField.val(ctx.sensor.label);
+            typeField.val(ctx.sensor.type);
+        }
+        return Promise.resolve();
+    },
+    "fnGetData": () => {
+        const idField = $("#idInput");
+        const nameField = $("#nameInput");
+        const labelField = $("#labelInput");
+        const typeField = $("#typeInput");
+        return {
+            "id": idField.val(),
+            "name": nameField.val(),
+            "label": labelField.val(),
+            "type": typeField.val()
         }
     }
 }
@@ -266,8 +411,14 @@ module.exports = {
     appendJWTForm: (device) => {
         prepareForm(DEVICE_JWT, {"device": device});
     },
-    appendHouseCreadEditForm: (house, onPerformAction) => {
+    appendHouseCreateEditForm: (house, onPerformAction) => {
         prepareForm(HOUSE_CREATE_EDIT, {"house": house}, onPerformAction);
+    },
+    appendDeviceCreateEditForm: (device, onPerformAction) => {
+        prepareForm(DEVICE_CREATE_EDIT, {"device": device}, onPerformAction);
+    },
+    appendSensorCreateEditForm: (sensor, onPerformAction) => {
+        prepareForm(SENSOR_CREATE_EDIT, {"sensor": sensor}, onPerformAction);
     },
     appendTrashForm: (ctx, onPerformAction) => {
         prepareForm(DELETE_ENTITY, ctx, onPerformAction);

@@ -23,20 +23,21 @@ const saveHouse = (data) => {
 }
 
 module.exports = (document, elemRoot) => {
+    elemRoot.html("");
     fetcher.get(`/api/v1/houses`).then(houses => {
         uiutils.appendTitleRow(
             elemRoot, 
             "Houses", 
             [
                 {"rel": "create", "icon": "plus", "click": function() {
-                    formsutil.appendHouseCreadEditForm(undefined, saveHouse);
+                    formsutil.appendHouseCreateEditForm(undefined, saveHouse);
                 }}
             ]
         );
         uiutils.appendDataTable(elemRoot, {
             "actions": [
                 {"icon": "pencil", "rel": "edit", "click": function(ctx) {
-                    formsutil.appendHouseCreadEditForm(ctx.data, saveHouse);
+                    formsutil.appendHouseCreateEditForm(ctx.data, saveHouse);
                 }},
                 {"icon": "trash", "rel": "trash", "click": function(ctx) {
                     const formContext = {

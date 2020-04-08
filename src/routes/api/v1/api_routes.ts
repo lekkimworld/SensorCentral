@@ -41,7 +41,8 @@ router.get("/login/jwt", (req, res) => {
         "scopes": [
             constants.DEFAULTS.API.JWT.SCOPE_API,
             constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA,
-            constants.DEFAULTS.API.JWT.SCOPE_ADMIN
+            constants.DEFAULTS.API.JWT.SCOPE_ADMIN,
+            constants.DEFAULTS.API.JWT.SCOPE_ADMIN_JWT
         ].join(" "),
         "houseid": "*"
     }, secret, {
