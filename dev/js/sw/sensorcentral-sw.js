@@ -44,6 +44,7 @@ self.addEventListener('activate', function(e) {
     return self.clients.claim();
 });
 
+/*
 self.addEventListener('fetch', function(event) {
     if (event.request.url.indexOf("/api/v1/login") > 0) {
         console.log("Service worker deteced login request");
@@ -66,3 +67,4 @@ self.addEventListener('fetch', function(event) {
         );
     }
 });
+*/

@@ -91,13 +91,16 @@ module.exports = (document, elemRoot, ctx) => {
             }}]
         );
 
+        // add link to load more data
+        elemRoot.append(`<div id="${ID_SAMPLES_LINK}" class="float-right"><a href="javascript:void(0)">Load Earlier Data</a></div>`);
+
         // create div for graph
         elemRoot.append(uiutils.htmlSectionTitle("Graph"));
-        elemRoot.append(`<canvas id="${ID_CHART}" width="650px" height="250px"></canvas>`);
+        elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
         
         // create div's for samples table and load samples
         elemRoot.append(uiutils.htmlSectionTitle("Samples"));
-        elemRoot.append(`<div id="${ID_SAMPLES_DIV}" ${ATTR_SAMPLES_COUNT}="0"><div id="${ID_SAMPLES_LINK}"><a href="javascript:void(0)">Load More</a></div><div id="${ID_SAMPLES_TABLE}"></div></div>`);
+        elemRoot.append(`<div id="${ID_SAMPLES_DIV}" ${ATTR_SAMPLES_COUNT}="0"><div id="${ID_SAMPLES_TABLE}"></div></div>`);
 
         loadSamples(sensor.id).then(samples => {
             samplesChart(sensor, samples);
