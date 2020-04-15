@@ -1,5 +1,13 @@
-import { Issuer, generators } from "openid-client";
+import { Issuer, generators, custom } from "openid-client";
 import express from "express-session";
+
+// extend timeout if running against dummy OIDC provider
+if (process.env.OIDC_POST_CLIENT_SECRET) {
+    console.log("Extending HTTP Timeout for OIDC Discovery");
+    custom.setHttpOptionsDefaults({
+        "timeout": 150000
+    });
+}
 
 // build OpenID client
 export const oidcIssuerPromise = Issuer.discover(process.env.OIDC_PROVIDER_URL as string).then(oidcIssuer => {
