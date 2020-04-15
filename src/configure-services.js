@@ -1,7 +1,7 @@
 const {BaseService} = require("./types");
 const util = require('util')
 const {constants} = require('./constants')
-const terminateListener = require('./terminate-listener.js')
+const terminateListener = require('./terminate-listener')
 
 const STATE_REGISTERED = 0
 const STATE_STARTING_INIT = 1

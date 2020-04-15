@@ -1,12 +1,10 @@
 // load environment variables for localhost
-try {
-	require('dotenv').config()
-} catch (e) {}
+require('dotenv').config()
 
 // require
 const path = require('path')
 const constants = require('../constants')
-const terminateListener = require('../terminate-listener')
+const  {terminateListener} = require('../terminate-listener')
 const configureExpress = require('../configure-express')
 const services = require('../configure-services')
 const { DatabaseService } = require("../services/database-service");
