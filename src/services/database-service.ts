@@ -8,6 +8,7 @@ export class DatabaseService extends BaseService {
         super("db");
     }
 
+    //@ts-ignore
     init(callback : (err?:Error) => {}, services : BaseService[]) {
         try {
             this._pool = new Pool({

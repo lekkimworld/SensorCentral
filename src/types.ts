@@ -1,4 +1,16 @@
-import { Moment } from "moment";
+
+export class ErrorObject {
+    error = true;
+    readonly message : string;
+
+    constructor(msg : string, err? : Error) {
+        if (err) {
+            this.message = `${msg} (${err.message})`;
+        } else {
+            this.message = msg;
+        }
+    }
+}
 
 export abstract class BaseService {
     public readonly name : string;
@@ -17,6 +29,7 @@ export abstract class BaseService {
      * done with an error we set the service state to STATE_RETRY_INIT and retry the initialization 
      * of the service in INIT_RETRY_SECONDS seconds.
      */
+    //@ts-ignore
     init(callback : (err? : Error) => {}, services : BaseService[]) {
         callback();
     }
@@ -76,15 +89,15 @@ export enum WatchdogNotification {
     /**
      * Do NOT notify based on watchdog.
      */
-    no = 0,
+    no = "no",
     /**
      * Do notify based on watchdog.
      */
-    yes = 1,
+    yes = "yes",
     /**
      * Do mute until date/time.
      */
-    muted = 2
+    muted = "muted"
 }
 
 /**
@@ -103,7 +116,7 @@ export interface Device {
     readonly id : string;
     readonly name : string;
     readonly notify : WatchdogNotification;
-    readonly mutedUntil : Date | undefined;
+    readonly mutedUntil? : Date;
 }
 
 /**
@@ -203,3 +216,20 @@ export interface APIUserContext {
     accessAllHouses() : boolean;
     hasScope(scope : string) : boolean;
 }
+
+export class HttpException extends Error {
+    statusCode: number;
+    message: string;
+    error?: Error;
+    type : string;
+  
+    constructor(statusCode: number, message: string, error?: Error, type : string = "json") {
+      super(message);
+  
+      this.statusCode = statusCode;
+      this.message = message;
+      this.error = error;
+      this.type = type;
+    }
+  }
+  

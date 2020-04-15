@@ -28,12 +28,12 @@ const DEVICE_JWT = {
     </div>
 </div>`,
     "fnInit": (ctx) => {
-        return fetcher.post("/api/v1/jwt", {
+        return fetcher.post("/api/v1/login/jwt", {
             "house": ctx.device.house.id,
             "device": ctx.device.id
-        }, "text").then(txt => {
+        }).then(obj => {
             const jwtField = $("#jwtInput");
-            jwtField.val(txt);
+            jwtField.val(obj.token);
             $("#jwtInput").prop("disabled", true);
             return Promise.resolve();
         })
