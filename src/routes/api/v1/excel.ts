@@ -2,7 +2,7 @@ import * as express from 'express';
 import Moment from 'moment';
 import moment = require("moment");
 import * as prometheus from "../../../prometheus-export";
-import { APIUserContext } from '../../../types';
+import { APIUserContext, ErrorObject } from '../../../types';
 import {constants} from "../../../constants";
 
 const router = express.Router();
@@ -22,11 +22,12 @@ const exportPrometheusData = (res : express.Response, sensorLabel : string, star
     })
 }
 
+//@ts-ignore
 router.use((req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_READ)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`});
+        return res.status(401).send(new ErrorObject(`Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`));
     }
     next();
 })

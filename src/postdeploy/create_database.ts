@@ -1,4 +1,4 @@
-import {Pool, QueryResult} from "pg";
+import {Pool} from "pg";
 require('dotenv').config()
 import * as fs from "fs";
 import {join} from "path";
@@ -25,7 +25,7 @@ const buildEntireSchema = () : Promise<void> => {
             const executeNext = () => {
                 const line = lines.shift();
                 if (!line) return resolve();
-                pool.query(line).then(result => {
+                pool.query(line).then(() => {
                     executeNext();
                 }).catch(err => {
                     reject(err);
@@ -40,7 +40,7 @@ const updateSchemaVersion_1to2 = () : Promise<void> => {
     return Promise.resolve();
 }
 
-pool.query("BEGIN").then(result => {
+pool.query("BEGIN").then(() => {
     // query for database_version table
     return pool.query(`select * from information_schema.tables where table_name='database_version'`);
 }).then(result => {

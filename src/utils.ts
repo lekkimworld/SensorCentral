@@ -11,6 +11,7 @@ export const formatDate = function(date? : any) : string {
 }
 
 export const buildBaseHandlebarsContext = (req : Express.Request) : any => {
+    req.sessionID;
     return {
         "app_name": pckg.name,
         "app_version": pckg.version

@@ -4,12 +4,10 @@ import {EventService} from "../services/event-service";
 import {constants} from "../constants";
 import { LogService } from '../services/log-service';
 import { StorageService } from '../services/storage-service';
-import { BaseService, IngestedControlMessage, Device, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes } from '../types';
-
-// max temp to register
-const MIN_REGISTER_TEMP = process.env.MIN_REGISTER_TEMP || constants.SENSOR_VALUES.MIN_REGISTER_TEMP
+import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes } from '../types';
 
 const router = express.Router();
+
 router.post('/', (req, res) => {
 	// get data and see if array
 	const body = req.body
@@ -128,20 +126,14 @@ router.post('/', (req, res) => {
 						'id': element["sensorId"],
 						"deviceId": msg.id
 					}
-					eventSvc.publishQueue(constants.QUEUES.SENSOR, payload).then(resp => {
-
-					}).catch(err => {
-						
-					})
+					eventSvc.publishQueue(constants.QUEUES.SENSOR, payload);
 				})
 				
 
-			}).catch(err => {
-				// logSvc.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to queue <${err.exchangeName}>`, err)
 			})
 		}
 	}).catch((err:Error) => {
-		return res.set('Content-Type', 'text/plain; charset=utf-8').status(500).send('Unable to find event bus').end()
+		return res.set('Content-Type', 'text/plain; charset=utf-8').status(500).send(`Unable to find event bus (${err.message})`).end()
 	})
 })
 

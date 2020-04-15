@@ -1,6 +1,3 @@
-const isTest = (process.env.NODE_ENV !== 'production' || false)
-const isProd = (process.env.NODE_ENV === 'production' || false)
-
 export const constants = {
     'DEFAULTS': {
         'SERVICE': {

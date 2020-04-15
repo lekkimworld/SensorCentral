@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
-import { Device, Sensor, APIUserContext, WatchdogNotification, BaseService, RedisSensorMessage } from '../../../types';
+import { Device, Sensor, APIUserContext, BaseService, RedisSensorMessage, ErrorObject } from '../../../types';
 import {constants} from "../../../constants";
 import { LogService } from '../../../services/log-service';
 const {lookupService} = require('../../../configure-services');
@@ -196,7 +196,7 @@ router.get('/query', (req, res) => {
 
     }).catch((err : Error) => {
         console.log('Unable to lookup storage service');
-        res.status(404).send({'error': true, 'message': err.message});
+        res.status(404).send(new ErrorObject(err.message));
     })
 })
 
@@ -213,13 +213,14 @@ router.get("/:sensorid", (req, res) => {
         res.status(200).send(sensor);
 
     }).catch((err : Error) => {
-        res.status(500).send({"error": true, "message": `Unable to return sensor with id (${err.message})`});
+        res.status(500).send(new ErrorObject(`Unable to return sensor with id (${err.message})`));
     })
 })
 
 /**
  * Return all sensors
  */
+//@ts-ignore
 router.get("/", (req, res) => {
     lookupService("storage").then((svc : StorageService) => {
         return svc.getSensors();
@@ -228,7 +229,7 @@ router.get("/", (req, res) => {
         res.status(200).send(sensors);
 
     }).catch((err : Error) => {
-        res.status(500).send({"error": true, "message": `Unable to return sensors`});
+        res.status(500).send(new ErrorObject(`Unable to return sensors (${err.message})`));
     })
 })
 

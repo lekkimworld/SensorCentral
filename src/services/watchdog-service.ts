@@ -6,7 +6,6 @@ import { EventService } from "./event-service";
 import { StorageService } from "./storage-service";
 import { PushoverService } from "./pushover-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
-import { stringify } from "querystring";
 
 const _watchdogs : Map<String,Watchdog<string,Device>> = new Map();
 
@@ -34,6 +33,7 @@ export class WatchdogService extends BaseService {
                 let w = new Watchdog(constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT as number, device.id);
                 
                 // listen for resets
+                //@ts-ignore
                 w.on('reset', (food: WatchdogFood<string, Device>, time: number) => {
                     // log
                     this.logService!.info(`Device (<${device.id}> / <${device.name}>) reset`);

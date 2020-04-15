@@ -1,5 +1,4 @@
 import { Issuer, generators, custom } from "openid-client";
-import express from "express-session";
 
 // extend timeout if running against dummy OIDC provider
 if (process.env.OIDC_POST_CLIENT_SECRET) {

@@ -113,6 +113,7 @@ router.delete("/", (req, res) => {
 /**
  * Get all devices
  */
+//@ts-ignore
 router.get('/', (req, res) => {
     lookupService('storage').then((svc : StorageService) => {
         return svc.getDevices();
@@ -183,11 +184,10 @@ router.put('/:deviceId/notify', (req, res) => {
     if (!["mute", "on", "off"].includes(str_state)) return res.status(417).send({"error":true, "message": "Invalid state sent - must be on, off or mute"});
     const state = str_state === "on" ? WatchdogNotification.yes : str_state === "off" ? WatchdogNotification.no : WatchdogNotification.muted;
     
-    let didResponse = false;
     lookupService("storage").then((svc : StorageService) => {
         return Promise.all([Promise.resolve(svc), svc.getDeviceById(deviceId)]);
     }).catch((err : Error) => {
-        return Promise.reject(Error('Unable to lookup storage service'));
+        return Promise.reject(Error(`Unable to lookup storage service (${err.message})`));
 
     }).then((args : any[]) => {
         const svc = args[0] as StorageService;

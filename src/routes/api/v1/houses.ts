@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
-import { House, APIUserContext } from '../../../types';
+import { House, APIUserContext, ErrorObject } from '../../../types';
 import {constants} from "../../../constants";
 const {lookupService} = require('../../../configure-services');
 
@@ -18,6 +18,7 @@ router.use((req, res, next) => {
 /**
  * Lists all houses.
  */
+//@ts-ignore
 router.get("/", (req, res) => {
     lookupService("storage").then((svc : StorageService) => {
         return svc.getHouses();
@@ -72,7 +73,7 @@ router.post("/", (req, res) => {
         res.status(201).send(house);
 
     }).catch((err : Error) => {
-        res.status(417).send({"error": true, "message": "A house with that name already exists"});
+        res.status(417).send(new ErrorObject("A house with that name already exists", err));
     })
 })
 

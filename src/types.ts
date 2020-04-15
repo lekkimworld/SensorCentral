@@ -1,4 +1,16 @@
-import { Moment } from "moment";
+
+export class ErrorObject {
+    error = true;
+    readonly message : string;
+
+    constructor(msg : string, err? : Error) {
+        if (err) {
+            this.message = `${msg} (${err.message})`;
+        } else {
+            this.message = msg;
+        }
+    }
+}
 
 export abstract class BaseService {
     public readonly name : string;
@@ -17,6 +29,7 @@ export abstract class BaseService {
      * done with an error we set the service state to STATE_RETRY_INIT and retry the initialization 
      * of the service in INIT_RETRY_SECONDS seconds.
      */
+    //@ts-ignore
     init(callback : (err? : Error) => {}, services : BaseService[]) {
         callback();
     }

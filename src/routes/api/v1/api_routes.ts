@@ -1,19 +1,14 @@
 import * as express from 'express';
-import { BaseService, Sensor, RedisSensorMessage, Device, SensorType, WatchdogNotification, House, APIUserContext } from '../../../types';
-import { StorageService } from '../../../services/storage-service';
-import { stringify } from 'querystring';
-import { read } from 'fs';
-import { LogService } from '../../../services/log-service';
-import { userInfo } from 'os';
-const {lookupService} = require('../../../configure-services');
+import { APIUserContext } from '../../../types';
 import jwt from "jsonwebtoken";
 import {constants} from "../../../constants";
-import { AuthenticationParameters, authenticationUrl } from "../../../authentication-utils";
+import { authenticationUrl } from "../../../authentication-utils";
 
 const router = express.Router();
 
 // set default response type to json
-router.use((req, res, next) => {
+//@ts-ignore
+router.use((req : express.Request, res : express.Response, next : express.NextFunction) => {
     res.type('json');
     next();
 })
@@ -28,7 +23,7 @@ router.get("/login", (req, res) => {
             }
 
             // return response
-            res.send({
+            return res.send({
                 "url": result.url
             })
         })
@@ -123,7 +118,7 @@ router.use((req, res, next) => {
             res.locals.api_context = apictx;
 
             // forward
-            next();
+            return next();
         })
         return;
     }
@@ -160,8 +155,13 @@ router.post("/jwt", (req, res) => {
         "audience": constants.DEFAULTS.API.JWT.AUDIENCE,
         "subject": deviceid
     }, (err, token) => {
-        res.send(token);
+        if (err) {
+            return res.status(500).send({"error": true, "message": `Unable to create JWT (${err.message})`});
+        } else {
+            return res.type("text/plain").send(token);
+        }
     })
+    return;
 })
 
 // *****************************************

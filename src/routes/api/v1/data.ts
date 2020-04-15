@@ -11,6 +11,7 @@ import moment from 'moment';
 const router = express.Router();
 
 // set default response type to json
+//@ts-ignore
 router.use((req, res, next) => {
     res.type('json');
     next();
@@ -59,7 +60,7 @@ router.post("/samples", (req, res) => {
 		if (!str_dt || !str_dt.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)) return  res.status(417).send({"error": true, "message": "Missing sample date/time or date/time is not in ISO8601 format"});
 		
 		// ensure we know the device still (device may have an JWT for a deleted device)
-		storageService.getDeviceById(deviceId).then((device : Device) => {
+		storageService.getDeviceById(deviceId).then(() => {
 			const queueObj = {
 				id,
 				value,
@@ -79,14 +80,16 @@ router.post("/samples", (req, res) => {
 
 		}).catch((err:Error) => {
 			logService.warn(`Unable to send sample for sensor with ID <${id}> to queue...`);
-			res.status(500).send({
+			return res.status(500).send({
 				"error": true,
 				"message": `Unable to add sample to database (${err.message})`
 			})
 		})
+		
 	}).catch((err:Error) => {
 		return res.status(500).send({"error": true, "message": `Unable to find required services (${err.message})`});
 	})
+	
 })
 
 router.post("/", (req, res) => {
@@ -157,7 +160,6 @@ router.post("/", (req, res) => {
 			res.set('Content-Type', 'text/plain').send(`Thank you - you posted: ${str_body_received}\n`).end()
 			logService.debug(`Completed validation of payload: ${str_body_received}`);
 
-			const dataObj = body.data || undefined;
 			logService.debug(`Retrieved device with ID <${device.id}> from database`);
 			
 			// inspect message type
@@ -192,8 +194,7 @@ router.post("/", (req, res) => {
 				}
 				eventService.publishQueue(constants.QUEUES.DEVICE, payload).then(resp => {
 					logService.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
-					const msg = resp.data as IngestedDeviceMessage;
-
+					
 					// send out a sensor reading message per reading
 					dataArray.forEach(element => {
 						const payload : IngestedSensorMessage = {
@@ -201,7 +202,7 @@ router.post("/", (req, res) => {
 							'id': element.sensorId,
 							"deviceId": deviceId
 						}
-						eventService.publishQueue(constants.QUEUES.SENSOR, payload).then(resp => {
+						eventService.publishQueue(constants.QUEUES.SENSOR, payload).then(() => {
 							logService.debug(`Published message to ${constants.QUEUES.SENSOR}`);
 						}).catch(err => {
 							logService.error(`Unable to publish message to ${constants.QUEUES.SENSOR}`, err);

@@ -1,4 +1,4 @@
-import session, { SessionOptions } from 'express-session';
+import session from 'express-session';
 import RedisStore from 'connect-redis';
 import {constants} from "./constants";
 import { RedisClient } from "redis";
