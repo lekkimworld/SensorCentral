@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
-import { Device, Sensor, APIUserContext, BaseService, RedisSensorMessage, ErrorObject } from '../../../types';
-import {constants} from "../../../constants";
+import { Device, Sensor, APIUserContext, BaseService, RedisSensorMessage, ErrorObject, HttpException } from '../../../types';
+import constants from "../../../constants";
 import { LogService } from '../../../services/log-service';
 const {lookupService} = require('../../../configure-services');
 
@@ -11,7 +11,7 @@ router.use((req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (req.method === "get" && !apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_READ)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`));
     }
     next();
 })
@@ -19,37 +19,37 @@ router.use((req, res, next) => {
 /**
  * Create a new Sensor.
  */
-router.post("/", (req, res) => {
+router.post("/", (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
     }
 
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("device") || !input.device.trim()) {
-        return res.status(417).send({"error": true, "message": "Missing device ID in device-property"});
+        return next(new HttpException(417, "Missing device ID in device-property"));
     }
     if (!input.hasOwnProperty("id") || !input.id.trim()) {
-        return res.status(417).send({"error": true, "message": "Missing ID in \"id\" property"});
+        return next(new HttpException(417, "Missing ID in \"id\" property"));
     }
     if (!input.hasOwnProperty("name") || !input.name.trim()) {
-        return res.status(417).send({"error": true, "message": "Missing name in \"name\" property"});
+        return next(new HttpException(417, "Missing name in \"name\" property"));
     }
     if (!input.hasOwnProperty("label") || !input.label.trim()) {
-        return res.status(417).send({"error": true, "message": "Missing label in \"label\" property"});
+        return next(new HttpException(417, "Missing label in \"label\" property"));
     }
     if (!input.hasOwnProperty("type") || !input.type.trim()) {
-        return res.status(417).send({"error": true, "message": "Missing type in \"type\" property"});
+        return next(new HttpException(417, "Missing type in \"type\" property"));
     }
     if (!["temp","hum"].includes(input.type.trim())) {
-        return res.status(417).send({"error": true, "message": "Missing type may be \"temp\" or \"hum\""});
+        return next(new HttpException(417, "Missing type may be \"temp\" or \"hum\""));
     }
 
     // ensure access to house
     if (!apictx.accessAllHouses() && apictx.houseid !== input.house.trim()) {
-        return res.status(401).send({"error": true, "message": "You may not create sensors for the supplied house ID"});
+        return next(new HttpException(401, "You may not create sensors for the supplied house ID"));
     }
     
     lookupService("storage").then((svc : StorageService) => {
@@ -59,41 +59,41 @@ router.post("/", (req, res) => {
         res.status(201).send(sensor);
 
     }).catch((err : Error) => {
-        res.status(417).send({"error": true, "message": `A device with that id / name may already exists (${err ? err.message : ""})`});
+        return next(new HttpException(417, `A device with that id / name may already exists (${err ? err.message : ""})`));
     })
 })
 
 /**
  * Update a Sensor.
  */
-router.put("/", (req, res) => {
+router.put("/", (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
     }
 
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("id") || !input.id.trim()) {
-        return res.status(417).send({"error": true, "message": "Missing ID in \"id\" property"});
+        return next(new HttpException(417, "Missing ID in \"id\" property"));
     }
     if (!input.hasOwnProperty("name") || !input.name.trim()) {
-        return res.status(417).send({"error": true, "message": "Missing name in \"name\" property"});
+        return next(new HttpException(417, "Missing name in \"name\" property"));
     }
     if (!input.hasOwnProperty("label") || !input.label.trim()) {
-        return res.status(417).send({"error": true, "message": "Missing label in \"label\" property"});
+        return next(new HttpException(417, "Missing label in \"label\" property"));
     }
     if (!input.hasOwnProperty("type") || !input.type.trim()) {
-        return res.status(417).send({"error": true, "message": "Missing type in \"type\" property"});
+        return next(new HttpException(417, "Missing type in \"type\" property"));
     }
     if (!["temp","hum"].includes(input.type.trim())) {
-        return res.status(417).send({"error": true, "message": "Missing type may be \"temp\" or \"hum\""});
+        return next(new HttpException(417, "Missing type may be \"temp\" or \"hum\""));
     }
 
     // ensure access to house
     if (!apictx.accessAllHouses() && apictx.houseid !== input.house.trim()) {
-        return res.status(401).send({"error": true, "message": "You may not update sensors for the supplied house ID"});
+        return next(new HttpException(401, "You may not update sensors for the supplied house ID"));
     }
     
     lookupService("storage").then((svc : StorageService) => {
@@ -110,17 +110,17 @@ router.put("/", (req, res) => {
 /**
  * Deletes an existing Sensor.
  */
-router.delete("/", (req, res) => {
+router.delete("/", (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
     }
 
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("id") || !input.id) {
-        return res.status(417).send({"error": true, "message": "Missing ID"});
+        return next(new HttpException(417, "Missing ID"));
     }
     
     lookupService("storage").then((svc : StorageService) => {
@@ -137,10 +137,10 @@ router.delete("/", (req, res) => {
 /**
  * Query for a specific sensor.
  */
-router.get('/query', (req, res) => {
+router.get('/query', (req, res, next) => {
     let queryKey = req.query.queryKey as string;
     let queryValue = req.query.queryValue as string;
-    if (!queryKey || !queryValue) return res.status(417).send({"error": true, "message": "Must send queryKey and queryValue"});
+    if (!queryKey || !queryValue) return next(new HttpException(417, "Must send queryKey and queryValue"));
     
     lookupService(["log", "storage"]).then((svcs :  BaseService[]) => {
         const logService = svcs[0] as LogService;
@@ -203,8 +203,8 @@ router.get('/query', (req, res) => {
 /**
  * Return specific sensor.
  */
-router.get("/:sensorid", (req, res) => {
-    if (!req.params.sensorid) return res.status(417).send({"error": true, "message": "Did not receive sensor id"});
+router.get("/:sensorid", (req, res, next) => {
+    if (!req.params.sensorid) return next(new HttpException(417, "Did not receive sensor id"));
 
     lookupService("storage").then((svc : StorageService) => {
         return svc.getSensorById(req.params.sensorid);

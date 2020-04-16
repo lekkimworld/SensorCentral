@@ -1,24 +1,9 @@
 import session from 'express-session';
 import RedisStore from 'connect-redis';
-import {constants} from "./constants";
+import constants from "./constants";
 import { RedisClient } from "redis";
 import uuid from "uuid/v4";
 
-const DEFAULT_SESSION_TTL = constants.DEFAULTS.SESSION_TIMEOUT_HOURS;
-const ttl = (function() {
-    let hours;
-    if (process.env.SESSION_TTL) {
-        try {
-            hours = (process.env.SESSION_TTL as unknown as number) - 0;
-            console.log(`Session TTL is set to ${hours} hours`);
-        } catch (err) {}
-    }
-    if (!hours) {
-        console.log(`Unable to find SESSION_TTL in environment - session TTL is set to default (${DEFAULT_SESSION_TTL}) hours`);
-        hours = DEFAULT_SESSION_TTL;
-    }
-    return hours * 60 * 60;
-})();
 const secret = (function() {
     if (process.env.SESSION_SECRET) {
         console.log(`Using SESSION_SECRET provided by environment`);
@@ -38,7 +23,7 @@ export default (redisClient : RedisClient) => {
         "store": new redisStoreInstance({
             "client": redisClient,
             "prefix": "session:",
-            "ttl": ttl
+            "ttl": constants.DEFAULTS.SESSION_TIMEOUT_SECONDS
         })
     })
 }

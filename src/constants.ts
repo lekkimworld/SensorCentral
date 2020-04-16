@@ -1,4 +1,4 @@
-export const constants = {
+export default {
     'DEFAULTS': {
         'SERVICE': {
             'LOOKUP_TIMEOUT': 2000
@@ -12,7 +12,7 @@ export const constants = {
         },
         'TIMEZONE': process.env.TIMEZONE || 'Europe/Copenhagen',
         'DATETIME_FORMAT': process.env.DATETIME_FORMAT || "D-M-YYYY [kl.] k:mm",
-        "SESSION_TIMEOUT_HOURS": 1,
+        "SESSION_TIMEOUT_SECONDS": process.env.NODE_ENV === "development" ? (1*60*60) : 15, // 1 hour in development, 15 seconds in prod
         "API": {
             "JWT": {
                 "OUR_ISSUER": "https://sensorcentral.heisterberg.dk",

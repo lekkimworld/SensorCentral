@@ -6,4 +6,4 @@ router.get('/', (req, res) => {
     res.render('root', Object.assign({}, utils.buildBaseHandlebarsContext(req)));
 })
 
-module.exports = router
+export default router;

@@ -1,5 +1,5 @@
 import {Watchdog, WatchdogFood} from "watchdog";
-import {constants} from "../constants";
+import constants from "../constants";
 import { BaseService, Device, TopicControlMessage, ControlMessageTypes } from "../types";
 import { LogService } from "./log-service";
 import { EventService } from "./event-service";

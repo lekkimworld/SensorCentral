@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
-import { House, APIUserContext, ErrorObject } from '../../../types';
-import {constants} from "../../../constants";
+import { House, APIUserContext,  HttpException } from '../../../types';
+import constants from "../../../constants";
 const {lookupService} = require('../../../configure-services');
 
 const router = express.Router();
@@ -10,7 +10,7 @@ router.use((req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (req.method === "get" && !apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_READ)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`));
     }
     next();
 })
@@ -53,17 +53,17 @@ router.get("/:houseid", (req, res) => {
 /**
  * Create a new House.
  */
-router.post("/", (req, res) => {
+router.post("/", (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
     }
 
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("name") || !input.name) {
-        return res.status(417).send({"error": true, "message": "Missing name in \"name\" property"});
+        return next(new HttpException(417, "Missing name in \"name\" property"));
     }
     
     lookupService("storage").then((svc : StorageService) => {
@@ -73,27 +73,27 @@ router.post("/", (req, res) => {
         res.status(201).send(house);
 
     }).catch((err : Error) => {
-        res.status(417).send(new ErrorObject("A house with that name already exists", err));
+        next(new HttpException(417, "A house with that name already exists", err));
     })
 })
 
 /**
  * Updates an existing House.
  */
-router.put("/", (req, res) => {
+router.put("/", (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
     }
 
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("id") || !input.id) {
-        return res.status(417).send({"error": true, "message": "Missing ID in \"id\" property"});
+        return next(new HttpException(417, "Missing ID in \"id\" property"));
     }
     if (!input.hasOwnProperty("name") || !input.name) {
-        return res.status(417).send({"error": true, "message": "Missing name in \"name\" property"});
+        return next(new HttpException(417, "Missing name in \"name\" property"));
     }
     
     lookupService("storage").then((svc : StorageService) => {
@@ -110,17 +110,17 @@ router.put("/", (req, res) => {
 /**
  * Deletes an existing House.
  */
-router.delete("/", (req, res) => {
+router.delete("/", (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
     }
 
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("id") || !input.id) {
-        return res.status(417).send({"error": true, "message": "Missing ID"});
+        return next(new HttpException(417, "Missing ID"));
     }
     
     lookupService("storage").then((svc : StorageService) => {
@@ -130,7 +130,7 @@ router.delete("/", (req, res) => {
         res.status(202).send();
         
     }).catch((err : Error) => {
-        res.status(500).send({"error": true, "message": `Unable to delete house (${err.message})`});
+        next(new HttpException(500, `Unable to delete house (${err.message})`));
     })
 })
 

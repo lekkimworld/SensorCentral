@@ -1,4 +1,4 @@
-import {constants} from "../constants";
+import constants from "../constants";
 import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, SensorReading, DeviceStatus, IngestedControlMessage, WatchdogNotification, SensorSample} from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";

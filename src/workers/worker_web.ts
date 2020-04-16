@@ -36,9 +36,13 @@ terminateListener(() => {
 	console.log("Terminated services");
 });
 
-// configure express
-const app = configureExpress();
+// start app
+const main = async () => {
+	// configure express
+	const app = await configureExpress();
 
-// start server
-console.log(`Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`)
-app.listen(process.env.PORT || 8080)
+	// start server
+	console.log(`Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`);
+	app.listen(process.env.PORT || 8080);
+}
+main();

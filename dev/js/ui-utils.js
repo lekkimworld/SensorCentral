@@ -1,6 +1,7 @@
 const $ = require("jquery");
 const storage = require("./storage-utils.js");
 const log = require("./logger.js");
+const fetcher = require("./fetch-util");
 
 const ID_ACTION_ITEMS = "action-icons";
 
@@ -37,8 +38,11 @@ const fillMenus = () => {
     // add logout handler
     if (user) {
         $("#logout").on("click", () => {
+            // delete local storage
             storage.logout();
-            document.location.reload();
+            
+            // tell server to log us out
+            document.location.hash = "#root";
         })
     }
 
