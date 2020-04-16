@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { APIUserContext } from '../../../types';
-import jwt from "jsonwebtoken";
+import jwt, { VerifyErrors } from "jsonwebtoken";
 import {constants} from "../../../constants";
 import { authenticationUrl } from "../../../authentication-utils";
 
@@ -92,9 +92,10 @@ router.use((req, res, next) => {
             "algorithms": ["HS256"],
             "audience": constants.DEFAULTS.API.JWT.AUDIENCE,
             "issuer": constants.DEFAULTS.API.JWT.ISSUERS
-        }, (err : Error, decoded : any) => {
+        }, (err : VerifyErrors | null, decoded : any | undefined) => {
             // abort on error
             if (err) return res.status(401).send(`Error: ${err.message}`);
+            if (!decoded) return res.status(401).send(`Didn't get decoded JWT as expected`);
 
             // verify scope contains api
             if (!decoded.scopes || !decoded.scopes.split(" ").includes(constants.DEFAULTS.API.JWT.SCOPE_API)) {
