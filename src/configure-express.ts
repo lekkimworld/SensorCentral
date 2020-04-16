@@ -1,40 +1,30 @@
-const express = require('express')
-const Handlebars = require("handlebars")
-const exphbs = require("express-handlebars")
-const bodyparser = require('body-parser')
-const session = require("express-session");
-const path = require('path')
-const uuid = require("uuid/v4");
-const routes = require('./configure-routes')
-const { Issuer, generators } = require('openid-client');
-const configureSessionWithRedis = require("./configure-session");
-const { lookupService } = require("./configure-services");
-const { RedisService } = require("./services/redis-service");
-const { LogService } = require("./services/log-service");
-const { oidcIssuerPromise } = require("./authentication-utils");
+import express, { Request, Response, NextFunction } from 'express';
+import Handlebars from "handlebars";
+import exphbs from "express-handlebars";
+import bodyparser from 'body-parser';
+import path from 'path';
+import attachApplicationRoutes from './configure-routes';
+import configureSessionWithRedis from "./configure-session";
+//@ts-ignore
+import { lookupService } from "./configure-services";
+import { oidcIssuerPromise } from "./authentication-utils";
+import { RedisService } from './services/redis-service';
+import { HttpException } from "./types";
 
 // configure app
-const app = express()
-app.use(express.static(path.join(__dirname, '..', 'public')))
-app.use(bodyparser.json())
-app.use((err, req, res, next) => {
-    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-        console.log(`Invalid JSON received <${err.message}> - posted body will follow next`)
-        console.log(err.body)
-        return res.status(417).send('Invalid data supplied - expected JSON.').end()
-    }
-    next()
-})
+const app = express();
+app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(bodyparser.json());
 
 // sessions
-lookupService("redis").then(redisService => {
+lookupService("redis").then((redisService : RedisService) => {
     app.use(configureSessionWithRedis(redisService.getClient()));
 })
 
 // build OpenID client
 oidcIssuerPromise.then(client => {
     app.get("/openid/callback", (req, res) => {
-        const nonce = req.session.nonce;
+        const nonce = req.session!.nonce;
         if (!nonce) return res.status(417).send(`No nonce found (<${nonce}>)`);
         
         // get params
@@ -52,18 +42,18 @@ oidcIssuerPromise.then(client => {
             }
 
             // save in session and redirect
-            req.session.user = claims;
+            req.session!.user = claims;
 
             // redirect
             res.redirect("/openid/loggedin");
             
         });
     })
-    app.get("/openid/loggedin", (req, res) => {
-        return res.render("loggedin");
+    app.get("/openid/loggedin", ({res}) => {
+        return res!.render("loggedin");
     })
     app.get("/openid/logout", (req, res) => {
-        if (req.session || req.session.user) {
+        if (req.session) {
             delete req.session.user;
             delete req.session.nonce;
             res.redirect("/openid/loggedout");
@@ -71,12 +61,20 @@ oidcIssuerPromise.then(client => {
     })
 
     // add routes to app
-    routes.routes(app);
+    attachApplicationRoutes(app);
 })
 
-// middleware
+// add handlebars
 app.engine('handlebars', exphbs({defaultLayout: 'main'}));
 app.set('view engine', 'handlebars');
+
+// catch errors
+app.use((err : HttpException, req : Request, res : Response, next : NextFunction) => {
+    err;
+    req;
+    res;
+    next(); 
+})
 
 Handlebars.registerHelper({
     eq: function (v1, v2) {
@@ -105,7 +103,7 @@ Handlebars.registerHelper({
     }
 });
 
-module.exports = () => {
+export default () => {
     // return the app
     return app
 }

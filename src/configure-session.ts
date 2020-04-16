@@ -30,7 +30,7 @@ const secret = (function() {
 })();
 
 const redisStoreInstance = RedisStore(session);
-module.exports = (redisClient : RedisClient) => {
+export default (redisClient : RedisClient) => {
     return session({
         "saveUninitialized": false,
         "resave": false,

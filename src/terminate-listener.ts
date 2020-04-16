@@ -1,10 +1,13 @@
-export const terminateListener = (callback : (err? : Error) => {}) => {
-
+export type CallbackFunction = () => void;
+export default (callback : CallbackFunction) => {
     // attach user callback to the process event emitter
     // if no callback, it will still exit gracefully on Ctrl-C
     callback = callback || (() => {});
+    
     //@ts-ignore
-    process.on('cleanup', callback);    
+    process.on('cleanup', () => {
+        callback();
+    });    
 
     // do app specific cleaning before exiting
     process.on('exit', function () {

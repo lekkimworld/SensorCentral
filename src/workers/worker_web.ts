@@ -2,22 +2,22 @@
 require('dotenv').config()
 
 // require
-const path = require('path')
-const constants = require('../constants')
-const  {terminateListener} = require('../terminate-listener')
-const configureExpress = require('../configure-express')
-const services = require('../configure-services')
-const { DatabaseService } = require("../services/database-service");
-const { EventService } = require("../services/event-service");
-const { LogService } = require("../services/log-service");
-const { NotifyService } = require( "../services/notify-service");
-const { PushoverService } = require( "../services/pushover-service");
-const { RedisService } = require( "../services/redis-service");
-const { StorageService } = require( "../services/storage-service");
-const { WatchdogService } = require( "../services/watchdog-service");
+import terminateListener from '../terminate-listener';
+import configureExpress from '../configure-express';
+//@ts-ignore
+import services from '../configure-services';
+import { DatabaseService } from "../services/database-service";
+import { EventService } from "../services/event-service";
+import { LogService } from "../services/log-service";
+import { NotifyService } from  "../services/notify-service";
+import { PushoverService } from  "../services/pushover-service";
+import { RedisService } from  "../services/redis-service";
+import { StorageService } from  "../services/storage-service";
+import { WatchdogService } from  "../services/watchdog-service";
 
 // number of workers we should create
 const WORKERS = process.env.WEB_CONCURRENCY || 1;
+console.log(`WEB_CONCURRENCY set to ${WORKERS}`);
 
 // add services
 services.registerService(new LogService());
@@ -37,7 +37,7 @@ terminateListener(() => {
 });
 
 // configure express
-const app = configureExpress()
+const app = configureExpress();
 
 // start server
 console.log(`Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`)

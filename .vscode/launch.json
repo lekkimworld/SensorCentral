@@ -8,7 +8,7 @@
             "name": "Run worker_web.ts (Typescript)",
             "type": "node",
             "request": "launch",
-            "args": ["${workspaceFolder}/src/workers/worker_web.js"],
+            "args": ["${workspaceFolder}/src/workers/worker_web.ts"],
             "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
             "sourceMaps": true,
             "cwd": "${workspaceRoot}",
