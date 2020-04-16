@@ -14,10 +14,10 @@ const fillMenus = () => {
     let htmlUsername = "";
     if (user) {
         htmlMenu = 
-            `<li class="nav-item {{home_active}}">
+            `<li class="nav-item">
             <a class="nav-link" href="/#root">Home</a>
             </li>
-            <li class="nav-item {{config_active}}">
+            <li class="nav-item">
             <a class="nav-link" href="/#configuration/houses">Houses</a>
             </li>`;
         htmlUsername = `<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -27,7 +27,7 @@ const fillMenus = () => {
                 <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>
             </div>`;
     }
-    htmlMenu += `<li class="nav-item {{about_active}}">
+    htmlMenu += `<li class="nav-item">
         <a href="/#about" class="nav-link">About</a>
         </li>`;
 
@@ -47,7 +47,7 @@ const fillMenus = () => {
     }
 
     // ensure responsive menu closes after click
-    $('.navbar-nav>li>a').on('click', function(){
+    $('.navbar-nav>li>a').on('click', function() {
         $('.navbar-collapse').removeClass('show');
     });
 }
