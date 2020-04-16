@@ -52,7 +52,9 @@ const samplesTable = (sensor, samples) => {
 
 module.exports = (document, elemRoot, ctx) => {
     // fetch sensor
-    fetcher.get(`/api/v1/sensors/${ctx.sensorId}`).then(sensor => {
+    fetcher.graphql(`{sensor(id:"${ctx.sensorId}"){id, name, device{id,name,house{id,name}}}}`).then(data => {
+        const sensor = data.sensor;
+
         // create breadcrumbs
         elemRoot.html(uiutils.htmlBreadcrumbs([
             {"text": "Houses", "id": "houses"},

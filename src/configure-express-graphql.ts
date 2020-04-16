@@ -9,6 +9,7 @@ import { lookupService } from "./configure-services";
 import { StorageService } from "./services/storage-service";
 import { IsEnum, Length } from "class-validator";
 import constants from "./constants";
+import {formatDate} from "./utils";
 
 const path = process.env.GRAPHQL_PATH || "/graphql";
 
@@ -44,6 +45,7 @@ class Device implements types.Device {
         this.house = d.house;
         this.mutedUntil = d.mutedUntil;
         this.notify = d.notify;
+        this.str_mutedUntil = d.mutedUntil ? formatDate(d.mutedUntil) : "";
     }
 
     @Field(() => ID)
@@ -54,6 +56,9 @@ class Device implements types.Device {
 
     @Field(() => Date, {nullable: true})
     mutedUntil : Date | undefined;
+
+    @Field(() => String, {nullable: true})
+    str_mutedUntil : string | undefined;
 
     @Field()
     notify : types.WatchdogNotification;
@@ -141,6 +146,13 @@ class SensorResolver {
         const storage = await lookupService("storage") as StorageService;
         const sensors = await storage.getSensors(deviceId);
         return sensors.map(s => new Sensor(s));
+    }
+
+    @Query(() => Sensor, {})
+    async sensor(@Arg("id") id : string) {
+        const storage = await lookupService("storage") as StorageService;
+        const sensor = await storage.getSensorById(id);
+        return new Sensor(sensor);
     }
 }
 

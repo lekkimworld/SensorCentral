@@ -50,10 +50,20 @@ const getSamples = (sensorId, samplesCount) => {
         }))
     })
 }
+const doGraphQL = query => {
+    return doPost(`/graphql`, {
+        "query": query
+    }).then(payload => {
+        if (payload.hasOwnProperty("error")) return Promise.reject(Error(payload.error.errors[0].message));
+        return Promise.resolve(payload.data);
+    });
+}
+
 module.exports = {
     "get": doGet,
     "post": doPost,
     "delete": doDelete,
     "put": doPut,
+    "graphql": doGraphQL,
     getSamples
 }

@@ -24,7 +24,13 @@ const saveHouse = (data) => {
 
 module.exports = (document, elemRoot) => {
     elemRoot.html("");
-    fetcher.get(`/api/v1/houses`).then(houses => {
+
+    // load houses
+    fetcher.graphql(`{houses{id,name}}`).then(data => {
+        // sort
+        const houses = data.houses.sort((a,b) => a.name.localeCompare(b.name));
+
+        // do title row
         uiutils.appendTitleRow(
             elemRoot, 
             "Houses", 

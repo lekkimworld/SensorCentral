@@ -74,6 +74,7 @@ window.addEventListener("DOMContentLoaded", () => {
 */
 
 module.exports = (document, elemRoot, ctx) => {
+    const houseId = ctx.houseId;
     const deviceId = ctx.deviceId;
 
     const createSensor = (data) => {
@@ -98,11 +99,15 @@ module.exports = (document, elemRoot, ctx) => {
         })
     }
 
-    fetcher.get(`/api/v1/devices/${ctx.deviceId}/sensors`).then(sensors => {
+    // query for sensors and containing device
+    fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(deviceId:"${deviceId}"){id,name,label}}`).then(data => {
+        const sensors = data.sensors.sort((a,b) => a.name.localeCompare(b.name));
+        const device = data.device;
+
         elemRoot.html(uiutils.htmlBreadcrumbs([
             {"text": "Houses", "id": "houses"},
-            {"text": sensors[0].device.house.name, "id": `house/${sensors[0].device.house.id}`},
-            {"text": sensors[0].device.name}
+            {"text": device.house.name, "id": `house/${device.house.id}`},
+            {"text": device.name}
         ]));
 
         uiutils.appendTitleRow(

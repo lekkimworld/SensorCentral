@@ -99,7 +99,7 @@ const htmlDataTable = (input = {}) => {
         </tr>
     </thead>
     <tbody>
-        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td><center>${ctx.actions.map(a => `<i class="btn fa fa-${a.icon}" aria-hidden="true" rel="${a.rel}"></i>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<th scope="row">${d}</th>` : `<td>${d}</td>`).join("")}</tr>`).join("")}
+        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td><center>${ctx.actions.filter(a => a.icon).map(a => `<i class="btn fa fa-${a.icon}" aria-hidden="true" rel="${a.rel}"></i>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<th scope="row">${d}</th>` : `<td>${d}</td>`).join("")}</tr>`).join("")}
     </tbody>
 </table>`;
     return html;
@@ -147,6 +147,7 @@ const appendDataTable = (elem, input = {}) => {
         if (input.actions && ev.target.nodeName === "I") {
             // get rel and find action
             const rel = ev.target.getAttribute("rel");
+            
             const filteredActions = input.actions.filter(a => a.rel === rel);
             if (!filteredActions || !filteredActions.length) return;
             const action = filteredActions[0];
