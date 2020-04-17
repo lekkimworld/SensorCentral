@@ -33,7 +33,6 @@ const navigationChange = () => {
     
     if ("#login" === hash) {
         fetch("/api/v1/login").then(resp => resp.json()).then(body => {
-            console.log(body);
             if (body.hasOwnProperty("error")) {
                 log.warn(`Received error back from login api <${body.message}>`);
                 require("./sensorcentral-offline")(document, elemRoot);
@@ -46,6 +45,8 @@ const navigationChange = () => {
         })
     } else if (!hash || "" === hash || "#root" === hash) {
         require("./sensorcentral-root")(document, elemRoot);
+    } else if ("#loggedout" === hash) {
+        require("./sensorcentral-loggedout")(document, elemRoot);
     } else if ("#about" === hash) {
         require("./sensorcentral-about")(document, elemRoot);
     } else if (!user) {

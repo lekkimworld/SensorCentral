@@ -42,7 +42,7 @@ const fillMenus = () => {
             storage.logout();
             
             // tell server to log us out
-            document.location.hash = "#root";
+            document.location.hash = "#loggedout";
         })
     }
 
