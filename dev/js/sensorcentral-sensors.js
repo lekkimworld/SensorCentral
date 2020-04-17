@@ -73,92 +73,102 @@ window.addEventListener("DOMContentLoaded", () => {
 
 */
 
+const createSensor = (data) => {
+    fetcher.post(`/api/v1/sensors`, {
+        "id": data.id,
+        "name": data.name, 
+        "label": data.label,
+        "type": data.type,
+        "device": deviceId
+    }).then(() => {
+        document.location.reload();
+    })
+}
+const editSensor = (data) => {
+    fetcher.put(`/api/v1/sensors`, {
+        "id": data.id,
+        "name": data.name, 
+        "label": data.label,
+        "type": data.type
+    }).then(() => {
+        document.location.reload();
+    })
+}
+
 module.exports = (document, elemRoot, ctx) => {
     const houseId = ctx.houseId;
     const deviceId = ctx.deviceId;
 
-    const createSensor = (data) => {
-        fetcher.post(`/api/v1/sensors`, {
-            "id": data.id,
-            "name": data.name, 
-            "label": data.label,
-            "type": data.type,
-            "device": deviceId
-        }).then(() => {
-            document.location.reload();
-        })
-    }
-    const editSensor = (data) => {
-        fetcher.put(`/api/v1/sensors`, {
-            "id": data.id,
-            "name": data.name, 
-            "label": data.label,
-            "type": data.type
-        }).then(() => {
-            document.location.reload();
-        })
-    }
-
-    // query for sensors and containing device
-    fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(deviceId:"${deviceId}"){id,name,label,type}}`).then(data => {
-        const sensors = data.sensors.sort((a,b) => a.name.localeCompare(b.name));
-        const device = data.device;
-
-        elemRoot.html(uiutils.htmlBreadcrumbs([
-            {"text": "Houses", "id": "houses"},
-            {"text": device.house.name, "id": `house/${device.house.id}`},
-            {"text": device.name}
-        ]));
-
-        uiutils.appendTitleRow(
-            elemRoot,
-            "Sensors", 
-            [
-                {"rel": "create", "icon": "plus", "click": () => {
-                    formsutil.appendSensorCreateEditForm(undefined, createSensor);
-                }}
-            ]
-        );
-        uiutils.appendDataTable(elemRoot, {
-            "actions": [
-                {"icon": "pencil", "rel": "edit", "click": function(ctx) {
-                    formsutil.appendSensorCreateEditForm(ctx.data, editSensor);
-                }},
-                {"icon": "trash", "rel": "trash", "click": function(ctx) {
-                    formsutil.appendTrashForm({
-                        "id": ctx.data.id,
-                        "name": ctx.data.name,
-                        "form": {
-                            "title": "Delete Sensor",
-                            "message": "Are you absolutely sure you want to DELETE this sensor? Sensor samples will not be deleted from the database."
-                        }
-                    }, (ctx) => {
-                        fetcher.delete(`/api/v1/sensors`, {
-                            "id": ctx.id
-                        }, "text").then(() => {
-                            document.location.reload();
+    const updateUI = () => {
+        elemRoot.html("");    
+    
+        // query for sensors and containing device
+        fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(deviceId:"${deviceId}"){id,name,label,type}}`).then(data => {
+            const sensors = data.sensors.sort((a,b) => a.name.localeCompare(b.name));
+            const device = data.device;
+    
+            elemRoot.html(uiutils.htmlBreadcrumbs([
+                {"text": "Houses", "id": "houses"},
+                {"text": device.house.name, "id": `house/${device.house.id}`},
+                {"text": device.name}
+            ]));
+    
+            uiutils.appendTitleRow(
+                elemRoot,
+                "Sensors", 
+                [
+                    {"rel": "create", "icon": "plus", "click": () => {
+                        formsutil.appendSensorCreateEditForm(undefined, createSensor);
+                    }},
+                    {"rel": "refresh", "icon": "refresh", "click": () => {
+                        updateUI(elemRoot, ctx);
+                    }}
+                ]
+            );
+            uiutils.appendDataTable(elemRoot, {
+                "actions": [
+                    {"icon": "pencil", "rel": "edit", "click": function(ctx) {
+                        formsutil.appendSensorCreateEditForm(ctx.data, editSensor);
+                    }},
+                    {"icon": "trash", "rel": "trash", "click": function(ctx) {
+                        formsutil.appendTrashForm({
+                            "id": ctx.data.id,
+                            "name": ctx.data.name,
+                            "form": {
+                                "title": "Delete Sensor",
+                                "message": "Are you absolutely sure you want to DELETE this sensor? Sensor samples will not be deleted from the database."
+                            }
+                        }, (ctx) => {
+                            fetcher.delete(`/api/v1/sensors`, {
+                                "id": ctx.id
+                            }, "text").then(() => {
+                                document.location.reload();
+                            })
                         })
-                    })
-                }}
-            ],
-            "headers": ["NAME", "LABEL", "TYPE", "ID"],
-            "classes": [
-                "", 
-                "d-none d-md-table-cell",
-                "",
-                "d-none d-sm-table-cell"
-            ],
-            "rows": sensors.map(sensor => {
-                const type_img = `<i class="fa fa-${sensor.type === "temp" ? "thermometer-empty" : "tint"} aria-hidden="true"></i>`;
-                return {
-                    "id": sensor.id,
-                    "data": sensor,
-                    "columns": [sensor.name, sensor.label, type_img, sensor.id],
-                    "click": function() {
-                        document.location.hash = `configuration/house/${ctx.houseId}/device/${ctx.deviceId}/sensor/${sensor.id}`
+                    }}
+                ],
+                "headers": ["NAME", "LABEL", "TYPE", "ID"],
+                "classes": [
+                    "", 
+                    "d-none d-md-table-cell",
+                    "",
+                    "d-none d-sm-table-cell"
+                ],
+                "rows": sensors.map(sensor => {
+                    const type_img = `<i class="fa fa-${sensor.type === "temp" ? "thermometer-empty" : "tint"} aria-hidden="true"></i>`;
+                    return {
+                        "id": sensor.id,
+                        "data": sensor,
+                        "columns": [sensor.name, sensor.label, type_img, sensor.id],
+                        "click": function() {
+                            document.location.hash = `configuration/house/${ctx.houseId}/device/${ctx.deviceId}/sensor/${sensor.id}`
+                        }
                     }
-                }
-            })
-        });
-    })
+                })
+            });
+        })
+    }
+
+    // build initial ui
+    updateUI();
 }

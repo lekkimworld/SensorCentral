@@ -3,29 +3,30 @@ const $ = require("jquery");
 const fetcher = require("./fetch-util");
 const formsutil = require("./forms-util");
 
+const createDevice = (data) => {
+    fetcher.post(`/api/v1/devices`, {
+        "name": data.name,
+        "id": data.id,
+        "house": houseId
+    }).then(body => {
+        document.location.reload();
+    })
+}
+const editDevice = (data) => {
+    fetcher.put(`/api/v1/devices`, {
+        "id": data.id,
+        "name": data.name
+    }).then(body => {
+        document.location.reload();
+    })
+}
+
 module.exports = (document, elemRoot, ctx) => {
     const houseId = ctx.houseId;
 
-    const createDevice = (data) => {
-        fetcher.post(`/api/v1/devices`, {
-            "name": data.name,
-            "id": data.id,
-            "house": houseId
-        }).then(body => {
-            document.location.reload();
-        })
-    }
-    const editDevice = (data) => {
-        fetcher.put(`/api/v1/devices`, {
-            "id": data.id,
-            "name": data.name
-        }).then(body => {
-            document.location.reload();
-        })
-    }
-
-    const updateDeviceTable = () => {
+    const updateUI = () => {
         elemRoot.html("");
+    
         fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,lastping,str_mutedUntil,notify,house{id,name}}}`).then(data => {
             const devices = data.devices.sort((a,b) => a.name.localeCompare(b.name));
             const houseName = data.house.name;
@@ -40,6 +41,9 @@ module.exports = (document, elemRoot, ctx) => {
                 [
                     {"rel": "create", "icon": "plus", "click": () => {
                         formsutil.appendDeviceCreateEditForm(undefined, createDevice);
+                    }},
+                    {"rel": "refresh", "icon": "refresh", "click": () => {
+                        updateUI();
                     }}
                 ]
             );
@@ -109,12 +113,14 @@ module.exports = (document, elemRoot, ctx) => {
             });
         })
     }
-
+    
     const updateDeviceNotification = (deviceId, notify) => {
         fetcher.graphql(`mutation{updateDevice(data:{deviceId:"${deviceId}",notify:"${notify}"}){id,name,str_mutedUntil,notify}}`).then(() => {
             updateDeviceTable();
         })
     }
-    updateDeviceTable();
+
+    // build initial ui
+    updateUI();
     
 }
