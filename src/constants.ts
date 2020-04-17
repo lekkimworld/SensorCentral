@@ -15,7 +15,7 @@ export default {
         'TIMEZONE': process.env.TIMEZONE || 'Europe/Copenhagen',
         'DATETIME_FORMAT': process.env.DATETIME_FORMAT || "D-M-YYYY [kl.] k:mm",
         "GRAPHQL_ENABLE_PLAYGROUND": graphqlEnablePlayground,
-        "SESSION_TIMEOUT_SECONDS": graphqlEnablePlayground ? (1*60*60) : 15, // 1 hour in development, 15 seconds in prod
+        "SESSION_TIMEOUT_SECONDS": process.env.SESSION_TIMEOUT_SECONDS ? Number.parseInt(process.env.SESSION_TIMEOUT_SECONDS) : (graphqlEnablePlayground ? (1*60*60) : 300), // 1 hour in development, 300 seconds in prod
         "API": {
             "JWT": {
                 "OUR_ISSUER": "https://sensorcentral.heisterberg.dk",

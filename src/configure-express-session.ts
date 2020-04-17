@@ -13,7 +13,7 @@ const secret = (function() {
         return uuid();
     }
 })();
-
+console.log(`Read session timeout in sesconds as <${constants.DEFAULTS.SESSION_TIMEOUT_SECONDS}>`);
 const redisStoreInstance = RedisStore(session);
 export default (redisClient : RedisClient) => {
     return session({
