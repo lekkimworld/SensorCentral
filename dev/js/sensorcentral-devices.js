@@ -83,7 +83,7 @@ module.exports = (document, elemRoot, ctx) => {
                     "d-none d-md-table-cell",
                     "d-none d-md-table-cell",
                     "",
-                    "d-none d-lg-table-cell"
+                    "d-none d-sm-table-cell"
                 ],
                 "rows": devices.map(device => {
                     const notify = (function(n) {

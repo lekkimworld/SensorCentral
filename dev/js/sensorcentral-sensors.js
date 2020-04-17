@@ -100,7 +100,7 @@ module.exports = (document, elemRoot, ctx) => {
     }
 
     // query for sensors and containing device
-    fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(deviceId:"${deviceId}"){id,name,label}}`).then(data => {
+    fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(deviceId:"${deviceId}"){id,name,label,type}}`).then(data => {
         const sensors = data.sensors.sort((a,b) => a.name.localeCompare(b.name));
         const device = data.device;
 
@@ -141,17 +141,19 @@ module.exports = (document, elemRoot, ctx) => {
                     })
                 }}
             ],
-            "headers": ["NAME", "LABEL", "ID"],
+            "headers": ["NAME", "LABEL", "TYPE", "ID"],
             "classes": [
                 "", 
                 "d-none d-md-table-cell",
+                "",
                 "d-none d-sm-table-cell"
             ],
             "rows": sensors.map(sensor => {
+                const type_img = `<i class="fa fa-${sensor.type === "temp" ? "thermometer-empty" : "tint"} aria-hidden="true"></i>`;
                 return {
                     "id": sensor.id,
                     "data": sensor,
-                    "columns": [sensor.name, sensor.label, sensor.id],
+                    "columns": [sensor.name, sensor.label, type_img, sensor.id],
                     "click": function() {
                         document.location.hash = `configuration/house/${ctx.houseId}/device/${ctx.deviceId}/sensor/${sensor.id}`
                     }
