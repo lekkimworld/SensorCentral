@@ -92,14 +92,15 @@ const htmlDataTable = (input = {}) => {
     if (!ctx.hasOwnProperty("headers")) ctx.headers = [];
     if (!ctx.hasOwnProperty("rows")) ctx.rows = [];
     if (!ctx.hasOwnProperty("actions")) ctx.actions = undefined;
+    if (!ctx.hasOwnProperty("classes")) ctx.classes = [];
     const html = `<table class="table table-bordered table-hover" ${input.id ? `id="${input.id}"` : ""}>
     <thead>
         <tr>
-            ${ctx.actions ? `<th scope="col"></th>` : ""}${ctx.headers.map(h => `<th scope="col">${h}</th>`).join("")}
+            ${ctx.actions ? `<th scope="col" class="d-none d-lg-table-cell"></th>` : ""}${ctx.headers.map((h, idx) => `<th scope="col" class="${ctx.classes[idx]}">${h}</th>`).join("")}
         </tr>
     </thead>
     <tbody>
-        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td><center>${ctx.actions.filter(a => a.icon).map(a => `<i class="btn fa fa-${a.icon}" aria-hidden="true" rel="${a.rel}"></i>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<th scope="row">${d}</th>` : `<td>${d}</td>`).join("")}</tr>`).join("")}
+        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td class="d-none d-lg-table-cell"><center>${ctx.actions.filter(a => a.icon).map(a => `<i class="btn fa fa-${a.icon} sensorcentral-size-1_5x" aria-hidden="true" rel="${a.rel}"></i>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<td class="${ctx.classes[idx]}">${d}</td>` : `<td class="${ctx.classes[idx]}">${d}</td>`).join("")}</tr>`).join("")}
     </tbody>
 </table>`;
     return html;

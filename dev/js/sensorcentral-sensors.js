@@ -142,6 +142,11 @@ module.exports = (document, elemRoot, ctx) => {
                 }}
             ],
             "headers": ["NAME", "LABEL", "ID"],
+            "classes": [
+                "", 
+                "d-none d-md-table-cell",
+                "d-none d-sm-table-cell"
+            ],
             "rows": sensors.map(sensor => {
                 return {
                     "id": sensor.id,

@@ -64,6 +64,10 @@ module.exports = (document, elemRoot) => {
                 }}
             ],
             "headers": ["NAME", "ID"],
+            "classes": [
+                "", 
+                "d-none d-sm-table-cell"
+            ],
             "rows": houses.map(house => {
                 return {
                     "id": house.id,

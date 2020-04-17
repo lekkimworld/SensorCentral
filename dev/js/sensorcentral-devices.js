@@ -26,7 +26,7 @@ module.exports = (document, elemRoot, ctx) => {
 
     const updateDeviceTable = () => {
         elemRoot.html("");
-        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,str_mutedUntil,notify,house{id,name}}}`).then(data => {
+        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,lastping,str_mutedUntil,notify,house{id,name}}}`).then(data => {
             const devices = data.devices.sort((a,b) => a.name.localeCompare(b.name));
             const houseName = data.house.name;
     
@@ -78,6 +78,13 @@ module.exports = (document, elemRoot, ctx) => {
                     }}
                 ],
                 "headers": ["NAME", "NOTIFY", "MUTED UNTIL", "LAST PING", "ID"],
+                "classes": [
+                    "", 
+                    "d-none d-md-table-cell",
+                    "d-none d-md-table-cell",
+                    "",
+                    "d-none d-lg-table-cell"
+                ],
                 "rows": devices.map(device => {
                     const notify = (function(n) {
                         if ("yes" === n) {
@@ -89,11 +96,11 @@ module.exports = (document, elemRoot, ctx) => {
                         }
                     })(device.notify);
                     const mutedUntil = device.str_mutedUntil;
-    
+                    const lastping = device.hasOwnProperty("lastping") && typeof device.lastping === "number" ? `${device.lastping} mins.` : "";
                     return {
                         "id": device.id,
                         "data": device,
-                        "columns": [device.name, notify, mutedUntil, device.lastPing, device.id],
+                        "columns": [device.name, notify, mutedUntil, lastping, device.id],
                         "click": function() {
                             document.location.hash = `configuration/house/${device.house.id}/device/${this.id}`
                         }

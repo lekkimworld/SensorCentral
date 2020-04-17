@@ -54,6 +54,10 @@ body {
     min-height: 400px;
 }
 
+.sensorcentral-size-1_5x {
+    font-size: 1.5rem !important;
+}
+
 .sensorcentral-size-2x {
     font-size: 2rem !important;
 }

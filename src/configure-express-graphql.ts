@@ -1,7 +1,7 @@
 import { Application } from "express";
 import "reflect-metadata";
 import { ApolloServer } from "apollo-server-express";
-import { buildSchema, Resolver, Query, ObjectType, Field, ID, Arg, Mutation, InputType } from "type-graphql";
+import { buildSchema, Resolver, Query, ObjectType, Field, ID, Arg, Mutation, InputType, UseMiddleware, MiddlewareFn } from "type-graphql";
 import ensureAuthenticated from "./middleware/ensureAuthenticated";
 import * as types from "./types";
 //@ts-ignore
@@ -37,6 +37,26 @@ class DeviceInput {
     deviceId: string;
 }
 
+/**
+ * GraphQL middleware function to load last ping from Redis when requested only.
+ * 
+ * @param param0 
+ * @param next 
+ */
+const LastpingFetchOnDemand: MiddlewareFn<any> = async ({ root, info }, next) => {
+    const v = await next();
+    if (info.fieldName === "lastping") {
+        const storage = await lookupService("storage") as StorageService;
+        const statuses = await storage.getKnownDevicesStatus();
+        const filtered = statuses.filter(s => s.id === root.id);
+        //@ts-ignore
+        if (filtered.length) return filtered[0].ageMinutes;
+        return undefined;
+    } else {
+        return v;
+    }
+};
+
 @ObjectType()
 class Device implements types.Device {
     constructor(d : types.Device) {
@@ -65,6 +85,10 @@ class Device implements types.Device {
 
     @Field()
     house : House;
+
+    @Field({nullable:true})
+    @UseMiddleware(LastpingFetchOnDemand)
+    lastping : number;
 }
 
 @ObjectType()
