@@ -50,9 +50,13 @@ const samplesTable = (sensor, samples) => {
     return Promise.resolve();
 }
 
-module.exports = (document, elemRoot, ctx) => {
+const updateUI = (elemRoot, sensorId) => {
+    // clear page
+    elemRoot.html("");
+    samplesCache = undefined;
+    
     // fetch sensor
-    fetcher.graphql(`{sensor(id:"${ctx.sensorId}"){id, name, device{id,name,house{id,name}}}}`).then(data => {
+    fetcher.graphql(`{sensor(id:"${sensorId}"){id, name, device{id,name,house{id,name}}}}`).then(data => {
         const sensor = data.sensor;
 
         // create breadcrumbs
@@ -90,6 +94,8 @@ module.exports = (document, elemRoot, ctx) => {
                         
                     })
                 })
+            }}, {"rel": "refresh", "icon": "refresh", "click": (action) => {
+                updateUI(elemRoot, sensorId);
             }}]
         );
 
@@ -118,5 +124,8 @@ module.exports = (document, elemRoot, ctx) => {
         });
         
     })
-    
+}
+
+module.exports = (document, elemRoot, ctx) => {
+    updateUI(elemRoot, ctx.sensorId);
 }

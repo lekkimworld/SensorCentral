@@ -22,62 +22,69 @@ const saveHouse = (data) => {
     })
 }
 
-module.exports = (document, elemRoot) => {
-    elemRoot.html("");
-
-    // load houses
-    fetcher.graphql(`{houses{id,name}}`).then(data => {
-        // sort
-        const houses = data.houses.sort((a,b) => a.name.localeCompare(b.name));
-
-        // do title row
-        uiutils.appendTitleRow(
-            elemRoot, 
-            "Houses", 
-            [
-                {"rel": "create", "icon": "plus", "click": function() {
-                    formsutil.appendHouseCreateEditForm(undefined, saveHouse);
-                }}
-            ]
-        );
-        uiutils.appendDataTable(elemRoot, {
-            "actions": [
-                {"icon": "pencil", "rel": "edit", "click": function(ctx) {
-                    formsutil.appendHouseCreateEditForm(ctx.data, saveHouse);
-                }},
-                {"icon": "trash", "rel": "trash", "click": function(ctx) {
-                    const formContext = {
-                        "id": ctx.data.id,
-                        "name": ctx.data.name,
-                        "form": {
-                            "title": "Delete House?",
-                            "message": "Are you absolutely sure you want to DELETE this house? This will also DELETE all devices and sensors for this house. Sensor samples are not removed from the database."
+module.exports = (document, elemRoot, ctx) => {
+    const updateUI = () => {
+        elemRoot.html("");
+    
+        // load houses
+        fetcher.graphql(`{houses{id,name}}`).then(data => {
+            // sort
+            const houses = data.houses.sort((a,b) => a.name.localeCompare(b.name));
+    
+            // do title row
+            uiutils.appendTitleRow(
+                elemRoot, 
+                "Houses", 
+                [
+                    {"rel": "create", "icon": "plus", "click": function() {
+                        formsutil.appendHouseCreateEditForm(undefined, saveHouse);
+                    }}, {"rel": "refresh", "icon": "refresh", "click": function() {
+                        updateUI(elemRoot, ctx);
+                    }}
+                ]
+            );
+            uiutils.appendDataTable(elemRoot, {
+                "actions": [
+                    {"icon": "pencil", "rel": "edit", "click": function(ctx) {
+                        formsutil.appendHouseCreateEditForm(ctx.data, saveHouse);
+                    }},
+                    {"icon": "trash", "rel": "trash", "click": function(ctx) {
+                        const formContext = {
+                            "id": ctx.data.id,
+                            "name": ctx.data.name,
+                            "form": {
+                                "title": "Delete House?",
+                                "message": "Are you absolutely sure you want to DELETE this house? This will also DELETE all devices and sensors for this house. Sensor samples are not removed from the database."
+                            }
+                        }
+                        formsutil.appendTrashForm(formContext, (ctx) => {
+                            fetcher.delete("/api/v1/houses", {
+                                "id": ctx.id
+                            }, "text").then(body => {
+                                document.location.reload();
+                            })
+                        })
+                    }}
+                ],
+                "headers": ["NAME", "ID"],
+                "classes": [
+                    "", 
+                    "d-none d-sm-table-cell"
+                ],
+                "rows": houses.map(house => {
+                    return {
+                        "id": house.id,
+                        "data": house,
+                        "columns": [house.name, house.id],
+                        "click": function() {
+                            document.location.hash = `configuration/house/${this.id}`
                         }
                     }
-                    formsutil.appendTrashForm(formContext, (ctx) => {
-                        fetcher.delete("/api/v1/houses", {
-                            "id": ctx.id
-                        }, "text").then(body => {
-                            document.location.reload();
-                        })
-                    })
-                }}
-            ],
-            "headers": ["NAME", "ID"],
-            "classes": [
-                "", 
-                "d-none d-sm-table-cell"
-            ],
-            "rows": houses.map(house => {
-                return {
-                    "id": house.id,
-                    "data": house,
-                    "columns": [house.name, house.id],
-                    "click": function() {
-                        document.location.hash = `configuration/house/${this.id}`
-                    }
-                }
-            })
-        });
-    })
+                })
+            });
+        })
+    }
+
+    // build initial ui
+    updateUI();
 }
