@@ -116,7 +116,7 @@ module.exports = (document, elemRoot, ctx) => {
     
     const updateDeviceNotification = (deviceId, notify) => {
         fetcher.graphql(`mutation{updateDevice(data:{deviceId:"${deviceId}",notify:"${notify}"}){id,name,str_mutedUntil,notify}}`).then(() => {
-            updateDeviceTable();
+            updateUI();
         })
     }
 
