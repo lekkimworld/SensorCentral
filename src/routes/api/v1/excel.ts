@@ -2,8 +2,8 @@ import * as express from 'express';
 import Moment from 'moment';
 import moment = require("moment");
 import * as prometheus from "../../../prometheus-export";
-import { APIUserContext } from '../../../types';
-import {constants} from "../../../constants";
+import { APIUserContext, HttpException } from '../../../types';
+import constants from "../../../constants";
 
 const router = express.Router();
 
@@ -22,22 +22,22 @@ const exportPrometheusData = (res : express.Response, sensorLabel : string, star
     })
 }
 
+//@ts-ignore
 router.use((req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_READ)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`));
     }
     next();
 })
 
-router.get("/range/custom/:sensorLabel/:start/:end/:step?", (req, res) => {
+router.get("/range/custom/:sensorLabel/:start/:end/:step?", (req, res, next) => {
     const sensorLabel = req.params.sensorLabel;
     const strstart = req.params.start;
     const strend = req.params.end;
     if (!strstart.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z/) || !strend.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z/)) {
-        res.type("json");
-        return res.status(417).send({"status": "error", "message": "Invalid start or end date/time (ISO8601)"});
+        return next(new HttpException(417, "Invalid start or end date/time (ISO8601)"));
     }
 
     const start = moment(strstart, "yyyy-MM-DD{T}HH:mm:ss.SSS{Z}").utc(true).set("millisecond", 0);
@@ -47,7 +47,7 @@ router.get("/range/custom/:sensorLabel/:start/:end/:step?", (req, res) => {
     exportPrometheusData(res, sensorLabel, start, end, step);
 })
 
-router.get("/range/standard/:sensorLabel/:period/:step?", (req, res) => {
+router.get("/range/standard/:sensorLabel/:period/:step?", (req, res, next) => {
     // get sensor label
     const sensorLabel = req.params.sensorLabel;
     const period = req.params.period;
@@ -61,7 +61,7 @@ router.get("/range/standard/:sensorLabel/:period/:step?", (req, res) => {
         start = moment().set("minute", 0).set("second", 0).set("millisecond", 0).add(-1, "week").utc();
         end = moment().set("minute", 0).set("second", 0).set("millisecond", 0).utc();
     } else {
-        return res.status(417).end();
+        return next(new HttpException(417, "Unknown period supplied"));
     }
     
     exportPrometheusData(res, sensorLabel, start, end, step);

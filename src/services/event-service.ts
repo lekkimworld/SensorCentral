@@ -1,4 +1,3 @@
-import * as util from "util";
 import {BaseService} from "../types";
 import * as events from "../configure-queues-topics";
 

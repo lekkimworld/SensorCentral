@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
-import { Device, Sensor, APIUserContext, WatchdogNotification } from '../../../types';
-import {constants} from "../../../constants";
+import { Device, Sensor, APIUserContext, WatchdogNotification, HttpException } from '../../../types';
+import constants from "../../../constants";
 const {lookupService} = require('../../../configure-services');
 
 const router = express.Router();
@@ -10,7 +10,7 @@ router.use((req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (req.method === "get" && !apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_READ)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`));
     }
     next();
 })
@@ -18,28 +18,28 @@ router.use((req, res, next) => {
 /**
  * Create a new Device.
  */
-router.post("/", (req, res) => {
+router.post("/", (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
     }
 
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("house") || !input.house) {
-        return res.status(417).send({"error": true, "message": "Missing house ID in house-property"});
+        return next(new HttpException(417, "Missing house ID in house-property"));
     }
     if (!input.hasOwnProperty("id") || !input.id) {
-        return res.status(417).send({"error": true, "message": "Missing ID in \"id\" property"});
+        return next(new HttpException(417, "Missing ID in \"id\" property"));
     }
     if (!input.hasOwnProperty("name") || !input.name) {
-        return res.status(417).send({"error": true, "message": "Missing name in \"name\" property"});
+        return next(new HttpException(417, "Missing name in \"name\" property"));
     }
 
     // ensure access to house
     if (!apictx.accessAllHouses() && apictx.houseid !== input.house.trim()) {
-        return res.status(401).send({"error": true, "message": "You may not create devices for the supplied house ID"});
+        return next(new HttpException(401, "You may not create devices for the supplied house ID"));
     }
     
     lookupService("storage").then((svc : StorageService) => {
@@ -56,20 +56,20 @@ router.post("/", (req, res) => {
 /**
  * Updates an existing Device.
  */
-router.put("/", (req, res) => {
+router.put("/", (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
     }
 
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("id") || !input.id) {
-        return res.status(417).send({"error": true, "message": "Missing ID"});
+        return next(new HttpException(417, "Missing ID"));
     }
     if (!input.hasOwnProperty("name") || !input.name) {
-        return res.status(417).send({"error": true, "message": "Missing name"});
+        return next(new HttpException(417, "Missing name"));
     }
     
     lookupService("storage").then((svc : StorageService) => {
@@ -86,17 +86,17 @@ router.put("/", (req, res) => {
 /**
  * Deletes an existing Device.
  */
-router.delete("/", (req, res) => {
+router.delete("/", (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
     }
 
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("id") || !input.id) {
-        return res.status(417).send({"error": true, "message": "Missing ID"});
+        return next(new HttpException(417, "Missing ID"));
     }
     
     lookupService("storage").then((svc : StorageService) => {
@@ -113,7 +113,8 @@ router.delete("/", (req, res) => {
 /**
  * Get all devices
  */
-router.get('/', (req, res) => {
+//@ts-ignore
+router.get('/', (req, res, next) => {
     lookupService('storage').then((svc : StorageService) => {
         return svc.getDevices();
         
@@ -122,16 +123,16 @@ router.get('/', (req, res) => {
 
     }).catch((err : Error) => {
         console.log('Unable to lookup storage service');
-        res.status(500).send({'error': true, 'message': err.message});
+        return next(new HttpException(500, "Unable to lookup storage service", err));
     })
 })
 
 /**
  * Get a device.
  */
-router.get('/:deviceId', (req, res) => {
+router.get('/:deviceId', (req, res, next) => {
     const deviceId = req.params.deviceId;
-    if (!deviceId) return res.status(417).send({"error":true, "message": "Missing device id"});
+    if (!deviceId) return next(new HttpException(417, "Missing device id"));
     
     lookupService("storage").then((svc : StorageService) => {
         return svc.getDeviceById(deviceId);
@@ -141,23 +142,23 @@ router.get('/:deviceId', (req, res) => {
 
     }).catch((err : Error) => {
         console.log(err.message);
-        res.status(404).send({'error': true, 'message': `Device with id <${deviceId}> not found`});
+        return next(new HttpException(404, `Device with id <${deviceId}> not found`, err));
     })
 })
 
 /**
  * Get the notification state of a device.
  */
-router.get('/:deviceId/notify', (req, res) => {
+router.get('/:deviceId/notify', (req, res, next) => {
     const deviceId = req.params.deviceId;
-    if (!deviceId) return res.status(417).send({"error":true, "message": "Missing device id"});
+    if (!deviceId) return next(new HttpException(417, "Missing device id"));
     
     lookupService("storage").then((svc : StorageService) => {
         return svc.getDeviceById(deviceId);
         
     }).then((device : Device) => {
         res.status(200).send({
-            "notify": device.notify === 0 ? "off" : device.notify === 1 ? "on" : "mute",
+            "notify": device.notify,
             "mutedUntil": device.mutedUntil ? device.mutedUntil.toISOString() : undefined
         })
 
@@ -170,24 +171,23 @@ router.get('/:deviceId/notify', (req, res) => {
 /**
  * Update the notification state of a device.
  */
-router.put('/:deviceId/notify', (req, res) => {
+router.put('/:deviceId/notify', (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return res.status(401).send({"error": true, "message": `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`});
+        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
     }
 
     const deviceId = req.params.deviceId;
     const str_state = req.body.notify;
-    if (!deviceId) return res.status(417).send({"error":true, "message": "Missing device id"});
-    if (!["mute", "on", "off"].includes(str_state)) return res.status(417).send({"error":true, "message": "Invalid state sent - must be on, off or mute"});
+    if (!deviceId) return next(new HttpException(417, "Missing device id"));
+    if (!["mute", "on", "off"].includes(str_state)) return next(new HttpException(417, "Invalid state sent - must be on, off or mute"));
     const state = str_state === "on" ? WatchdogNotification.yes : str_state === "off" ? WatchdogNotification.no : WatchdogNotification.muted;
     
-    let didResponse = false;
     lookupService("storage").then((svc : StorageService) => {
         return Promise.all([Promise.resolve(svc), svc.getDeviceById(deviceId)]);
     }).catch((err : Error) => {
-        return Promise.reject(Error('Unable to lookup storage service'));
+        return Promise.reject(Error(`Unable to lookup storage service (${err.message})`));
 
     }).then((args : any[]) => {
         const svc = args[0] as StorageService;
@@ -208,7 +208,7 @@ router.put('/:deviceId/notify', (req, res) => {
 /**
  * Return sensors for a specific device.
  */
-router.get('/:deviceId/sensors', (req, res) => {
+router.get('/:deviceId/sensors', (req, res, next) => {
     const deviceId = req.params.deviceId;
     
     lookupService('storage').then((svc : StorageService) => {
@@ -220,7 +220,7 @@ router.get('/:deviceId/sensors', (req, res) => {
         
     }).catch((err : Error) => {
         console.log('Unable to lookup storage service');
-        res.status(500).send({'error': true, 'message': err.message});
+        return next(new HttpException(500, "Unable to lookup storage service", err));
     })
 })
 

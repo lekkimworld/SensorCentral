@@ -2,7 +2,7 @@
   "name": "SensorCentral",
   "short_name": "@Sensors",
   "display": "fullscreen",
-  "orientation": "any",
+  "orientation": "landscape",
   "start_url": "/",
   "background_color": "#fff",
   "theme_color": "#fff",

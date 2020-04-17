@@ -5,6 +5,8 @@ import { StorageService } from '../services/storage-service';
 import { LogService } from '../services/log-service';
 
 const router = express.Router();
+
+//@ts-ignore
 router.get("/", (req, res) => {
     res.set({
         'Content-Type': 'text/plain'
@@ -23,7 +25,6 @@ router.get("/", (req, res) => {
                 if (!sensor.value || sensor.value === Number.MIN_VALUE) return;
                 if (!sensor.device) return;
                 if (!sensor.device.house) return;
-                const sensorId = sensor.id;
                 const sensorName = sensor.name;
                 const sensorLabel = sensor.label;
                 const sensorType = sensor.type;

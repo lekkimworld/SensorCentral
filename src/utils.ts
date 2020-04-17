@@ -1,6 +1,6 @@
 import Moment from 'moment-timezone';
 import moment = require("moment-timezone");
-import {constants} from "./constants";
+import constants from "./constants";
 import { RedisSensorMessage, Sensor, SensorReading } from './types';
 const pckg = require('../package.json');
 
@@ -11,8 +11,8 @@ export const formatDate = function(date? : any) : string {
 }
 
 export const buildBaseHandlebarsContext = (req : Express.Request) : any => {
+    req.sessionID;
     return {
-        "username": req.session!.user.email,
         "app_name": pckg.name,
         "app_version": pckg.version
     }

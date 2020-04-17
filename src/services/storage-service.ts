@@ -1,5 +1,4 @@
-import * as  util from "util";
-import {constants} from "../constants";
+import constants from "../constants";
 import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, SensorReading, DeviceStatus, IngestedControlMessage, WatchdogNotification, SensorSample} from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
@@ -10,10 +9,7 @@ import * as utils from "../utils";
 import Moment from 'moment';
 import moment = require("moment");
 import uuid from "uuid/v1";
-import { stringify } from "querystring";
-import { lookup, lookupService } from "dns";
 import { QueryResult } from "pg";
-import { RedisError } from "redis";
 
 const SENSOR_KEY_PREFIX = 'sensor:';
 const DEVICE_KEY_PREFIX = 'device:';
@@ -85,7 +81,7 @@ export class StorageService extends BaseService {
             } else {
                 return this.dbService!.query(`insert into house (id, name) values ('${houseid}', '${name.trim()}')`);
             }
-        }).then(result => {
+        }).then(() => {
             return this.getHouses(houseid);
         }).then(houses => {
             return houses[0];
@@ -112,7 +108,7 @@ export class StorageService extends BaseService {
             // update house
             return this.dbService!.query(`update house set name='${usename}' where id='${id}'`);
 
-        }).then(result => {
+        }).then(() => {
             return this.getHouses(id);
         }).then(houses => {
             return Promise.resolve(houses[0]);
@@ -133,7 +129,7 @@ export class StorageService extends BaseService {
             // delete house
             return this.dbService!.query(`delete from house where id='${use_id}'`);
 
-        }).then(result => {
+        }).then(() => {
             return Promise.resolve();
         })
     }
@@ -184,7 +180,7 @@ export class StorageService extends BaseService {
         if (!use_house || use_house.length > 36) return Promise.reject(Error('Supplied house ID not present or longer than the maximum 36 characters'));
 
         // get device by id
-        return this.getDeviceById(use_id).then(device => {
+        return this.getDeviceById(use_id).then(() => {
             // we found a device with that ID - this is an error
             return Promise.reject(new StorageServiceError('Found existing device with ID', "found"));
 
@@ -195,7 +191,7 @@ export class StorageService extends BaseService {
             // success ID not known
             return this.dbService!.query(`insert into device (id, name, houseid) values ('${use_id}', '${use_name}', '${use_house}')`);
 
-        }).then(result => {
+        }).then(() => {
             // return device
             return this.getDeviceById(use_id);
         })
@@ -222,7 +218,7 @@ export class StorageService extends BaseService {
             // update device
             return this.dbService!.query(`update device set name='${use_name}' where id='${use_id}'`);
 
-        }).then(result => {
+        }).then(() => {
             return this.getDeviceById(use_id);
         })
     }
@@ -241,7 +237,7 @@ export class StorageService extends BaseService {
             // delete device
             return this.dbService!.query(`delete from device where id='${use_id}'`);
 
-        }).then(result => {
+        }).then(() => {
             return Promise.resolve();
         })
     }
@@ -258,12 +254,13 @@ export class StorageService extends BaseService {
         if (use_label.length > 128) return Promise.reject(Error('Supplied label maybe maximum 128 characters'));
         
         // ensure unqiue name
-        return this.getDeviceById(deviceId).then((device : Device) => {
+        return this.getDeviceById(deviceId).then(() => {
             // found device - good - see if we can find sensor by id
             return this.getSensorById(id);
 
         }).then((sensor : Sensor) => {
             // should not be able to find sensor
+            this.logService?.debug(`Found sensor we did not expect (${sensor})`);
             return Promise.reject(new StorageServiceError(`Sensor with ID <${id}> already exists`, "found"));
 
         }).catch((err : StorageServiceError) => {
@@ -274,7 +271,7 @@ export class StorageService extends BaseService {
             console.log(`insert into sensor (deviceid, id, name, label, type) values ('${deviceId}', '${use_id}', '${use_name}', '${use_label}', '${use_type}')`);
             this.dbService?.query(`insert into sensor (deviceid, id, name, label, type) values ('${deviceId}', '${use_id}', '${use_name}', '${use_label}', '${use_type}')`);
 
-        }).then(result => {
+        }).then(() => {
             return this.getSensorById(id);
         })
     }
@@ -289,11 +286,11 @@ export class StorageService extends BaseService {
         if (use_name.length > 128) return Promise.reject(Error('Supplied name maybe maximum 128 characters'));
         if (use_label.length > 128) return Promise.reject(Error('Supplied label maybe maximum 128 characters'));
         
-        return this.getSensorById(id).then((sensor : Sensor) => {
+        return this.getSensorById(id).then(() => {
             // update sensor
             return this.dbService!.query(`update sensor set name='${use_name}', label='${use_label}', type='${use_type}' where id='${id}'`);
 
-        }).then(result => {
+        }).then(() => {
             return this.getSensorById(id);
         })
     }
@@ -302,11 +299,11 @@ export class StorageService extends BaseService {
         // validate
         const use_id = id.trim();
 
-        return this.getSensorById(id).then(sensor => {
+        return this.getSensorById(id).then(() => {
             // delete sensor
             return this.dbService!.query(`delete from sensor where id='${use_id}'`);
 
-        }).then(result => {
+        }).then(() => {
             return Promise.resolve();
         })
     }
@@ -381,16 +378,17 @@ export class StorageService extends BaseService {
         if (newState === WatchdogNotification.muted && !mutedUntil) {
             mutedUntil = moment().add(7, "days");
         }
+        const num_notify = WatchdogNotification.no === newState ? 0 : WatchdogNotification.yes === newState ? 1 : 2;
         let str_muted_until = newState === WatchdogNotification.muted ? mutedUntil?.toISOString() : undefined;
         let p : Promise<QueryResult<any>>;
         switch (newState) {
             case WatchdogNotification.muted:
-                p = this.dbService!.query(`update device set notify=${newState}, muted_until='${str_muted_until}' where id='${device_id}'`)
+                p = this.dbService!.query(`update device set notify=${num_notify}, muted_until='${str_muted_until}' where id='${device_id}'`)
                 break;
             default:
-                p = this.dbService!.query(`update device set notify=${newState}, muted_until=NULL where id='${device_id}'`)
+                p = this.dbService!.query(`update device set notify=${num_notify}, muted_until=NULL where id='${device_id}'`)
         }
-        return p.then(result => {
+        return p.then(() => {
             return this.getDeviceById(device_id);
         })
     }
@@ -567,7 +565,7 @@ export class StorageService extends BaseService {
         } else {
             str_sql = "insert into sensor_data (id, value, dt) values ($1, $2, current_timestamp)";
         }
-        return this.dbService!.query(str_sql, ...args).then(result => {
+        return this.dbService!.query(str_sql, ...args).then(() => {
             return Promise.resolve();
         })
     }
@@ -633,7 +631,7 @@ export class StorageService extends BaseService {
                     return Promise.all([sensor, sensor.device]);
                 });
 
-            }).catch(err => {
+            }).catch(() => {
                 // unknown sensor - mark msg as consumed and return promise
                 result.callback();
                 return Promise.all([Promise.resolve(undefined), this.getDeviceById(msg.deviceId)]);
@@ -662,7 +660,7 @@ export class StorageService extends BaseService {
             const msg = result.data as IngestedControlMessage;
 
             // see if we know the device
-            this.getDeviceById(msg.id).catch(err => {
+            this.getDeviceById(msg.id).catch(() => {
                 return Promise.resolve(null);
 
             }).then((device : Device | null) => {
@@ -688,7 +686,7 @@ export class StorageService extends BaseService {
             const msg = result.data as IngestedDeviceMessage;
 
             // see if we know the device
-            this.getDeviceById(msg.id).catch(err => {
+            this.getDeviceById(msg.id).catch(() => {
                 return Promise.resolve(null);
 
             }).then((device : Device | null) => {

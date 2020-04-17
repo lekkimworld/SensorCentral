@@ -1,16 +1,14 @@
 import * as express from 'express';
 const services = require('../configure-services');
 import {EventService} from "../services/event-service";
-import {constants} from "../constants";
+import constants from "../constants";
 import { LogService } from '../services/log-service';
 import { StorageService } from '../services/storage-service';
-import { BaseService, IngestedControlMessage, Device, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes } from '../types';
-
-// max temp to register
-const MIN_REGISTER_TEMP = process.env.MIN_REGISTER_TEMP || constants.SENSOR_VALUES.MIN_REGISTER_TEMP
+import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException } from '../types';
 
 const router = express.Router();
-router.post('/', (req, res) => {
+
+router.post('/', (req, res, next) => {
 	// get data and see if array
 	const body = req.body
 	const postObj : any = (function()  {
@@ -37,19 +35,14 @@ router.post('/', (req, res) => {
 	
 	// validate input
 	if (!postObj) {
-		res.set({
-			'Content-Type': 'text/plain'
-		})
-		return res.status(417).send(`Expected to receive body data`).end()
+		return next(new HttpException(417, `Expected to receive body data`, undefined, "text"));
 	}
 
 	// validate msgtype
 	const msgtype = postObj["msgtype"]
 	if (!['control', 'data'].includes(msgtype)) {
 		// invalid message type
-		return res.set({
-			'Content-Type': 'text/plain'
-		}).status(417).send(`Invalid msgtype <${msgtype}> received`).end()
+		return next(new HttpException(417, `Invalid msgtype <${msgtype}> received`, undefined, "text"));
 	}
 
 	// lookup services
@@ -128,20 +121,14 @@ router.post('/', (req, res) => {
 						'id': element["sensorId"],
 						"deviceId": msg.id
 					}
-					eventSvc.publishQueue(constants.QUEUES.SENSOR, payload).then(resp => {
-
-					}).catch(err => {
-						
-					})
+					eventSvc.publishQueue(constants.QUEUES.SENSOR, payload);
 				})
 				
 
-			}).catch(err => {
-				// logSvc.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to queue <${err.exchangeName}>`, err)
 			})
 		}
 	}).catch((err:Error) => {
-		return res.set('Content-Type', 'text/plain; charset=utf-8').status(500).send('Unable to find event bus').end()
+		return res.set('Content-Type', 'text/plain; charset=utf-8').status(500).send(`Unable to find event bus (${err.message})`).end()
 	})
 })
 

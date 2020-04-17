@@ -1,14 +1,17 @@
-'use strict';
-
-module.exports = function Cleanup(callback) {
-
+export type CallbackFunction = () => void;
+export default (callback : CallbackFunction) => {
     // attach user callback to the process event emitter
     // if no callback, it will still exit gracefully on Ctrl-C
     callback = callback || (() => {});
-    process.on('cleanup', callback);    
+    
+    //@ts-ignore
+    process.on('cleanup', () => {
+        callback();
+    });    
 
     // do app specific cleaning before exiting
     process.on('exit', function () {
+        //@ts-ignore
         process.emit('cleanup');
     });
 

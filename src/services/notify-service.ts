@@ -1,5 +1,5 @@
 import {Moment} from "moment-timezone";
-import {constants} from "../constants";
+import constants from "../constants";
 import { BaseService, TopicControlMessage, ControlMessageTypes, TopicSensorMessage, WatchdogNotification } from "../types";
 import { LogService } from "./log-service";
 import { EventService } from "./event-service";

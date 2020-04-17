@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { WatchdogNotification, Sensor, DeviceStatus, Device, SensorReading, RedisSensorMessage, SensorSample } from '../types';
+import { WatchdogNotification, Sensor, DeviceStatus, Device, SensorReading, RedisSensorMessage, SensorSample, HttpException } from '../types';
 import { StorageService } from '../services/storage-service';
 import * as utils from "../utils";
 const {lookupService} = require('../configure-services');
@@ -18,8 +18,8 @@ router.get('/', (req, res) => {
 	})
 })
 
-router.get('/house/:houseid', (req, res) => {
-	if (!req.params.houseid) return res.status(417).send("Expected house id");
+router.get('/house/:houseid', (req, res, next) => {
+	if (!req.params.houseid) return next(new HttpException(417, "Expected house id"));
 
 	lookupService("storage").then((svc : StorageService) => {
 		return Promise.all([svc.getDevices(req.params.houseid), svc.getKnownDevicesStatus()]).then(data => {
@@ -46,9 +46,9 @@ router.get('/house/:houseid', (req, res) => {
 	})
 })
 
-router.get("/house/:houseid/:deviceid", (req, res) => {
-	if (!req.params.houseid) return res.status(417).send("Expected house id");
-	if (!req.params.deviceid) return res.status(417).send("Expected device id");
+router.get("/house/:houseid/:deviceid", (req, res, next) => {
+	if (!req.params.houseid) return next(new HttpException(417, "Expected house id"));
+	if (!req.params.deviceid) return next(new HttpException(417, "Expected device id"));
 	const deviceid = req.params.deviceid;
 
 	lookupService("storage").then((svc : StorageService) => {
@@ -62,7 +62,7 @@ router.get("/house/:houseid/:deviceid", (req, res) => {
 		const unknown = data[1] as SensorReading[];
 		if (sensors.filter(s => s.device?.house.id === req.params.houseid).length != sensors.length) {
 			// at least one device is from another house than requested - cannot be
-			return res.status(417).send("Device and house id mismatch");
+			return next(new HttpException(417, "Device and house id mismatch"));
 		}
 
 		res.render("configuration/sensors", Object.assign({
@@ -75,10 +75,10 @@ router.get("/house/:houseid/:deviceid", (req, res) => {
 	})
 })
 
-router.get("/house/:houseid/:deviceid/:sensorid", (req, res) => {
-	if (!req.params.houseid) return res.status(417).send("Expected house id");
-	if (!req.params.deviceid) return res.status(417).send("Expected device id");
-	if (!req.params.sensorid) return res.status(417).send("Expected sensor id");
+router.get("/house/:houseid/:deviceid/:sensorid", (req, res, next) => {
+	if (!req.params.houseid) return next(new HttpException(417, "Expected house id"));
+	if (!req.params.deviceid) return next(new HttpException(417, "Expected device id"));
+	if (!req.params.sensorid) return next(new HttpException(417, "Expected sensor id"));
 	const houseid = req.params.houseid;
 	const deviceid = req.params.deviceid;
 	const sensorid = req.params.sensorid;

@@ -20,7 +20,7 @@ export class RedisService extends BaseService {
     }
     
     terminate() {
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>((resolve) => {
             client.end();
             resolve();
         });
@@ -41,6 +41,7 @@ export class RedisService extends BaseService {
     mget(...keys:string[]) : Promise<string[]> {
         return new Promise((resolve, reject) => {
             client.mget(keys, (err : Error | null, values : string[]) => {
+                if (err) return reject(err);
                 resolve(values);
             });
         });

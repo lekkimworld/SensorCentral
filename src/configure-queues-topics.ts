@@ -3,7 +3,6 @@ import { Connection, Channel } from "amqplib";
 const url:string|undefined = process.env.CLOUDAMQP_URL;
 if (!url) throw Error('Missing CLOUDAMQP_URL environtment variable');
 export const connection:Promise<Connection> = require('amqplib').connect(url);
-const constants = require("./constants");
 
 export interface IPublishResult {
     "exchangeName":string,
