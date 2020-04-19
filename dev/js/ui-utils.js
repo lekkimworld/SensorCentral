@@ -81,7 +81,7 @@ const htmlPageTitle = (title) => {
 const htmlActionBar = (actions) => {
     if (!actions || !actions.length) return "";
     const html = actions.map(action => {
-        return `<button type="button" class="btn fa fa-${action.icon} sensorcentral-size-2x float-right" aria-hidden="true" rel="${action.rel}"></button>`
+        return `<button type="button" class="btn fa fa-${action.icon} ml-2 p-0 sensorcentral-size-1_5x float-right" aria-hidden="true" rel="${action.rel}"></button>`
     }).join("");
 
     return `<div class="col-3" id="${ID_ACTION_ITEMS}">${html}</div>`;

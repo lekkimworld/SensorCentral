@@ -70,7 +70,7 @@ const updateUI = (elemRoot, sensorId) => {
         // create title row
         uiutils.appendTitleRow(
             elemRoot, 
-            `Sensor: ${sensor.name}`, 
+            `Sensor`, 
             [{"rel": "create", "icon": "plus", "click": (action) => {
                 formutils.appendManualSampleForm(sensor, (data) => {
                     // get field values
