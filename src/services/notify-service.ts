@@ -1,6 +1,6 @@
 import {Moment} from "moment-timezone";
 import constants from "../constants";
-import { BaseService, TopicControlMessage, ControlMessageTypes, TopicSensorMessage, WatchdogNotification } from "../types";
+import { BaseService, TopicControlMessage, ControlMessageTypes, TopicSensorMessage } from "../types";
 import { LogService } from "./log-service";
 import { EventService } from "./event-service";
 import { PushoverService } from "./pushover-service";
@@ -30,6 +30,7 @@ export class NotifyService extends BaseService {
             this.logService!.debug(`Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
             const msg = result.data as TopicControlMessage;
 
+            /*
             // get muted status
             const notify = (() => {
                 if (msg.device) {
@@ -45,7 +46,7 @@ export class NotifyService extends BaseService {
                             return WatchdogNotification.yes;
                         } else {
                             // muted due to until
-                            return WatchdogNotification.no;
+                            return Watchdogotification.no;
                         }
                     }
                 }
@@ -57,6 +58,7 @@ export class NotifyService extends BaseService {
                 this.logService!.debug(`Notify service ignoring message as notify computed to no`);
                 return;
             }
+            */
 
             // process based on type
             if (msg.type === ControlMessageTypes.restart) {

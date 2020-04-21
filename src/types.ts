@@ -115,8 +115,6 @@ export interface Device {
     readonly house : House;
     readonly id : string;
     readonly name : string;
-    readonly notify : WatchdogNotification;
-    readonly mutedUntil? : Date;
 }
 
 /**

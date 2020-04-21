@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
-import { Device, Sensor, APIUserContext, BaseService, RedisSensorMessage, ErrorObject, HttpException } from '../../../types';
+import { Sensor, APIUserContext, BaseService, RedisSensorMessage, ErrorObject, HttpException } from '../../../types';
 import constants from "../../../constants";
 import { LogService } from '../../../services/log-service';
 const {lookupService} = require('../../../configure-services');
@@ -19,7 +19,7 @@ router.use((req, res, next) => {
 /**
  * Create a new Sensor.
  */
-router.post("/", (req, res, next) => {
+router.post("/", async (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
@@ -43,30 +43,32 @@ router.post("/", (req, res, next) => {
     if (!input.hasOwnProperty("type") || !input.type.trim()) {
         return next(new HttpException(417, "Missing type in \"type\" property"));
     }
-    if (!["temp","hum"].includes(input.type.trim())) {
-        return next(new HttpException(417, "Missing type may be \"temp\" or \"hum\""));
-    }
 
     // ensure access to house
     if (!apictx.accessAllHouses() && apictx.houseid !== input.house.trim()) {
         return next(new HttpException(401, "You may not create sensors for the supplied house ID"));
     }
-    
-    lookupService("storage").then((svc : StorageService) => {
-        return svc.createSensor(input.device.trim(), input.id.trim(), input.name.trim(), input.label.trim(), input.type.trim());
-        
-    }).then((sensor: Sensor) => {
+
+    const storage = await lookupService("storage") as StorageService;
+    try {
+        const sensor = await storage.createSensor({
+            "deviceId": input.device,
+            "id": input.id,
+            "name": input.name,
+            "label": input.label,
+            "type": input.type
+        })
         res.status(201).send(sensor);
 
-    }).catch((err : Error) => {
-        return next(new HttpException(417, `A device with that id / name may already exists (${err ? err.message : ""})`));
-    })
+    } catch (err) {
+        next(new HttpException(417, "Unable to create requested sensor", err));
+    }
 })
 
 /**
  * Update a Sensor.
  */
-router.put("/", (req, res, next) => {
+router.put("/", async (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
@@ -87,30 +89,31 @@ router.put("/", (req, res, next) => {
     if (!input.hasOwnProperty("type") || !input.type.trim()) {
         return next(new HttpException(417, "Missing type in \"type\" property"));
     }
-    if (!["temp","hum"].includes(input.type.trim())) {
-        return next(new HttpException(417, "Missing type may be \"temp\" or \"hum\""));
-    }
-
+    
     // ensure access to house
     if (!apictx.accessAllHouses() && apictx.houseid !== input.house.trim()) {
         return next(new HttpException(401, "You may not update sensors for the supplied house ID"));
     }
     
-    lookupService("storage").then((svc : StorageService) => {
-        return svc.updateSensor(input.id.trim(), input.name.trim(), input.label.trim(), input.type.trim());
-        
-    }).then((device: Device) => {
-        res.status(201).send(device);
+    const storage = await lookupService("storage") as StorageService;
+    try {
+        const sensor = await storage.updateSensor({
+            "id": input.id,
+            "name": input.name,
+            "label": input.label,
+            "type": input.type
+        })
+        res.status(201).send(sensor);
 
-    }).catch((err : Error) => {
-        res.status(417).send({"error": true, "message": `A device with that id / name may already exists (${err ? err.message : ""})`});
-    })
+    } catch (err) {
+        next(new HttpException(417, "Unable to update requested sensor", err));
+    }
 })
 
 /**
  * Deletes an existing Sensor.
  */
-router.delete("/", (req, res, next) => {
+router.delete("/", async (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
@@ -123,15 +126,16 @@ router.delete("/", (req, res, next) => {
         return next(new HttpException(417, "Missing ID"));
     }
     
-    lookupService("storage").then((svc : StorageService) => {
-        return svc.deleteSensor(input.id.trim());
-        
-    }).then(() => {
-        res.status(202).send();
-        
-    }).catch((err : Error) => {
-        res.status(500).send({"error": true, "message": `Unable to delete sensor (${err.message})`});
-    })
+    const storage = await lookupService("storage") as StorageService;
+    try {
+        await storage.deleteSensor({
+            "id": input.id
+        })
+        res.status(202);
+
+    } catch (err) {
+        next(new HttpException(417, "Unable to update requested sensor", err));
+    }
 })
 
 /**
@@ -148,7 +152,7 @@ router.get('/query', (req, res, next) => {
         logService.debug(`API query for sensors with queryKey <${queryKey}> and queryValue <${queryValue}>`);
 
         // get all sensors
-        return Promise.all([Promise.resolve(logService), Promise.resolve(storageService), storageService.getSensors()]);
+        return Promise.all([Promise.resolve(logService), Promise.resolve(storageService), storageService.getSensors("foo")]);
 
     }).then((data : any) => {
         const logService = data[0] as LogService;
@@ -203,34 +207,17 @@ router.get('/query', (req, res, next) => {
 /**
  * Return specific sensor.
  */
-router.get("/:sensorid", (req, res, next) => {
+router.get("/:sensorid", async (req, res, next) => {
     if (!req.params.sensorid) return next(new HttpException(417, "Did not receive sensor id"));
 
-    lookupService("storage").then((svc : StorageService) => {
-        return svc.getSensorById(req.params.sensorid);
-
-    }).then((sensor : Sensor) => {
+    const storage = lookupService("storage") as StorageService;
+    try {
+        const sensor = storage.getSensor(req.params.sensorid)
         res.status(200).send(sensor);
 
-    }).catch((err : Error) => {
+    } catch(err) {
         return next(new HttpException(500, `Unable to return sensor with id (${err.message})`, err));
-    })
-})
-
-/**
- * Return all sensors
- */
-//@ts-ignore
-router.get("/", (req, res, next) => {
-    lookupService("storage").then((svc : StorageService) => {
-        return svc.getSensors();
-
-    }).then((sensors : Sensor[]) => {
-        res.status(200).send(sensors);
-
-    }).catch((err : Error) => {
-        return next(new HttpException(500, `Unable to return sensors (${err.message})`, err));
-    })
+    }
 })
 
 export default router;

@@ -4,19 +4,18 @@ import * as fs from "fs";
 import {join} from "path";
 import * as readline from "readline";
 
-const TARGET_DATABASE_VERSION = 2;
+const TARGET_DATABASE_VERSION = 3;
 
 const pool = new Pool({
     'connectionString': process.env.DATABASE_URL,
     'ssl': process.env.NODE_ENV === 'production' ? true : false
 });
 
-const buildEntireSchema = () : Promise<void> => {
-    console.log("Creating entire database schema...");
+const executeSQLFile = (filename : string) : Promise<void> => {
     return new Promise((resolve, reject) => {
         const lines : Array<string> = [];
         readline.createInterface({
-            "input": fs.createReadStream(join(__dirname, "..", "..", "schema", "complete.sql"))
+            "input": fs.createReadStream(join(__dirname, "..", "..", "schema", filename))
         }).on("line", line => {
             if (!line || line.trim().length === 0) return;
             lines.push(line);
@@ -25,6 +24,7 @@ const buildEntireSchema = () : Promise<void> => {
             const executeNext = () => {
                 const line = lines.shift();
                 if (!line) return resolve();
+                console.log(`[SQL] Executing line: ${line}`);
                 pool.query(line).then(() => {
                     executeNext();
                 }).catch(err => {
@@ -36,8 +36,18 @@ const buildEntireSchema = () : Promise<void> => {
     })
 }
 
+const buildEntireSchema = () : Promise<void> => {
+    console.log("Creating entire database schema...");
+    return executeSQLFile(`complete_v${TARGET_DATABASE_VERSION}.sql`);
+}
+
 const updateSchemaVersion_1to2 = () : Promise<void> => {
     return Promise.resolve();
+}
+
+const updateSchemaVersion_2to3 = () : Promise<void> => {
+    console.log("Updating database schema from version 2 to 3...");
+    return executeSQLFile("version_2_to_3.sql");
 }
 
 pool.query("BEGIN").then(() => {
@@ -62,7 +72,8 @@ pool.query("BEGIN").then(() => {
                 const version = result.rows[0].version;
                 if (version === 1) {
                     return updateSchemaVersion_1to2();
-
+                } else if (version === 2) {
+                    return updateSchemaVersion_2to3();
                 } else if (version === TARGET_DATABASE_VERSION) {
                     console.log("We are at the newest version...");
                     return Promise.resolve();

@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
-import { House, APIUserContext,  HttpException } from '../../../types';
+import { APIUserContext,  HttpException } from '../../../types';
 import constants from "../../../constants";
 const {lookupService} = require('../../../configure-services');
 
@@ -19,41 +19,34 @@ router.use((req, res, next) => {
  * Lists all houses.
  */
 //@ts-ignore
-router.get("/", (req, res) => {
-    lookupService("storage").then((svc : StorageService) => {
-        return svc.getHouses();
-    }).then((houses : House[]) => {
-        // get context
-        const apictx = res.locals.api_context as APIUserContext;
-        if (apictx.accessAllHouses()) {
-            res.status(200).send(houses);
-        } else {
-            res.status(200).send(houses.filter(h => h.id === apictx.houseid));
-        }
-    })
+router.get("/", async (req, res, next) => {
+    const storage = await lookupService("storage") as StorageService;
+    const houses = await storage.getHouses();
+    res.status(200).send(houses);
 })
 
 /**
  * Retrieves the house with the specified ID.
  * 
  */
-router.get("/:houseid", (req, res) => {
-    lookupService("storage").then((svc : StorageService) => {
-        return svc.getHouses();
-    }).then((houses : House[]) => {
-        const house2send = houses.filter(h => h.id === req.params.houseid);
-        if (house2send.length === 0) {
-            res.status(404).send({"error": true, "message": "House not found"});
-        } else {
-            res.status(200).send(house2send[0]);
-        }
-    })
+router.get("/:houseid", async (req, res, next) => {
+    const houseId = req.params.houseid;
+    if (!houseId) return next(new HttpException(417, "House ID not supplied"));
+
+    const storage = await lookupService("storage") as StorageService;
+    try {
+        const house = await storage.getHouse(houseId);
+        return res.status(200).send(house);
+
+    } catch (err) {
+        next(new HttpException(404, `House with ID <${houseId}> not found`, err));
+    }
 })
 
 /**
  * Create a new House.
  */
-router.post("/", (req, res, next) => {
+router.post("/", async (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
@@ -66,21 +59,22 @@ router.post("/", (req, res, next) => {
         return next(new HttpException(417, "Missing name in \"name\" property"));
     }
     
-    lookupService("storage").then((svc : StorageService) => {
-        return svc.createHouse(input.name.trim());
-        
-    }).then((house: House) => {
+    try {
+        const storage = await lookupService("storage") as StorageService;
+        const house = await storage.createHouse({
+            "name": input.name
+        })
         res.status(201).send(house);
 
-    }).catch((err : Error) => {
-        next(new HttpException(417, "A house with that name already exists", err));
-    })
+    } catch (err) {
+        next(new HttpException(500, "Unable to create house", err));
+    }
 })
 
 /**
  * Updates an existing House.
  */
-router.put("/", (req, res, next) => {
+router.put("/", async (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
@@ -96,21 +90,23 @@ router.put("/", (req, res, next) => {
         return next(new HttpException(417, "Missing name in \"name\" property"));
     }
     
-    lookupService("storage").then((svc : StorageService) => {
-        return svc.updateHouse(input.id.trim(), input.name.trim());
-        
-    }).then((house: House) => {
+    try {
+        const storage = await lookupService("storage") as StorageService;
+        const house = await storage.updateHouse({
+            "id": input.id,
+            "name": input.name
+        })
         res.status(201).send(house);
         
-    }).catch((err : Error) => {
-        res.status(417).send({"error": true, "message": `Unable to update house (${err.message})`});
-    })
+    } catch(err) {
+        next(new HttpException(500, `Unable to update house (${err.message})`, err));
+    }
 })
 
 /**
  * Deletes an existing House.
  */
-router.delete("/", (req, res, next) => {
+router.delete("/", async (req, res, next) => {
     // ensure correct scope
     const apictx = res.locals.api_context as APIUserContext;
     if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
@@ -123,15 +119,16 @@ router.delete("/", (req, res, next) => {
         return next(new HttpException(417, "Missing ID"));
     }
     
-    lookupService("storage").then((svc : StorageService) => {
-        return svc.deleteHouse(input.id.trim());
-        
-    }).then(() => {
+    try {
+        const storage = await lookupService("storage") as StorageService;
+        await storage.deleteHouse({
+            "id": input.id
+        })
         res.status(202).send();
         
-    }).catch((err : Error) => {
-        next(new HttpException(500, `Unable to delete house (${err.message})`));
-    })
+    } catch(err) {
+        next(new HttpException(500, `Unable to delete house (${err.message})`, err));
+    }
 })
 
 export default router;
