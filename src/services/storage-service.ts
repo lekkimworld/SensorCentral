@@ -9,7 +9,6 @@ import * as utils from "../utils";
 import Moment from 'moment';
 import moment = require("moment");
 import uuid from "uuid/v1";
-import { QueryResult } from "pg";
 import { CreateSensorType, UpdateSensorType, DeleteSensorType } from "src/resolvers/sensor";
 import { DeleteDeviceInput, UpdateDeviceInput, CreateDeviceInput } from "src/resolvers/device";
 import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput } from "src/resolvers/house";
@@ -65,7 +64,7 @@ export class StorageService extends BaseService {
     async getHouse(houseid : string) {
         const result = await this.dbService!.query(`select id, name from house where id=$1`, houseid);
         if (result.rowCount !== 1) {
-            throw Error(`Unable to find a single House with ID=${houseid}`);
+            throw Error(`Unable to find a single House with ID <${houseid}>`);
         }
 
         const row = result.rows[0];
@@ -476,6 +475,9 @@ export class StorageService extends BaseService {
         // get sensor
         const sensor = await this.getSensor(use_id);
 
+        // delete the sensor
+        await this.dbService?.query("delete from sensor where id=$1", use_id);
+        
         // publish event
         await this.eventService?.publishTopic(constants.TOPICS.CONTROL, "sensor.delete", {
             "old": {

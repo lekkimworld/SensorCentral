@@ -73,31 +73,20 @@ window.addEventListener("DOMContentLoaded", () => {
 
 */
 
-const createSensor = (data) => {
-    fetcher.post(`/api/v1/sensors`, {
-        "id": data.id,
-        "name": data.name, 
-        "label": data.label,
-        "type": data.type,
-        "device": deviceId
-    }).then(() => {
-        document.location.reload();
-    })
-}
-const editSensor = (data) => {
-    fetcher.put(`/api/v1/sensors`, {
-        "id": data.id,
-        "name": data.name, 
-        "label": data.label,
-        "type": data.type
-    }).then(() => {
-        document.location.reload();
-    })
-}
-
 module.exports = (document, elemRoot, ctx) => {
     const houseId = ctx.houseId;
     const deviceId = ctx.deviceId;
+
+    const createSensor = (data) => {
+        fetcher.graphql(`mutation {createSensor(data: {deviceId: "${deviceId}", id: "${data.id}", name: "${data.name}", label: "${data.label}", type: "${data.type}"}){id}}`).then(() => {
+            document.location.reload();
+        })
+    }
+    const editSensor = (data) => {
+        fetcher.graphql(`mutation {updateSensor(data: {id: "${data.id}", name: "${data.name}", label: "${data.label}", type: "${data.type}"}){id}}`).then(() => {
+            document.location.reload();
+        })
+    }
 
     const updateUI = () => {
         elemRoot.html("");    
@@ -139,9 +128,7 @@ module.exports = (document, elemRoot, ctx) => {
                                 "message": "Are you absolutely sure you want to DELETE this sensor? Sensor samples will not be deleted from the database."
                             }
                         }, (ctx) => {
-                            fetcher.delete(`/api/v1/sensors`, {
-                                "id": ctx.id
-                            }, "text").then(() => {
+                            fetcher.graphql(`mutation {deleteSensor(data: {id: "${ctx.id}"})}`).then(() => {
                                 document.location.reload();
                             })
                         })

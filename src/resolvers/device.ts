@@ -93,7 +93,7 @@ export class DeviceResolver {
     @Query(() => Device!, {description: "Returns the device with the specified id"})
     async device(@Arg("id") id : string) {
         const storage = await lookupService("storage") as StorageService;
-        const device = await storage.getDeviceById(id);
+        const device = await storage.getDevice(id);
         return device;
     }
     
