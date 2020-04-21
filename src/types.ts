@@ -1,4 +1,9 @@
 
+export enum NotifyUsing {
+    email = "email",
+    pushover = "pushover"
+}
+
 export class ErrorObject {
     error = true;
     readonly message : string;
@@ -156,7 +161,7 @@ export interface SensorReading extends Sensor {
  */
 export interface TopicControlMessage {
     type : ControlMessageTypes;
-    device : Device | null;
+    device? : Device;
     deviceId : string;
 }
 

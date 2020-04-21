@@ -13,7 +13,7 @@ create table LOGIN_USER (id character varying(36) not null primary key, email ch
 create type DEVICE_NOTIFY_ENABLED as ENUM ('yes','no','muted');
 create table DEVICE_WATCHDOG (userId character varying(36) not null, deviceId character varying(36) not null, notify DEVICE_NOTIFY_ENABLED not null default 'yes', muted_until timestamp without time zone);
 alter table DEVICE_WATCHDOG add foreign key (userId) references LOGIN_USER (id);
-alter table DEVICE_WATCHDOG add foreign key (deviceId) references DEVICE (id);
+alter table DEVICE_WATCHDOG add foreign key (deviceId) references DEVICE (id) on delete cascade;
 
 create type SENSOR_TYPE as ENUM ('temp', 'hum');
 create table SENSOR (id character varying(36) not null primary key, name character varying(128) not null, deviceid character varying(36) not null, type SENSOR_TYPE not null, label character varying(128) not null default 'foo'::character varying);

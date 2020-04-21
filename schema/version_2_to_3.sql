@@ -14,6 +14,6 @@ alter table SENSOR add constraint SENSOR_LABEL_UNIQUE UNIQUE (label);
 
 create table DEVICE_WATCHDOG (userId character varying(36) not null, deviceId character varying(36) not null, notify integer not null default 1, muted_until timestamp without time zone);
 alter table DEVICE_WATCHDOG add foreign key (userId) references LOGIN_USER (id);
-alter table DEVICE_WATCHDOG add foreign key (deviceId) references DEVICE (id);
+alter table DEVICE_WATCHDOG add foreign key (deviceId) references DEVICE (id) on delete cascade;
 
 update DATABASE_VERSION set version=3;

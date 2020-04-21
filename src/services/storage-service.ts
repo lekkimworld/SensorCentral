@@ -1,5 +1,5 @@
 import constants from "../constants";
-import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, IngestedControlMessage, WatchdogNotification, SensorSample} from "../types";
+import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, IngestedControlMessage, WatchdogNotification, SensorSample, NotifyUsing} from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
 import { LogService } from "./log-service";
@@ -51,10 +51,6 @@ export class StorageService extends BaseService {
 
         // listen to device topic
         this.addListenerToDeviceTopic();
-
-        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, "#", result => {
-            console.log(`<${result.exchangeName}> <${result.routingKey || "#"}> with data: ${JSON.stringify(result.data)}`);
-        });
 
         // did init
         callback();
@@ -492,6 +488,54 @@ export class StorageService extends BaseService {
         });
     }
 
+    /**
+     * Given a device ID returns the notification settings for that device.
+     * 
+     * @param deviceId 
+     */
+    async getDeviceWatchdogNotifiers(deviceId : string) {
+        const result = await this.dbService!.query("select id,email,default_notify_using, pushover_userkey, pushover_apptoken, dw.notify, dw.muted_until from login_user l, device_watchdog dw where l.id=dw.userId and dw.deviceId=$1", deviceId);
+        return result.rows.map(r => {
+            let notifyUsing;
+            if (r.default_notify_using === "email") {
+                notifyUsing = NotifyUsing.email;
+            } else if (r.default_notify_using === "pushover") {
+                notifyUsing = NotifyUsing.pushover;
+            }
+            let notify;
+            if (r.notify === "yes") {
+                notify = WatchdogNotification.yes;
+            } else if (r.notify === "no") {
+                notify = WatchdogNotification.no;
+            } else if (r.notify === "muted") {
+                notify = WatchdogNotification.muted;
+            }
+            let pushover;
+            if (r.pushover_userkey && r.pushover_apptoken) {
+                pushover = {
+                    "userkey": r.pushover_userkey,
+                    "apptoken": r.pushover_apptoken
+                }
+            }
+            return {
+                "userId": r.id,
+                "email": r.email,
+                notifyUsing,
+                pushover,
+                notify,
+                "mutedUntil": r.muted_until ? moment.utc(r.muted_until) : undefined
+            }
+        })
+    }
+
+
+
+
+
+
+
+
+
 
 
 
@@ -568,7 +612,7 @@ export class StorageService extends BaseService {
         return this.getDevicesStatuses(false);
     } */
 
-    updateDeviceNotificationState(device : string | Device, newState : WatchdogNotification, mutedUntil? : Moment.Moment) : Promise<Device> {
+/*     updateDeviceNotificationState(device : string | Device, newState : WatchdogNotification, mutedUntil? : Moment.Moment) : Promise<Device> {
         const device_id = typeof device === "string" ? device : device.id;
         if (newState === WatchdogNotification.muted && !mutedUntil) {
             mutedUntil = moment().add(7, "days");
@@ -586,7 +630,7 @@ export class StorageService extends BaseService {
         return p.then(() => {
             return this.getDeviceById(device_id);
         })
-    }
+    } */
 
     async getLastNSamplesForSensor(sensorId : string, samples : number = 100) : Promise<SensorSample[] | undefined> {
         return this.dbService?.query(`select value, dt from sensor_data where id='${sensorId}' order by dt desc limit ${samples}`).then(result => {

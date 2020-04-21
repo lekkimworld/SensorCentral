@@ -89,6 +89,10 @@ router.post("/samples", (req, res, next) => {
 	
 })
 
+/**
+ * Route used to ingest data from sensors.
+ * 
+ */
 router.post("/", (req, res, next) => {
 	lookupService(["log", "storage", "event"]).then((services : BaseService[]) => {
 		const logService = services[0] as LogService;

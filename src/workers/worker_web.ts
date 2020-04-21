@@ -10,7 +10,6 @@ import { DatabaseService } from "../services/database-service";
 import { EventService } from "../services/event-service";
 import { LogService } from "../services/log-service";
 import { NotifyService } from  "../services/notify-service";
-import { PushoverService } from  "../services/pushover-service";
 import { RedisService } from  "../services/redis-service";
 import { StorageService } from  "../services/storage-service";
 import { WatchdogService } from  "../services/watchdog-service";
@@ -25,7 +24,6 @@ services.registerService(new EventService());
 services.registerService(new RedisService());
 services.registerService(new StorageService());
 services.registerService(new DatabaseService());
-services.registerService(new PushoverService());
 services.registerService(new NotifyService());
 services.registerService(new WatchdogService());
 
