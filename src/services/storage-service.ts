@@ -560,18 +560,16 @@ export class StorageService extends BaseService {
             mutedUntil = moment().add(7, "days");
         }
         let str_muted_until = data.notify === WatchdogNotification.muted ? mutedUntil?.toISOString() : undefined;
-        str_muted_until;
-        context;
-
-        switch (data.notify) {
-            case WatchdogNotification.muted:
-                break;
-            case WatchdogNotification.yes:
-                break;
-            case WatchdogNotification.no:
-                break;
-        }
         
+        let result = await this.dbService!.query("select userId, deviceId from device_watchdog where userId=$1 AND deviceId=$2", context.id, data.id);
+        if (!result || result.rowCount === 0) {
+            // insert
+            result = await this.dbService!.query("insert into device_watchdog (notify, muted_until, userId, deviceId) values ($1, $2, $3, $4)", data.notify, str_muted_until, context.id, data.id);
+        } else {
+            // update
+            result = await this.dbService!.query("update device_watchdog set notify=$1, muted_until=$2 where userId=$3 AND deviceId=$4", data.notify, str_muted_until, context.id, data.id);
+        }
+        console.log(result);
     }
 
     async getOrCreateLoginUser({source, oidc_sub, email, fn, ln} : CreateLoginUserInput) : Promise<BackendLoginUser> {
