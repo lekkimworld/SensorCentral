@@ -1,8 +1,5 @@
-import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation } from "type-graphql";
+import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx } from "type-graphql";
 import * as types from "../types";
-import { StorageService } from "../services/storage-service";
-//@ts-ignore
-import { lookupService } from "../configure-services";
 import { Device } from "./device";
 import { Length, IsEnum } from "class-validator";
 
@@ -69,37 +66,32 @@ export class CreateSensorType extends UpdateSensorType {
 @Resolver()
 export class SensorResolver {
     @Query(() => [Sensor], {})
-    async sensors(@Arg("deviceId") deviceId : string) {
-        const storage = await lookupService("storage") as StorageService;
-        const sensors = await storage.getSensors(deviceId);
+    async sensors(@Arg("deviceId") deviceId : string, @Ctx() ctx : types.GraphQLResolverContext) {
+        const sensors = await ctx.storage.getSensors(deviceId);
         return sensors.map(s => new Sensor(s));
     }
 
     @Query(() => Sensor, {})
-    async sensor(@Arg("id") id : string) {
-        const storage = await lookupService("storage") as StorageService;
-        const sensor = await storage.getSensor(id);
+    async sensor(@Arg("id") id : string, @Ctx() ctx : types.GraphQLResolverContext) {
+        const sensor = await ctx.storage.getSensor(id);
         return new Sensor(sensor);
     }
 
     @Mutation(() => Sensor)
-    async createSensor(@Arg("data") data : CreateSensorType) {
-        const storage = await lookupService("storage") as StorageService;
-        const sensor = await storage.createSensor(data);
+    async createSensor(@Arg("data") data : CreateSensorType, @Ctx() ctx : types.GraphQLResolverContext) {
+        const sensor = await ctx.storage.createSensor(data);
         return sensor;
     }
 
     @Mutation(() => Sensor)
-    async updateSensor(@Arg("data") data : UpdateSensorType) {
-        const storage = await lookupService("storage") as StorageService;
-        const sensor = await storage.updateSensor(data);
+    async updateSensor(@Arg("data") data : UpdateSensorType, @Ctx() ctx : types.GraphQLResolverContext) {
+        const sensor = await ctx.storage.updateSensor(data);
         return sensor;
     }
 
     @Mutation(() => Boolean)
-    async deleteSensor(@Arg("data") data : DeleteSensorType) {
-        const storage = await lookupService("storage") as StorageService;
-        await storage.deleteSensor(data);
+    async deleteSensor(@Arg("data") data : DeleteSensorType, @Ctx() ctx : types.GraphQLResolverContext) {
+        await ctx.storage.deleteSensor(data);
         return true;
     }
 }

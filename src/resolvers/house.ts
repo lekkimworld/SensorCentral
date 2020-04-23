@@ -1,9 +1,6 @@
-import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation } from "type-graphql";
+import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx } from "type-graphql";
 import * as types from "../types";
 import { Length } from "class-validator";
-import { StorageService } from "../services/storage-service";
-//@ts-ignore
-import { lookupService } from "../configure-services";
 
 @ObjectType()
 export class House implements types.House {
@@ -42,37 +39,32 @@ export class DeleteHouseInput {
 @Resolver()
 export class HouseResolver {
     @Query(() => [House], { description: "Returns all Houses", nullable: false })
-    async houses() {
-        const storage = await lookupService("storage") as StorageService;
-        const houses = await storage.getHouses();
+    async houses(@Ctx() ctx : types.GraphQLResolverContext) {
+        const houses = await ctx.storage.getHouses();
         return houses.map(h => new House(h));
     }
 
     @Query(() => House!, { description: "Returns the House with the supplied ID" })
-    async house(@Arg("id") id : string) {
-        const storage = await lookupService("storage") as StorageService;
-        const house = storage.getHouse(id);
+    async house(@Arg("id") id : string, @Ctx() ctx : types.GraphQLResolverContext) {
+        const house = ctx.storage.getHouse(id);
         return house;
     }
 
     @Mutation(() => House)
-    async createHouse(@Arg("data") data : CreateHouseInput) {
-        const storage = await lookupService("storage") as StorageService;
-        const house = await storage.createHouse(data);
+    async createHouse(@Arg("data") data : CreateHouseInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        const house = await ctx.storage.createHouse(data);
         return house;
     }
 
     @Mutation(() => House)
-    async updateHouse(@Arg("data") data : UpdateHouseInput) {
-        const storage = await lookupService("storage") as StorageService;
-        const house = await storage.updateHouse(data);
+    async updateHouse(@Arg("data") data : UpdateHouseInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        const house = await ctx.storage.updateHouse(data);
         return house;
     }
 
     @Mutation(() => Boolean)
-    async deleteHouse(@Arg("data") data : DeleteHouseInput) {
-        const storage = await lookupService("storage") as StorageService;
-        await storage.deleteHouse(data);
+    async deleteHouse(@Arg("data") data : DeleteHouseInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        await ctx.storage.deleteHouse(data);
         return true;
     }
 }

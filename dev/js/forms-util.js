@@ -359,6 +359,70 @@ const DELETE_ENTITY = {
     }
 }
 
+const textField = (name, placeholder, fieldExplanation, validationText, required = false) => {
+    return `<div class="form-group">
+    <label for="${name}Input">${placeholder}</label>
+    <input type="text" ${required ? "required" : ""} class="form-control" id="${name}Input" aria-describedby="${name}Help" placeholder="${placeholder}">
+    <small id="${name}Help" class="form-text text-muted">${fieldExplanation || placeholder}</small>
+    ${validationText ? `<div class="invalid-feedback">${validationText}</div>` : ""}
+</div>`
+}
+
+const SETTINGS = {
+    "name": "settings",
+    "html": `<div class="modal fade" id="settingsModal" tabindex="-1" role="dialog" aria-labelledby="${this.name}ModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="settingsModalLabel">Settings</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="settingsForm" novalidate>
+                    <div class="form-group">
+                        <label for="notifyInput">Notify Using</label>
+                        <select class="form-control" id="notifyInput">
+                            <option></option>
+                            <option value="pushover">Pushover</option>
+                            <option value="email">Email</option>
+                        </select>
+                        <small id="typeHelp" class="form-text text-muted">Specify the way you'd like to get notified.</small>
+                    </div>
+                    ${textField("pushoverApptoken", "Pushover App Token", "Specify the Pushover App Token")}
+                    ${textField("pushoverUserkey", "Pushover User Key", "Specify the Pushover App Token")}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="performAction">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>`,
+    "fnInit": (ctx) => {
+        const apptokenField = $("#pushoverApptokenInput");
+        const userkeyField = $("#pushoverUserkeyInput");
+        const notifyField = $("#notifyInput");
+        apptokenField.val(ctx.pushover_apptoken);
+        userkeyField.val(ctx.pushover_userkey);
+        notifyField.val(ctx.notify_using);
+
+        return Promise.resolve();
+    },
+    "fnGetData": () => {
+        const apptokenField = $("#pushoverApptokenInput");
+        const userkeyField = $("#pushoverUserkeyInput");
+        const notifyField = $("#notifyInput");
+        return {
+            "notify_using": notifyField.val(),
+            "pushover_apptoken": apptokenField.val(),
+            "pushover_userkey": userkeyField.val(),
+        }
+    }
+}
+
 const prepareForm = (formdata, ctx, onPerformAction) => {
     const elem = $(`#${ID_ELEM_FORM}`);
     if (typeof formdata.html === "function") {
@@ -422,5 +486,8 @@ module.exports = {
     },
     appendTrashForm: (ctx, onPerformAction) => {
         prepareForm(DELETE_ENTITY, ctx, onPerformAction);
+    },
+    appendSettings: (ctx, onPerformAction) => {
+        prepareForm(SETTINGS, ctx, onPerformAction);
     }
 }

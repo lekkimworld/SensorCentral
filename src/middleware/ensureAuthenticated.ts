@@ -1,29 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import constants from "../constants";
-import {APIUserContext, HttpException} from "../types";
-import jwt, {VerifyErrors} from "jsonwebtoken";
+import { HttpException, BackendLoginUser } from "../types";
+import jwt from "jsonwebtoken";
+//@ts-ignore
+import { lookupService } from "../configure-services";
+import { StorageService } from "../services/storage-service";
 
-export default (req : Request, res : Response, next : NextFunction) => {
-    // see if we have a user
+export default async (req : Request, res : Response, next : NextFunction) => {
+    // see if we have a session and hence a user
     if (req.session && req.session.user) {
-        // create api context to make life easier
-        const scopes = [
-            constants.DEFAULTS.API.JWT.SCOPE_API, 
-            constants.DEFAULTS.API.JWT.SCOPE_ADMIN_JWT, 
-            constants.DEFAULTS.API.JWT.SCOPE_ADMIN,
-            constants.DEFAULTS.API.JWT.SCOPE_READ,
-            constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA
-        ];
-        const apictx : APIUserContext = {
-            "audience": req.session.user.aud,
-            "issuer": req.session.user.iss,
-            "subject": req.session.user.sub,
-            "scopes": scopes,
-            "houseid": "*",
-            "accessAllHouses": () => true,
-            "hasScope": (scope) => scopes.includes(scope)
-        }
-        res.locals.api_context = apictx;
+        // we do - get it and set in res.locals
+        const user = req.session.user as BackendLoginUser;
+        res.locals.user = user;
         return next();
     }
     
@@ -32,41 +20,36 @@ export default (req : Request, res : Response, next : NextFunction) => {
         const token = req.headers.authorization.substring(7);
         const secret = process.env.API_JWT_SECRET as string;
 
-        // verify token
-        jwt.verify(token, secret, {
-            "algorithms": ["HS256"],
-            "audience": constants.DEFAULTS.API.JWT.AUDIENCE,
-            "issuer": constants.DEFAULTS.API.JWT.ISSUERS
-        }, (err : VerifyErrors | null, decoded : any | undefined) => {
-            // abort on error
-            if (err) return next(new HttpException(401, `Error: ${err.message}`, err));
+        try {
+            // verify token
+            const decoded : any = await jwt.verify(token, secret, {
+                "algorithms": ["HS256"],
+                "audience": constants.JWT.AUDIENCE,
+                "issuer": constants.JWT.ISSUERS
+            })
             if (!decoded) return next(new HttpException(401, `Didn't get decoded JWT as expected`));
 
             // verify scope contains api
-            if (!decoded.scopes || !decoded.scopes.split(" ").includes(constants.DEFAULTS.API.JWT.SCOPE_API)) {
-                return next(new HttpException(401, "Missing API scope"));
+            if (!decoded.scopes || !decoded.scopes.split(" ").includes(constants.JWT.SCOPE_API)) {
+                return next(new HttpException(401, `Missing ${constants.JWT.SCOPE_API} scope`));
             }
 
-            // set context for call
-            const apictx : APIUserContext = {
-                "audience": decoded.aud,
-                "issuer": decoded.iss,
-                "subject": decoded.sub,
-                "houseid": decoded.houseid,
-                "scopes": decoded.scopes.split(" "),
-                "accessAllHouses": () => {
-                    return "*" === decoded.houseid;
-                },
-                "hasScope": (scope) => {
-                    return decoded.scopes.split(" ").includes(scope);
-                }
-            }
-            res.locals.api_context = apictx;
+            // lookup user
+            const storage = await lookupService("storage") as StorageService;
+            try {
+                const user = storage.lookupBackendLoginUser(decoded.sub);
+                res.locals.user = user;
 
-            // forward
-            return next();
-        })
-        return;
+                // forward
+                return next();
+
+            } catch (err) {
+                return next(new HttpException(401, "Login not known", err));
+            }
+
+        } catch (err) {
+            if (err) return next(new HttpException(401, `Error: ${err.message}`, err));
+        }
     }
 
     // no access

@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { BaseService, ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, APIUserContext, Device, SensorSample, HttpException } from '../../../types';
+import { BaseService, ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, Device, SensorSample, HttpException, BackendLoginUser } from '../../../types';
 import { LogService } from '../../../services/log-service';
 import { EventService } from '../../../services/event-service';
 import { StorageService } from '../../../services/storage-service';
@@ -7,6 +7,7 @@ const {lookupService} = require('../../../configure-services');
 import constants from "../../../constants";
 import {formatDate} from "../../../utils";
 import moment from 'moment';
+import { ensureScopeFactory, hasScope } from '../../../middleware/ensureScope';
 
 const router = express.Router();
 
@@ -33,20 +34,14 @@ router.get("/samples/:sensorId/:samples", (req, res) => {
 	})
 })
 
+router.use(ensureScopeFactory(constants.JWT.SCOPE_SENSORDATA));
+
 router.post("/samples", (req, res, next) => {
 	lookupService(["log", "event", "storage"]).then((services : BaseService[]) => {
 		const logService = services[0] as LogService;
 		const eventService = services[1] as EventService;
 		const storageService = services[2] as StorageService;
 
-		// ensure correct scope
-		const apictx = res.locals.api_context as APIUserContext;
-		if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA)) {
-			logService.warn(`Calling user does not have required scopes - has scopes <${apictx.scopes.join()}> - needs <${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}>`);
-			return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA} scope`));
-		} else {
-			logService.debug(`Confirmed caller has <${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}> scope`)
-		}
 		const body = req.body
 		const deviceId = body.deviceId;
 
@@ -60,7 +55,7 @@ router.post("/samples", (req, res, next) => {
 		if (!str_dt || !str_dt.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)) return  res.status(417).send({"error": true, "message": "Missing sample date/time or date/time is not in ISO8601 format"});
 		
 		// ensure we know the device still (device may have an JWT for a deleted device)
-		storageService.getDeviceById(deviceId).then(() => {
+		storageService.getDevice(deviceId).then(() => {
 			const queueObj = {
 				id,
 				value,
@@ -99,15 +94,8 @@ router.post("/", (req, res, next) => {
 		const storageService = services[1] as StorageService;
 		const eventService = services[2] as EventService;
 
-		// ensure correct scope
-		const apictx = res.locals.api_context as APIUserContext;
-		if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA)) {
-			logService.warn(`Calling user does not have required scopes - has scopes <${apictx.scopes.join()}> - needs <${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}>`);
-			return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA} scope`));
-		} else {
-			logService.debug(`Confirmed caller has <${constants.DEFAULTS.API.JWT.SCOPE_SENSORDATA}> scope`)
-		}
 		const body = req.body
+		const user = res.locals.user as BackendLoginUser;
 	
 		// basic validation and get device id
 		logService.debug("Starting basic validation of payload");
@@ -116,9 +104,10 @@ router.post("/", (req, res, next) => {
 		const deviceId : string = body.deviceId;
 		logService.debug(`Extracted deviceId from payload <${deviceId}>`);
 	
-		// validate API user subject matches the payload device id
-		if (deviceId !== apictx.subject) {
-			logService.warn(`Caller sent a payload subject <${deviceId}> which is different from JWT subject <${apictx.subject}>`);
+		// validate API user subject matches the payload device id and raise an error if 
+		// not or user does not have admin scope
+		if (deviceId !== user.id || !hasScope(user, constants.JWT.SCOPE_ADMIN)) {
+			logService.warn(`Caller sent a payload subject <${deviceId}> which is different from JWT subject <${user.id}>`);
 			return next(new HttpException(401, "Attempt to post data for device blocked as api context is for another device"));
 		}
 	

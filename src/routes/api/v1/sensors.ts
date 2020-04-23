@@ -1,142 +1,14 @@
-import * as express from 'express';
+import express from 'express';
+import {ensureAdminScope, ensureReadScopeWhenGetRequest, accessAllHouses} from "../../../middleware/ensureScope"; 
 import { StorageService } from '../../../services/storage-service';
-import { Sensor, APIUserContext, BaseService, RedisSensorMessage, ErrorObject, HttpException } from '../../../types';
-import constants from "../../../constants";
+import { Sensor, BaseService, RedisSensorMessage, HttpException, BackendLoginUser } from '../../../types';
 import { LogService } from '../../../services/log-service';
 const {lookupService} = require('../../../configure-services');
 
 const router = express.Router();
 
-router.use((req, res, next) => {
-    // ensure correct scope
-    const apictx = res.locals.api_context as APIUserContext;
-    if (req.method === "get" && !apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_READ)) {
-        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`));
-    }
-    next();
-})
-
-/**
- * Create a new Sensor.
- */
-router.post("/", async (req, res, next) => {
-    // ensure correct scope
-    const apictx = res.locals.api_context as APIUserContext;
-    if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
-    }
-
-    // get body and validate
-    const input = req.body as any;
-    if (!input.hasOwnProperty("device") || !input.device.trim()) {
-        return next(new HttpException(417, "Missing device ID in device-property"));
-    }
-    if (!input.hasOwnProperty("id") || !input.id.trim()) {
-        return next(new HttpException(417, "Missing ID in \"id\" property"));
-    }
-    if (!input.hasOwnProperty("name") || !input.name.trim()) {
-        return next(new HttpException(417, "Missing name in \"name\" property"));
-    }
-    if (!input.hasOwnProperty("label") || !input.label.trim()) {
-        return next(new HttpException(417, "Missing label in \"label\" property"));
-    }
-    if (!input.hasOwnProperty("type") || !input.type.trim()) {
-        return next(new HttpException(417, "Missing type in \"type\" property"));
-    }
-
-    // ensure access to house
-    if (!apictx.accessAllHouses() && apictx.houseid !== input.house.trim()) {
-        return next(new HttpException(401, "You may not create sensors for the supplied house ID"));
-    }
-
-    const storage = await lookupService("storage") as StorageService;
-    try {
-        const sensor = await storage.createSensor({
-            "deviceId": input.device,
-            "id": input.id,
-            "name": input.name,
-            "label": input.label,
-            "type": input.type
-        })
-        res.status(201).send(sensor);
-
-    } catch (err) {
-        next(new HttpException(417, "Unable to create requested sensor", err));
-    }
-})
-
-/**
- * Update a Sensor.
- */
-router.put("/", async (req, res, next) => {
-    // ensure correct scope
-    const apictx = res.locals.api_context as APIUserContext;
-    if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
-    }
-
-    // get body and validate
-    const input = req.body as any;
-    if (!input.hasOwnProperty("id") || !input.id.trim()) {
-        return next(new HttpException(417, "Missing ID in \"id\" property"));
-    }
-    if (!input.hasOwnProperty("name") || !input.name.trim()) {
-        return next(new HttpException(417, "Missing name in \"name\" property"));
-    }
-    if (!input.hasOwnProperty("label") || !input.label.trim()) {
-        return next(new HttpException(417, "Missing label in \"label\" property"));
-    }
-    if (!input.hasOwnProperty("type") || !input.type.trim()) {
-        return next(new HttpException(417, "Missing type in \"type\" property"));
-    }
-    
-    // ensure access to house
-    if (!apictx.accessAllHouses() && apictx.houseid !== input.house.trim()) {
-        return next(new HttpException(401, "You may not update sensors for the supplied house ID"));
-    }
-    
-    const storage = await lookupService("storage") as StorageService;
-    try {
-        const sensor = await storage.updateSensor({
-            "id": input.id,
-            "name": input.name,
-            "label": input.label,
-            "type": input.type
-        })
-        res.status(201).send(sensor);
-
-    } catch (err) {
-        next(new HttpException(417, "Unable to update requested sensor", err));
-    }
-})
-
-/**
- * Deletes an existing Sensor.
- */
-router.delete("/", async (req, res, next) => {
-    // ensure correct scope
-    const apictx = res.locals.api_context as APIUserContext;
-    if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
-    }
-
-    // get body and validate
-    const input = req.body as any;
-    if (!input.hasOwnProperty("id") || !input.id) {
-        return next(new HttpException(417, "Missing ID"));
-    }
-    
-    const storage = await lookupService("storage") as StorageService;
-    try {
-        await storage.deleteSensor({
-            "id": input.id
-        })
-        res.status(202);
-
-    } catch (err) {
-        next(new HttpException(417, "Unable to update requested sensor", err));
-    }
-})
+// ensure READ scope for GET requests
+router.use(ensureReadScopeWhenGetRequest);
 
 /**
  * Query for a specific sensor.
@@ -200,7 +72,7 @@ router.get('/query', (req, res, next) => {
 
     }).catch((err : Error) => {
         console.log('Unable to lookup storage service');
-        res.status(404).send(new ErrorObject(err.message));
+        next(new HttpException(404, 'Unable to lookup storage service', err));
     })
 })
 
@@ -217,6 +89,115 @@ router.get("/:sensorid", async (req, res, next) => {
 
     } catch(err) {
         return next(new HttpException(500, `Unable to return sensor with id (${err.message})`, err));
+    }
+})
+
+// ensure ADMIN scope for other routes
+router.use(ensureAdminScope);
+
+/**
+ * Create a new Sensor.
+ */
+router.post("/", async (req, res, next) => {
+    // get body and validate
+    const input = req.body as any;
+    if (!input.hasOwnProperty("device") || !input.device.trim()) {
+        return next(new HttpException(417, "Missing device ID in device-property"));
+    }
+    if (!input.hasOwnProperty("id") || !input.id.trim()) {
+        return next(new HttpException(417, "Missing ID in \"id\" property"));
+    }
+    if (!input.hasOwnProperty("name") || !input.name.trim()) {
+        return next(new HttpException(417, "Missing name in \"name\" property"));
+    }
+    if (!input.hasOwnProperty("label") || !input.label.trim()) {
+        return next(new HttpException(417, "Missing label in \"label\" property"));
+    }
+    if (!input.hasOwnProperty("type") || !input.type.trim()) {
+        return next(new HttpException(417, "Missing type in \"type\" property"));
+    }
+
+    // ensure access to house
+    const user = res.locals.user as BackendLoginUser;
+    if (!accessAllHouses(user) && user.houseId !== input.house.trim()) {
+        return next(new HttpException(401, "You may not create sensors for the supplied house ID"));
+    }
+
+    const storage = await lookupService("storage") as StorageService;
+    try {
+        const sensor = await storage.createSensor({
+            "deviceId": input.device,
+            "id": input.id,
+            "name": input.name,
+            "label": input.label,
+            "type": input.type
+        })
+        res.status(201).send(sensor);
+
+    } catch (err) {
+        next(new HttpException(417, "Unable to create requested sensor", err));
+    }
+})
+
+/**
+ * Update a Sensor.
+ */
+router.put("/", async (req, res, next) => {
+    // get body and validate
+    const input = req.body as any;
+    if (!input.hasOwnProperty("id") || !input.id.trim()) {
+        return next(new HttpException(417, "Missing ID in \"id\" property"));
+    }
+    if (!input.hasOwnProperty("name") || !input.name.trim()) {
+        return next(new HttpException(417, "Missing name in \"name\" property"));
+    }
+    if (!input.hasOwnProperty("label") || !input.label.trim()) {
+        return next(new HttpException(417, "Missing label in \"label\" property"));
+    }
+    if (!input.hasOwnProperty("type") || !input.type.trim()) {
+        return next(new HttpException(417, "Missing type in \"type\" property"));
+    }
+    
+    // ensure access to house
+    const user = res.locals.user as BackendLoginUser;
+    if (!accessAllHouses(user) && user.houseId !== input.house.trim()) {
+        return next(new HttpException(401, "You may not create sensors for the supplied house ID"));
+    }
+    
+    const storage = await lookupService("storage") as StorageService;
+    try {
+        const sensor = await storage.updateSensor({
+            "id": input.id,
+            "name": input.name,
+            "label": input.label,
+            "type": input.type
+        })
+        res.status(201).send(sensor);
+
+    } catch (err) {
+        next(new HttpException(417, "Unable to update requested sensor", err));
+    }
+})
+
+/**
+ * Deletes an existing Sensor.
+ */
+router.delete("/", async (req, res, next) => {
+    // get body and validate
+    const input = req.body as any;
+    if (!input.hasOwnProperty("id") || !input.id) {
+        return next(new HttpException(417, "Missing ID"));
+    }
+    
+    const storage = await lookupService("storage") as StorageService;
+    try {
+        await storage.deleteSensor({
+            "id": input.id
+        })
+        res.status(202);
+
+    } catch (err) {
+        next(new HttpException(417, "Unable to update requested sensor", err));
     }
 })
 

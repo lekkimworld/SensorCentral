@@ -1,23 +1,10 @@
-import { Resolver, Query, ObjectType, Field, ID, Arg, Mutation, InputType } from "type-graphql";
+import { Resolver, Query, ObjectType, Field, ID, Arg, Mutation, InputType, Ctx } from "type-graphql";
 import * as types from "../types";
-import { Length } from "class-validator";
+import { Length, IsEnum } from "class-validator";
 import { StorageService } from "../services/storage-service";
 //@ts-ignore
 import { lookupService } from "../configure-services";
 import { House } from "./house";
-
-/*
-@InputType()
-class UpdateDeviceInput {
-    @Field({description: "One of \"yes\", \"no\", \"muted\""})
-    @IsEnum(types.WatchdogNotification)
-    notify: types.WatchdogNotification;
-
-    @Field({description: "A valid device ID"})
-    @Length(2)
-    deviceId: string;
-}
-*/
 
 /**
  * GraphQL middleware function to load last ping from Redis when requested only.
@@ -80,6 +67,12 @@ export class CreateDeviceInput extends UpdateDeviceInput{
     houseId : string
 }
 
+@InputType()
+export class WatchdogNotificationInput extends DeleteDeviceInput {
+    @Field({description: "One of \"yes\", \"no\", \"muted\""})
+    @IsEnum(types.WatchdogNotification)
+    notify: types.WatchdogNotification;
+}
 
 @Resolver()
 export class DeviceResolver {
@@ -98,32 +91,28 @@ export class DeviceResolver {
     }
     
     @Mutation(() => Device)
-    async createDevice(@Arg("data") data : CreateDeviceInput) {
-        const storage = await lookupService("storage") as StorageService;
-        const device = await storage.createDevice(data);
+    async createDevice(@Arg("data") data : CreateDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        const device = await ctx.storage.createDevice(data);
         return device;
     }
 
     @Mutation(() => Device)
-    async updateDevice(@Arg("data") data : UpdateDeviceInput) {
-        const storage = await lookupService("storage") as StorageService;
-        const device = await storage.updateDevice(data);
+    async updateDevice(@Arg("data") data : UpdateDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        const device = await ctx.storage.updateDevice(data);
         return device;
     }
 
     @Mutation(() => Boolean)
-    async deleteDevice(@Arg("data") data : DeleteDeviceInput) {
-        const storage = await lookupService("storage") as StorageService;
-        await storage.deleteDevice(data);
+    async deleteDevice(@Arg("data") data : DeleteDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        await ctx.storage.deleteDevice(data);
         return true;
     }
 
-/*     @Mutation(() => Device)
-    async xxx_updateDevice(@Arg("data") {notify, deviceId} : UpdateDeviceInput) {
-        const storage = await lookupService("storage") as StorageService;
-        const device = await storage.getDeviceById(deviceId);
-        const updatedDevice = await storage.updateDeviceNotificationState(device, notify);
-        return new Device(updatedDevice);
-    } */
+    @Mutation(() => Device)
+    async updateDeviceWatchdog(@Arg("data") data : WatchdogNotificationInput, @Ctx() context: types.GraphQLResolverContext) {
+        await context.storage.updateDeviceWatchdog(context.user, data);
+        const device = await context.storage.getDevice(data.id);
+        return new Device(device);
+    }
 }
 

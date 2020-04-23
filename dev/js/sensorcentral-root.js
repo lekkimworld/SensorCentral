@@ -6,7 +6,7 @@ module.exports = (document, elemRoot) => {
     if (storage.isLoggedIn()) {
         // user is authenticated
         const user = storage.getUser();
-        elemRoot.html(`<h1>Hello ${user.given_name}!</h1>`);
+        elemRoot.html(`<h1>Hello ${user.fn}!</h1>`);
     } else {
         // user is NOT authenticated
         elemRoot.html(`<h1>Hello stranger!</h1>

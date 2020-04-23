@@ -2,6 +2,7 @@ const $ = require("jquery");
 const storage = require("./storage-utils.js");
 const log = require("./logger.js");
 const fetcher = require("./fetch-util");
+const formsutil = require("./forms-util");
 
 const ID_ACTION_ITEMS = "action-icons";
 
@@ -24,6 +25,7 @@ const fillMenus = () => {
             Username: ${user.email}
             </a>
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
+            <a class="dropdown-item" href="javascript:void(0)" id="settings">Settings</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>
             </div>`;
     }
@@ -43,6 +45,14 @@ const fillMenus = () => {
             
             // tell server to log us out
             document.location.hash = "#loggedout";
+        })
+        $("#settings").on("click", () => {
+            $('.navbar-collapse').removeClass('show');
+            return fetcher.graphql(`{settings{notify_using,pushover_userkey,pushover_apptoken}}`).then(data => {
+                formsutil.appendSettings(data.settings, data => {
+                    fetcher.graphql(`mutation{updateSettings(data: {notify_using: "${data.notify_using}", pushover_userkey: "${data.pushover_userkey}", pushover_apptoken: "${data.pushover_apptoken}"})}`)
+                });
+            })
         })
     }
 

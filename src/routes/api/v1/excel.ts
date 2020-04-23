@@ -2,8 +2,8 @@ import * as express from 'express';
 import Moment from 'moment';
 import moment = require("moment");
 import * as prometheus from "../../../prometheus-export";
-import { APIUserContext, HttpException } from '../../../types';
-import constants from "../../../constants";
+import { HttpException } from '../../../types';
+import { ensureReadScopeWhenGetRequest } from '../../../middleware/ensureScope';
 
 const router = express.Router();
 
@@ -22,15 +22,8 @@ const exportPrometheusData = (res : express.Response, sensorLabel : string, star
     })
 }
 
-//@ts-ignore
-router.use((req, res, next) => {
-    // ensure correct scope
-    const apictx = res.locals.api_context as APIUserContext;
-    if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_READ)) {
-        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`));
-    }
-    next();
-})
+// ensure READ scope for GET requests
+router.use(ensureReadScopeWhenGetRequest);
 
 router.get("/range/custom/:sensorLabel/:start/:end/:step?", (req, res, next) => {
     const sensorLabel = req.params.sensorLabel;

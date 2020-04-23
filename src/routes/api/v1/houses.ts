@@ -1,19 +1,13 @@
-import * as express from 'express';
+import express from 'express';
+import {ensureAdminScope, ensureReadScopeWhenGetRequest} from "../../../middleware/ensureScope"; 
 import { StorageService } from '../../../services/storage-service';
-import { APIUserContext,  HttpException } from '../../../types';
-import constants from "../../../constants";
+import { HttpException } from '../../../types';
 const {lookupService} = require('../../../configure-services');
 
 const router = express.Router();
 
-router.use((req, res, next) => {
-    // ensure correct scope
-    const apictx = res.locals.api_context as APIUserContext;
-    if (req.method === "get" && !apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_READ)) {
-        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_READ} scope`));
-    }
-    next();
-})
+// ensure READ scope for GET requests
+router.use(ensureReadScopeWhenGetRequest);
 
 /**
  * Lists all houses.
@@ -43,16 +37,13 @@ router.get("/:houseid", async (req, res, next) => {
     }
 })
 
+// ensure ADMIN scope for other routes
+router.use(ensureAdminScope);
+
 /**
  * Create a new House.
  */
 router.post("/", async (req, res, next) => {
-    // ensure correct scope
-    const apictx = res.locals.api_context as APIUserContext;
-    if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
-    }
-
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("name") || !input.name) {
@@ -75,12 +66,6 @@ router.post("/", async (req, res, next) => {
  * Updates an existing House.
  */
 router.put("/", async (req, res, next) => {
-    // ensure correct scope
-    const apictx = res.locals.api_context as APIUserContext;
-    if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
-    }
-
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("id") || !input.id) {
@@ -107,12 +92,6 @@ router.put("/", async (req, res, next) => {
  * Deletes an existing House.
  */
 router.delete("/", async (req, res, next) => {
-    // ensure correct scope
-    const apictx = res.locals.api_context as APIUserContext;
-    if (!apictx.hasScope(constants.DEFAULTS.API.JWT.SCOPE_ADMIN)) {
-        return next(new HttpException(401, `Unauthorized - missing ${constants.DEFAULTS.API.JWT.SCOPE_ADMIN} scope`));
-    }
-
     // get body and validate
     const input = req.body as any;
     if (!input.hasOwnProperty("id") || !input.id) {

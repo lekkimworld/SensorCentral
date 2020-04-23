@@ -8,11 +8,13 @@ create table DEVICE (id character varying(36) not null primary key, name charact
 alter table DEVICE add foreign key (houseid) references house (id) on delete cascade;
 
 create type NOTIFY_METHOD as ENUM ('email','pushover');
-create table LOGIN_USER (id character varying(36) not null primary key, email character varying(128) not null, default_notify_using NOTIFY_METHOD, pushover_userkey character varying(36), pushover_apptoken character varying(36));
+create table LOGIN_USER (id character varying(36) not null primary key, google_sub character varying(128), email character varying(128) not null, fn character varying(128) not null, ln character varying(128) not null, default_notify_using NOTIFY_METHOD, pushover_userkey character varying(36), pushover_apptoken character varying(36));
+alter table LOGIN_USER add constraint USER_EMAIL_UNIQUE UNIQUE (email);
+alter table LOGIN_USER add constraint GOOGLE_SUB_UNIQUE UNIQUE (google_sub);
 
 create type DEVICE_NOTIFY_ENABLED as ENUM ('yes','no','muted');
 create table DEVICE_WATCHDOG (userId character varying(36) not null, deviceId character varying(36) not null, notify DEVICE_NOTIFY_ENABLED not null default 'yes', muted_until timestamp without time zone);
-alter table DEVICE_WATCHDOG add foreign key (userId) references LOGIN_USER (id);
+alter table DEVICE_WATCHDOG add foreign key (userId) references LOGIN_USER (id) on delete cascade;
 alter table DEVICE_WATCHDOG add foreign key (deviceId) references DEVICE (id) on delete cascade;
 
 create type SENSOR_TYPE as ENUM ('temp', 'hum');

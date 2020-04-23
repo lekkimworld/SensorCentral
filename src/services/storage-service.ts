@@ -1,5 +1,9 @@
 import constants from "../constants";
-import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, IngestedSensorMessage, IngestedDeviceMessage, IngestedControlMessage, WatchdogNotification, SensorSample, NotifyUsing} from "../types";
+import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, 
+    TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, 
+    IngestedSensorMessage, IngestedDeviceMessage, IngestedControlMessage, WatchdogNotification, 
+    SensorSample, NotifyUsing, PushoverSettings, DeviceWatchdogNotifier, 
+    LoginSource, BackendLoginUser, NotificationSettings, LoginUser } from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
 import { LogService } from "./log-service";
@@ -10,11 +14,22 @@ import Moment from 'moment';
 import moment = require("moment");
 import uuid from "uuid/v1";
 import { CreateSensorType, UpdateSensorType, DeleteSensorType } from "src/resolvers/sensor";
-import { DeleteDeviceInput, UpdateDeviceInput, CreateDeviceInput } from "src/resolvers/device";
+import { DeleteDeviceInput, UpdateDeviceInput, CreateDeviceInput, WatchdogNotificationInput } from "src/resolvers/device";
 import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput } from "src/resolvers/house";
+import { QueryResult } from "pg";
+import { UpdateSettingsInput } from "src/resolvers/settings";
 
 const SENSOR_KEY_PREFIX = 'sensor:';
 const DEVICE_KEY_PREFIX = 'device:';
+const LOGIN_KEY_PREFIX = 'login:';
+
+export interface CreateLoginUserInput {
+    source : LoginSource;
+    oidc_sub : string;
+    email : string;
+    fn : string;
+    ln : string;
+}
 
 export class StorageService extends BaseService {
     dbService? : DatabaseService;
@@ -496,7 +511,7 @@ export class StorageService extends BaseService {
      * @param deviceId 
      */
     async getDeviceWatchdogNotifiers(deviceId : string) {
-        const result = await this.dbService!.query("select id,email,default_notify_using, pushover_userkey, pushover_apptoken, dw.notify, dw.muted_until from login_user l, device_watchdog dw where l.id=dw.userId and dw.deviceId=$1", deviceId);
+        const result = await this.dbService!.query("select id, email, fn, ln,default_notify_using, pushover_userkey, pushover_apptoken, dw.notify, dw.muted_until from login_user l, device_watchdog dw where l.id=dw.userId and dw.deviceId=$1", deviceId);
         return result.rows.map(r => {
             let notifyUsing;
             if (r.default_notify_using === "email") {
@@ -512,29 +527,189 @@ export class StorageService extends BaseService {
             } else if (r.notify === "muted") {
                 notify = WatchdogNotification.muted;
             }
-            let pushover;
+            let pushover : PushoverSettings | undefined;
             if (r.pushover_userkey && r.pushover_apptoken) {
                 pushover = {
                     "userkey": r.pushover_userkey,
                     "apptoken": r.pushover_apptoken
                 }
             }
-            return {
-                "userId": r.id,
-                "email": r.email,
-                notifyUsing,
-                pushover,
+
+            // create and return notifier
+            const notifier = {
                 notify,
-                "mutedUntil": r.muted_until ? moment.utc(r.muted_until) : undefined
-            }
+                "mutedUntil": r.muted_until ? moment.utc(r.muted_until) : undefined,
+                "user": {
+                    "id": r.id,
+                    "email": r.email,
+                    "fn": r.fn,
+                    "ln": r.ln
+                } as LoginUser,
+                "settings": {
+                    notifyUsing,
+                    pushover
+                } as NotificationSettings
+            } as DeviceWatchdogNotifier;
+
+            return notifier;
         })
     }
 
+    async updateDeviceWatchdog(context : BackendLoginUser, data : WatchdogNotificationInput, mutedUntil? : Moment.Moment) {
+        if (data.notify === WatchdogNotification.muted && !mutedUntil) {
+            mutedUntil = moment().add(7, "days");
+        }
+        let str_muted_until = data.notify === WatchdogNotification.muted ? mutedUntil?.toISOString() : undefined;
+        str_muted_until;
+        context;
 
+        switch (data.notify) {
+            case WatchdogNotification.muted:
+                break;
+            case WatchdogNotification.yes:
+                break;
+            case WatchdogNotification.no:
+                break;
+        }
+        
+    }
 
+    async getOrCreateLoginUser({source, oidc_sub, email, fn, ln} : CreateLoginUserInput) : Promise<BackendLoginUser> {
+        // see if we can find the user by sub based on source
+        let result : QueryResult | undefined;
+        switch (source) {
+            case LoginSource.google:
+                result = await this.dbService!.query("select id, email, fn, ln, google_sub from login_user where google_sub=$1 OR email=$2", oidc_sub, email);
+                break;
+            default:
+                throw Error(`Unhandled LoginSource <${source}>`);
+        }
 
+        if (result && result.rowCount === 1) {
+            // found user - ensure it contains the sub for the oidc
+            const row = result.rows[0];
+            switch (source) {
+                case LoginSource.google:
+                    if (row.google_sub !== oidc_sub) {
+                        // we need to update it
+                        await this.dbService?.query("update login_user set google_sub=$1 where email=$2", oidc_sub, email)
+                    }
+                    break;
+            }
 
+            // return
+            return {
+                email,
+                "id": row.id,
+                "houseId": "*",
+                "fn": row.fn,
+                "ln": row.ln,
+                "scopes": constants.DEFAULTS.JWT.USER_SCOPES
+            } as BackendLoginUser;
+        } else {
+            // we need to add the user
+            const id = uuid();
+            switch (source) {
+                case LoginSource.google:
+                    await this.dbService!.query("insert into login_user (id, email, fn, ln, google_sub) values ($1, $2, $3, $4, $5)", id, email, fn, ln, oidc_sub);
+                    break;
+            }
 
+            // return
+            return {
+                id,
+                email,
+                fn,
+                ln, 
+                houseId: "*",
+                scopes: constants.DEFAULTS.JWT.USER_SCOPES
+            } as BackendLoginUser;
+        }
+    }
+
+    /**
+     * Finds the BackendLoginUser instance for the id supplied in Redis or 
+     * looks up in the database and caches in Redis.
+     * 
+     * @param id User or Device ID
+     */
+    async lookupBackendLoginUser(id : string) {
+        // start in redis
+        const redisKey = `${LOGIN_KEY_PREFIX}:${id}`;
+        const str_user = await this.redisService!.get(redisKey);
+        if (str_user) {
+            const user_obj = JSON.parse(str_user) as BackendLoginUser;
+            return user_obj;
+        }
+
+        // not found - look up in database
+        const result = await this.dbService!.query("select id, fn, ln, email from login_user where id=$1", id);
+        let user_obj : BackendLoginUser;
+        if (!result || result.rowCount === 0) {
+            // maybe a device - look for device
+            try {
+                // found device
+                const device = await this.getDevice(id);
+                user_obj = {
+                    "id": device.id,
+                    "houseId": device.house.id,
+                    "scopes": constants.DEFAULTS.JWT.DEVICE_SCOPES
+                }
+            } catch (err){
+                throw Error(`Unable to find user OR device with id <${id}>`);
+            }
+        } else {
+            // found user - create object
+            const row = result.rows[0];
+            user_obj = {
+                "id": row.id,
+                "fn": row.fn,
+                "ln": row.ln,
+                "email": row.email,
+                "houseId": "*",
+                "scopes": constants.DEFAULTS.JWT.USER_SCOPES
+            };
+        }
+
+        // save in redis (do not wait)
+        this.redisService!.set(redisKey, JSON.stringify(user_obj));
+
+        // return 
+        return user_obj;
+    }
+
+    async settings(user : BackendLoginUser) {
+        const result = await this.dbService!.query("select default_notify_using, pushover_userkey, pushover_apptoken from login_user where id=$1", user.id);
+        if (!result || !result.rowCount) throw Error(`Unable to find login with ID <${user.id}>`);
+
+        const r = result.rows[0];
+        const notifyUsing = (function(n : string) {
+            if (!n) return undefined;
+            switch (n) {
+                case "pushover":
+                    return NotifyUsing.pushover;
+                case "email":
+                    return NotifyUsing.email;
+            }
+        })(r.default_notify_using);
+        const pushover = (function(userkey : string, apptoken : string) {
+            if (userkey && apptoken) {
+                return {
+                    apptoken,
+                    userkey
+                } as PushoverSettings;
+            }
+        })(r.pushover_userkey, r.pushover_apptoken);
+
+        return {
+            notifyUsing,
+            pushover
+        } as NotificationSettings;
+    }
+
+    async updateSettings(user : BackendLoginUser, data : UpdateSettingsInput) {
+        await this.dbService!.query("update login_user set default_notify_using=$1, pushover_apptoken=$2, pushover_userkey=$3 where id=$4", data.notify_using, data.pushover_apptoken, data.pushover_userkey, user.id);
+    }
 
 
 
@@ -614,25 +789,7 @@ export class StorageService extends BaseService {
         return this.getDevicesStatuses(false);
     } */
 
-/*     updateDeviceNotificationState(device : string | Device, newState : WatchdogNotification, mutedUntil? : Moment.Moment) : Promise<Device> {
-        const device_id = typeof device === "string" ? device : device.id;
-        if (newState === WatchdogNotification.muted && !mutedUntil) {
-            mutedUntil = moment().add(7, "days");
-        }
-        const num_notify = WatchdogNotification.no === newState ? 0 : WatchdogNotification.yes === newState ? 1 : 2;
-        let str_muted_until = newState === WatchdogNotification.muted ? mutedUntil?.toISOString() : undefined;
-        let p : Promise<QueryResult<any>>;
-        switch (newState) {
-            case WatchdogNotification.muted:
-                p = this.dbService!.query(`update device set notify=${num_notify}, muted_until='${str_muted_until}' where id='${device_id}'`)
-                break;
-            default:
-                p = this.dbService!.query(`update device set notify=${num_notify}, muted_until=NULL where id='${device_id}'`)
-        }
-        return p.then(() => {
-            return this.getDeviceById(device_id);
-        })
-    } */
+    
 
     async getLastNSamplesForSensor(sensorId : string, samples : number = 100) : Promise<SensorSample[] | undefined> {
         return this.dbService?.query(`select value, dt from sensor_data where id='${sensorId}' order by dt desc limit ${samples}`).then(result => {
@@ -790,6 +947,7 @@ export class StorageService extends BaseService {
             return Promise.resolve();
         })
     }
+
 
     /**
      * Listen for messages on the sensor topic and keep last event data around for each sensor.

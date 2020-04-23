@@ -83,17 +83,16 @@ export class NotifyService extends BaseService {
             if (n.notify === WatchdogNotification.no) return;
             if (n.notify === WatchdogNotification.muted && n.mutedUntil?.isAfter(moment.utc())) return;
 
-            if (n.notifyUsing === NotifyUsing.email && n.email) {
+            if (n.settings.notifyUsing === NotifyUsing.email && n.user.email) {
                 // notify using email
                 
 
-            } else if (n.notifyUsing === NotifyUsing.pushover && n.pushover) {
+            } else if (n.settings.notifyUsing === NotifyUsing.pushover && n.settings.pushover) {
                 // notify using pushover
                 pushover({
                     title, 
                     message,
-                    "apptoken": n.pushover.apptoken,
-                    "userkey": n.pushover.userkey
+                    "settings": n.settings.pushover
                 });
             }
         });
