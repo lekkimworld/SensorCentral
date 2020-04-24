@@ -18,4 +18,9 @@ create table DEVICE_WATCHDOG (userId character varying(36) not null, deviceId ch
 alter table DEVICE_WATCHDOG add foreign key (userId) references LOGIN_USER (id) on delete cascade;
 alter table DEVICE_WATCHDOG add foreign key (deviceId) references DEVICE (id) on delete cascade;
 
+create table FAVORITE_SENSOR (userId character varying(36) not null, sensorId character varying(36) not null);
+alter table FAVORITE_SENSOR add primary key (userId, sensorId);
+alter table FAVORITE_SENSOR add foreign key (userId) references LOGIN_USER (id) on delete cascade;
+alter table FAVORITE_SENSOR add foreign key (sensorId) references SENSOR (id) on delete cascade;
+
 update DATABASE_VERSION set version=3;

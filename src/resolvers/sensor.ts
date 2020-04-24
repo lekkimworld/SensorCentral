@@ -1,10 +1,21 @@
-import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx } from "type-graphql";
+import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx, MiddlewareFn, UseMiddleware } from "type-graphql";
 import * as types from "../types";
 import { Device } from "./device";
 import { Length, IsEnum } from "class-validator";
 
+const FavoriteFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context }, next) => {
+    const v = await next();
+    if (info.fieldName === "favorite") {
+        const sensors = await context.storage.getFavoriteSensors(context.user);
+        const filtered = sensors.filter((s : types.Sensor) => s.id === root.id);
+        return filtered.length !== 0;
+    } else {
+        return v;
+    }
+};
+
 @ObjectType()
-class Sensor implements types.Sensor {
+export class Sensor implements types.Sensor {
     constructor(s : types.Sensor) {
         this.id = s.id;
         this.name = s.name;
@@ -31,6 +42,10 @@ class Sensor implements types.Sensor {
 
     @Field(() => Device)
     device : types.Device | undefined;
+
+    @Field()
+    @UseMiddleware(FavoriteFetchOnDemand)
+    favorite : Boolean
 }
 
 @InputType()

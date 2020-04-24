@@ -25,6 +25,10 @@ alter table SENSOR add constraint SENSOR_LABEL_UNIQUE UNIQUE (label);
 create table SENSOR_DATA (id character varying(36) not null, dt timestamp with time zone not null, value real not null);
 create index on SENSOR_DATA (dt desc);
 
+create table FAVORITE_SENSOR (userId character varying(36) not null, sensorId character varying(36) not null);
+alter table FAVORITE_SENSOR add primary key (userId, sensorId);
+alter table FAVORITE_SENSOR add foreign key (userId) references LOGIN_USER (id) on delete cascade;
+alter table FAVORITE_SENSOR add foreign key (sensorId) references SENSOR (id) on delete cascade;
 
 insert into LOGIN_USER (id, email) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'jane@example.com');
 

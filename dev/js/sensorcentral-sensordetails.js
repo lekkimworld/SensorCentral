@@ -56,7 +56,7 @@ const updateUI = (elemRoot, sensorId) => {
     samplesCache = undefined;
     
     // fetch sensor
-    fetcher.graphql(`{sensor(id:"${sensorId}"){id, name, device{id,name,house{id,name}}}}`).then(data => {
+    fetcher.graphql(`{sensor(id:"${sensorId}"){id, name, favorite, device{id,name,house{id,name}}}}`).then(data => {
         const sensor = data.sensor;
 
         // create breadcrumbs
@@ -96,6 +96,18 @@ const updateUI = (elemRoot, sensorId) => {
                 })
             }}, {"rel": "refresh", "icon": "refresh", "click": (action) => {
                 updateUI(elemRoot, sensorId);
+            }},
+            {"rel": "favorite", "icon": `${sensor.favorite ? "star" : "star-o"}`, "click": (action) => {
+                const btn = $("button[rel=\"favorite\"");
+                if (btn.hasClass("fa-star")) {
+                    btn.removeClass("fa-star");
+                    btn.addClass("fa-star-o");
+                    fetcher.graphql(`mutation {removeFavoriteSensor(id: \"${sensorId}\")}`)
+                } else {
+                    btn.removeClass("fa-star-o");
+                    btn.addClass("fa-star");
+                    fetcher.graphql(`mutation {addFavoriteSensor(id: \"${sensorId}\")}`)
+                }
             }}]
         );
 

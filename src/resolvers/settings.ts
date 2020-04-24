@@ -1,8 +1,6 @@
 import { Resolver, Query, ObjectType, Field, InputType, Ctx, Mutation, Arg } from "type-graphql";
 import * as types from "../types";
 import { Length, IsEnum } from "class-validator";
-//@ts-ignore
-import { lookupService } from "../configure-services";
 
 @ObjectType()
 class Settings {

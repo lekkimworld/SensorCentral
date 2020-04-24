@@ -8,9 +8,11 @@ import {HouseResolver} from "./resolvers/house";
 import {DeviceResolver} from "./resolvers/device";
 import {SensorResolver} from "./resolvers/sensor";
 import {SettingsResolver} from "./resolvers/settings";
+import {DeviceWatchdogResolver} from "./resolvers/device-watchdog";
 //@ts-ignore
 import { lookupService } from "./configure-services";
 import { GraphQLResolverContext, BackendLoginUser } from "./types";
+import { FavoriteSensorResolver } from "./resolvers/favorite-sensor";
 
 const path = process.env.GRAPHQL_PATH || "/graphql";
 
@@ -24,7 +26,14 @@ export default async (app : Application) => {
 
     // define schema
     const schema = await buildSchema({
-        resolvers: [HouseResolver, DeviceResolver, SensorResolver, SettingsResolver]
+        resolvers: [
+            HouseResolver, 
+            DeviceResolver, 
+            SensorResolver, 
+            SettingsResolver, 
+            DeviceWatchdogResolver,
+            FavoriteSensorResolver],
+            "dateScalarMode": "isoDate"
     })
 
     // see if we should enable playground

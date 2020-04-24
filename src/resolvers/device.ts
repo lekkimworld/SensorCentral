@@ -1,9 +1,6 @@
 import { Resolver, Query, ObjectType, Field, ID, Arg, Mutation, InputType, Ctx } from "type-graphql";
 import * as types from "../types";
-import { Length, IsEnum } from "class-validator";
-import { StorageService } from "../services/storage-service";
-//@ts-ignore
-import { lookupService } from "../configure-services";
+import { Length } from "class-validator";
 import { House } from "./house";
 
 /**
@@ -67,26 +64,17 @@ export class CreateDeviceInput extends UpdateDeviceInput{
     houseId : string
 }
 
-@InputType()
-export class WatchdogNotificationInput extends DeleteDeviceInput {
-    @Field({description: "One of \"yes\", \"no\", \"muted\""})
-    @IsEnum(types.WatchdogNotification)
-    notify: types.WatchdogNotification;
-}
-
 @Resolver()
 export class DeviceResolver {
     @Query(() => [Device], {description: "Returns all devices for the house with the specified houseId"})
-    async devices(@Arg("houseId") houseId : string) {
-        const storage = await lookupService("storage") as StorageService;
-        const devices = await storage.getDevices(houseId);
+    async devices(@Arg("houseId") houseId : string, @Ctx() ctx : types.GraphQLResolverContext) {
+        const devices = await ctx.storage.getDevices(houseId);
         return devices.map(d => new Device(d));
     }
 
     @Query(() => Device!, {description: "Returns the device with the specified id"})
-    async device(@Arg("id") id : string) {
-        const storage = await lookupService("storage") as StorageService;
-        const device = await storage.getDevice(id);
+    async device(@Arg("id") id : string, @Ctx() ctx : types.GraphQLResolverContext) {
+        const device = await ctx.storage.getDevice(id);
         return device;
     }
     
@@ -106,13 +94,6 @@ export class DeviceResolver {
     async deleteDevice(@Arg("data") data : DeleteDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
         await ctx.storage.deleteDevice(data);
         return true;
-    }
-
-    @Mutation(() => Device)
-    async updateDeviceWatchdog(@Arg("data") data : WatchdogNotificationInput, @Ctx() context: types.GraphQLResolverContext) {
-        await context.storage.updateDeviceWatchdog(context.user, data);
-        const device = await context.storage.getDevice(data.id);
-        return new Device(device);
     }
 }
 

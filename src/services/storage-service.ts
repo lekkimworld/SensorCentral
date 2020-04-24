@@ -13,9 +13,10 @@ import * as utils from "../utils";
 import Moment from 'moment';
 import moment = require("moment");
 import uuid from "uuid/v1";
-import { CreateSensorType, UpdateSensorType, DeleteSensorType } from "src/resolvers/sensor";
-import { DeleteDeviceInput, UpdateDeviceInput, CreateDeviceInput, WatchdogNotificationInput } from "src/resolvers/device";
-import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput } from "src/resolvers/house";
+import { CreateSensorType, UpdateSensorType, DeleteSensorType } from "../resolvers/sensor";
+import { DeleteDeviceInput, UpdateDeviceInput, CreateDeviceInput } from "../resolvers/device";
+import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput } from "../resolvers/house";
+import { WatchdogNotificationInput } from "../resolvers/device-watchdog";
 import { QueryResult } from "pg";
 import { UpdateSettingsInput } from "src/resolvers/settings";
 
@@ -29,6 +30,29 @@ export interface CreateLoginUserInput {
     email : string;
     fn : string;
     ln : string;
+}
+
+/**
+ * Converts sensors from the query result to an array of sensors
+ * @param result 
+ */
+const convertRowsToSensors = (result : QueryResult) => {
+    return result.rows.map(row => {
+        return {
+            "id": row.sensorid,
+            "name": row.sensorname,
+            "label": row.sensorlabel,
+            "type": row.sensortype === "temp" ? SensorType.temp : row.sensortype === "hum" ? SensorType.hum : null,
+            "device": {
+                "id": row.deviceid,
+                "name": row.devicename,
+                "house": {
+                    "id": row.houseid,
+                    "name": row.housename
+                }
+            }
+        } as Sensor;
+    });
 }
 
 export class StorageService extends BaseService {
@@ -362,22 +386,7 @@ export class StorageService extends BaseService {
         
         // query 
         const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.deviceid=$1 order by s.name asc", deviceId);
-        const sensors = result.rows.map(row => {
-            return {
-                "id": row.sensorid,
-                "name": row.sensorname,
-                "label": row.sensorlabel,
-                "type": row.sensortype === "temp" ? SensorType.temp : row.sensortype === "hum" ? SensorType.hum : null,
-                "device": {
-                    "id": row.deviceid,
-                    "name": row.devicename,
-                    "house": {
-                        "id": row.houseid,
-                        "name": row.housename
-                    }
-                }
-            } as Sensor;
-        })
+        const sensors = convertRowsToSensors(result);
         return sensors;
     }
 
@@ -396,22 +405,7 @@ export class StorageService extends BaseService {
             throw Error(`Unable to find sensor with ID <${sensorId}>`);
         }
 
-        const sensors = result.rows.map(row => {
-            return {
-                "id": row.sensorid,
-                "name": row.sensorname,
-                "label": row.sensorlabel,
-                "type": row.sensortype === "temp" ? SensorType.temp : row.sensortype === "hum" ? SensorType.hum : null,
-                "device": {
-                    "id": row.deviceid,
-                    "name": row.devicename,
-                    "house": {
-                        "id": row.houseid,
-                        "name": row.housename
-                    }
-                }
-            } as Sensor;
-        })
+        const sensors = convertRowsToSensors(result);
         return sensors[0];
 
     }
@@ -553,6 +547,11 @@ export class StorageService extends BaseService {
 
             return notifier;
         })
+    }
+
+    async getDeviceWatchdog(context : BackendLoginUser, deviceId : string) {
+        context;
+        deviceId;        
     }
 
     async updateDeviceWatchdog(context : BackendLoginUser, data : WatchdogNotificationInput, mutedUntil? : Moment.Moment) {
@@ -709,14 +708,36 @@ export class StorageService extends BaseService {
         await this.dbService!.query("update login_user set default_notify_using=$1, pushover_apptoken=$2, pushover_userkey=$3 where id=$4", data.notify_using, data.pushover_apptoken, data.pushover_userkey, user.id);
     }
 
+    /**
+     * Returns the sensors marked as favorite for the supplied user.
+     * 
+     * @param user 
+     */
+    async getFavoriteSensors(user : BackendLoginUser) {
+        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc", user.id);
+        const sensors = convertRowsToSensors(result);
+        return sensors;
+    }
 
+    /**
+     * Adds the sensor with the supplied ID as a favorite sensor.
+     * 
+     * @param user 
+     * @param id
+     */
+    async addFavoriteSensor(user : BackendLoginUser, id : string) {
+        await this.dbService!.query("insert into favorite_sensor (userId, sensorId) values ($1, $2) on conflict do nothing", user.id, id);
+    }
 
-
-
-
-
-
-
+    /**
+     * Removes the sensor with the supplied ID as a favorite sensor.
+     * 
+     * @param user 
+     * @param id
+     */
+    async removeFavoriteSensor(user : BackendLoginUser, id : string) {
+        await this.dbService!.query("delete from favorite_sensor where userId=$1 and sensorId=$2", user.id, id);
+    }
 
 
 
