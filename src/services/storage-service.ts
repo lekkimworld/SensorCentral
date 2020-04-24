@@ -3,7 +3,7 @@ import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, Redi
     TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, 
     IngestedSensorMessage, IngestedDeviceMessage, IngestedControlMessage, WatchdogNotification, 
     SensorSample, NotifyUsing, PushoverSettings, DeviceWatchdogNotifier, 
-    LoginSource, BackendLoginUser, NotificationSettings, LoginUser } from "../types";
+    LoginSource, BackendLoginUser, NotificationSettings, LoginUser, DeviceWatchdog } from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
 import { LogService } from "./log-service";
@@ -549,9 +549,26 @@ export class StorageService extends BaseService {
         })
     }
 
-    async getDeviceWatchdog(context : BackendLoginUser, deviceId : string) {
-        context;
-        deviceId;        
+    /**
+     * Returns the device watchdog configuration for the supplied user and device 
+     * or default values if not configured.
+     * @param user 
+     * @param deviceId 
+     */
+    async getDeviceWatchdog(user : BackendLoginUser, deviceId : string) {
+        const result = await this.dbService!.query("select notify, muted_until from device_watchdog where userId=$1 and deviceId=$2", user.id, deviceId);
+        if (result.rowCount === 0) {
+            return {
+                "notify": WatchdogNotification.no,
+                "mutedUntil": undefined
+            } as DeviceWatchdog;
+        } else {
+            const row = result.rows[0];
+            return {
+                "notify": row.notify as WatchdogNotification,
+                "mutedUntil": row.muted_until ? moment.utc(row.muted_until).toDate() : undefined
+            } as DeviceWatchdog;
+        }
     }
 
     async updateDeviceWatchdog(context : BackendLoginUser, data : WatchdogNotificationInput, mutedUntil? : Moment.Moment) {

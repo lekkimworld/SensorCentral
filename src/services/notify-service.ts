@@ -81,7 +81,7 @@ export class NotifyService extends BaseService {
         this.logService?.debug(`Received <${notifiers.length}> notifiers for device with ID <${device.id}>`);
         notifiers.forEach(n => {
             if (n.notify === WatchdogNotification.no) return;
-            if (n.notify === WatchdogNotification.muted && n.mutedUntil?.isAfter(moment.utc())) return;
+            if (n.notify === WatchdogNotification.muted && moment(n.mutedUntil).isAfter(moment.utc())) return;
 
             if (n.settings.notifyUsing === NotifyUsing.email && n.user.email) {
                 // notify using email

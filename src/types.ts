@@ -1,4 +1,3 @@
-import { Moment } from "moment";
 import { StorageService } from "./services/storage-service";
 
 export interface GraphQLResolverContext {
@@ -124,11 +123,17 @@ export interface NotificationSettings {
 }
 
 /**
+ * Device watchdog data.
+ */
+export interface DeviceWatchdog {
+    notify : WatchdogNotification;
+    mutedUntil? : Date;
+}
+
+/**
  * A device watchdog notifier.
  */
-export interface DeviceWatchdogNotifier {
-    notify : WatchdogNotification;
-    mutedUntil? : Moment;
+export interface DeviceWatchdogNotifier extends DeviceWatchdog{
     user : LoginUser;
     settings : NotificationSettings;
 }

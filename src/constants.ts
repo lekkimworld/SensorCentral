@@ -28,7 +28,7 @@ export default {
         "GRAPHQL_ENABLE_PLAYGROUND": graphqlEnablePlayground,
         "SESSION_TIMEOUT_SECONDS": process.env.SESSION_TIMEOUT_SECONDS ? Number.parseInt(process.env.SESSION_TIMEOUT_SECONDS) : (graphqlEnablePlayground ? (1*60*60) : 300), // 1 hour in development, 300 seconds in prod
         "JWT": {
-            "USER_SCOPES": [JWT.SCOPE_ADMIN, JWT.SCOPE_ADMIN_JWT, JWT.SCOPE_SENSORDATA],
+            "USER_SCOPES": [JWT.SCOPE_ADMIN, JWT.SCOPE_API, JWT.SCOPE_ADMIN_JWT, JWT.SCOPE_SENSORDATA],
             "DEVICE_SCOPES": [JWT.SCOPE_API, JWT.SCOPE_SENSORDATA]
         }
     },

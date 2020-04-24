@@ -20,7 +20,7 @@ module.exports = (document, elemRoot, ctx) => {
     const updateUI = () => {
         elemRoot.html("");
     
-        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,house{id,name}}}`).then(data => {
+        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,watchdog{notify,str_muted_until},house{id,name}}}`).then(data => {
             const devices = data.devices.sort((a,b) => a.name.localeCompare(b.name));
             const houseName = data.house.name;
     
@@ -82,16 +82,22 @@ module.exports = (document, elemRoot, ctx) => {
                 ],
                 "rows": devices.map(device => {
                     const notify = (function(n) {
+                        let notify;
+                        console.log(n);
                         if ("yes" === n) {
-                            return `<i class="btn fa fa-volume-up sensorcentral-size-2x" rel="notify_mute" aria-hidden="true"></i>`;
+                            notify = `<button class="btn fa fa-volume-up sensorcentral-size-2x" rel="notify_mute" aria-hidden="true"></button>`;
                         } else if ("muted" === n) {
-                            return `<i class="btn fa fa-volume-down sensorcentral-size-2x" rel="notify_off" aria-hidden="true"></i>`;
+                            notify = `<button class="btn fa fa-volume-down sensorcentral-size-2x" rel="notify_off" aria-hidden="true"></button>`;
                         } else {
-                            return `<i class="btn fa fa-volume-off sensorcentral-size-2x" rel="notify_on" aria-hidden="true"></i>`
+                            notify = `<button class="btn fa fa-volume-off sensorcentral-size-2x" rel="notify_on" aria-hidden="true"></button>`
                         }
-                    })(device.notify);
-                    const mutedUntil = device.str_mutedUntil;
+                        notify += `<br/><span class="color-gray text-small">Click to change</span>`;
+                        return notify;
+                    })(device.watchdog.notify);
+
+                    const mutedUntil = device.watchdog.str_muted_until;
                     const lastping = device.hasOwnProperty("lastping") && typeof device.lastping === "number" ? `${device.lastping} mins.` : "";
+
                     return {
                         "id": device.id,
                         "data": device,
