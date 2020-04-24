@@ -86,14 +86,15 @@ pool.query("BEGIN").then(() => {
     }
 }).then(() => {
     console.log("Committing...");
-    return pool.query("COMMIT");
+    return Promise.all([Promise.resolve(0), pool.query("COMMIT")]);
 }).catch(err => {
     console.log("!! ERRROR !!");
     console.log(err.message);
     console.log("!! ROLLING BACK !!");
-    return pool.query("ROLLBACK");
+    return Promise.all([Promise.resolve(1), pool.query("ROLLBACK")]);
 }).finally(() => {
     pool.end();
-}).then(() => {
-    console.log("Done...");
+}).then((data) => {
+    console.log(`Done... (return code is ${data[0]})`);
+    process.exit(data[0] as number);
 })

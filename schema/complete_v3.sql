@@ -30,7 +30,7 @@ alter table FAVORITE_SENSOR add primary key (userId, sensorId);
 alter table FAVORITE_SENSOR add foreign key (userId) references LOGIN_USER (id) on delete cascade;
 alter table FAVORITE_SENSOR add foreign key (sensorId) references SENSOR (id) on delete cascade;
 
-insert into LOGIN_USER (id, email) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'jane@example.com');
+insert into LOGIN_USER (id, email,fn,ln) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'jane@example.com','Jane','Doe');
 
 insert into house (id, name) values ('2cd9038f-9ffa-47aa-88d1-1795f44e220d', 'My House');
 insert into device (id, name, houseid) values ('mydevice_1', 'My Device 1', '2cd9038f-9ffa-47aa-88d1-1795f44e220d');
