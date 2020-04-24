@@ -40,8 +40,8 @@ insert into sensor (id,name,label,type,deviceid) values ('mysensor_1-1', 'My Sen
 insert into sensor (id,name,label,type,deviceid) values ('mysensor_1-2', 'My Sensor 1-2', 'mysensor_1-2', 'hum', 'mydevice_1');
 insert into sensor (id,name,label,type,deviceid) values ('mysensor_2-1', 'My Sensor 2-1', 'mysensor_2-1', 'temp', 'mydevice_2');
 insert into sensor (id,name,label,type,deviceid) values ('mysensor_2-2', 'My Sensor 2-2', 'mysensor_2-2', 'hum', 'mydevice_2');
-insert into device_watchdog (userId, deviceId, notify, muted_until) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'mydevice_2', 1, null);
-insert into device_watchdog (userId, deviceId, notify, muted_until) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'mydevice_3', 2, current_timestamp + interval '7 days');
+insert into device_watchdog (userId, deviceId, notify, muted_until) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'mydevice_2', "yes", null);
+insert into device_watchdog (userId, deviceId, notify, muted_until) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'mydevice_3', "muted", current_timestamp + interval '7 days');
 
 insert into house (id, name) values ('1cd8038f-9ffa-47aa-88d1-1795f33e110f', 'Your House');
 insert into device (id, name, houseid) values ('yourdevice_1', 'Your Device 1', '1cd8038f-9ffa-47aa-88d1-1795f33e110f');
