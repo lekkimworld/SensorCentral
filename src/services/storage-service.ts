@@ -743,6 +743,11 @@ export class StorageService extends BaseService {
 
 
 
+
+    
+
+
+
     getDeviceIds() : Promise<string[]> {
         return this.getDevices("foo").then(devices => {
             const deviceIds = devices.map(device => device.id) as string[];

@@ -10,12 +10,13 @@ module.exports = (document, elemRoot) => {
         elemRoot.html(`<h1>Hello ${user.fn}!</h1>`);
         
         uiutils.appendSectionTitle(elemRoot, "Favorite Sensors");
-        fetcher.graphql(`{favoriteSensors{id,name,type,device{id, house{id}}}}`).then(data => {
+        fetcher.graphql(`{favoriteSensors{id,name,last_reading,type,device{id, house{id}}}}`).then(data => {
             const sensors = data.favoriteSensors;
             uiutils.appendDataTable(elemRoot, {
-                "headers": ["NAME", "TYPE"],
+                "headers": ["NAME", "TYPE", "LAST READING"],
                 "classes": [
                     "", 
+                    "",
                     ""
                 ],
                 "rows": sensors.map(sensor => {
@@ -23,7 +24,7 @@ module.exports = (document, elemRoot) => {
                     return {
                         "id": sensor.id,
                         "data": sensor,
-                        "columns": [sensor.name, type_img],
+                        "columns": [sensor.name, type_img, sensor.last_reading || "None found"],
                         "click": function() {
                             document.location.hash = `configuration/house/${sensor.device.houseid}/device/${sensor.device.id}/sensor/${sensor.id}`
                         }
@@ -41,6 +42,5 @@ module.exports = (document, elemRoot) => {
             storage.login();
             document.location.reload();
         })
-    }
-    
+    }    
 }

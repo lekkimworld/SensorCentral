@@ -2,6 +2,7 @@ import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx, 
 import * as types from "../types";
 import { Device } from "./device";
 import { Length, IsEnum } from "class-validator";
+import { StorageService } from "src/services/storage-service";
 
 const FavoriteFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context }, next) => {
     const v = await next();
@@ -9,6 +10,17 @@ const FavoriteFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context },
         const sensors = await context.storage.getFavoriteSensors(context.user);
         const filtered = sensors.filter((s : types.Sensor) => s.id === root.id);
         return filtered.length !== 0;
+    } else {
+        return v;
+    }
+};
+
+const LastReadingFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context }, next) => {
+    const v = await next();
+    if (info.fieldName === "last_reading") {
+        const storage = context.storage as StorageService;
+        const samples = await storage.getLastNSamplesForSensor(root.id, 1);
+        return !samples || samples.length === 0 ? undefined : samples[0].value;
     } else {
         return v;
     }
@@ -45,7 +57,11 @@ export class Sensor implements types.Sensor {
 
     @Field()
     @UseMiddleware(FavoriteFetchOnDemand)
-    favorite : Boolean
+    favorite : Boolean;
+
+    @Field({nullable: true})
+    @UseMiddleware(LastReadingFetchOnDemand)
+    last_reading : Number;
 }
 
 @InputType()
