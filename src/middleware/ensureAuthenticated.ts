@@ -37,7 +37,7 @@ export default async (req : Request, res : Response, next : NextFunction) => {
             // lookup user
             const storage = await lookupService("storage") as StorageService;
             try {
-                const user = storage.lookupBackendLoginUser(decoded.sub);
+                const user = await storage.lookupBackendLoginUser(decoded.sub);
                 res.locals.user = user;
 
                 // forward
