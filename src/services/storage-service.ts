@@ -234,9 +234,9 @@ export class StorageService extends BaseService {
         // query to devices
         let result;
         if (houseId) {
-            result = await this.dbService?.query("select d.id deviceid, d.name devicename, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where h.id=$1 order by d.name asc", houseId);
+            result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where h.id=$1 order by d.name asc", houseId);
         } else {
-            result = await this.dbService?.query("select d.id deviceid, d.name devicename, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id order by d.name asc");
+            result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id order by d.name asc");
         }
         if (!result) throw Error(`Unable to lookup devices (house ID <${houseId}>)`);
         
@@ -245,6 +245,9 @@ export class StorageService extends BaseService {
             return {
                 "id": row.deviceid,
                 "name": row.devicename,
+                "lastPing": row.last_ping,
+                "lastRestart": row.last_restart,
+                "lastWatchdogReset": row.last_watchdog_reset,
                 "house": {
                     "id": row.houseid,
                     "name": row.housename
@@ -261,7 +264,7 @@ export class StorageService extends BaseService {
      * @throws If device not found
      */
     async getDevice(deviceId : string) {
-        const result = await this.dbService?.query("select d.id deviceid, d.name devicename, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where d.id=$1", deviceId);
+        const result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where d.id=$1", deviceId);
         if (!result || result.rowCount !==1 ) {
             throw Error(`Unable to execute query or unable to find device with ID <${deviceId}>`);
         }
@@ -270,6 +273,9 @@ export class StorageService extends BaseService {
         return {
             "id": row.deviceid, 
             "name": row.devicename,
+            "lastPing": row.last_ping,
+            "lastRestart": row.last_restart,
+            "lastWatchdogReset": row.last_watchdog_reset,
             "house": {
                 "id": row.houseid,
                 "name": row.housename
@@ -370,6 +376,18 @@ export class StorageService extends BaseService {
                 "name": device.name
             }
         });
+    }
+
+    async updateDeviceLastPing(deviceId : string) {
+        this.dbService!.query("update device set last_ping=current_timestamp where id=$1", deviceId);
+    }
+
+    async updateDeviceLastWatchdogReset(deviceId : string) {
+        this.dbService!.query("update device set last_watchdog_reset=current_timestamp where id=$1", deviceId);
+    }
+
+    async updateDeviceLastRestart(deviceId : string) {
+        this.dbService!.query("update device set last_restart=current_timestamp where id=$1", deviceId);
     }
 
     /**
@@ -944,6 +962,8 @@ export class StorageService extends BaseService {
                     "device": device
                 } as TopicDeviceMessage;
 
+                if (device) this.updateDeviceLastPing(device.id);
+
                 // publish
                 this.eventService!.publishTopic(constants.TOPICS.DEVICE, device ? "known" : "unknown", payload);
             })
@@ -976,8 +996,10 @@ export class StorageService extends BaseService {
                 if (!result.routingKey) {
                     this.logService?.debug("Ignoring control topic message as no routing key");
                 } else if (result.routingKey?.indexOf(`.${ControlMessageTypes.restart}`) > 0) {
+                    if (data.device) this.updateDeviceLastRestart(data.device.id);
                     redis_device.restarts++;
                 } else if (result.routingKey?.indexOf(`.${ControlMessageTypes.watchdogReset}`) > 0) {
+                    if (data.device) this.updateDeviceLastWatchdogReset(data.device.id);
                     redis_device.watchdogResets++;
                 }
             });

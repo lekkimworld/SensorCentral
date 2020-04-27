@@ -1,5 +1,8 @@
 alter table DEVICE drop column notify;
 alter table DEVICE drop column muted_until;
+alter table device add column last_ping timestamp with time zone;
+alter table device add column last_restart timestamp with time zone;
+alter table device add column last_watchdog_reset timestamp with time zone;
 
 create type NOTIFY_METHOD as ENUM ('email','pushover');
 create table LOGIN_USER (id character varying(36) not null primary key, google_sub character varying(128), email character varying(128) not null, fn character varying(128), ln character varying(128), default_notify_using NOTIFY_METHOD, pushover_userkey character varying(36), pushover_apptoken character varying(36));

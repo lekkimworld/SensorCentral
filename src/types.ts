@@ -241,15 +241,9 @@ export interface Device {
     readonly house : House;
     readonly id : string;
     readonly name : string;
-}
-
-/**
- * Describes a device with status information.
- */
-export interface DeviceStatus extends Device {
-    dt : Date;
-    restarts : number;
-    watchdogResets : number;
+    readonly lastRestart : Date;
+    readonly lastWatchdogReset : Date;
+    readonly lastPing : Date;
 }
 
 /**
@@ -272,7 +266,6 @@ export interface SensorReading extends Sensor {
     readonly value_string : string;
     readonly ageMinutes : number;
     readonly dt : Date;
-    readonly dt_string : string;
     readonly denominator : string;
 }
 

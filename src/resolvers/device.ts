@@ -3,34 +3,15 @@ import * as types from "../types";
 import { Length } from "class-validator";
 import { House } from "./house";
 
-/**
- * GraphQL middleware function to load last ping from Redis when requested only.
- * 
- * @param param0 
- * @param next 
- */
-/*
-const LastpingFetchOnDemand: MiddlewareFn<any> = async ({ root, info }, next) => {
-    const v = await next();
-    if (info.fieldName === "lastping") {
-        const storage = await lookupService("storage") as StorageService;
-        const statuses = await storage.getKnownDevicesStatus();
-        const filtered = statuses.filter(s => s.id === root.id);
-        //@ts-ignore
-        if (filtered.length) return filtered[0].ageMinutes;
-        return undefined;
-    } else {
-        return v;
-    }
-};
-*/
-
 @ObjectType()
-export class Device implements types.Device {
+export class Device {
     constructor(d : types.Device) {
         this.id = d.id;
         this.name = d.name;
         this.house = d.house;
+        this.last_ping = d.lastPing;
+        this.last_restart = d.lastRestart;
+        this.last_watchdog_reset = d.lastWatchdogReset;
     }
 
     @Field(() => ID)
@@ -38,6 +19,15 @@ export class Device implements types.Device {
 
     @Field()
     name : string;
+
+    @Field({nullable: true})
+    last_ping : Date;
+
+    @Field({nullable: true})
+    last_restart : Date;
+
+    @Field({nullable: true})
+    last_watchdog_reset : Date;
 
     @Field()
     house : House;
@@ -75,19 +65,19 @@ export class DeviceResolver {
     @Query(() => Device!, {description: "Returns the device with the specified id"})
     async device(@Arg("id") id : string, @Ctx() ctx : types.GraphQLResolverContext) {
         const device = await ctx.storage.getDevice(id);
-        return device;
+        return new Device(device);
     }
     
     @Mutation(() => Device)
     async createDevice(@Arg("data") data : CreateDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
         const device = await ctx.storage.createDevice(data);
-        return device;
+        return new Device(device);
     }
 
     @Mutation(() => Device)
     async updateDevice(@Arg("data") data : UpdateDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
         const device = await ctx.storage.updateDevice(data);
-        return device;
+        return new Device(device);
     }
 
     @Mutation(() => Boolean)

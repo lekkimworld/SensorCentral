@@ -21,7 +21,7 @@ module.exports = (document, elemRoot, ctx) => {
     const updateUI = () => {
         elemRoot.html("");
     
-        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,watchdog{notify,muted_until},house{id,name}}}`).then(data => {
+        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,watchdog{notify,muted_until},last_ping,last_restart,last_watchdog_reset,house{id,name}}}`).then(data => {
             const devices = data.devices.sort((a,b) => a.name.localeCompare(b.name));
             const houseName = data.house.name;
     
@@ -73,7 +73,7 @@ module.exports = (document, elemRoot, ctx) => {
                         updateDeviceNotification(ctx.id, "muted");
                     }}
                 ],
-                "headers": ["NAME", "NOTIFY", "MUTED UNTIL", "LAST PING", "ID"],
+                "headers": ["NAME", "NOTIFY", "MUTED UNTIL", "STATUS", "ID"],
                 "classes": [
                     "", 
                     "d-none d-md-table-cell",
@@ -97,12 +97,17 @@ module.exports = (document, elemRoot, ctx) => {
                     })(device.watchdog.notify);
 
                     const mutedUntil = device.watchdog.muted_until ? dateutils.formatDMYTime(device.watchdog.muted_until) : "";
-                    const lastping = device.hasOwnProperty("lastping") && typeof device.lastping === "number" ? `${device.lastping} mins.` : "";
+                    const diff_options = {
+                        "maxDiff": 12,
+                        "scale": "minutes",
+                        "defaultVale": "N/A"
+                    }
+                    const status = `Last ping: ${dateutils.timeDifferenceAsString(device.last_ping, diff_options)}<br/>Last restart: ${dateutils.timeDifferenceAsString(device.last_restart, diff_options)}<br/>Last reset: ${dateutils.timeDifferenceAsString(device.last_watchdog_reset, diff_options)}`;
 
                     return {
                         "id": device.id,
                         "data": device,
-                        "columns": [device.name, notify, mutedUntil, lastping, device.id],
+                        "columns": [device.name, notify, mutedUntil, status, device.id],
                         "click": function() {
                             document.location.hash = `configuration/house/${device.house.id}/device/${this.id}`
                         }
