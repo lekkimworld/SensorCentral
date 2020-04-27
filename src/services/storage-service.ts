@@ -590,7 +590,6 @@ export class StorageService extends BaseService {
             // update
             result = await this.dbService!.query("update device_watchdog set notify=$1, muted_until=$2 where userId=$3 AND deviceId=$4", data.notify, str_muted_until, context.id, data.id);
         }
-        console.log(result);
     }
 
     async getOrCreateLoginUser({source, oidc_sub, email, fn, ln} : CreateLoginUserInput) : Promise<BackendLoginUser> {

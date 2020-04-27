@@ -30,6 +30,9 @@ export default {
         "JWT": {
             "USER_SCOPES": [JWT.SCOPE_ADMIN, JWT.SCOPE_API, JWT.SCOPE_ADMIN_JWT, JWT.SCOPE_SENSORDATA],
             "DEVICE_SCOPES": [JWT.SCOPE_API, JWT.SCOPE_SENSORDATA]
+        },
+        "GOOGLE": {
+            "JWT_EXPIRATION_MINUTES": 5
         }
     },
     JWT,
