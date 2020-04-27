@@ -20,8 +20,9 @@ export default {
             'DEFAULT_TIMEOUT': (process.env.WATCHDOG_INTERVAL ? Number.parseInt(process.env.WATCHDOG_INTERVAL) : 10*60*1000) as number
         },
         'REDIS': {
-            'DEVICE_EXPIRATION': (process.env.REDIS_DEVICE_EXPIRATION ? Number.parseInt(process.env.REDIS_DEVICE_EXPIRATION) : 10 * 60) as number,
-            'SENSOR_EXPIRATION': (process.env.REDIS_SENSOR_EXPIRATION ? Number.parseInt(process.env.REDIS_SENSOR_EXPIRATION) : 10 * 60) as number
+            'DEVICE_EXPIRATION_SECS': (process.env.REDIS_DEVICE_EXPIRATION_SECS ? Number.parseInt(process.env.REDIS_DEVICE_EXPIRATION_SECS) : 20 * 60) as number,
+            'SENSOR_EXPIRATION_SECS': (process.env.REDIS_SENSOR_EXPIRATION_SECS ? Number.parseInt(process.env.REDIS_SENSOR_EXPIRATION_SECS) : 20 * 60) as number,
+            'LOGINUSER_EXPIRATION_SECS': (process.env.REDIS_LOGINUSER_EXPIRATION_SECS ? Number.parseInt(process.env.REDIS_LOGINUSER_EXPIRATION_SECS) : 8 * 60 * 60) as number
         },
         "NOTIFY": {
             "DEVICE": {

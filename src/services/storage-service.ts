@@ -690,7 +690,7 @@ export class StorageService extends BaseService {
         }
 
         // save in redis (do not wait)
-        this.redisService!.set(redisKey, JSON.stringify(user_obj));
+        this.redisService!.setex(redisKey, constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS, JSON.stringify(user_obj));
 
         // return 
         return user_obj;
@@ -844,7 +844,7 @@ export class StorageService extends BaseService {
 
                 // set sensor in Redis
                 this.logService!.debug(`Adding sensor with key <${SENSOR_KEY_PREFIX}${data.sensorId}> (device <${data.deviceId}>) to Redis`);
-                this.redisService!.setex(`${SENSOR_KEY_PREFIX}${data.sensorId}`, constants.DEFAULTS.REDIS.SENSOR_EXPIRATION, JSON.stringify(redis_sensor));
+                this.redisService!.setex(`${SENSOR_KEY_PREFIX}${data.sensorId}`, constants.DEFAULTS.REDIS.SENSOR_EXPIRATION_SECS, JSON.stringify(redis_sensor));
             })
             
         });
