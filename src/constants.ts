@@ -23,6 +23,18 @@ export default {
             'DEVICE_EXPIRATION': (process.env.REDIS_DEVICE_EXPIRATION ? Number.parseInt(process.env.REDIS_DEVICE_EXPIRATION) : 10 * 60) as number,
             'SENSOR_EXPIRATION': (process.env.REDIS_SENSOR_EXPIRATION ? Number.parseInt(process.env.REDIS_SENSOR_EXPIRATION) : 10 * 60) as number
         },
+        "NOTIFY": {
+            "DEVICE": {
+                "RESET": {
+                    "TITLE": process.env.DEVICE_RESET_TITLE || "SensorCentral - Device watchdog ({{device.name}})",
+                    "MESSAGE": process.env.DEVICE_RESET_MESSAGE || "SensorCentral - Watchdog for device ({{device.id}} / {{device.name}}) reset meaning we received no communication from it in {{timeout.ms}} ms ({{timeout.minutes}} minutes)"
+                },
+                "RESTART": {
+                    "TITLE": process.env.DEVICE_RESTART_TITLE || "SensorCentral - Device ({{device.name}}) restart",
+                    "MESSAGE" : process.env.DEVICE_RESTART_MESSAGE || "SensorCentral - Device restart ({{device.id}} / {{device.name}}) - maybe it didn't pat the watchdog?"
+                }
+            }
+        },
         'TIMEZONE': process.env.TIMEZONE || 'Europe/Copenhagen',
         'DATETIME_FORMAT': process.env.DATETIME_FORMAT || "D-M-YYYY [kl.] k:mm",
         "GRAPHQL_ENABLE_PLAYGROUND": graphqlEnablePlayground,

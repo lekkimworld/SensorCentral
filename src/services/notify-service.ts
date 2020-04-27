@@ -8,6 +8,7 @@ import { ISubscriptionResult } from "../configure-queues-topics";
 import pushover from "../pushover";
 import moment from "moment";
 import { EmailService, EmailMessage, RFC822Address } from "./email-service";
+import Handlebars from "handlebars";
 
 export class NotifyService extends BaseService {
     pushoverLastSent? : Moment;
@@ -15,6 +16,7 @@ export class NotifyService extends BaseService {
     eventService? : EventService;
     storage? : StorageService;
     email? : EmailService;
+    templates = new Map<string,any>();
 
     constructor() {
         super("notify");
@@ -33,6 +35,12 @@ export class NotifyService extends BaseService {
         // listen for device watchdog resets
         this.eventService.subscribeTopic(constants.TOPICS.CONTROL, "known.restart", this.listenForceDeviceRestarts.bind(this));
 
+        // compile templates
+        this.templates.set("device.restart.title", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.RESTART.TITLE));
+        this.templates.set("device.restart.message", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.RESTART.MESSAGE));
+        this.templates.set("device.reset.title", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.RESET.TITLE));
+        this.templates.set("device.reset.message", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.RESET.MESSAGE));
+        
         /* this.eventService.subscribeTopic(constants.TOPICS.SENSOR, "known.#", (result : ISubscriptionResult) => {
             this.logService!.debug(`Notify service received message on exchange <${result.exchangeName}> and routingKey ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
             const payload = result.data as TopicSensorMessage;
@@ -57,10 +65,13 @@ export class NotifyService extends BaseService {
             return;
         }
 
+        const data = {
+            "device": msg.device,
+        }
         this.notifyNotifiers(
             msg.device, 
-            `Device restart`, 
-            `Device restart (${msg.device.id} / ${msg.device.name}) - maybe it didn't pat the watchdog?`
+            this.templates.get("device.restart.title")(data),
+            this.templates.get("device.restart.message")(data)
         );
     }
 
@@ -72,10 +83,17 @@ export class NotifyService extends BaseService {
             return;
         }
 
+        const data = {
+            "device": msg.device,
+            "timeout": {
+                "ms": constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT,
+                "minutes": constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000
+            }
+        }
         this.notifyNotifiers(
             msg.device, 
-            `Device watchdog`, 
-            `Watchdog for device (${msg.device!.id} / ${msg.device!.name}) reset meaning we received no communication from it in ${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT} ms (${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000} minutes)`
+            this.templates.get("device.reset.title")(data),
+            this.templates.get("device.reset.message")(data)
         );
     }
 
