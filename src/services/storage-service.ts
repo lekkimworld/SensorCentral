@@ -407,6 +407,12 @@ export class StorageService extends BaseService {
 
         const sensors = convertRowsToSensors(result);
         return sensors[0];
+    }
+
+    /**
+     * Queries for a sensor based on 
+     */
+    async querySensor() {
 
     }
 
@@ -765,71 +771,6 @@ export class StorageService extends BaseService {
 
 
 
-    getDeviceIds() : Promise<string[]> {
-        return this.getDevices("foo").then(devices => {
-            const deviceIds = devices.map(device => device.id) as string[];
-            return Promise.resolve(deviceIds);
-        })
-    }
-
-    getDeviceById(deviceId : string) : Promise<Device> {
-        return this.getDevices("foo").then(devices => {
-            const filtered = devices.filter(device => device.id === deviceId);
-            if (filtered.length === 1) return Promise.resolve(filtered[0]);
-
-            const err = new StorageServiceError(`Unable to find a single device with id <${deviceId}>`, "not_found");
-            return Promise.reject(err);
-        })
-    }
-
-    getDevicesByIds(deviceIds : string[]) : Promise<Device[]> {
-        // get all devices
-        return this.getDevices("foo").then(devices => {
-            // filter them
-            const filtered = devices.reduce((prev, device) => {
-                if (deviceIds.includes(device.id)) prev.push(device);
-                return prev;
-            }, [] as Device[]);
-
-            // resolve promise
-            return Promise.resolve  (filtered);
-        })
-    }
-
-    /**
-     * Returns a map mapping the supplied ids to devices if we know the device or 
-     * undefined otherwise.
-     * 
-     * @param sensorIds 
-     */
-    getDeviceMapByIds(deviceIds : string[]) : Promise<Map<string,Device|undefined>> {
-        return this.getDevicesByIds(deviceIds).then(devices => {
-            const result = devices.reduce((prev, device) => {
-                prev.set(device.id, device);
-                return prev;
-            }, new Map<string,Device|undefined>());
-            
-            deviceIds.filter(id => !result.has(id)).forEach(id => result.set(id, undefined));
-            return Promise.resolve(result);
-        })
-    }
-
-    /**
-     * Returns the known devices we have recently heard from i.e. that has a value in 
-     * Redis.
-     */
-/*     getKnownDevicesStatus() : Promise<DeviceStatus[]> {
-        return this.getDevicesStatuses(true);
-    } */
-
-    /**
-     * Returns the unknown devices we have recently heard from i.e. that has a value in 
-     * Redis.
-     */
-/*     getUnknownDevicesStatus() : Promise<DeviceStatus[]> {
-        return this.getDevicesStatuses(false);
-    } */
-
     
 
     async getLastNSamplesForSensor(sensorId : string, samples : number = 100) : Promise<SensorSample[] | undefined> {
@@ -846,127 +787,8 @@ export class StorageService extends BaseService {
         })
     }
 
-    /**
-     * Returns the known sensors we have recently heard from i.e. that has a value in 
-     * Redis.
-     */
-/*     getKnownSensorsWithRecentReadings() : Promise<SensorReading[]> {
-        return this.getSensorsWithRecentReadings(true);
-    } */
-
-    /**
-     * Returns the unknown sensors we have recently heard from i.e. that has a value in 
-     * Redis.
-     */
-/*     getUnknownSensorsWithRecentReadings() : Promise<SensorReading[]> {
-        return this.getSensorsWithRecentReadings(false);
-    } */
-
-    /**
-     * Get the sensor reading from Redis from the supplied sensor ids.
-     * 
-     * @param sensorIds 
-     */
-    getRecentReadingBySensorIds(sensorIds : string[]) : Promise<Map<string,RedisSensorMessage>> {
-        if (!sensorIds || !sensorIds.length) return Promise.reject(Error(`No sensor ids supplied`));
-        const redisKeys = sensorIds.map(id => `${SENSOR_KEY_PREFIX}${id}`);
-        return this.redisService!.mget(...redisKeys).then((data : string[]) => {
-            const result = data.reduce((prev, str_redis) => {
-                if (!str_redis) return prev;
-                try {
-                    const redis_obj = JSON.parse(str_redis) as RedisSensorMessage;
-                    prev.set(redis_obj.id, redis_obj);
-                } catch (err) {
-                    this.logService!.warn(`Unable to parse sensor message from Redis <${str_redis}>, error message: ${err.message}`);
-                }
-                return prev;
-            }, new Map<string,RedisSensorMessage>());
-            return Promise.resolve(result);
-        })
-    }
 
 
-
-    /**
-     * Return the ids of the sensors we know of.
-     * 
-     */
-/*     getSensorIds() : Promise<string[]> {
-        return this.getSensors().then(sensors => {
-            return Promise.resolve(sensors.map(sensor => sensor.id));
-        })
-    } */
-
-    /**
-     * Returns a map mapping the supplied ids to sensors if we know the sensor or 
-     * undefined otherwise.
-     * 
-     * @param sensorIds 
-     */
-/*     getSensorMapByIds(sensorIds : string[]) : Promise<Map<string,Sensor|undefined>> {
-        return this.getSensorsByIds(sensorIds).then(sensors => {
-            const result = sensors.reduce((prev, sensor) => {
-                prev.set(sensor.id, sensor);
-                return prev;
-            }, new Map<string,Sensor|undefined>());
-            
-            sensorIds.filter(id => !result.has(id)).forEach(id => result.set(id, undefined));
-            return Promise.resolve(result);
-        })
-    } */
-
-    /**
-     * Returns the sensors with the supplied ids. If a sensor isn't known it is 
-     * simply not returned.
-     * 
-     * @param sensorIds 
-     */
-/*     getSensorsByIds(sensorIds : string[]) : Promise<Sensor[]> {
-        // get all sensors
-        return this.getSensors().then(sensors => {
-            // filter them
-            const filtered = sensors.filter(sensor => sensorIds.includes(sensor.id));
-            
-            // resolve promise
-            return Promise.resolve(filtered);
-        })
-    } */
-
-    /**
-     * Return a single sensor by id.
-     * 
-     * @param sensorId 
-     */
-/*     getSensorById(sensorId : string) : Promise<Sensor> {
-        return this.getSensors().then(sensors => {
-            const filtered = sensors.filter(sensor => sensor.id === sensorId);
-            if (filtered.length != 1) {
-                return Promise.reject(Error(`Unable to find a single sensor with id <${sensorId}>`));
-            } else {
-                return Promise.resolve(filtered[0]);
-            }
-        })
-    } */
-
-    /**
-     * Given one or more sensor ID's will return the device ID for those sensors or an error 
-     * if the sensor ID's are from multiple devices.
-     * 
-     * @param sensorIds list of sensor ids to look up
-     */
-    getDeviceIdForSensorIds(...sensorIds : Array<string>) : Promise<string> {
-        return this.dbService!.query("select deviceid from sensor where id = any($1::varchar[])", [sensorIds]).then(result => {
-            const deviceIds = result.rows.reduce((prev, row) : Set<string> => {
-                prev.add(row.deviceid);
-                return prev;
-            }, new Set<String>());
-            if (deviceIds.size() !== 1) {
-                return Promise.reject(Error(``))
-            } else {
-                return Promise.resolve(deviceIds[0]);
-            }
-        })
-    }
 
     /**
      * Insert the supplied reading for the supplied sensor id.
@@ -1054,7 +876,7 @@ export class StorageService extends BaseService {
             }).catch(() => {
                 // unknown sensor - mark msg as consumed and return promise
                 result.callback();
-                return Promise.all([Promise.resolve(undefined), this.getDeviceById(msg.deviceId)]);
+                return Promise.all([Promise.resolve(undefined), this.getDevice(msg.deviceId)]);
 
             }).then((data : any) => {
                 const sensor : Sensor | undefined = data[0];
@@ -1080,7 +902,7 @@ export class StorageService extends BaseService {
             const msg = result.data as IngestedControlMessage;
 
             // see if we know the device
-            this.getDeviceById(msg.id).catch(() => {
+            this.getDevice(msg.id).catch(() => {
                 return Promise.resolve(null);
 
             }).then((device : Device | null) => {
@@ -1106,7 +928,7 @@ export class StorageService extends BaseService {
             const msg = result.data as IngestedDeviceMessage;
 
             // see if we know the device
-            this.getDeviceById(msg.id).catch(() => {
+            this.getDevice(msg.id).catch(() => {
                 return Promise.resolve(null);
 
             }).then((device : Device | null) => {
@@ -1196,103 +1018,5 @@ export class StorageService extends BaseService {
             return Promise.resolve();
         })
     }
-/* 
-    private getSensorsWithRecentReadings(known : boolean) : Promise<SensorReading[]> {
-        return this.redisService!.keys(`${SENSOR_KEY_PREFIX}*`).then(keys => {
-            this.logService!.debug(`Asked for keys based on pattern <${SENSOR_KEY_PREFIX}*> returned keys <${keys}>`);
-            if (!keys || !keys.length) return Promise.resolve([]);
-            return this.redisService!.mget(...keys);
-        }).then(values => {
-            // parse values from Redis
-            const sensorIdObjMap = values.reduce((prev, value) => {
-                try {
-                    const obj = JSON.parse(value) as RedisSensorMessage;
-                    prev.set(obj.id, obj);
-                } catch (err) {
-                    this.logService!.debug(`Unable to parse data from Redis (${value})`);
-                }
-                return prev;
-            }, new Map<string,RedisSensorMessage>());
-            this.logService!.debug(`Created sensor id / sensor redis map with keys: <${Array.from(sensorIdObjMap.keys())}>`);
-
-            // get the sensors we need (known are sensors in db and otherwise the ones 
-            // we cannot find in the db)
-            const sensorMapPromise = this.getSensorMapByIds(Array.from(sensorIdObjMap.keys()));
-            return Promise.all([Promise.resolve(sensorIdObjMap), sensorMapPromise]);
-
-        }).then(values => {
-            const sensorIdObjMap = values[0] as Map<string,RedisSensorMessage>;
-            const sensorMap = values[1] as Map<string,Sensor>;
-            this.logService!.debug(`Retrieved sensors from database based on sensor data from Redis`);
-            
-            const resultArray : Array<SensorReading> = [];
-            sensorMap.forEach((sensor, sensorId) => {
-                if ((known && sensor) || (!known && !sensor)) {
-                    const redisObj = sensorIdObjMap.get(sensorId);
-                    if (redisObj) resultArray.push(utils.convert(redisObj, sensor));
-                }
-            })
-            return Promise.resolve(resultArray);
-        })
-    }
-
-    private getDevicesStatuses(known : boolean) : Promise<DeviceStatus[]> {
-        return this.redisService!.keys(`${DEVICE_KEY_PREFIX}*`).then(keys => {
-            this.logService!.debug(`Asked for keys based on pattern <${DEVICE_KEY_PREFIX}*> returned keys <${keys}>`);
-            if (!keys || !keys.length) return Promise.resolve([]);
-            return this.redisService!.mget(...keys);
-        }).then(values => {
-            // parse values from Redis
-            const deviceIdObjMap = values.reduce((prev, value) => {
-                try {
-                    const obj = JSON.parse(value) as RedisDeviceMessage;
-                    prev.set(obj.id, obj);
-                } catch (err) {
-                    this.logService!.debug(`Unable to parse data from Redis (${value})`);
-                }
-                return prev;
-            }, new Map<string,RedisDeviceMessage>());
-            this.logService!.debug(`Created device id / device redis map with keys: <${Array.from(deviceIdObjMap.keys())}>`);
-
-            // get the devices we need (known are devices in db and otherwise the ones 
-            // we cannot find in the db)
-            const deviceMapPromise = this.getDeviceMapByIds(Array.from(deviceIdObjMap.keys()));
-            return Promise.all([Promise.resolve(deviceIdObjMap), deviceMapPromise]);
-
-        }).then(values => {
-            const deviceIdObjMap = values[0] as Map<string,RedisDeviceMessage>;
-            const deviceMap = values[1] as Map<string,Device>;
-            this.logService!.debug(`Retrieved devices from database based on device data from Redis`);
-            
-            const resultArray : Array<DeviceStatus> = [];
-            deviceMap.forEach((device, deviceId) => {
-                if ((known && device) || (!known && !device)) {
-                    const redisObj = deviceIdObjMap.get(deviceId);
-                    let m = redisObj && redisObj.dt ? moment(redisObj.dt) : null;
-                    const result = {
-                        "id": deviceId,
-                        "name": device ? device.name : undefined,
-                        "notify": undefined, //device ? device.notify : WatchdogNotification.no,
-                        "mutedUntil": undefined,  //device ? device.mutedUntil : undefined,
-                        "house": device ? device.house : undefined,
-                        "dt": redisObj ? redisObj.dt : null,
-                        "watchdogResets": redisObj ? redisObj.watchdogResets : undefined,
-                        "restarts": redisObj ? redisObj.restarts : undefined,
-                        "ageMinutes": m ? Moment().diff(m, 'minutes') : -1
-                    } as DeviceStatus;
-                    resultArray.push(result);
-                }
-            })
-            return Promise.resolve(resultArray);
-        })
-    } */
 }
 
-class StorageServiceError extends Error {
-    readonly isStorageServiceError : boolean = true;
-    readonly code : string = "unknown";
-    constructor(msg : string | undefined, code : string) {
-        super(msg);
-        this.code = code;
-    }
-}

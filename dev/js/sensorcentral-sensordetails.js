@@ -61,16 +61,17 @@ const updateUI = (elemRoot, sensorId) => {
 
         // create breadcrumbs
         elemRoot.html(uiutils.htmlBreadcrumbs([
+            {"text": "Home", "id": "#root"},
             {"text": "Houses", "id": "houses"},
             {"text": sensor.device.house.name, "id": `house/${sensor.device.house.id}`},
-            {"text": sensor.device.name, "id": `house/${sensor.device.house.id}/device/${sensor.device.id}`},
-            {"text": sensor.name}
+            {"text": sensor.device.name, "id": `house/${sensor.device.house.id}/device/${sensor.device.id}`}
         ]));
+        
 
         // create title row
         uiutils.appendTitleRow(
             elemRoot, 
-            `Sensor`, 
+            sensor.name, 
             [{"rel": "create", "icon": "plus", "click": (action) => {
                 formutils.appendManualSampleForm(sensor, (data) => {
                     // get field values

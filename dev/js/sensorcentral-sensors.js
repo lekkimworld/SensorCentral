@@ -97,14 +97,14 @@ module.exports = (document, elemRoot, ctx) => {
             const device = data.device;
     
             elemRoot.html(uiutils.htmlBreadcrumbs([
+                {"text": "Home", "id": "#root"},
                 {"text": "Houses", "id": "houses"},
-                {"text": device.house.name, "id": `house/${device.house.id}`},
-                {"text": device.name}
+                {"text": device.house.name, "id": `house/${device.house.id}`}
             ]));
     
             uiutils.appendTitleRow(
                 elemRoot,
-                "Sensors", 
+                device.name, 
                 [
                     {"rel": "create", "icon": "plus", "click": () => {
                         formsutil.appendSensorCreateEditForm(undefined, createSensor);

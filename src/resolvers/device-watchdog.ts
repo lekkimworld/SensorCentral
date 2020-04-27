@@ -2,7 +2,6 @@ import { Resolver, ObjectType, Field, ID, InputType, FieldResolver, Root, regist
 import * as types from "../types";
 import { IsEnum, Length } from "class-validator";
 import { Device } from "./device";
-import { formatDate } from "..//utils";
 
 /**
  * Register enum.
@@ -18,7 +17,6 @@ export class DeviceWatchdog {
     constructor(wd : types.DeviceWatchdog) {
         this.notify = wd.notify;
         this.muted_until = wd.mutedUntil;
-        this.str_muted_until = wd.mutedUntil ? formatDate(wd.mutedUntil) : "";
     }
 
     @Field()
@@ -27,9 +25,6 @@ export class DeviceWatchdog {
 
     @Field({nullable: true})
     muted_until? : Date;
-
-    @Field()
-    str_muted_until : string;
 }
 
 @InputType()

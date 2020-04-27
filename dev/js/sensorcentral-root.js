@@ -4,12 +4,35 @@ const log = require("./logger");
 const fetcher = require("./fetch-util");
 
 module.exports = (document, elemRoot) => {
-    if (storage.isLoggedIn()) {
+    if (!storage.isLoggedIn()) {
+        // user is NOT authenticated
+        elemRoot.html(`<h1>Hello stranger!</h1>
+        <p>
+            Please <a href="javascript:void(0)" id="login">login</a> to use the application.
+        </p>`);
+        $("#login").on("click", () => {
+            storage.login();
+            document.location.reload();
+        });
+
+        return;
+    }
+
+    const updateUI = () => {
         // user is authenticated
         const user = storage.getUser();
         elemRoot.html(`<h1>Hello ${user.fn}!</h1>`);
+
+        uiutils.appendTitleRow(
+            elemRoot,
+            "Favorite Sensors", 
+            [
+                {"rel": "refresh", "icon": "refresh", "click": () => {
+                    updateUI();
+                }}
+            ]
+        );
         
-        uiutils.appendSectionTitle(elemRoot, "Favorite Sensors");
         fetcher.graphql(`{favoriteSensors{id,name,last_reading,type,device{id, house{id}}}}`).then(data => {
             const sensors = data.favoriteSensors;
             uiutils.appendDataTable(elemRoot, {
@@ -32,15 +55,6 @@ module.exports = (document, elemRoot) => {
                 })
             });
         })
-    } else {
-        // user is NOT authenticated
-        elemRoot.html(`<h1>Hello stranger!</h1>
-        <p>
-            Please <a href="javascript:void(0)" id="login">login</a> to use the application.
-        </p>`);
-        $("#login").on("click", () => {
-            storage.login();
-            document.location.reload();
-        })
-    }    
+    }
+    updateUI();    
 }

@@ -141,7 +141,7 @@ router.post("/", (req, res, next) => {
 		}
 
 		// ensure we know the device still (device may have an JWT for a deleted device)
-		storageService.getDeviceById(deviceId).then((device : Device) => {
+		storageService.getDevice(deviceId).then((device : Device) => {
 			// acknowledge post to caller
 			const str_body_received = JSON.stringify(body, undefined, 2)
 			res.set('Content-Type', 'text/plain').send(`Thank you - you posted: ${str_body_received}\n`).end()

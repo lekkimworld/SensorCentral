@@ -2,6 +2,7 @@ const uiutils = require("./ui-utils");
 const $ = require("jquery");
 const fetcher = require("./fetch-util");
 const formsutil = require("./forms-util");
+const dateutils = require("./date-utils");
 
 module.exports = (document, elemRoot, ctx) => {
     const houseId = ctx.houseId;
@@ -20,17 +21,17 @@ module.exports = (document, elemRoot, ctx) => {
     const updateUI = () => {
         elemRoot.html("");
     
-        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,watchdog{notify,str_muted_until},house{id,name}}}`).then(data => {
+        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,watchdog{notify,muted_until},house{id,name}}}`).then(data => {
             const devices = data.devices.sort((a,b) => a.name.localeCompare(b.name));
             const houseName = data.house.name;
     
             elemRoot.html(uiutils.htmlBreadcrumbs([
-                {"text": "Houses", "id": "houses"},
-                {"text": houseName}
+                {"text": "Home", "id": "#root"},
+                {"text": "Houses", "id": "houses"}
             ]));
             uiutils.appendTitleRow(
                 elemRoot,
-                "Devices", 
+                houseName, 
                 [
                     {"rel": "create", "icon": "plus", "click": () => {
                         formsutil.appendDeviceCreateEditForm(undefined, createDevice);
@@ -83,7 +84,7 @@ module.exports = (document, elemRoot, ctx) => {
                 "rows": devices.map(device => {
                     const notify = (function(n) {
                         let notify;
-                        console.log(n);
+                        
                         if ("yes" === n) {
                             notify = `<button class="btn fa fa-volume-up sensorcentral-size-2x" rel="notify_mute" aria-hidden="true"></button>`;
                         } else if ("muted" === n) {
@@ -95,7 +96,7 @@ module.exports = (document, elemRoot, ctx) => {
                         return notify;
                     })(device.watchdog.notify);
 
-                    const mutedUntil = device.watchdog.str_muted_until;
+                    const mutedUntil = device.watchdog.muted_until ? dateutils.formatDMYTime(device.watchdog.muted_until) : "";
                     const lastping = device.hasOwnProperty("lastping") && typeof device.lastping === "number" ? `${device.lastping} mins.` : "";
 
                     return {

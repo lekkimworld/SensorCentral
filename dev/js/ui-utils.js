@@ -63,8 +63,11 @@ const fillMenus = () => {
 }
 
 const htmlBreadcrumbs = (objs) => {
-    return objs.map(o => o.id ? `<a href="#configuration/${o.id}">${o.text}</a>` : o.text).join(" &gt; ");
-    
+    return objs.map(o => {
+        if (!o.id) return o.text;
+        if (o.id.indexOf("#") === 0) return `<a href="${o.id}">${o.text}</a>`;
+        return `<a href="#configuration/${o.id}">${o.text}</a>`;
+    }).join(" &gt; ");
 }
 
 const htmlTitleRow = (title, actions) => {
@@ -82,7 +85,7 @@ const htmlSectionTitle = (title) => {
 }
 
 const htmlPageTitle = (title) => {
-    const html = `<div class="col-9">
+    const html = `<div class="col-lg-9 col-md-9 col-sm-12">
         <h3>${title}</h3>
     </div>`;
     return html;
@@ -94,7 +97,7 @@ const htmlActionBar = (actions) => {
         return `<button type="button" class="btn fa fa-${action.icon} ml-2 p-0 sensorcentral-size-1_5x float-right" aria-hidden="true" rel="${action.rel}"></button>`
     }).join("");
 
-    return `<div class="col-3" id="${ID_ACTION_ITEMS}">${html}</div>`;
+    return `<div class="col-lg-3 col-md-3 col-sm-12" id="${ID_ACTION_ITEMS}">${html}</div>`;
 }
 
 const htmlDataTable = (input = {}) => {
