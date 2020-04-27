@@ -20,11 +20,25 @@ const LastReadingFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context
     if (info.fieldName === "last_reading") {
         const storage = context.storage as StorageService;
         const samples = await storage.getLastNSamplesForSensor(root.id, 1);
-        return !samples || samples.length === 0 ? undefined : samples[0].value;
+        return !samples || samples.length === 0 ? undefined : new SensorSample(samples[0]);
     } else {
         return v;
     }
 };
+
+@ObjectType()
+class SensorSample {
+    constructor(s : types.SensorSample) {
+        this.value = s.value;
+        this.dt = s.dt;
+    }
+
+    @Field()
+    value : number;
+
+    @Field()
+    dt : Date;
+}
 
 @ObjectType()
 export class Sensor implements types.Sensor {
@@ -61,7 +75,7 @@ export class Sensor implements types.Sensor {
 
     @Field({nullable: true})
     @UseMiddleware(LastReadingFetchOnDemand)
-    last_reading : Number;
+    last_reading : SensorSample;
 }
 
 @InputType()

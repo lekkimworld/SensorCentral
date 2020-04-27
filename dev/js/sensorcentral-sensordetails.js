@@ -4,6 +4,7 @@ const fetcher = require("./fetch-util");
 const doChart = require("./charts-util").doChart;
 const formutils = require("./forms-util");
 const moment = require("moment");
+const dateutils = require("./date-utils");
 
 const ID_CHART = "sensorChart";
 const ID_SAMPLES_DIV = "samples";
@@ -42,7 +43,7 @@ const samplesTable = (sensor, samples) => {
         "rows": samples.sort((a,b) => b.dt-a.dt).map(s => {
             return {
                 "data": s,
-                "columns": [s.dt_string, s.value]
+                "columns": [dateutils.formatDMYTime(s.dt), s.value]
             }
         })
     });

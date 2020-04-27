@@ -303,11 +303,14 @@ export interface TopicDeviceMessage {
     device : Device | null;
 }
 
+/**
+ * Sensor samples read from the database.
+ * 
+ */
 export interface SensorSample {
     id : string;
     value : number;
     dt : Date;
-    dt_string : string;
 }
 
 /**

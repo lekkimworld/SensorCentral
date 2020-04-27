@@ -2,6 +2,7 @@ const storage = require("./storage-utils");
 const uiutils = require("./ui-utils");
 const log = require("./logger");
 const fetcher = require("./fetch-util");
+const dateutils = require("./date-utils");
 
 module.exports = (document, elemRoot) => {
     if (!storage.isLoggedIn()) {
@@ -33,7 +34,7 @@ module.exports = (document, elemRoot) => {
             ]
         );
         
-        fetcher.graphql(`{favoriteSensors{id,name,last_reading,type,device{id, house{id}}}}`).then(data => {
+        fetcher.graphql(`{favoriteSensors{id,name,last_reading{value,dt},type,device{id, house{id}}}}`).then(data => {
             const sensors = data.favoriteSensors;
             uiutils.appendDataTable(elemRoot, {
                 "headers": ["NAME", "TYPE", "LAST READING"],
@@ -47,7 +48,11 @@ module.exports = (document, elemRoot) => {
                     return {
                         "id": sensor.id,
                         "data": sensor,
-                        "columns": [sensor.name, type_img, sensor.last_reading || "None found"],
+                        "columns": [
+                            sensor.name, 
+                            type_img, 
+                            sensor.last_reading ? `${sensor.last_reading.value} (${dateutils.formatDMYTime(sensor.last_reading.dt)})` : "None found"
+                        ],
                         "click": function() {
                             document.location.hash = `configuration/house/${sensor.device.houseid}/device/${sensor.device.id}/sensor/${sensor.id}`
                         }

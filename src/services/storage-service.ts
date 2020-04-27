@@ -9,7 +9,6 @@ import { RedisService } from "./redis-service";
 import { LogService } from "./log-service";
 import { DatabaseService } from "./database-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
-import * as utils from "../utils";
 import Moment from 'moment';
 import moment = require("moment");
 import uuid from "uuid/v1";
@@ -772,14 +771,19 @@ export class StorageService extends BaseService {
 
 
     
-
+    /**
+     * Returns last N number of samples read from the database for the sensor with the 
+     * supplied ID.
+     * 
+     * @param sensorId 
+     * @param samples 
+     */
     async getLastNSamplesForSensor(sensorId : string, samples : number = 100) : Promise<SensorSample[] | undefined> {
         return this.dbService?.query(`select value, dt from sensor_data where id='${sensorId}' order by dt desc limit ${samples}`).then(result => {
             const arr = result.rows.map(row => {
                 return {
                     "id": sensorId,
                     "dt": row.dt,
-                    "dt_string": utils.formatDate(row.dt),
                     "value": row.value
                 } as SensorSample;
             })
