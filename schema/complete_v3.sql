@@ -20,7 +20,6 @@ alter table DEVICE_WATCHDOG add foreign key (deviceId) references DEVICE (id) on
 create type SENSOR_TYPE as ENUM ('temp', 'hum');
 create table SENSOR (id character varying(36) not null primary key, name character varying(128) not null, deviceid character varying(36) not null, type SENSOR_TYPE not null, label character varying(128) not null default 'foo'::character varying);
 alter table SENSOR add foreign key (deviceid) references device (id) on delete cascade;
-alter table SENSOR add constraint SENSOR_LABEL_UNIQUE UNIQUE (label);
 
 create table SENSOR_DATA (id character varying(36) not null, dt timestamp with time zone not null, value real not null);
 create index on SENSOR_DATA (dt desc);
