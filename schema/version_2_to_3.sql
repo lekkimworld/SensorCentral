@@ -16,7 +16,8 @@ update sensor set type_new='hum' where id in (select id from sensor where type='
 alter table sensor drop column type;
 alter table sensor rename column type_new to type;
 
-create table DEVICE_WATCHDOG (userId character varying(36) not null, deviceId character varying(36) not null, notify integer not null default 1, muted_until timestamp without time zone);
+create type DEVICE_NOTIFY_ENABLED as ENUM ('yes','no','muted');
+create table DEVICE_WATCHDOG (userId character varying(36) not null, deviceId character varying(36) not null, notify DEVICE_NOTIFY_ENABLED not null default 'yes', muted_until timestamp without time zone);
 alter table DEVICE_WATCHDOG add foreign key (userId) references LOGIN_USER (id) on delete cascade;
 alter table DEVICE_WATCHDOG add foreign key (deviceId) references DEVICE (id) on delete cascade;
 
