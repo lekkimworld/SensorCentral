@@ -379,18 +379,28 @@ export class StorageService extends BaseService {
     }
 
     /**
-     * Return all sensors for device with supplied ID
+     * Return all sensors for device with supplied ID or all sensors if 
+     * no device ID supplied.
+     * 
      * @param deviceId ID of device to get sensors for
      * @throws Error if device not found
      */
-    async getSensors(deviceId : string) {
-        const use_id = deviceId.trim();
+    async getSensors(deviceId? : string) {
+        let result;
+        if (deviceId) {
+            const use_id = deviceId.trim();
 
-        // get the device
-        await this.getDevice(use_id);
+            // get the device
+            await this.getDevice(use_id);
         
-        // query 
-        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.deviceid=$1 order by s.name asc", deviceId);
+            // query 
+            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.deviceid=$1 order by s.name asc", deviceId);
+        } else {
+            // query 
+            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id order by s.name asc");
+        }
+
+        // convert and return
         const sensors = convertRowsToSensors(result);
         return sensors;
     }
@@ -412,13 +422,6 @@ export class StorageService extends BaseService {
 
         const sensors = convertRowsToSensors(result);
         return sensors[0];
-    }
-
-    /**
-     * Queries for a sensor based on 
-     */
-    async querySensor() {
-
     }
 
     async createSensor({deviceId, id, name, label, type} : CreateSensorType) {
@@ -786,9 +789,36 @@ export class StorageService extends BaseService {
         })
     }
 
+    /**
+     * Returns the RedisSensorMessage from Redis for the supplied sensor ID's. Values 
+     * are returned in the same order as supplied sensor ID(s). Values may be undefined 
+     * if data for a sensor is not found in Redis.
+     * 
+     * @param sensorIds
+     */
+    async getRedisSensorMessage(...sensorIds : string[] ) : Promise<RedisSensorMessage[]> {
+        if (!sensorIds || sensorIds.length === 0) return [];
+        const redisKeys = sensorIds.map(id => `${SENSOR_KEY_PREFIX}${id}`);
+        const redisData = await this.redisService!.mget(...redisKeys);
+        return redisData.map(d => d ? JSON.parse(d) : undefined);
+    }
 
     /**
-     * Update the last ping for the device with the supplied ID.
+     * Returns the RedisDeviceMessage from Redis for the supplied device ID's. Values 
+     * are returned in the same order as supplied device ID(s). Values may be undefined 
+     * if data for a device is not found in Redis.
+     * 
+     * @param deviceIds
+     */
+    async getRedisDeviceMessage(...deviceIds : string[] ) : Promise<RedisDeviceMessage[]> {
+        if (!deviceIds || deviceIds.length === 0) return [];
+        const redisKeys = deviceIds.map(id => `${DEVICE_KEY_PREFIX}${id}`);
+        const redisData = await this.redisService!.mget(...redisKeys);
+        return redisData.map(d => d ? JSON.parse(d) : undefined);
+    }
+
+    /**
+     * Update the last ping for the device with the supplied ID
      * @param deviceId 
      */
     private updateDeviceLastPing(deviceId : string) {
@@ -853,30 +883,15 @@ export class StorageService extends BaseService {
             const data = result.data as TopicSensorMessage;
             this.logService!.debug(`Storage service received message on ${result.exchangeName} / ${result.routingKey} for sensor id <${data.sensorId}> value <${data.value}>`);
             
-            // get sensor from redis if it's there already
-            this.redisService!.get(`${SENSOR_KEY_PREFIX}${data.sensorId}`).then(str_sensor => {
-                let redis_sensor : RedisSensorMessage;
-                if (!str_sensor) {
-                    // didn't find sensor in redis - create
-                    redis_sensor = {
-                        "deviceId": data.deviceId,
-                        "id": data.sensorId,
-                        "dt": new Date(),
-                        "value": data.value
-                    }
-                } else {
-                    // parse string from sensor
-                    redis_sensor = JSON.parse(str_sensor);
-                    redis_sensor.dt = new Date();
-                    redis_sensor.value = data.value;
-                    redis_sensor.deviceId = data.deviceId;
-                }
-
-                // set sensor in Redis
-                this.logService!.debug(`Adding sensor with key <${SENSOR_KEY_PREFIX}${data.sensorId}> (device <${data.deviceId}>) to Redis`);
-                this.redisService!.setex(`${SENSOR_KEY_PREFIX}${data.sensorId}`, constants.DEFAULTS.REDIS.SENSOR_EXPIRATION_SECS, JSON.stringify(redis_sensor));
-            })
-            
+            // set sensor in redis
+            const redis_sensor = {
+                "deviceId": data.deviceId,
+                "id": data.sensorId,
+                "dt": new Date(),
+                "value": data.value
+            } as RedisSensorMessage;
+            this.logService!.debug(`Setting sensor with key <${SENSOR_KEY_PREFIX}${data.sensorId}> (device <${data.deviceId}>) in Redis`);
+            this.redisService!.setex(`${SENSOR_KEY_PREFIX}${data.sensorId}`, constants.DEFAULTS.REDIS.SENSOR_EXPIRATION_SECS, JSON.stringify(redis_sensor));
         });
     }
 

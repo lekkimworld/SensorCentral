@@ -1,17 +1,16 @@
-import * as express from 'express';
-/* const {lookupService} = require('../configure-services');
-import { BaseService } from '../types';
+import express from 'express';
+const {lookupService} = require('../configure-services');
+import { BaseService, Sensor, RedisSensorMessage, Device, RedisDeviceMessage } from '../types';
 import { StorageService } from '../services/storage-service';
-import { LogService } from '../services/log-service'; */
+import { LogService } from '../services/log-service';
 
 const router = express.Router();
 
 //@ts-ignore
-/* router.get("/", (req, res) => {
+router.get("/", (req, res) => {
     res.set({
         'Content-Type': 'text/plain'
     })
-
     
     lookupService(['storage', 'log']).then((svcs : BaseService[]) => {
         // define common buffer
@@ -20,12 +19,21 @@ const router = express.Router();
         const buffer : string[] = [];
 
         // get sensors from storage service
-        storage.getKnownSensorsWithRecentReadings().then(sensors => {
+        storage.getSensors().then(sensors => {
+            const sensorIds = sensors.map(s => s.id);
+            return Promise.all([Promise.resolve(sensors), storage.getRedisSensorMessage(...sensorIds)]);
+        }).then(data => {
+            const sensors = data[0] as Sensor[];
+            const redisData = data[1] as RedisSensorMessage[];
+
             // traverse and process each sensor in turn
-            sensors.forEach(sensor => {
-                if (!sensor.value || sensor.value === Number.MIN_VALUE) return;
+            sensors.forEach((sensor, idx) => {
+                const redisObj = redisData[idx];
+                if (!redisObj) return;
+                if (!redisObj.value || redisObj.value === Number.MIN_VALUE) return;
                 if (!sensor.device) return;
                 if (!sensor.device.house) return;
+
                 const sensorName = sensor.name;
                 const sensorLabel = sensor.label;
                 const sensorType = sensor.type;
@@ -33,21 +41,30 @@ const router = express.Router();
                 const deviceName = sensor.device.name;
                 const houseId = sensor.device.house.id;
                 const houseName = sensor.device.house.name;
-                buffer.push(`sensor\{houseId="${houseId}",houseName="${houseName}",deviceId="${deviceId}",deviceName="${deviceName}",sensorId="${sensor.id}",sensorName="${sensorName}",sensorLabel="${sensorLabel}",sensorType="${sensorType}"\} ${sensor.value}`);
+                buffer.push(`sensor\{houseId="${houseId}",houseName="${houseName}",deviceId="${deviceId}",deviceName="${deviceName}",sensorId="${sensor.id}",sensorName="${sensorName}",sensorLabel="${sensorLabel}",sensorType="${sensorType}"\} ${redisObj.value}`);
             })
-            
+
             // get devices
-            return storage.getKnownDevicesStatus();
+            return storage.getDevices();
 
         }).then(devices => {
-            // traverse and process each device restart or watchdog event in turn
-            devices.filter(d => d.house).forEach(device => {
-                buffer.push(`device\{houseId="${device.house.id}",houseName="${device.house.name}",deviceId="${device.id}",deviceName="${device.name}",type="restart"\} ${device.restarts ? device.restarts : 0}`);
-                buffer.push(`device\{houseId="${device.house.id}",houseName="${device.house.name}",deviceId="${device.id}",deviceName="${device.name}",type="watchdog"\} ${device.watchdogResets ? device.watchdogResets : 0}`);
+            const deviceIds = devices.map(d => d.id);
+            return Promise.all([Promise.resolve(devices), storage.getRedisDeviceMessage(...deviceIds)]);
+
+        }).then(data => {
+            const devices = data[0] as Device[];
+            const redisData = data[1] as RedisDeviceMessage[];
+
+            devices.forEach((device, idx) => {
+                const redisObj = redisData[idx];
+                if (!redisObj) return;
+                if (!device.house) return;
+                
+                buffer.push(`device\{houseId="${device.house.id}",houseName="${device.house.name}",deviceId="${device.id}",deviceName="${device.name}",type="restart"\} ${redisObj.restarts || 0}`);
+                buffer.push(`device\{houseId="${device.house.id}",houseName="${device.house.name}",deviceId="${device.id}",deviceName="${device.name}",type="watchdog"\} ${redisObj.watchdogResets || 0}`);
             })
             
             return Promise.resolve();
-
         }).then(() => {
             // send response
             res.status(200).send(buffer.join('\n')).end()
@@ -62,5 +79,5 @@ const router = express.Router();
         res.status(500).send(`Required storage-service not available (${err.message})`).end()
     })
 })
- */
+
 export default router;
