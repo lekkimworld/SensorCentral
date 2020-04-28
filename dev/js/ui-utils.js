@@ -42,6 +42,9 @@ const fillMenus = () => {
         $("#logout").on("click", () => {
             // delete local storage
             storage.logout();
+
+            // ensure menu is hidden
+            $('.navbar-collapse').removeClass('show');
             
             // tell server to log us out
             document.location.hash = "#loggedout";
@@ -56,7 +59,7 @@ const fillMenus = () => {
         })
     }
 
-    // ensure responsive menu closes after click
+    // ensure responsive menu closes after click (in general)
     $('.navbar-nav>li>a').on('click', function() {
         $('.navbar-collapse').removeClass('show');
     });

@@ -378,18 +378,6 @@ export class StorageService extends BaseService {
         });
     }
 
-    async updateDeviceLastPing(deviceId : string) {
-        this.dbService!.query("update device set last_ping=current_timestamp where id=$1", deviceId);
-    }
-
-    async updateDeviceLastWatchdogReset(deviceId : string) {
-        this.dbService!.query("update device set last_watchdog_reset=current_timestamp where id=$1", deviceId);
-    }
-
-    async updateDeviceLastRestart(deviceId : string) {
-        this.dbService!.query("update device set last_restart=current_timestamp where id=$1", deviceId);
-    }
-
     /**
      * Return all sensors for device with supplied ID
      * @param deviceId ID of device to get sensors for
@@ -777,16 +765,6 @@ export class StorageService extends BaseService {
     async removeFavoriteSensor(user : BackendLoginUser, id : string) {
         await this.dbService!.query("delete from favorite_sensor where userId=$1 and sensorId=$2", user.id, id);
     }
-
-
-
-
-
-
-    
-
-
-
     
     /**
      * Returns last N number of samples read from the database for the sensor with the 
@@ -809,7 +787,29 @@ export class StorageService extends BaseService {
     }
 
 
+    /**
+     * Update the last ping for the device with the supplied ID.
+     * @param deviceId 
+     */
+    private async updateDeviceLastPing(deviceId : string) {
+        this.dbService!.query("update device set last_ping=current_timestamp where id=$1", deviceId);
+    }
 
+    /**
+     * Update the last watchdog reset for the device with the supplied ID.
+     * @param deviceId 
+     */
+    private async updateDeviceLastWatchdogReset(deviceId : string) {
+        this.dbService!.query("update device set last_watchdog_reset=current_timestamp where id=$1", deviceId);
+    }
+
+    /**
+     * Update the last restart for the device with the supplied ID.
+     * @param deviceId 
+     */
+    private async updateDeviceLastRestart(deviceId : string) {
+        this.dbService!.query("update device set last_restart=current_timestamp where id=$1", deviceId);
+    }
 
     /**
      * Insert the supplied reading for the supplied sensor id.

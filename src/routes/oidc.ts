@@ -4,6 +4,7 @@ import { HttpException, LoginSource, BackendLoginUser } from "../types";
 import { StorageService, CreateLoginUserInput } from "../services/storage-service";
 //@ts-ignore
 import { lookupService } from "../configure-services";
+import { buildBaseHandlebarsContext } from "../utils";
 
 // create a router
 const router = express.Router();
@@ -50,20 +51,7 @@ router.get("/callback", async (req, res, next) => {
 })
 
 router.get("/loggedin", ({res}) => {
-    return res!.render("loggedin");
-})
-
-router.get("/logout", (req, res, next) => {
-    if (req.session) {
-        req.session.destroy(err => {
-            if (err) {
-                return next(new HttpException(500, "Unable to invalidate session", err));
-            }
-            res.redirect("/openid/loggedout");
-        })
-    } else {
-        res.redirect("/openid/loggedout");
-    }
+    return res!.render("loggedin", Object.assign({}, buildBaseHandlebarsContext()));
 })
 
 export default router;
