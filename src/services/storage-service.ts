@@ -791,24 +791,36 @@ export class StorageService extends BaseService {
      * Update the last ping for the device with the supplied ID.
      * @param deviceId 
      */
-    private async updateDeviceLastPing(deviceId : string) {
-        this.dbService!.query("update device set last_ping=current_timestamp where id=$1", deviceId);
+    private updateDeviceLastPing(deviceId : string) {
+        this.dbService!.query("update device set last_ping=current_timestamp where id=$1", deviceId).then(() => {
+            this.logService!.debug(`Updated device last ping timestamp for device with ID <${deviceId}>`);
+        }).catch(err => {
+            this.logService!.warn(`Caught error while trying to update device last ping timestamp for device with ID <${deviceId}>`, err);
+        })
     }
 
     /**
      * Update the last watchdog reset for the device with the supplied ID.
      * @param deviceId 
      */
-    private async updateDeviceLastWatchdogReset(deviceId : string) {
-        this.dbService!.query("update device set last_watchdog_reset=current_timestamp where id=$1", deviceId);
+    private updateDeviceLastWatchdogReset(deviceId : string) {
+        this.dbService!.query("update device set last_watchdog_reset=current_timestamp where id=$1", deviceId).then(() => {
+            this.logService!.debug(`Updated device last watchdog reset timestamp for device with ID <${deviceId}>`);
+        }).catch(err => {
+            this.logService!.warn(`Caught error while trying to update device last watchdog reset timestamp for device with ID <${deviceId}>`, err);
+        })
     }
 
     /**
      * Update the last restart for the device with the supplied ID.
      * @param deviceId 
      */
-    private async updateDeviceLastRestart(deviceId : string) {
-        this.dbService!.query("update device set last_restart=current_timestamp where id=$1", deviceId);
+    private updateDeviceLastRestart(deviceId : string) {
+        this.dbService!.query("update device set last_restart=current_timestamp where id=$1", deviceId).then(() => {
+            this.logService!.debug(`Updated device last restart timestamp for device with ID <${deviceId}>`);
+        }).catch(err => {
+            this.logService!.warn(`Caught error while trying to update device last restart timestamp for device with ID <${deviceId}>`, err);
+        })
     }
 
     /**
@@ -911,7 +923,9 @@ export class StorageService extends BaseService {
                 } as TopicSensorMessage;
 
                 // publish
-                this.eventService!.publishTopic(constants.TOPICS.SENSOR, sensor ? "known" : "unknown", payload);
+                this.eventService!.publishTopic(constants.TOPICS.SENSOR, sensor ? "known" : "unknown", payload).then(() => {
+                    this.logService!.debug(`Posted augmented sensor message to ${constants.TOPICS.SENSOR}`);
+                });
 
             })
         });
@@ -962,6 +976,7 @@ export class StorageService extends BaseService {
                     "device": device
                 } as TopicDeviceMessage;
 
+                // update last ping
                 if (device) this.updateDeviceLastPing(device.id);
 
                 // publish

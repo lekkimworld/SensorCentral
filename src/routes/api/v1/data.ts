@@ -106,7 +106,7 @@ router.post("/", (req, res, next) => {
 	
 		// validate API user subject matches the payload device id and raise an error if 
 		// not or user does not have admin scope
-		if (deviceId !== user.id || !hasScope(user, constants.JWT.SCOPE_ADMIN)) {
+		if (deviceId !== user.id && !hasScope(user, constants.JWT.SCOPE_ADMIN)) {
 			logService.warn(`Caller sent a payload subject <${deviceId}> which is different from JWT subject <${user.id}>`);
 			return next(new HttpException(401, "Attempt to post data for device blocked as api context is for another device"));
 		}
@@ -189,6 +189,7 @@ router.post("/", (req, res, next) => {
 							'id': element.sensorId,
 							"deviceId": deviceId
 						}
+						
 						eventService.publishQueue(constants.QUEUES.SENSOR, payload).then(() => {
 							logService.debug(`Published message to ${constants.QUEUES.SENSOR}`);
 						}).catch(err => {

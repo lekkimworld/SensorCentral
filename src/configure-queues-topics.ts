@@ -57,7 +57,7 @@ const publish = (exchangeName:string, routingKey?:string) => (data:object) : Pro
 }
 
 const subscribe = (exchangeName:string, routingKey?:string) => (callback:(result:ISubscriptionResult) => void) => {
-    connection.then((conn:Connection)=> {
+    connection.then((conn:Connection) => {
         return conn.createChannel();
     }).then((ch:Channel) => {
         if (routingKey) {
