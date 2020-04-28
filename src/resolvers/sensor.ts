@@ -122,6 +122,12 @@ export class SensorResolver {
         return new Sensor(sensor);
     }
 
+    @Query(() => Sensor, {})
+    async querySensor(@Arg("label") label : string, @Ctx() ctx : types.GraphQLResolverContext) {
+        const sensor = await ctx.storage.getSensorByLabel(label);
+        return new Sensor(sensor);
+    }
+
     @Mutation(() => Sensor)
     async createSensor(@Arg("data") data : CreateSensorType, @Ctx() ctx : types.GraphQLResolverContext) {
         const sensor = await ctx.storage.createSensor(data);

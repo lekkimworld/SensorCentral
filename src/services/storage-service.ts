@@ -424,6 +424,25 @@ export class StorageService extends BaseService {
         return sensors[0];
     }
 
+    /**
+     * Returns sensor with specified label
+     * @param label Label of sensor to lookup
+     * @throws Error if sensor not found
+     */
+    async getSensorByLabel(label : string) {
+        // trim 
+        const use_label = label.trim();
+
+        // get sensor
+        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.label=$1 order by s.name asc", use_label);
+        if (!result || result.rowCount !== 1) {
+            throw Error(`Unable to find sensor with label <${label}>`);
+        }
+
+        const sensors = convertRowsToSensors(result);
+        return sensors[0];
+    }
+
     async createSensor({deviceId, id, name, label, type} : CreateSensorType) {
         // validate 
         const use_id = id.trim();
