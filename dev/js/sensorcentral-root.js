@@ -1,13 +1,11 @@
 const storage = require("./storage-utils");
 const uiutils = require("./ui-utils");
 const log = require("./logger");
+const fetcher = require("./fetch-util");
+const dateutils = require("./date-utils");
 
 module.exports = (document, elemRoot) => {
-    if (storage.isLoggedIn()) {
-        // user is authenticated
-        const user = storage.getUser();
-        elemRoot.html(`<h1>Hello ${user.given_name}!</h1>`);
-    } else {
+    if (!storage.isLoggedIn()) {
         // user is NOT authenticated
         elemRoot.html(`<h1>Hello stranger!</h1>
         <p>
@@ -16,7 +14,52 @@ module.exports = (document, elemRoot) => {
         $("#login").on("click", () => {
             storage.login();
             document.location.reload();
+        });
+
+        return;
+    }
+
+    const updateUI = () => {
+        // user is authenticated
+        const user = storage.getUser();
+        elemRoot.html(`<h1>Hello ${user.fn}!</h1>`);
+
+        uiutils.appendTitleRow(
+            elemRoot,
+            "Favorite Sensors", 
+            [
+                {"rel": "refresh", "icon": "refresh", "click": () => {
+                    updateUI();
+                }}
+            ]
+        );
+        
+        fetcher.graphql(`{favoriteSensors{id,name,last_reading{value,dt},type,device{id, house{id}}}}`).then(data => {
+            const sensors = data.favoriteSensors;
+            uiutils.appendDataTable(elemRoot, {
+                "headers": ["NAME", "TYPE", "LAST READING"],
+                "classes": [
+                    "", 
+                    "",
+                    ""
+                ],
+                "rows": sensors.map(sensor => {
+                    const type_img = `<i class="fa fa-${sensor.type === "temp" ? "thermometer-empty" : "tint"} aria-hidden="true"></i>`;
+                    return {
+                        "id": sensor.id,
+                        "data": sensor,
+                        "columns": [
+                            sensor.name, 
+                            type_img, 
+                            sensor.last_reading ? `${sensor.last_reading.value} (${dateutils.formatDMYTime(sensor.last_reading.dt)})` : "None found"
+                        ],
+                        "click": function() {
+                            document.location.hash = `configuration/house/${sensor.device.houseid}/device/${sensor.device.id}/sensor/${sensor.id}`
+                        }
+                    }
+                })
+            });
         })
     }
-    
+    updateUI();    
 }

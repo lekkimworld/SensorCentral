@@ -4,7 +4,7 @@ import {EventService} from "../services/event-service";
 import constants from "../constants";
 import { LogService } from '../services/log-service';
 import { StorageService } from '../services/storage-service';
-import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException } from '../types';
+import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException, Sensor } from '../types';
 
 const router = express.Router();
 
@@ -95,13 +95,24 @@ router.post('/', (req, res, next) => {
 					// found device id in payload
 					return Promise.resolve(postObj.deviceId);
 				} else {
-					// there is no device id in t	he payload - get unique device id('s) from sensor ids
+					// there is no device id in the payload - get unique device id('s) from sensor ids
 					let sensorIds : Set<string> = postObj.data.filter((element : any) => element["sensorId"] && element["sensorValue"]).reduce((prev : Set<string>, element : any) => {
 						prev.add(element.sensorId) as unknown as string;
 						return prev
 					}, new Set<string>())
 
-					return storageSvc.getDeviceIdForSensorIds(...Array.from(sensorIds));
+					// get device id(s) from sensor ids
+					return Promise.all(Array.from(sensorIds).map(id => {
+						return storageSvc.getSensor(id);
+					})).then((sensors : Sensor[]) => {
+						// reduce to unique array of device ids
+						const deviceIds = Array.from(sensors.reduce((prev, s) => {
+							prev.add(s.id);
+							return prev;
+						}, new Set<string>()));
+
+						return Promise.resolve(deviceIds[0]);
+					})
 				}
 			})().then((deviceId : string) => {
 				// found device - publish a device event

@@ -70,6 +70,8 @@ const navigationChange = () => {
             log.debug(`Rendering sensorcentral-sensordetails with parts <${parts.join()}>`);
             require("./sensorcentral-sensordetails")(document, elemRoot, {"houseId": parts[2], "deviceId": parts[4], "sensorId": parts[6]});
         }
+    } else if ("#settings" === hash) {
+        require("./sensorcentral-settings")(document, elemRoot);
     } else {
         elemRoot.html(`<h1>Oh no!!</h1>
         <p>

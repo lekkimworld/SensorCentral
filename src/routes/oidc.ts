@@ -1,6 +1,10 @@
 import express from "express";
 import {getOidcClient} from "../oidc-authentication-utils";
-import { HttpException } from "../types";
+import { HttpException, LoginSource, BackendLoginUser } from "../types";
+import { StorageService, CreateLoginUserInput } from "../services/storage-service";
+//@ts-ignore
+import { lookupService } from "../configure-services";
+import { buildBaseHandlebarsContext } from "../utils";
 
 // create a router
 const router = express.Router();
@@ -25,30 +29,29 @@ router.get("/callback", async (req, res, next) => {
         if (process.env.GOOGLE_HOSTED_DOMAIN && (!claims.hd || claims.hd !== process.env.GOOGLE_HOSTED_DOMAIN)) {
             return next(new HttpException(417, "Unable to validate hosted domain claim"));
         }
+        
+        // ensure we have a row in LOGIN_USER for the user
+        lookupService("storage").then((storage : StorageService) => {
+            return storage.getOrCreateLoginUser({
+                source: LoginSource.google, 
+                oidc_sub: claims.sub as string, 
+                email: claims.email as string,
+                ln: claims.family_name,
+                fn: claims.given_name
+            } as CreateLoginUserInput);
 
-        // save in session and redirect
-        req.session!.user = claims;
+        }).then((user : BackendLoginUser) => {
+            // set the claims we received, set user in session and redirect
+            req.session!.user = user;
 
-        // redirect
-        res.redirect("/openid/loggedin");
+            // redirect
+            res.redirect("/openid/loggedin");
+        })
     });
 })
 
 router.get("/loggedin", ({res}) => {
-    return res!.render("loggedin");
-})
-
-router.get("/logout", (req, res, next) => {
-    if (req.session) {
-        req.session.destroy(err => {
-            if (err) {
-                return next(new HttpException(500, "Unable to invalidate session", err));
-            }
-            res.redirect("/openid/loggedout");
-        })
-    } else {
-        res.redirect("/openid/loggedout");
-    }
+    return res!.render("loggedin", Object.assign({}, buildBaseHandlebarsContext()));
 })
 
 export default router;

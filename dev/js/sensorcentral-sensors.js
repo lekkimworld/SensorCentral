@@ -73,49 +73,38 @@ window.addEventListener("DOMContentLoaded", () => {
 
 */
 
-const createSensor = (data) => {
-    fetcher.post(`/api/v1/sensors`, {
-        "id": data.id,
-        "name": data.name, 
-        "label": data.label,
-        "type": data.type,
-        "device": deviceId
-    }).then(() => {
-        document.location.reload();
-    })
-}
-const editSensor = (data) => {
-    fetcher.put(`/api/v1/sensors`, {
-        "id": data.id,
-        "name": data.name, 
-        "label": data.label,
-        "type": data.type
-    }).then(() => {
-        document.location.reload();
-    })
-}
-
 module.exports = (document, elemRoot, ctx) => {
     const houseId = ctx.houseId;
     const deviceId = ctx.deviceId;
+
+    const createSensor = (data) => {
+        fetcher.graphql(`mutation {createSensor(data: {deviceId: "${deviceId}", id: "${data.id}", name: "${data.name}", label: "${data.label}", type: "${data.type}"}){id}}`).then(() => {
+            document.location.reload();
+        })
+    }
+    const editSensor = (data) => {
+        fetcher.graphql(`mutation {updateSensor(data: {id: "${data.id}", name: "${data.name}", label: "${data.label}", type: "${data.type}"}){id}}`).then(() => {
+            document.location.reload();
+        })
+    }
 
     const updateUI = () => {
         elemRoot.html("");    
     
         // query for sensors and containing device
-        fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(deviceId:"${deviceId}"){id,name,label,type}}`).then(data => {
+        fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(deviceId:"${deviceId}"){id,name,favorite,label,type}}`).then(data => {
             const sensors = data.sensors.sort((a,b) => a.name.localeCompare(b.name));
             const device = data.device;
     
             elemRoot.html(uiutils.htmlBreadcrumbs([
+                {"text": "Home", "id": "#root"},
                 {"text": "Houses", "id": "houses"},
-                {"text": device.house.name, "id": `house/${device.house.id}`},
-                {"text": device.name}
+                {"text": device.house.name, "id": `house/${device.house.id}`}
             ]));
     
             uiutils.appendTitleRow(
                 elemRoot,
-                "Sensors", 
+                device.name, 
                 [
                     {"rel": "create", "icon": "plus", "click": () => {
                         formsutil.appendSensorCreateEditForm(undefined, createSensor);
@@ -139,12 +128,22 @@ module.exports = (document, elemRoot, ctx) => {
                                 "message": "Are you absolutely sure you want to DELETE this sensor? Sensor samples will not be deleted from the database."
                             }
                         }, (ctx) => {
-                            fetcher.delete(`/api/v1/sensors`, {
-                                "id": ctx.id
-                            }, "text").then(() => {
+                            fetcher.graphql(`mutation {deleteSensor(data: {id: "${ctx.id}"})}`).then(() => {
                                 document.location.reload();
                             })
                         })
+                    }},
+                    {"rel": "favorite", "icon": (data) => data.favorite ? "star" : "star-o", "click": (ctx) => {
+                        const btn = $(`tr[id="${ctx.id}"] button[rel="favorite"`);
+                        if (btn.hasClass("fa-star")) {
+                            btn.removeClass("fa-star");
+                            btn.addClass("fa-star-o");
+                            fetcher.graphql(`mutation {removeFavoriteSensor(id: \"${ctx.id}\")}`)
+                        } else {
+                            btn.removeClass("fa-star-o");
+                            btn.addClass("fa-star");
+                            fetcher.graphql(`mutation {addFavoriteSensor(id: \"${ctx.id}\")}`)
+                        }
                     }}
                 ],
                 "headers": ["NAME", "LABEL", "TYPE", "ID"],

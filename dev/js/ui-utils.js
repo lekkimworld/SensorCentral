@@ -2,6 +2,7 @@ const $ = require("jquery");
 const storage = require("./storage-utils.js");
 const log = require("./logger.js");
 const fetcher = require("./fetch-util");
+const formsutil = require("./forms-util");
 
 const ID_ACTION_ITEMS = "action-icons";
 
@@ -24,6 +25,7 @@ const fillMenus = () => {
             Username: ${user.email}
             </a>
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
+            <a class="dropdown-item" href="javascript:void(0)" id="settings">Settings</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>
             </div>`;
     }
@@ -40,21 +42,35 @@ const fillMenus = () => {
         $("#logout").on("click", () => {
             // delete local storage
             storage.logout();
+
+            // ensure menu is hidden
+            $('.navbar-collapse').removeClass('show');
             
             // tell server to log us out
             document.location.hash = "#loggedout";
         })
+        $("#settings").on("click", () => {
+            $('.navbar-collapse').removeClass('show');
+            return fetcher.graphql(`{settings{notify_using,pushover_userkey,pushover_apptoken}}`).then(data => {
+                formsutil.appendSettings(data.settings, data => {
+                    fetcher.graphql(`mutation{updateSettings(data: {notify_using: "${data.notify_using}", pushover_userkey: "${data.pushover_userkey}", pushover_apptoken: "${data.pushover_apptoken}"})}`)
+                });
+            })
+        })
     }
 
-    // ensure responsive menu closes after click
+    // ensure responsive menu closes after click (in general)
     $('.navbar-nav>li>a').on('click', function() {
         $('.navbar-collapse').removeClass('show');
     });
 }
 
 const htmlBreadcrumbs = (objs) => {
-    return objs.map(o => o.id ? `<a href="#configuration/${o.id}">${o.text}</a>` : o.text).join(" &gt; ");
-    
+    return objs.map(o => {
+        if (!o.id) return o.text;
+        if (o.id.indexOf("#") === 0) return `<a href="${o.id}">${o.text}</a>`;
+        return `<a href="#configuration/${o.id}">${o.text}</a>`;
+    }).join(" &gt; ");
 }
 
 const htmlTitleRow = (title, actions) => {
@@ -72,7 +88,7 @@ const htmlSectionTitle = (title) => {
 }
 
 const htmlPageTitle = (title) => {
-    const html = `<div class="col-9">
+    const html = `<div class="col-lg-9 col-md-9 col-sm-12">
         <h3>${title}</h3>
     </div>`;
     return html;
@@ -84,7 +100,7 @@ const htmlActionBar = (actions) => {
         return `<button type="button" class="btn fa fa-${action.icon} ml-2 p-0 sensorcentral-size-1_5x float-right" aria-hidden="true" rel="${action.rel}"></button>`
     }).join("");
 
-    return `<div class="col-3" id="${ID_ACTION_ITEMS}">${html}</div>`;
+    return `<div class="col-lg-3 col-md-3 col-sm-12" id="${ID_ACTION_ITEMS}">${html}</div>`;
 }
 
 const htmlDataTable = (input = {}) => {
@@ -100,7 +116,7 @@ const htmlDataTable = (input = {}) => {
         </tr>
     </thead>
     <tbody>
-        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td class="d-none d-lg-table-cell"><center>${ctx.actions.filter(a => a.icon).map(a => `<i class="btn fa fa-${a.icon} sensorcentral-size-1_5x" aria-hidden="true" rel="${a.rel}"></i>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<td class="${ctx.classes[idx]}">${d}</td>` : `<td class="${ctx.classes[idx]}">${d}</td>`).join("")}</tr>`).join("")}
+        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td class="d-none d-lg-table-cell"><center>${ctx.actions.filter(a => a.icon).map(a => `<button class="btn fa fa-${typeof a.icon === "function" ? a.icon(r.data) : a.icon} sensorcentral-size-1_5x" aria-hidden="true" rel="${a.rel}"></button>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<td class="${ctx.classes[idx]}">${d}</td>` : `<td class="${ctx.classes[idx]}">${d}</td>`).join("")}</tr>`).join("")}
     </tbody>
 </table>`;
     return html;
@@ -121,6 +137,10 @@ const appendTitleRow = (elem, title, actions = []) => {
             action.click.call(ev.target, action);
         }
     })
+}
+
+const appendSectionTitle = (elem, title) => {
+    elem.append(htmlSectionTitle(title));
 }
 
 const appendDataTable = (elem, input = {}) => {
@@ -145,7 +165,7 @@ const appendDataTable = (elem, input = {}) => {
         }
         if (!row) return;
         
-        if (input.actions && ev.target.nodeName === "I") {
+        if (input.actions && ev.target.nodeName === "BUTTON") {
             // get rel and find action
             const rel = ev.target.getAttribute("rel");
             
@@ -175,6 +195,7 @@ module.exports = {
     htmlDataTable,
     appendDataTable,
     appendTitleRow,
+    appendSectionTitle,
     fillMenus,
     htmlBreadcrumbs
 }

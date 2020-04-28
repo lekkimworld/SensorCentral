@@ -1,15 +1,141 @@
+import { StorageService } from "./services/storage-service";
 
-export class ErrorObject {
-    error = true;
-    readonly message : string;
+export interface GraphQLResolverContext {
+    readonly storage : StorageService;
+    readonly user : BackendLoginUser;
+}
 
-    constructor(msg : string, err? : Error) {
-        if (err) {
-            this.message = `${msg} (${err.message})`;
-        } else {
-            this.message = msg;
-        }
-    }
+/**
+ * Sources where we can login from/using.
+ */
+export enum LoginSource {
+    google = "google"
+}
+
+/**
+ * Logged in user info which may sent to user ie. contains no 
+ * sensitive information.
+ */
+export interface LoginUser {
+    /**
+     * Our internal userid.
+     */
+    readonly id : string;
+
+    /**
+     * Firstname. Maybe undefined if this is a device commuhicating 
+     * with the API using a JWT.
+     */
+    readonly fn? : string;
+
+    /**
+     * Lastname. Maybe undefined if this is a device commuhicating 
+     * with the API using a JWT.
+     */
+    readonly ln? : string;
+
+    /**
+     * User email. Maybe undefined if this is a device commuhicating 
+     * with the API using a JWT.
+     */
+    readonly email? : string;
+}
+
+/**
+ * Payload sent to browser following a UI login by a user.
+ * 
+ */
+export interface BrowserLoginPayload {
+    /**
+     * Information about the user.
+     */
+    readonly user : LoginUser;
+
+    /**
+     * JWT to use when contacting the backend.
+     */
+    readonly jwt : string;
+}
+
+/**
+ * Payload sent to browser when requesting a JWT for a device.
+ * 
+ */
+export interface DeviceJWTPayload {
+    /**
+     * Device specific JWT to use when contacting the backend from a device.
+     */
+    readonly token : string;
+}
+
+/**
+ * Extension of LoginUser to store information required for the 
+ * backend.
+ */
+export interface BackendLoginUser extends LoginUser {
+    /**
+     * The ID of the house the user may work on/for or "*" if 
+     * the user may work with all houses.
+     */
+    readonly houseId : string;
+
+    /**
+     * The scopes that the user has.
+     * 
+     */
+    readonly scopes : string[];
+}
+
+/**
+ * Pushover settings for a user required when sending a message through 
+ * the Pushover service.
+ * 
+ */
+export interface PushoverSettings {
+    userkey : string;
+    apptoken : string;
+}
+
+/**
+ * Used when sending a message through the Pushover service.
+ * 
+ */
+export interface PushoverMessage {   
+    title : string;
+    message : string;
+    settings : PushoverSettings;
+}
+
+/**
+ * The ways we can notify users.
+ */
+export enum NotifyUsing {
+    email = "email",
+    pushover = "pushover"
+}
+
+/**
+ * Notification settings for a user.
+ */
+export interface NotificationSettings {
+    notifyUsing? : NotifyUsing;
+    pushover? : PushoverSettings;
+}
+
+/**
+ * Device watchdog data.
+ */
+export interface DeviceWatchdog {
+    notify : WatchdogNotification;
+    mutedUntil? : Date;
+}
+
+/**
+ * A device watchdog notifier.
+ */
+export interface DeviceWatchdogNotifier extends DeviceWatchdog{
+    user : LoginUser;
+    settings : NotificationSettings;
 }
 
 export abstract class BaseService {
@@ -115,17 +241,9 @@ export interface Device {
     readonly house : House;
     readonly id : string;
     readonly name : string;
-    readonly notify : WatchdogNotification;
-    readonly mutedUntil? : Date;
-}
-
-/**
- * Describes a device with status information.
- */
-export interface DeviceStatus extends Device {
-    dt : Date;
-    restarts : number;
-    watchdogResets : number;
+    readonly lastRestart : Date;
+    readonly lastWatchdogReset : Date;
+    readonly lastPing : Date;
 }
 
 /**
@@ -148,7 +266,6 @@ export interface SensorReading extends Sensor {
     readonly value_string : string;
     readonly ageMinutes : number;
     readonly dt : Date;
-    readonly dt_string : string;
     readonly denominator : string;
 }
 
@@ -158,7 +275,7 @@ export interface SensorReading extends Sensor {
  */
 export interface TopicControlMessage {
     type : ControlMessageTypes;
-    device : Device | null;
+    device? : Device;
     deviceId : string;
 }
 
@@ -179,11 +296,14 @@ export interface TopicDeviceMessage {
     device : Device | null;
 }
 
+/**
+ * Sensor samples read from the database.
+ * 
+ */
 export interface SensorSample {
     id : string;
     value : number;
     dt : Date;
-    dt_string : string;
 }
 
 /**
@@ -204,17 +324,6 @@ export interface RedisDeviceMessage {
     dt : Date;
     restarts : number;
     watchdogResets : number;
-}
-
-export interface APIUserContext {
-    readonly issuer : string;
-    readonly audience : string;
-    readonly subject : string;
-    readonly scopes : string[];
-    readonly houseid : string;
-    
-    accessAllHouses() : boolean;
-    hasScope(scope : string) : boolean;
 }
 
 export class HttpException extends Error {

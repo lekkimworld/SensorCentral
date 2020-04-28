@@ -10,8 +10,7 @@ export const formatDate = function(date? : any) : string {
     return m.tz(constants.DEFAULTS.TIMEZONE).format(constants.DEFAULTS.DATETIME_FORMAT);
 }
 
-export const buildBaseHandlebarsContext = (req : Express.Request) : any => {
-    req.sessionID;
+export const buildBaseHandlebarsContext = () : any => {
     return {
         "app_name": pckg.name,
         "app_version": pckg.version

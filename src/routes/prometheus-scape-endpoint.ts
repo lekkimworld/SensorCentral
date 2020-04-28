@@ -1,17 +1,18 @@
 import * as express from 'express';
-const {lookupService} = require('../configure-services');
+/* const {lookupService} = require('../configure-services');
 import { BaseService } from '../types';
 import { StorageService } from '../services/storage-service';
-import { LogService } from '../services/log-service';
+import { LogService } from '../services/log-service'; */
 
 const router = express.Router();
 
 //@ts-ignore
-router.get("/", (req, res) => {
+/* router.get("/", (req, res) => {
     res.set({
         'Content-Type': 'text/plain'
     })
 
+    
     lookupService(['storage', 'log']).then((svcs : BaseService[]) => {
         // define common buffer
         const storage = svcs[0] as StorageService;
@@ -61,5 +62,5 @@ router.get("/", (req, res) => {
         res.status(500).send(`Required storage-service not available (${err.message})`).end()
     })
 })
-
+ */
 export default router;

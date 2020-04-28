@@ -23,12 +23,23 @@ export const getOidcClient = async () => {
     return client;
 }
 
-export interface AuthenticationUrl {
+/**
+ * Browser payload when browser is asking for a OpenID Connect Provider 
+ * login url.
+ * 
+ */
+export interface AuthenticationUrlPayload {
     url : string;
 }
-export interface AuthenticationUrlWithNonce extends AuthenticationUrl {
+
+/**
+ * Derivative of AuthenticationUrlPayload to extend with the nonce 
+ * used during the OpenID Connect authentication flow.
+ */
+export interface AuthenticationUrlWithNonce extends AuthenticationUrlPayload {
     nonce : string;
 }
+
 export const getAuthenticationUrl = async () => {
     // generate nonce and auth url
     const nonce = generators.nonce();

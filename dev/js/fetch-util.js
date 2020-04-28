@@ -43,7 +43,6 @@ const getSamples = (sensorId, samplesCount) => {
             const s = {
                 "id": sample.id,
                 "value": sample.value,
-                "dt_string": sample.dt_string,
                 "dt": moment.utc(sample.dt).toDate()
             }
             return s;

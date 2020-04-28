@@ -4,6 +4,7 @@ const fetcher = require("./fetch-util");
 const doChart = require("./charts-util").doChart;
 const formutils = require("./forms-util");
 const moment = require("moment");
+const dateutils = require("./date-utils");
 
 const ID_CHART = "sensorChart";
 const ID_SAMPLES_DIV = "samples";
@@ -42,7 +43,7 @@ const samplesTable = (sensor, samples) => {
         "rows": samples.sort((a,b) => b.dt-a.dt).map(s => {
             return {
                 "data": s,
-                "columns": [s.dt_string, s.value]
+                "columns": [dateutils.formatDMYTime(s.dt), s.value]
             }
         })
     });
@@ -56,21 +57,22 @@ const updateUI = (elemRoot, sensorId) => {
     samplesCache = undefined;
     
     // fetch sensor
-    fetcher.graphql(`{sensor(id:"${sensorId}"){id, name, device{id,name,house{id,name}}}}`).then(data => {
+    fetcher.graphql(`{sensor(id:"${sensorId}"){id, name, favorite, device{id,name,house{id,name}}}}`).then(data => {
         const sensor = data.sensor;
 
         // create breadcrumbs
         elemRoot.html(uiutils.htmlBreadcrumbs([
+            {"text": "Home", "id": "#root"},
             {"text": "Houses", "id": "houses"},
             {"text": sensor.device.house.name, "id": `house/${sensor.device.house.id}`},
-            {"text": sensor.device.name, "id": `house/${sensor.device.house.id}/device/${sensor.device.id}`},
-            {"text": sensor.name}
+            {"text": sensor.device.name, "id": `house/${sensor.device.house.id}/device/${sensor.device.id}`}
         ]));
+        
 
         // create title row
         uiutils.appendTitleRow(
             elemRoot, 
-            `Sensor`, 
+            sensor.name, 
             [{"rel": "create", "icon": "plus", "click": (action) => {
                 formutils.appendManualSampleForm(sensor, (data) => {
                     // get field values
@@ -96,6 +98,18 @@ const updateUI = (elemRoot, sensorId) => {
                 })
             }}, {"rel": "refresh", "icon": "refresh", "click": (action) => {
                 updateUI(elemRoot, sensorId);
+            }},
+            {"rel": "favorite", "icon": `${sensor.favorite ? "star" : "star-o"}`, "click": (action) => {
+                const btn = $("button[rel=\"favorite\"");
+                if (btn.hasClass("fa-star")) {
+                    btn.removeClass("fa-star");
+                    btn.addClass("fa-star-o");
+                    fetcher.graphql(`mutation {removeFavoriteSensor(id: \"${sensorId}\")}`)
+                } else {
+                    btn.removeClass("fa-star-o");
+                    btn.addClass("fa-star");
+                    fetcher.graphql(`mutation {addFavoriteSensor(id: \"${sensorId}\")}`)
+                }
             }}]
         );
 

@@ -1,5 +1,18 @@
 import { Request, Response, NextFunction } from "express";
-import { HttpException, ErrorObject } from "../types";
+import { HttpException } from "../types";
+
+class ErrorObject {
+    error = true;
+    readonly message : string;
+
+    constructor(msg : string, err? : Error) {
+        if (err) {
+            this.message = `${msg} (${err.message})`;
+        } else {
+            this.message = msg;
+        }
+    }
+}
 
 //@ts-ignore
 export default (err : Error, req : Request, res : Response, next : NextFunction) => {

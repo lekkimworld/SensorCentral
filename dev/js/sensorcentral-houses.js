@@ -7,15 +7,10 @@ const saveHouse = (data) => {
     let p;
     if (data.id && data.id.length) {
         // edit
-        p = fetcher.put(`/api/v1/houses`, {
-            "id": data.id,
-            "name": data.name
-        })
+        p = fetcher.graphql(`mutation {updateHouse(data: {id: "${data.id}", name: "${data.name}"}){id}}`);
     } else {
         // create
-        p = fetcher.post(`/api/v1/houses`, {
-            "name": data.name
-        })
+        p = fetcher.graphql(`mutation {createHouse(data: {name: "${data.name}"}){id}}`);
     }
     p.then(body => {
         document.location.reload();
@@ -58,9 +53,7 @@ module.exports = (document, elemRoot, ctx) => {
                             }
                         }
                         formsutil.appendTrashForm(formContext, (ctx) => {
-                            fetcher.delete("/api/v1/houses", {
-                                "id": ctx.id
-                            }, "text").then(body => {
+                            fetcher.graphql(`mutation {deleteHouse(data: {id: "${ctx.id}"})}`).then(body => {
                                 document.location.reload();
                             })
                         })
