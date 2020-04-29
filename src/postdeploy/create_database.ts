@@ -4,7 +4,7 @@ import * as fs from "fs";
 import {join} from "path";
 import * as readline from "readline";
 
-const TARGET_DATABASE_VERSION = 3;
+const TARGET_DATABASE_VERSION = 4;
 
 const pool = new Pool({
     'connectionString': process.env.DATABASE_URL,
@@ -50,6 +50,11 @@ const updateSchemaVersion_2to3 = () : Promise<void> => {
     return executeSQLFile("version_2_to_3.sql");
 }
 
+const updateSchemaVersion_3to4 = () : Promise<void> => {
+    console.log("Updating database schema from version 2 to 3...");
+    return executeSQLFile("version_3_to_4.sql");
+}
+
 pool.query("BEGIN").then(() => {
     // query for database_version table
     return pool.query(`select * from information_schema.tables where table_name='database_version'`);
@@ -74,6 +79,8 @@ pool.query("BEGIN").then(() => {
                     return updateSchemaVersion_1to2();
                 } else if (version === 2) {
                     return updateSchemaVersion_2to3();
+                } else if (version === 3) {
+                    return updateSchemaVersion_3to4();
                 } else if (version === TARGET_DATABASE_VERSION) {
                     console.log("We are at the newest version...");
                     return Promise.resolve();

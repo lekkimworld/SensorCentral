@@ -205,7 +205,8 @@ export interface IngestedSensorMessage {
  */
 export enum SensorType {
     temp = "temp",
-    hum = "hum"
+    hum = "hum",
+    kwh = "kwh"
 }
 
 /**

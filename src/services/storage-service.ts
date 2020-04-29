@@ -1,5 +1,5 @@
 import constants from "../constants";
-import {BaseService, Device, Sensor, House, SensorType, TopicSensorMessage, RedisSensorMessage, 
+import {BaseService, Device, Sensor, House, TopicSensorMessage, RedisSensorMessage, 
     TopicDeviceMessage, TopicControlMessage, RedisDeviceMessage, ControlMessageTypes, 
     IngestedSensorMessage, IngestedDeviceMessage, IngestedControlMessage, WatchdogNotification, 
     SensorSample, NotifyUsing, PushoverSettings, DeviceWatchdogNotifier, 
@@ -41,7 +41,7 @@ const convertRowsToSensors = (result : QueryResult) => {
             "id": row.sensorid,
             "name": row.sensorname,
             "label": row.sensorlabel,
-            "type": row.sensortype === "temp" ? SensorType.temp : row.sensortype === "hum" ? SensorType.hum : null,
+            "type": row.sensortype as string,
             "device": {
                 "id": row.deviceid,
                 "name": row.devicename,

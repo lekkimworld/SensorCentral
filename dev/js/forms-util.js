@@ -1,6 +1,29 @@
 const fetcher = require("./fetch-util");
 const ID_ELEM_FORM = "sensorcentral-form";
 
+const textField = (name, placeholder, fieldExplanation, required = false, validationText) => {
+    return `<div class="form-group">
+    <label for="${name}Input">${placeholder}</label>
+    <input type="text" ${required ? "required" : ""} class="form-control" id="${name}Input" aria-describedby="${name}Help" placeholder="${placeholder}">
+    <small id="${name}Help" class="form-text text-muted">${fieldExplanation || placeholder}</small>
+    ${validationText ? `<div class="invalid-feedback">${validationText}</div>` : ""}
+</div>`
+}
+
+const dropdown = (name, label, fieldExplanation, options, addBlank, required = false, validationText) => {
+    return `<div class="form-group">
+    <label for="${name}Input">${label}</label>
+    <select class="form-control" id="${name}Input" ${required ? "required": ""}>
+        ${addBlank ? "<option></option>" : ""}
+        ${Object.keys(options).map(key => `<option value="${key}">${options[key]}</option>`)}
+    </select>
+    <small id="${name}Help" class="form-text text-muted">${fieldExplanation}</small>
+    ${required ? `<div class="invalid-feedback">
+    ${validationText}
+</div>` : ""}
+</div>`
+}
+
 const DEVICE_JWT = {
     "name": "jwt", 
     "html": `<div class="modal fade" id="jwtModal" tabindex="-1" role="dialog" aria-labelledby="jwtModalLabel" aria-hidden="true">
@@ -240,42 +263,14 @@ const SENSOR_CREATE_EDIT = {
             </div>
             <div class="modal-body">
                 <form id="sensorForm" novalidate>
-                    <div class="form-group">
-                        <label for="idInput">ID</label>
-                        <input type="text" required class="form-control" id="idInput" aria-describedby="nameHelp" placeholder="Enter sensor ID">
-                        <small id="idHelp" class="form-text text-muted">Specify the ID of the sensor (maximum 36 characters).</small>
-                        <div class="invalid-feedback">
-                            You must specify the ID for the sensor. Must be unique.
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="nameInput">Name</label>
-                        <input type="text" required class="form-control" id="nameInput" aria-describedby="nameHelp" placeholder="Enter sensor name">
-                        <small id="nameHelp" class="form-text text-muted">Specify the name of the sensor (maximum 128 characters).</small>
-                        <div class="invalid-feedback">
-                            You must specify the name for the sensor. Must be unique.
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="labelInput">Label</label>
-                        <input type="text" required class="form-control" id="labelInput" aria-describedby="nameHelp" placeholder="Enter sensor label">
-                        <small id="labelHelp" class="form-text text-muted">Specify the label of the sensor (maximum 128 characters).</small>
-                        <div class="invalid-feedback">
-                            You must specify the label for the sensor. Must be unique.
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="typeInput">Type</label>
-                        <select class="form-control" id="typeInput" required>
-                            <option></option>
-                            <option value="temp">Temperature</option>
-                            <option value="hum">Humidity</option>
-                        </select>
-                        <small id="typeHelp" class="form-text text-muted">Specify the type of the sensor.</small>
-                        <div class="invalid-feedback">
-                            You must specify the type of the sensor.
-                        </div>
-                    </div>
+                    ${textField("id", "ID", "Specify the ID of the sensor (maximum 36 characters).", true, "You must specify the ID for the sensor. Must be unique.")}
+                    ${textField("name", "Name", "Specify the name of the sensor (maximum 128 characters).", true, "You must specify the name for the sensor. Must be unique.")}
+                    ${textField("label", "Label", "Specify the label of the sensor (maximum 128 characters).", true, "You must specify the label for the sensor. Must be unique.")}
+                    ${dropdown("type", "Type", "Specify the type of the sensor.", {
+                        "temp": "Temperature",
+                        "hum": "Humidity",
+                        "kwh": "KwH"
+                    }, false, true, "You must specify the type of the sensor.")}
                 </form>
             </div>
             <div class="modal-footer">
@@ -359,15 +354,6 @@ const DELETE_ENTITY = {
     }
 }
 
-const textField = (name, placeholder, fieldExplanation, validationText, required = false) => {
-    return `<div class="form-group">
-    <label for="${name}Input">${placeholder}</label>
-    <input type="text" ${required ? "required" : ""} class="form-control" id="${name}Input" aria-describedby="${name}Help" placeholder="${placeholder}">
-    <small id="${name}Help" class="form-text text-muted">${fieldExplanation || placeholder}</small>
-    ${validationText ? `<div class="invalid-feedback">${validationText}</div>` : ""}
-</div>`
-}
-
 const SETTINGS = {
     "name": "settings",
     "html": `<div class="modal fade" id="settingsModal" tabindex="-1" role="dialog" aria-labelledby="${this.name}ModalLabel" aria-hidden="true">
@@ -381,15 +367,10 @@ const SETTINGS = {
             </div>
             <div class="modal-body">
                 <form id="settingsForm" novalidate>
-                    <div class="form-group">
-                        <label for="notifyInput">Notify Using</label>
-                        <select class="form-control" id="notifyInput">
-                            <option></option>
-                            <option value="pushover">Pushover</option>
-                            <option value="email">Email</option>
-                        </select>
-                        <small id="typeHelp" class="form-text text-muted">Specify the way you'd like to get notified.</small>
-                    </div>
+                    ${dropdown("notify", "Notify Using", "Specify the way you'd like to get notified.", {
+                        "pushover": "Pushover",
+                        "email": "Email"
+                    }, true)}
                     ${textField("pushoverApptoken", "Pushover App Token", "Specify the Pushover App Token")}
                     ${textField("pushoverUserkey", "Pushover User Key", "Specify the Pushover App Token")}
                 </form>

@@ -150,11 +150,11 @@ module.exports = (document, elemRoot, ctx) => {
                 "classes": [
                     "", 
                     "d-none d-md-table-cell",
-                    "",
+                    "text-center",
                     "d-none d-sm-table-cell"
                 ],
                 "rows": sensors.map(sensor => {
-                    const type_img = `<i class="fa fa-${sensor.type === "temp" ? "thermometer-empty" : "tint"} aria-hidden="true"></i>`;
+                    const type_img = `<i class="fa fa-${uiutils.sensorTypeToIcon(sensor.type)} aria-hidden="true"></i>`;
                     return {
                         "id": sensor.id,
                         "data": sensor,

@@ -197,5 +197,9 @@ module.exports = {
     appendTitleRow,
     appendSectionTitle,
     fillMenus,
-    htmlBreadcrumbs
+    htmlBreadcrumbs,
+
+    "sensorTypeToIcon": (type) => {
+        return type === "temp" ? "thermometer-empty" : type === "kwh" ? "battery" : "tint";
+    }
 }

@@ -48,12 +48,16 @@ export default {
         "JWT": {
             "USER_SCOPES": [JWT.SCOPE_ADMIN, JWT.SCOPE_API, JWT.SCOPE_ADMIN_JWT, JWT.SCOPE_SENSORDATA],
             "DEVICE_SCOPES": [JWT.SCOPE_API, JWT.SCOPE_SENSORDATA]
-        },
-        "GOOGLE": {
-            "JWT_EXPIRATION_MINUTES": 5
         }
     },
     JWT,
+    "GOOGLE": {
+        "PRIVATE_KEY": process.env.GOOGLE_PRIVATE_KEY as string,
+        "SCOPES": ["https://www.googleapis.com/auth/gmail.send"],
+        "JWT_EXPIRATION_MINUTES": 5,
+        "TOKEN_URI": process.env.GOOGLE_TOKEN_URI as string,
+        "SERVICE_ACCOUNT_EMAIL": process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL as string
+    },
     'QUEUES': {
         'SENSOR': 'rawSensorReading',
         'DEVICE': 'rawDeviceReading',

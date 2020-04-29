@@ -29,7 +29,7 @@ const LastReadingFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context
 @ObjectType()
 class SensorSample {
     constructor(s : types.SensorSample) {
-        this.value = s.value;
+        this.value = Math.round(s.value * 10) / 10;
         this.dt = s.dt;
     }
 
