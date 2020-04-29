@@ -4,7 +4,7 @@ insert into DATABASE_VERSION (version) values (3);
 create table HOUSE (id character varying(36) not null primary key, name character varying(128) not null);
 alter table HOUSE add constraint HOUSE_NAME_UNIQUE UNIQUE (name);
 
-create table DEVICE (id character varying(36) not null primary key, name character varying(128) not null, houseid character varying(36) not null, last_ping timestamp with timezone, last_restart timestamp with timeznoe, last_watchdog_reset timestamp with time zone);
+create table DEVICE (id character varying(36) not null primary key, name character varying(128) not null, houseid character varying(36) not null, last_ping timestamp with timezone, last_restart timestamp with timezone, last_watchdog_reset timestamp with timezone);
 alter table DEVICE add foreign key (houseid) references house (id) on delete cascade;
 
 create type NOTIFY_METHOD as ENUM ('email','pushover');
