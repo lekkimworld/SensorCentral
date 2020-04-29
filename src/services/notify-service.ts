@@ -71,6 +71,7 @@ export class NotifyService extends BaseService {
         }
 
         const data = {
+            "appname": constants.APPNAME,
             "device": msg.device,
         }
         this.notifyNotifiers(
@@ -89,6 +90,7 @@ export class NotifyService extends BaseService {
         }
 
         const data = {
+            "appname": constants.APPNAME,
             "device": msg.device,
             "timeout": {
                 "ms": constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT,
