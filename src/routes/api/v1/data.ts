@@ -11,6 +11,14 @@ import { ensureScopeFactory, hasScope } from '../../../middleware/ensureScope';
 
 const router = express.Router();
 
+const postControlEvent = (eventSvc : EventService, logSvc : LogService, payload : IngestedControlMessage) => {
+	eventSvc.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
+		logSvc.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
+	}).catch(err => {
+		logSvc.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
+	})
+}
+
 // set default response type to json
 //@ts-ignore
 router.use((req, res, next) => {
@@ -146,7 +154,6 @@ router.post("/", (req, res, next) => {
 			const str_body_received = JSON.stringify(body, undefined, 2)
 			res.set('Content-Type', 'text/plain').send(`Thank you - you posted: ${str_body_received}\n`).end()
 			logService.debug(`Completed validation of payload: ${str_body_received}`);
-
 			logService.debug(`Retrieved device with ID <${device.id}> from database`);
 			
 			// inspect message type
@@ -166,11 +173,7 @@ router.post("/", (req, res, next) => {
 					"type": type,
 					"id": deviceId
 				}
-				eventService.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
-					logService.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
-				}).catch(err => {
-					logService.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
-				})
+				postControlEvent(eventService, logService, payload);
 
 			} else if (msgtype === 'data') {
 				const dataArray = body.data as SensorDataObject[];
@@ -182,21 +185,28 @@ router.post("/", (req, res, next) => {
 				eventService.publishQueue(constants.QUEUES.DEVICE, payload).then(resp => {
 					logService.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
 					
-					// send out a sensor reading message per reading
-					dataArray.forEach(element => {
-						const payload : IngestedSensorMessage = {
-							'value': element.sensorValue,
-							'id': element.sensorId,
-							"deviceId": deviceId
-						}
-						
-						eventService.publishQueue(constants.QUEUES.SENSOR, payload).then(() => {
-							logService.debug(`Published message to ${constants.QUEUES.SENSOR}`);
-						}).catch(err => {
-							logService.error(`Unable to publish message to ${constants.QUEUES.SENSOR}`, err);
+					// if there is no elements in the data array send a control event to signal 
+					if (dataArray.length === 0) {
+						postControlEvent(eventService, logService, {
+							"type": ControlMessageTypes.noSensorData,
+							"id": deviceId
+						} as IngestedControlMessage);
+					} else {
+						// send out a sensor reading message per reading
+						dataArray.forEach(element => {
+							const payload : IngestedSensorMessage = {
+								'value': element.sensorValue,
+								'id': element.sensorId,
+								"deviceId": deviceId
+							}
+							
+							eventService.publishQueue(constants.QUEUES.SENSOR, payload).then(() => {
+								logService.debug(`Published message to ${constants.QUEUES.SENSOR}`);
+							}).catch(err => {
+								logService.error(`Unable to publish message to ${constants.QUEUES.SENSOR}`, err);
+							})
 						})
-					})
-					
+					}
 
 				}).catch(err => {
 					logService.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to queue <${err.exchangeName}>`, err)
@@ -204,10 +214,7 @@ router.post("/", (req, res, next) => {
 			}
 		}).catch((err:Error) => {
 			logService.warn(`Unable to find device by ID <${deviceId}> in database - maybe unknown...`);
-			res.status(500).send({
-				"error": true,
-				"message": `Unable to find device from payload or other error (${err.message})`
-			})
+			next(new HttpException(500, `Unable to find device from payload or other error (${err.message})`, err));
 		})
 	})
 })

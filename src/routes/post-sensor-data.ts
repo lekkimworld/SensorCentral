@@ -3,10 +3,18 @@ const services = require('../configure-services');
 import {EventService} from "../services/event-service";
 import constants from "../constants";
 import { LogService } from '../services/log-service';
-import { StorageService } from '../services/storage-service';
-import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException, Sensor } from '../types';
+import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException } from '../types';
+import { StorageService } from 'src/services/storage-service';
 
 const router = express.Router();
+
+const postControlEvent = (eventSvc : EventService, logSvc : LogService, payload : IngestedControlMessage) => {
+	eventSvc.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
+		logSvc.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
+	}).catch(err => {
+		logSvc.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
+	})
+}
 
 router.post('/', (req, res, next) => {
 	// get data and see if array
@@ -46,98 +54,84 @@ router.post('/', (req, res, next) => {
 	}
 
 	// lookup services
-	services.lookupService(['log', 'event', 'storage']).then((svcs : BaseService[]) => {
+	services.lookupService(["log", "event", "storage"]).then((svcs : BaseService[]) => {
 		// get services
 		const logSvc = svcs[0] as LogService;
 		const eventSvc = svcs[1] as EventService;
-		const storageSvc = svcs[2] as StorageService;
-
-		// acknowledge post to caller
-		let j = JSON.stringify(postObj, undefined, 2)
-		logSvc.debug(`Received: ${j}`)
-		res.set('Content-Type', 'text/plain').send(`Thank you - you posted: ${j}\n`).end()
+		const storage = svcs[2] as StorageService;
 
 		// get data obj if there
 		const dataObj = postObj.data || undefined;
 
-		// inspect message type
+		// validate msgtype
+		if (!["control","data"].includes(msgtype)) return next(new HttpException(500, `Unknown msgtype supplied`, undefined, "text"));
+
+		// ensure we know the device
+		let deviceId : string;
 		if (msgtype === 'control') {
-			// control message - get type
-			let type = ControlMessageTypes.unknown;
-			if (dataObj.hasOwnProperty("restart")) {
-				type = ControlMessageTypes.restart;
-			}  else if (dataObj.hasOwnProperty("watchdogReset")) {
-				type = ControlMessageTypes.watchdogReset;
-			}
-
-			// get device id
-			const deviceId : string = dataObj.deviceId ? dataObj.deviceId : undefined;
-			if (!deviceId) {
-				logSvc.warn(`Ignoring control message (type: ${type}) as there is no deviceId attribute (${JSON.stringify(dataObj)})`)
-				return;
-			}
-
-			// create payload and publish to queue
-			const payload : IngestedControlMessage = {
-				"type": type,
-				"id": deviceId
-			}
-			eventSvc.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
-				logSvc.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
-			}).catch(err => {
-				logSvc.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
-			})
-
-		} else if (msgtype === 'data' && postObj.data.length) {
-			// send a message to indicate we heard from the device
-			(function() : Promise<string> {
-				if (postObj.deviceId) {
-					// found device id in payload
-					return Promise.resolve(postObj.deviceId);
-				} else {
-					// there is no device id in the payload - get unique device id('s) from sensor ids
-					let sensorIds : Set<string> = postObj.data.filter((element : any) => element["sensorId"] && element["sensorValue"]).reduce((prev : Set<string>, element : any) => {
-						prev.add(element.sensorId) as unknown as string;
-						return prev
-					}, new Set<string>())
-
-					// get device id(s) from sensor ids
-					return Promise.all(Array.from(sensorIds).map(id => {
-						return storageSvc.getSensor(id);
-					})).then((sensors : Sensor[]) => {
-						// reduce to unique array of device ids
-						const deviceIds = Array.from(sensors.reduce((prev, s) => {
-							prev.add(s.id);
-							return prev;
-						}, new Set<string>()));
-
-						return Promise.resolve(deviceIds[0]);
-					})
-				}
-			})().then((deviceId : string) => {
-				// found device - publish a device event
-				const payload : IngestedDeviceMessage = {
-					"id": deviceId
-				}
-				return eventSvc.publishQueue(constants.QUEUES.DEVICE, payload);
-
-			}).then(resp => {
-				logSvc.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
-				const msg = resp.data as IngestedDeviceMessage;
-
-				// send out a sensor reading message per reading
-				postObj.data.filter((element : any) => element["sensorId"] && element["sensorValue"]).forEach((element : any) => {
-					const payload : IngestedSensorMessage = {
-						'value': element["sensorValue"],
-						'id': element["sensorId"],
-						"deviceId": msg.id
-					}
-					eventSvc.publishQueue(constants.QUEUES.SENSOR, payload);
-				})
-				
-
-			})
+			deviceId = dataObj.deviceId;
+		} else {
+			deviceId = postObj.deviceId;
 		}
+		storage.getDevice(deviceId).then(device => {
+			// we found the device- acknowledge post to caller
+			let j = JSON.stringify(postObj, undefined, 2);
+			logSvc.debug(`Received: ${j}`)
+			res.set('Content-Type', 'text/plain').send(`Thank you - you posted: ${j}\n`).end()
+
+			// inspect message type
+			if (msgtype === 'control') {
+				// control message - get type
+				let type = ControlMessageTypes.unknown;
+				if (dataObj.hasOwnProperty("restart")) {
+					type = ControlMessageTypes.restart;
+				}  else if (dataObj.hasOwnProperty("watchdogReset")) {
+					type = ControlMessageTypes.watchdogReset;
+				}
+
+				// create payload and publish to queue
+				postControlEvent(eventSvc, logSvc, {
+					"type": type,
+					"id": device.id
+				} as IngestedControlMessage);
+
+			} else if (msgtype === 'data') {
+				// post message that we heard from the device
+				eventSvc.publishQueue(constants.QUEUES.DEVICE, {
+					"id": device.id
+				} as IngestedDeviceMessage).then(resp => {
+					logSvc.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
+					const msg = resp.data as IngestedDeviceMessage;
+	
+					// see if there is sensor data
+					if (!postObj.data || !Array.isArray(postObj.data) || !postObj.data.length) {
+						// there is no data, it's not an array or no elements in it 
+						// publish event to indicate that
+						postControlEvent(eventSvc, logSvc, {
+							"type": ControlMessageTypes.noSensorData,
+							"id": deviceId
+						} as IngestedControlMessage);
+	
+					} else {
+						// send out a sensor reading message per reading
+						postObj.data.filter((element : any) => element["sensorId"] && element["sensorValue"]).forEach((element : any) => {
+							const payload : IngestedSensorMessage = {
+								'value': element["sensorValue"],
+								'id': element["sensorId"],
+								"deviceId": msg.id
+							}
+							eventSvc.publishQueue(constants.QUEUES.SENSOR, payload);
+						})
+					}
+				})
+			}
+
+		}).catch(err => {
+			// unknown device
+			logSvc.warn(`Unable to find device by ID <${deviceId}> in database - maybe unknown...`);
+			next(new HttpException(500, `Unable to find device from payload or other error`, err));
+		})
+
 	}).catch((err:Error) => {
 		return res.set('Content-Type', 'text/plain; charset=utf-8').status(500).send(`Unable to find event bus (${err.message})`).end()
 	})

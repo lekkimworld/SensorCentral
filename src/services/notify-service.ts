@@ -1,6 +1,6 @@
 import {Moment} from "moment-timezone";
 import constants from "../constants";
-import { BaseService, TopicControlMessage, WatchdogNotification, NotifyUsing, Device } from "../types";
+import { BaseService, TopicControlMessage, WatchdogNotification, NotifyUsing, Device, ControlMessageTypes } from "../types";
 import { LogService } from "./log-service";
 import { EventService } from "./event-service";
 import { StorageService } from "./storage-service";
@@ -30,16 +30,21 @@ export class NotifyService extends BaseService {
         this.email = services[3] as unknown as EmailService;
 
         // listen for device watchdog resets
-        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, "known.watchdogReset", this.listenForDeviceWatchdogResets.bind(this));
+        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, `known.${ControlMessageTypes.watchdogReset}`, this.listenForDeviceWatchdogResets.bind(this));
 
         // listen for device watchdog resets
-        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, "known.restart", this.listenForceDeviceRestarts.bind(this));
+        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, `known.${ControlMessageTypes.restart}`, this.listenForceDeviceRestarts.bind(this));
+
+        // listen for device pings without sensor data
+        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, `known.${ControlMessageTypes.noSensorData}`, this.listenForNoSensors.bind(this));
 
         // compile templates
         this.templates.set("device.restart.title", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.RESTART.TITLE));
         this.templates.set("device.restart.message", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.RESTART.MESSAGE));
         this.templates.set("device.reset.title", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.RESET.TITLE));
         this.templates.set("device.reset.message", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.RESET.MESSAGE));
+        this.templates.set("device.noSensors.title", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.NOSENSORS.TITLE));
+        this.templates.set("device.noSensors.message", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.NOSENSORS.MESSAGE));
         
         /* this.eventService.subscribeTopic(constants.TOPICS.SENSOR, "known.#", (result : ISubscriptionResult) => {
             this.logService!.debug(`Notify service received message on exchange <${result.exchangeName}> and routingKey ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
@@ -61,7 +66,7 @@ export class NotifyService extends BaseService {
         this.logService!.debug(`Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
         const msg = result.data as TopicControlMessage;
         if (!msg.device) {
-            this.logService?.warn(`Received device watchdog reset message without device attached <${msg.deviceId}> - ignoring`);
+            this.logService?.warn(`Received device restart message without device attached <${msg.deviceId}> - ignoring`);
             return;
         }
 
@@ -97,6 +102,25 @@ export class NotifyService extends BaseService {
         );
     }
 
+    private async listenForNoSensors(result : ISubscriptionResult) {
+        this.logService!.debug(`Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
+        const msg = result.data as TopicControlMessage;
+        if (!msg.device) {
+            this.logService?.warn(`Received noSensors message without device attached <${msg.deviceId}> - ignoring`);
+            return;
+        }
+
+        const data = {
+            "appname": constants.APPNAME,
+            "device": msg.device
+        }
+        this.notifyNotifiers(
+            msg.device, 
+            this.templates.get("device.noSensors.title")(data),
+            this.templates.get("device.noSensors.message")(data)
+        );
+    }
+
     private async notifyNotifiers(device : Device, title : string, message: string) {
         const notifiers = await this.storage!.getDeviceWatchdogNotifiers(device.id);
         this.logService?.debug(`Received <${notifiers.length}> notifiers for device with ID <${device.id}>`);
@@ -108,7 +132,7 @@ export class NotifyService extends BaseService {
                 // notify using email
                 const msg = new EmailMessage();
                 msg.to = new RFC822Address(`${n.user.fn} ${n.user.ln}`, n.user.email);
-                msg.from = new RFC822Address(`SensorCentral`, n.user.email);
+                msg.from = new RFC822Address(constants.APPNAME, n.user.email);
                 msg.subject = title;
                 msg.body = message;
                 this.email!.send(msg);
