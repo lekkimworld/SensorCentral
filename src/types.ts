@@ -168,7 +168,8 @@ export abstract class BaseService {
 export enum ControlMessageTypes {
     unknown = "unknown",
     restart = "restart",
-    watchdogReset = "watchdogReset"
+    watchdogReset = "watchdogReset",
+    noSensorData = "noSensorData"
 }
 
 /**

@@ -12,6 +12,7 @@ const JWT = {
 }
 
 export default {
+    "APPNAME": process.env.NODE_ENV === "development" ? "SensorCentral (DEV)" : "SensorCentral",
     'DEFAULTS': {
         'SERVICE': {
             'LOOKUP_TIMEOUT': 2000
@@ -27,12 +28,16 @@ export default {
         "NOTIFY": {
             "DEVICE": {
                 "RESET": {
-                    "TITLE": process.env.DEVICE_RESET_TITLE || "SensorCentral - Device watchdog ({{device.name}})",
-                    "MESSAGE": process.env.DEVICE_RESET_MESSAGE || "SensorCentral - Watchdog for device ({{device.id}} / {{device.name}}) reset meaning we received no communication from it in {{timeout.ms}} ms ({{timeout.minutes}} minutes)"
+                    "TITLE": process.env.DEVICE_RESET_TITLE || "{{appname}} - Device watchdog",
+                    "MESSAGE": process.env.DEVICE_RESET_MESSAGE || "{{appname}} - Watchdog for device ({{device.id}} / {{device.name}}) reset meaning we received no communication from it in {{timeout.ms}} ms ({{timeout.minutes}} minutes)"
                 },
                 "RESTART": {
-                    "TITLE": process.env.DEVICE_RESTART_TITLE || "SensorCentral - Device ({{device.name}}) restart",
-                    "MESSAGE" : process.env.DEVICE_RESTART_MESSAGE || "SensorCentral - Device restart ({{device.id}} / {{device.name}}) - maybe it didn't pat the watchdog?"
+                    "TITLE": process.env.DEVICE_RESTART_TITLE || "{{appname}} - Device restart",
+                    "MESSAGE" : process.env.DEVICE_RESTART_MESSAGE || "{{appname}} - Device restart ({{device.id}} / {{device.name}}) - maybe it didn't pat the watchdog?"
+                },
+                "NOSENSORS": {
+                    "TITLE": process.env.DEVICE_NOSENSORS_TITLE || "{{appname}} - Device pinged without any sensors",
+                    "MESSAGE" : process.env.DEVICE_NOSENSORS_MESSAGE || "{{appname}} - Device ({{device.id}} / {{device.name}}) pinged without any sensors in the data - maybe the sensor is not plugged in?"
                 }
             }
         },

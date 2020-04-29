@@ -14,6 +14,7 @@ import { RedisService } from  "../services/redis-service";
 import { StorageService } from  "../services/storage-service";
 import { WatchdogService } from  "../services/watchdog-service";
 import { EmailService } from '../services/email-service';
+import constants from '../constants';
 
 // number of workers we should create
 const WORKERS = process.env.WEB_CONCURRENCY || 1;
@@ -42,7 +43,7 @@ const main = async () => {
 	const app = await configureExpress();
 
 	// start server
-	console.log(`Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`);
+	console.log(`${constants.APPNAME} -- Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`);
 	app.listen(process.env.PORT || 8080);
 }
 main();
