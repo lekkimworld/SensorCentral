@@ -11,18 +11,20 @@ const textField = (name, placeholder, fieldExplanation, required = false, valida
 }
 
 const dropdown = (name, label, fieldExplanation, options, addBlank, required = false, validationText) => {
+    let use_options = `${addBlank ? "<option></option>" : ""}
+        ${Object.keys(options).map(key => `<option value="${key}">${options[key]}</option>`)}`;
     return `<div class="form-group">
-    <label for="${name}Input">${label}</label>
-    <select class="form-control" id="${name}Input" ${required ? "required": ""}>
-        ${addBlank ? "<option></option>" : ""}
-        ${Object.keys(options).map(key => `<option value="${key}">${options[key]}</option>`)}
-    </select>
-    <small id="${name}Help" class="form-text text-muted">${fieldExplanation}</small>
-    ${required ? `<div class="invalid-feedback">
-    ${validationText}
-</div>` : ""}
-</div>`
+        <label for="${name}Input">${label}</label>
+        <select class="form-control" id="${name}Input" ${required ? "required": ""}>
+            ${use_options}
+        </select>
+        <small id="${name}Help" class="form-text text-muted">${fieldExplanation}</small>
+        ${required ? `<div class="invalid-feedback">
+        ${validationText}
+    </div>` : ""}
+    </div>`
 }
+
 
 const DEVICE_JWT = {
     "name": "jwt", 
@@ -267,10 +269,14 @@ const SENSOR_CREATE_EDIT = {
                     ${textField("name", "Name", "Specify the name of the sensor (maximum 128 characters).", true, "You must specify the name for the sensor. Must be unique.")}
                     ${textField("label", "Label", "Specify the label of the sensor (maximum 128 characters).", true, "You must specify the label for the sensor. Must be unique.")}
                     ${dropdown("type", "Type", "Specify the type of the sensor.", {
-                        "temp": "Temperature",
-                        "hum": "Humidity",
-                        "kwh": "KwH"
+                        "gauge": "Gauge",
+                        "counter": "Counter"
                     }, false, true, "You must specify the type of the sensor.")}
+                    ${dropdown("icon", "Icon", "Specify the icon for the sensor.", {
+                        "battery-4": "Power",
+                        "thermometer-0": "Temperatur",
+                        "tint": "Humidity"
+                    }, false, true, "You must specify the icon for the sensor.")}
                 </form>
             </div>
             <div class="modal-footer">
@@ -286,11 +292,13 @@ const SENSOR_CREATE_EDIT = {
             const nameField = $("#nameInput");
             const labelField = $("#labelInput");
             const typeField = $("#typeInput");
+            const iconField = $("#iconInput");
             idField.val(ctx.sensor.id);
             idField.prop("disabled", true);
             nameField.val(ctx.sensor.name);
             labelField.val(ctx.sensor.label);
             typeField.val(ctx.sensor.type);
+            iconField.val(ctx.sensor.icon);
         }
         return Promise.resolve();
     },
@@ -299,11 +307,13 @@ const SENSOR_CREATE_EDIT = {
         const nameField = $("#nameInput");
         const labelField = $("#labelInput");
         const typeField = $("#typeInput");
+        const iconField = $("#iconInput");
         return {
             "id": idField.val(),
             "name": nameField.val(),
             "label": labelField.val(),
-            "type": typeField.val()
+            "type": typeField.val(),
+            "icon": iconField.val()
         }
     }
 }

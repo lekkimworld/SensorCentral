@@ -78,12 +78,12 @@ module.exports = (document, elemRoot, ctx) => {
     const deviceId = ctx.deviceId;
 
     const createSensor = (data) => {
-        fetcher.graphql(`mutation {createSensor(data: {deviceId: "${deviceId}", id: "${data.id}", name: "${data.name}", label: "${data.label}", type: "${data.type}"}){id}}`).then(() => {
+        fetcher.graphql(`mutation {createSensor(data: {deviceId: "${deviceId}", id: "${data.id}", name: "${data.name}", label: "${data.label}", type: "${data.type}", icon: "${data.icon}"}){id}}`).then(() => {
             document.location.reload();
         })
     }
     const editSensor = (data) => {
-        fetcher.graphql(`mutation {updateSensor(data: {id: "${data.id}", name: "${data.name}", label: "${data.label}", type: "${data.type}"}){id}}`).then(() => {
+        fetcher.graphql(`mutation {updateSensor(data: {id: "${data.id}", name: "${data.name}", label: "${data.label}", type: "${data.type}", icon: "${data.icon}"}){id}}`).then(() => {
             document.location.reload();
         })
     }
@@ -92,7 +92,7 @@ module.exports = (document, elemRoot, ctx) => {
         elemRoot.html("");    
     
         // query for sensors and containing device
-        fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(deviceId:"${deviceId}"){id,name,favorite,label,type}}`).then(data => {
+        fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(deviceId:"${deviceId}"){id,name,favorite,label,icon,type}}`).then(data => {
             const sensors = data.sensors.sort((a,b) => a.name.localeCompare(b.name));
             const device = data.device;
     
@@ -146,19 +146,20 @@ module.exports = (document, elemRoot, ctx) => {
                         }
                     }}
                 ],
-                "headers": ["NAME", "LABEL", "TYPE", "ID"],
+                "headers": ["ICON", "NAME", "LABEL", "TYPE", "ID"],
                 "classes": [
+                    "text-center", 
                     "", 
                     "d-none d-md-table-cell",
-                    "text-center",
+                    "d-none d-md-table-cell",
                     "d-none d-sm-table-cell"
                 ],
                 "rows": sensors.map(sensor => {
-                    const type_img = `<i class="fa fa-${uiutils.sensorTypeToIcon(sensor.type)} aria-hidden="true"></i>`;
+                    const type_img = `<i class="fa fa-${sensor.icon}" aria-hidden="true"></i>`;
                     return {
                         "id": sensor.id,
                         "data": sensor,
-                        "columns": [sensor.name, sensor.label, type_img, sensor.id],
+                        "columns": [type_img, sensor.name, sensor.label, sensor.type, sensor.id],
                         "click": function() {
                             document.location.hash = `configuration/house/${ctx.houseId}/device/${ctx.deviceId}/sensor/${sensor.id}`
                         }

@@ -17,11 +17,11 @@ create table DEVICE_WATCHDOG (userId character varying(36) not null, deviceId ch
 alter table DEVICE_WATCHDOG add foreign key (userId) references LOGIN_USER (id) on delete cascade;
 alter table DEVICE_WATCHDOG add foreign key (deviceId) references DEVICE (id) on delete cascade;
 
-create type SENSOR_TYPE as ENUM ('temp', 'hum', 'kwh');
-create table SENSOR (id character varying(36) not null primary key, name character varying(128) not null, deviceid character varying(36) not null, type SENSOR_TYPE not null, label character varying(128) not null default 'foo'::character varying);
+create type SENSOR_TYPE as ENUM ('gauge', 'counter');
+create table SENSOR (id character varying(36) not null primary key, name character varying(128) not null, deviceid character varying(36) not null, icon character varying(36) not null, type SENSOR_TYPE not null, label character varying(128) not null);
 alter table SENSOR add foreign key (deviceid) references device (id) on delete cascade;
 
-create table SENSOR_DATA (id character varying(36) not null, dt timestamp with time zone not null, value real not null);
+create table SENSOR_DATA (id character varying(36) not null, dt timestamp with time zone not null, value real not null, from_dt timestamp with time zone);
 create index on SENSOR_DATA (dt desc);
 
 create table FAVORITE_SENSOR (userId character varying(36) not null, sensorId character varying(36) not null);
@@ -35,18 +35,18 @@ insert into house (id, name) values ('2cd9038f-9ffa-47aa-88d1-1795f44e220d', 'My
 insert into device (id, name, houseid) values ('mydevice_1', 'My Device 1', '2cd9038f-9ffa-47aa-88d1-1795f44e220d');
 insert into device (id, name, houseid) values ('mydevice_2', 'My Device 2', '2cd9038f-9ffa-47aa-88d1-1795f44e220d');
 insert into device (id, name, houseid) values ('mydevice_3', 'My Device 3', '2cd9038f-9ffa-47aa-88d1-1795f44e220d');
-insert into sensor (id,name,label,type,deviceid) values ('mysensor_1-1', 'My Sensor 1-1', 'mysensor_1-1', 'temp', 'mydevice_1');
-insert into sensor (id,name,label,type,deviceid) values ('mysensor_1-2', 'My Sensor 1-2', 'mysensor_1-2', 'hum', 'mydevice_1');
-insert into sensor (id,name,label,type,deviceid) values ('mysensor_2-1', 'My Sensor 2-1', 'mysensor_2-1', 'temp', 'mydevice_2');
-insert into sensor (id,name,label,type,deviceid) values ('mysensor_2-2', 'My Sensor 2-2', 'mysensor_2-2', 'hum', 'mydevice_2');
+insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_1-1', 'My Sensor 1-1', 'mysensor_1-1', 'gauge', 'thermometer-empty', 'mydevice_1');
+insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_1-2', 'My Sensor 1-2', 'mysensor_1-2', 'gauge', 'tint', 'mydevice_1');
+insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_2-1', 'My Sensor 2-1', 'mysensor_2-1', 'gauge', 'thermometer-empty', 'mydevice_2');
+insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_2-2', 'My Sensor 2-2', 'mysensor_2-2', 'gauge', 'tint', 'mydevice_2');
 insert into device_watchdog (userId, deviceId, notify, muted_until) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'mydevice_2', 'yes', null);
 insert into device_watchdog (userId, deviceId, notify, muted_until) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'mydevice_3', 'muted', current_timestamp + interval '7 days');
 
 insert into house (id, name) values ('1cd8038f-9ffa-47aa-88d1-1795f33e110f', 'Your House');
 insert into device (id, name, houseid) values ('yourdevice_1', 'Your Device 1', '1cd8038f-9ffa-47aa-88d1-1795f33e110f');
 insert into device (id, name, houseid) values ('yourdevice_2', 'Your Device 2', '1cd8038f-9ffa-47aa-88d1-1795f33e110f');
-insert into sensor (id,name,label,type,deviceid) values ('yoursensor_1-1', 'Your Sensor 1-1', 'yoursensor_1-1', 'temp', 'yourdevice_1');
-insert into sensor (id,name,label,type,deviceid) values ('yoursensor_1-2', 'Your Sensor 1-2', 'yoursensor_1-2', 'hum', 'yourdevice_1');
-insert into sensor (id,name,label,type,deviceid) values ('yoursensor_2-1', 'Your Sensor 2-1', 'yoursensor_2-1', 'temp', 'yourdevice_2');
-insert into sensor (id,name,label,type,deviceid) values ('yoursensor_2-2', 'Your Sensor 2-2', 'yoursensor_2-2', 'hum', 'yourdevice_2');
+insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_1-1', 'Your Sensor 1-1', 'yoursensor_1-1', 'gauge', 'thermometer-empty', 'yourdevice_1');
+insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_1-2', 'Your Sensor 1-2', 'yoursensor_1-2', 'gauge', 'tint', 'yourdevice_1');
+insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_2-1', 'Your Sensor 2-1', 'yoursensor_2-1', 'gauge', 'thermometer-empty', 'yourdevice_2');
+insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_2-2', 'Your Sensor 2-2', 'yoursensor_2-2', 'gauge', 'tint', 'yourdevice_2');
 

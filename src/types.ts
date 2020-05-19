@@ -204,9 +204,8 @@ export interface IngestedSensorMessage {
  * Different sensor types we know of.
  */
 export enum SensorType {
-    temp = "temp",
-    hum = "hum",
-    kwh = "kwh"
+    gauge = "gauge",
+    counter = "counter"
 }
 
 /**
@@ -258,6 +257,7 @@ export interface Sensor {
     readonly name : string;
     readonly label : string;
     readonly type : SensorType | undefined;
+    readonly icon : string;
 }
 
 /**
