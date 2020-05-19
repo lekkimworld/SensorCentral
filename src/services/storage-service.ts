@@ -767,7 +767,7 @@ export class StorageService extends BaseService {
      * @param user 
      */
     async getFavoriteSensors(user : BackendLoginUser) {
-        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc", user.id);
+        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc", user.id);
         const sensors = convertRowsToSensors(result);
         return sensors;
     }

@@ -34,8 +34,7 @@ module.exports = (document, elemRoot) => {
             ]
         );
         
-        fetcher.graphql(`{favoriteSensors{id,name,last_reading{value,dt},icon,device{id, house{id}}}}`).then(data => {
-            if (!data) return;
+        fetcher.graphql(`{favoriteSensors{id,name,icon,last_reading{value,dt},icon,device{id, house{id}}}}`).then(data => {
             const sensors = data.favoriteSensors;
             uiutils.appendDataTable(elemRoot, {
                 "headers": ["NAME", "TYPE", "LAST READING"],
