@@ -39,6 +39,7 @@ insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_1-1', 'M
 insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_1-2', 'My Sensor 1-2', 'mysensor_1-2', 'gauge', 'tint', 'mydevice_1');
 insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_2-1', 'My Sensor 2-1', 'mysensor_2-1', 'gauge', 'thermometer-empty', 'mydevice_2');
 insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_2-2', 'My Sensor 2-2', 'mysensor_2-2', 'gauge', 'tint', 'mydevice_2');
+insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_3-1', 'My Counter 3-1', 'mycounter_3-1', 'counter', 'battery-4', 'mydevice_3');
 insert into device_watchdog (userId, deviceId, notify, muted_until) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'mydevice_2', 'yes', null);
 insert into device_watchdog (userId, deviceId, notify, muted_until) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'mydevice_3', 'muted', current_timestamp + interval '7 days');
 

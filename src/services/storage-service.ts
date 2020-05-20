@@ -883,14 +883,14 @@ export class StorageService extends BaseService {
      * @param value 
      * @param dt
      */
-    private persistSensorReading(id : string, value : number, dt? : moment.Moment) : Promise<void> {
+    private persistSensorReading(id : string, value : number, dt : moment.Moment, from_dt? : moment.Moment) : Promise<void> {
         let str_sql;
-        let args = [id, value];
-        if (dt) {
-            args.push(dt.toISOString());
-            str_sql = "insert into sensor_data (id, value, dt) values ($1, $2, $3)";
+        let args = [id, value, dt.toISOString()];
+        if (from_dt) {
+            args.push(from_dt.toISOString());
+            str_sql = "insert into sensor_data (id, value, dt, from_dt) values ($1, $2, $3, $4)";
         } else {
-            str_sql = "insert into sensor_data (id, value, dt) values ($1, $2, current_timestamp)";
+            str_sql = "insert into sensor_data (id, value, dt) values ($1, $2, $3)";
         }
         return this.dbService!.query(str_sql, ...args).then(() => {
             return Promise.resolve();
@@ -935,8 +935,14 @@ export class StorageService extends BaseService {
                 let dt : Moment.Moment | undefined;
                 if (msg.dt) {
                     dt = moment.utc(msg.dt)
+                } else {
+                    dt = moment.utc();
                 }
-                return this.persistSensorReading(sensor.id, msg.value, dt).then(() => {
+                let from_dt : Moment.Moment | undefined;
+                if (msg.duration) {
+                    from_dt = moment(dt).subtract(msg.duration, "second");
+                }
+                return this.persistSensorReading(sensor.id, msg.value, dt, from_dt).then(() => {
                     // mark msg as consumed
                     result.callback();
 
