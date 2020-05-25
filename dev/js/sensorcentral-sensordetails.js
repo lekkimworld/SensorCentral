@@ -1,65 +1,13 @@
 const uiutils = require("./ui-utils");
 const $ = require("jquery");
 const fetcher = require("./fetch-util");
-const doChart = require("./charts-util").doChart;
 const formutils = require("./forms-util");
-const moment = require("moment");
-const dateutils = require("./date-utils");
 
-const ID_CHART = "sensorChart";
-const ID_SAMPLES_DIV = "samples";
-const ID_SAMPLES_TABLE = "samples_table";
-const ID_SAMPLES_LINK = "samples_link";
-const ATTR_SAMPLES_COUNT = "sample_count";
-const SAMPLE_COUNT_LOAD = 50;
-const SAMPLE_COUNT_INCR = 10;
-const SAMPLE_COUNT_INITIAL_TABLE = 25;
-
-let samplesCache = undefined;
-
-const loadSamples = (sensorId) => {
-    // see how many samples we need to get
-    const samplesCount = samplesCache ? samplesCache.length + SAMPLE_COUNT_INCR : SAMPLE_COUNT_LOAD;
-    return fetcher.getSamples(sensorId, samplesCount).then(samples => {
-        samplesCache = samples;
-        return Promise.resolve(samplesCache);
-    });
-}
-
-const samplesChart = (sensor, samples) => {
-    doChart(ID_CHART, sensor.name, samples);
-}
-
-const samplesTable = (sensor, samples) => {
-    const samplesDiv = $(`#${ID_SAMPLES_DIV}`);
-    const samplesTable = $(`#${ID_SAMPLES_TABLE}`);
-
-    // get sample count
-    samplesCount = Number.parseInt(samplesDiv.attr(ATTR_SAMPLES_COUNT)) + SAMPLE_COUNT_INCR;
-    samplesTable.html("");
-    uiutils.appendDataTable(samplesTable, {
-        "id": ID_SAMPLES_TABLE,
-        "headers": ["DATE/TIME", "VALUE"],
-        "rows": samples.sort((a,b) => b.dt-a.dt).map(s => {
-            return {
-                "data": s,
-                "columns": [dateutils.formatDMYTime(s.dt), s.value]
-            }
-        })
-    });
-    $(`#${ID_SAMPLES_DIV}`).attr(ATTR_SAMPLES_COUNT, samplesCount);
-    return Promise.resolve();
-}
-
-const updateUI = (elemRoot, sensorId) => {
-    // clear page
-    elemRoot.html("");
-    samplesCache = undefined;
-    
+module.exports = (document, elemRoot, ctx) => {
     // fetch sensor
-    fetcher.graphql(`{sensor(id:"${sensorId}"){id, name, favorite, device{id,name,house{id,name}}}}`).then(data => {
+    fetcher.graphql(`{sensor(id:"${ctx.sensorId}"){id, type, name, favorite, device{id,name,house{id,name}}}}`).then(data => {
         const sensor = data.sensor;
-
+        
         // create breadcrumbs
         elemRoot.html(uiutils.htmlBreadcrumbs([
             {"text": "Home", "id": "#root"},
@@ -67,13 +15,20 @@ const updateUI = (elemRoot, sensorId) => {
             {"text": sensor.device.house.name, "id": `house/${sensor.device.house.id}`},
             {"text": sensor.device.name, "id": `house/${sensor.device.house.id}/device/${sensor.device.id}`}
         ]));
-        
 
-        // create title row
-        uiutils.appendTitleRow(
-            elemRoot, 
-            sensor.name, 
-            [{"rel": "create", "icon": "plus", "click": (action) => {
+        // build ui based on sensor type
+        let module;
+        if (sensor.type === "gauge") {
+            module = require("./sensorcentral-sensordetails-gauge");
+        } else if (sensor.type === "counter") {
+            module = require("./sensorcentral-sensordetails-counter");
+        } else {
+            elemRoot.append(`Unknown sensor type ${sensor.type}`);
+            return;
+        }
+        const actions = [];
+        if (!module.hasOwnProperty("actionManualSample") || (module.hasOwnProperty("actionManualSample") && module.actionManualSample === true)) {
+            actions.push({"rel": "create", "icon": "plus", "click": (action) => {
                 formutils.appendManualSampleForm(sensor, (data) => {
                     // get field values
                     let postbody = {
@@ -85,61 +40,43 @@ const updateUI = (elemRoot, sensorId) => {
                     fetcher.post(`/api/v1/data/samples`, postbody).then(body => {
                         // convert date to a javascript date and push in cache
                         body.dt = moment.utc(body.dt).toDate();
-                        samplesCache.push(body);
-
-                        // rebuild chart and table
-                        samplesChart(sensor, samplesCache);
-                        samplesTable(sensor, samplesCache);
-
+                        
+                        // update ui
+                        module.updateUI(sensor, body);
                         
                     }).catch(err => {
                         
                     })
                 })
-            }}, {"rel": "refresh", "icon": "refresh", "click": (action) => {
-                updateUI(elemRoot, sensorId);
-            }},
-            {"rel": "favorite", "icon": `${sensor.favorite ? "star" : "star-o"}`, "click": (action) => {
-                const btn = $("button[rel=\"favorite\"");
-                if (btn.hasClass("fa-star")) {
-                    btn.removeClass("fa-star");
-                    btn.addClass("fa-star-o");
-                    fetcher.graphql(`mutation {removeFavoriteSensor(id: \"${sensorId}\")}`)
-                } else {
-                    btn.removeClass("fa-star-o");
-                    btn.addClass("fa-star");
-                    fetcher.graphql(`mutation {addFavoriteSensor(id: \"${sensorId}\")}`)
-                }
-            }}]
+            }})
+        }
+        actions.push({"rel": "refresh", "icon": "refresh", "click": (action) => {
+            elemModule.html("");
+            module.buildUI(elemModule, sensor);
+        }})
+        actions.push({"rel": "favorite", "icon": `${sensor.favorite ? "star" : "star-o"}`, "click": (action) => {
+            const btn = $("button[rel=\"favorite\"");
+            if (btn.hasClass("fa-star")) {
+                btn.removeClass("fa-star");
+                btn.addClass("fa-star-o");
+                fetcher.graphql(`mutation {removeFavoriteSensor(id: \"${sensor.id}\")}`)
+            } else {
+                btn.removeClass("fa-star-o");
+                btn.addClass("fa-star");
+                fetcher.graphql(`mutation {addFavoriteSensor(id: \"${sensor.id}\")}`)
+            }
+        }})
+
+        // create title row
+        uiutils.appendTitleRow(
+            elemRoot, 
+            sensor.name, 
+            actions
         );
 
-        // add link to load more data
-        elemRoot.append(`<div id="${ID_SAMPLES_LINK}" class="float-right"><a href="javascript:void(0)">Load Earlier Data</a></div>`);
-
-        // create div for graph
-        elemRoot.append(uiutils.htmlSectionTitle("Graph"));
-        elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
-        
-        // create div's for samples table and load samples
-        elemRoot.append(uiutils.htmlSectionTitle("Samples"));
-        elemRoot.append(`<div id="${ID_SAMPLES_DIV}" ${ATTR_SAMPLES_COUNT}="0"><div id="${ID_SAMPLES_TABLE}"></div></div>`);
-
-        loadSamples(sensor.id).then(samples => {
-            samplesChart(sensor, samples);
-            samplesTable(sensor, samples);
-        }).then(() => {
-            // add link to load more
-            $(`#${ID_SAMPLES_LINK}`).on("click", () => {
-                loadSamples(sensor.id).then(samples => {
-                    samplesChart(sensor, samples);
-                    samplesTable(sensor, samples);
-                })
-            })
-        });
-        
+        // tell module to build ui
+        elemRoot.append(`<div id="sensorui"></div>`);
+        const elemModule = $("#sensorui");
+        module.buildUI(elemModule, sensor);
     })
-}
-
-module.exports = (document, elemRoot, ctx) => {
-    updateUI(elemRoot, ctx.sensorId);
 }
