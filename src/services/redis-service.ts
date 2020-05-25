@@ -2,9 +2,16 @@ import {promisify} from "util";
 import {BaseService} from "../types";
 import * as redis from "redis";
 
+const CONNECTION_TIMEOUT = 
+    process.env.REDIS_CONNECTION_TIMEOUT ? 
+    Number.parseInt(process.env.REDIS_CONNECTION_TIMEOUT) : 
+    5000;
+
 const client = redis.createClient({
-    'url': process.env.REDIS_URL
-});
+    "url": process.env.REDIS_URL,
+    "connect_timeout": CONNECTION_TIMEOUT
+} as redis.ClientOpts);
+
 const promisifiedClient = {
     'get': promisify(client.get).bind(client),
     'set': promisify(client.set).bind(client),

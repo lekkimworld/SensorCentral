@@ -1,5 +1,17 @@
-import {Pool, QueryResult} from "pg";
+import {Pool, QueryResult, PoolConfig} from "pg";
 import { BaseService } from "../types";
+
+const config : PoolConfig = {
+    'connectionString': process.env.DATABASE_URL
+};
+if (process.env.NODE_ENV === "production") {
+    config.ssl = true;
+} else if (process.env.NODE_ENV === "development") {
+    config.ssl = {
+        checkServerIdentity: false,
+        rejectUnauthorized: false
+    } as any;
+}
 
 export class DatabaseService extends BaseService {
     _pool? : Pool;
@@ -11,10 +23,7 @@ export class DatabaseService extends BaseService {
     //@ts-ignore
     init(callback : (err?:Error) => {}, services : BaseService[]) {
         try {
-            this._pool = new Pool({
-                'connectionString': process.env.DATABASE_URL,
-                'ssl': process.env.NODE_ENV === 'production' ? true : false
-            });
+            this._pool = new Pool(config);
             callback();
 
         } catch (err) {
