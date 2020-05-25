@@ -6,6 +6,28 @@ const moment = require("moment");
 const dateutils = require("./date-utils");
 
 const ID_CHART = "sensorChart";
+const ID_SAMPLES_DIV = "samples";
+const ID_SAMPLES_TABLE = "samples_table";
+
+const samplesTable = (sensor, samples) => {
+    const samplesDiv = $(`#${ID_SAMPLES_DIV}`);
+    const samplesTable = $(`#${ID_SAMPLES_TABLE}`);
+
+    // get sample count
+    samplesTable.html("");
+    uiutils.appendDataTable(samplesTable, {
+        "id": ID_SAMPLES_TABLE,
+        "headers": ["PERIOD", "VALUE"],
+        "rows": samples.map(s => {
+            return {
+                "data": s,
+                "columns": [s.name, s.value]
+            }
+        })
+    });
+    $(`#${ID_SAMPLES_DIV}`).attr(ATTR_SAMPLES_COUNT, samplesCount);
+    return Promise.resolve();
+}
 
 module.exports = {
     actionManualSample: false, 
@@ -17,6 +39,8 @@ module.exports = {
                     ID_CHART, 
                     result[query][0].data.map(d => d.name),
                     result[query]);
+                
+                    samplesTable(sensor, result[query][0].data)
             })
         }
 
@@ -28,6 +52,10 @@ module.exports = {
         <button type="button" class="btn btn-secondary">Month</button>
       </div>`);
         elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
+
+        // create div's for samples table and load samples
+        elemRoot.append(uiutils.htmlSectionTitle("Chart Data"));
+        elemRoot.append(`<div id="${ID_SAMPLES_DIV}"><div id="${ID_SAMPLES_TABLE}"></div></div>`);
         
         const queries = ["counterQueryDay", "counterQueryLast7Days", "counterQueryMonth"];
         doChart(queries[0]);
