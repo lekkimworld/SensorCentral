@@ -9,6 +9,9 @@ const ID_CHART = "sensorChart";
 const ID_SAMPLES_DIV = "samples";
 const ID_SAMPLES_TABLE = "samples_table";
 
+let adjust = 0;
+let queryName = "counterQueryDay";
+
 const samplesTable = (sensor, samples) => {
     const samplesDiv = $(`#${ID_SAMPLES_DIV}`);
     const samplesTable = $(`#${ID_SAMPLES_TABLE}`);
@@ -25,20 +28,19 @@ const samplesTable = (sensor, samples) => {
             }
         })
     });
-    $(`#${ID_SAMPLES_DIV}`).attr(ATTR_SAMPLES_COUNT, samplesCount);
     return Promise.resolve();
 }
 
 module.exports = {
     actionManualSample: false, 
     "buildUI": (elemRoot, sensor) => {
-        const doChart = (query) => {
-            fetcher.graphql(`{${query}(data: {sensorIds: ["${sensor.id}"], adjust: 0}){id, name, data{name,value}}}`).then(result => {
-                const data = result[query][0];
+        const doChart = () => {
+            fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], adjust: ${Math.abs(adjust)}}){id, name, data{name,value}}}`).then(result => {
+                const data = result[queryName][0];
                 barChart(
                     ID_CHART, 
-                    result[query][0].data.map(d => d.name),
-                    result[query]);
+                    result[queryName][0].data.map(d => d.name),
+                    result[queryName]);
                 
                     samplesTable(sensor, result[query][0].data)
             })
@@ -47,28 +49,34 @@ module.exports = {
         // create div for graph
         elemRoot.append(uiutils.htmlSectionTitle("Graph"));
         elemRoot.append(`<div class="btn-group" role="group" aria-label="Queries" id="counter-queries">
-        <button type="button" class="btn btn-secondary">Day</button>
-        <button type="button" class="btn btn-secondary">Week</button>
-        <button type="button" class="btn btn-secondary">Month</button>
-      </div>`);
+            <button type="button" class="btn btn-secondary" rel="minus">&lt;&lt;</button>
+            <button type="button" class="btn btn-secondary" rel="counterQueryDay">Day</button>
+            <button type="button" class="btn btn-secondary" rel="counterQueryCalWeek">Week</button>
+            <button type="button" class="btn btn-secondary" rel="counterQuery7Days">7 days</button>
+            <button type="button" class="btn btn-secondary" rel="counterQueryMonth">Month</button>
+            <button type="button" class="btn btn-secondary" rel="plus">&gt;&gt;</button>
+        </div>`);
         elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
 
         // create div's for samples table and load samples
         elemRoot.append(uiutils.htmlSectionTitle("Chart Data"));
         elemRoot.append(`<div id="${ID_SAMPLES_DIV}"><div id="${ID_SAMPLES_TABLE}"></div></div>`);
-        
-        const queries = ["counterQueryDay", "counterQueryLast7Days", "counterQueryMonth"];
-        doChart(queries[0]);
+
+        // create chart
+        doChart();
 
         $("#counter-queries").click(ev => {
-            const t = ev.target.innerText;
-            if (t === "Day") {
-                doChart(queries[0]);
-            } else if (t === "Week") {
-                doChart(queries[1]);
+            const rel = ev.target.getAttribute("rel");
+            if (rel === "minus") {
+                adjust--;
+            } else if (rel === "plus") {
+                adjust++;
+                if (adjust > 0) adjust = 0;
             } else {
-                doChart(queries[2]);
+                queryName = rel;
+                adjust = 0;
             }
+            doChart();
         })
     }
 }
