@@ -42,7 +42,7 @@ module.exports = {
                     result[queryName][0].data.map(d => d.name),
                     result[queryName]);
                 
-                    samplesTable(sensor, result[query][0].data)
+                    samplesTable(sensor, result[queryName][0].data)
             })
         }
 
