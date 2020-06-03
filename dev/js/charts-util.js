@@ -22,6 +22,20 @@ const colorMap = {
 };
 const backgroundColors = Object.values(colorMap);
 
+let myChart;
+const createOrUpdateChart = (id, chartConfig) => {
+    if (!myChart) {
+        let ctx2d = document.getElementById(id).getContext('2d');
+        myChart = new Chart(ctx2d, chartConfig);
+    } else {
+        // updating with new chart data
+        myChart.config = chartConfig;
+
+        // redraw the chart
+        myChart.update();
+    }
+}
+
 const lineChart = (id, label, samples, inputOptions = {}) => {
     // build options
     const options = Object.assign({}, inputOptions);
@@ -53,12 +67,12 @@ const lineChart = (id, label, samples, inputOptions = {}) => {
     const chartOptions = {
         "responsive": options.hasOwnProperty("responsive") && typeof options.responsive === "boolean" ? options.responsive : true
     }
-    var ctx2d = document.getElementById(id).getContext('2d');
-    var myChart = new Chart(ctx2d, {
+    const chartConfig = {
         "type": options.type || "line",
         "data": chartData,
         "options": chartOptions
-    });
+    }
+    createOrUpdateChart(id, chartConfig);
 };
 
 const barChart = (id, labels, data, inputOptions = {}) => {
@@ -82,12 +96,13 @@ const barChart = (id, labels, data, inputOptions = {}) => {
     const chartOptions = {
         "responsive": options.hasOwnProperty("responsive") && typeof options.responsive === "boolean" ? options.responsive : true
     }
-    var ctx2d = document.getElementById(id).getContext('2d');
-    var myChart = new Chart(ctx2d, {
+
+    const chartConfig = {
         "type": "bar",
         "data": chartData,
         "options": chartOptions
-    });
+    };
+    createOrUpdateChart(id, chartConfig);
 };
 
 module.exports = {

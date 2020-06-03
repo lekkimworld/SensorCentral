@@ -9,12 +9,17 @@ const ID_CHART = "sensorChart";
 const ID_SAMPLES_DIV = "samples";
 const ID_SAMPLES_TABLE = "samples_table";
 
-let adjust = 0;
-let queryName = "counterQueryDay";
+let queryData = {
+    "start": 0,
+    "end": -1,
+    "adjustBy": "day",
+    "groupBy": "hour"
+}
+let queryName = "counterGroupedQuery";
 
 const samplesTable = (sensor, samples) => {
-    const samplesDiv = $(`#${ID_SAMPLES_DIV}`);
-    const samplesTable = $(`#${ID_SAMPLES_TABLE}`);
+    const samplesDiv = $(`javascript:void(0)${ID_SAMPLES_DIV}`);
+    const samplesTable = $(`javascript:void(0)${ID_SAMPLES_TABLE}`);
 
     // get sample count
     samplesTable.html("");
@@ -35,7 +40,7 @@ module.exports = {
     actionManualSample: false, 
     "buildUI": (elemRoot, sensor) => {
         const doChart = () => {
-            fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], adjust: ${Math.abs(adjust)}}){id, name, data{name,value}}}`).then(result => {
+            fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}}){id, name, data{name,value}}}`).then(result => {
                 const data = result[queryName][0];
                 barChart(
                     ID_CHART, 
@@ -48,14 +53,56 @@ module.exports = {
 
         // create div for graph
         elemRoot.append(uiutils.htmlSectionTitle("Graph"));
-        elemRoot.append(`<div class="btn-group" role="group" aria-label="Queries" id="counter-queries">
-            <button type="button" class="btn btn-secondary" rel="minus">&lt;&lt;</button>
-            <button type="button" class="btn btn-secondary" rel="counterQueryDay">Day</button>
-            <button type="button" class="btn btn-secondary" rel="counterQueryCalWeek">Week</button>
-            <button type="button" class="btn btn-secondary" rel="counterQuery7Days">7 days</button>
-            <button type="button" class="btn btn-secondary" rel="counterQueryMonth">Month</button>
-            <button type="button" class="btn btn-secondary" rel="plus">&gt;&gt;</button>
-        </div>`);
+        elemRoot.append(`
+<div class="clear" id="querySelectors">
+<div class="dropdown float-left">
+    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownGroupby" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        Group by (hour)
+    </button>
+    <div class="dropdown-menu" rel="groupBy" aria-labelledby="dropdownGroupby">
+        <a class="dropdown-item" href="javascript:void(0)" rel="hour">Hour</a>
+        <a class="dropdown-item" href="javascript:void(0)" rel="day">Day</a>
+        <a class="dropdown-item" href="javascript:void(0)" rel="week">Week</a>
+        <a class="dropdown-item" href="javascript:void(0)" rel="month">Month</a>
+        <a class="dropdown-item" href="javascript:void(0)" rel="year">Year</a>
+    </div>
+</div>
+<div class="dropdown float-left ml-2">
+    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownAdjustby" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        Adjust by (day)
+    </button>
+    <div class="dropdown-menu" rel="adjustBy" aria-labelledby="dropdownAdjustby">
+        <a class="dropdown-item" href="javascript:void(0)" rel="day">Day</a>
+        <a class="dropdown-item" href="javascript:void(0)" rel="week">Week</a>
+        <a class="dropdown-item" href="javascript:void(0)" rel="month">Month</a>
+        <a class="dropdown-item" href="javascript:void(0)" rel="year">Year</a>
+    </div>
+</div>
+<div class="dropdown float-left ml-2">
+    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownStart" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        Start (Current)
+    </button>
+    <div class="dropdown-menu" rel="start" aria-labelledby="dropdownStart">
+    <a class="dropdown-item" href="javascript:void(0)" rel="0">Current</a>
+    <a class="dropdown-item" href="javascript:void(0)" rel="1">Previous</a>
+    <a class="dropdown-item" href="javascript:void(0)" rel="2">2 back</a>
+    <a class="dropdown-item" href="javascript:void(0)" rel="3">3 back</a>
+    </div>
+</div>
+<div class="dropdown float-left ml-2">
+    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownEnd" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        End (Current)
+    </button>
+    <div class="dropdown-menu" rel="end" aria-labelledby="dropdownEnd">
+        <a class="dropdown-item" href="javascript:void(0)" rel="-1">Current</a>
+        <a class="dropdown-item" href="javascript:void(0)" rel="0">Previous</a>
+        <a class="dropdown-item" href="javascript:void(0)" rel="1">2 back</a>
+        <a class="dropdown-item" href="javascript:void(0)" rel="2">3 back</a>
+    </div>
+</div>
+</div>
+        
+        `);
         elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
 
         // create div's for samples table and load samples
@@ -65,17 +112,22 @@ module.exports = {
         // create chart
         doChart();
 
-        $("#counter-queries").click(ev => {
-            const rel = ev.target.getAttribute("rel");
-            if (rel === "minus") {
-                adjust--;
-            } else if (rel === "plus") {
-                adjust++;
-                if (adjust > 0) adjust = 0;
-            } else {
-                queryName = rel;
-                adjust = 0;
+        $("#querySelectors").click(ev => {
+            const linkRel = ev.target.getAttribute("rel");
+            const typeRel = ev.target.parentNode.getAttribute("rel");
+            if (!linkRel || !typeRel) return;
+            console.log(`linkRel <${linkRel}> typeRel <${typeRel}>`);
+
+            let prevSib = ev.target.parentNode.previousSibling;
+            while (prevSib.localName !== "button") {
+                prevSib = prevSib.previousSibling;
             }
+            prevSib.innerText = `${prevSib.innerText.split("(")[0]} (${ev.target.innerText})`;
+
+            // update query daya
+            queryData[typeRel] = linkRel;
+
+            // refresh chart
             doChart();
         })
     }
