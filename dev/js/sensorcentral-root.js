@@ -23,19 +23,23 @@ module.exports = (document, elemRoot) => {
         // user is authenticated
         const user = storage.getUser();
         elemRoot.html(`<h1>Hello ${user.fn}!</h1>`);
-
-        uiutils.appendTitleRow(
-            elemRoot,
-            "Favorite Sensors", 
-            [
-                {"rel": "refresh", "icon": "refresh", "click": () => {
-                    updateUI();
-                }}
-            ]
-        );
         
         fetcher.graphql(`{favoriteSensors{id,name,icon,last_reading{value,dt},icon,device{id, house{id}}}}`).then(data => {
             const sensors = data.favoriteSensors;
+            if (!sensors.length) return;
+
+            // add title
+            uiutils.appendTitleRow(
+                elemRoot,
+                "Favorite Sensors", 
+                [
+                    {"rel": "refresh", "icon": "refresh", "click": () => {
+                        updateUI();
+                    }}
+                ]
+            );
+            
+            // build table
             uiutils.appendDataTable(elemRoot, {
                 "headers": ["NAME", "TYPE", "LAST READING"],
                 "classes": [
