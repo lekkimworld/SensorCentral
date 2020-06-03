@@ -196,6 +196,7 @@ export interface IngestedDeviceMessage {
 export interface IngestedSensorMessage {
     id : string;
     value : number;
+    duration? : number;
     deviceId : string;
     dt? : string;
 }
@@ -204,8 +205,8 @@ export interface IngestedSensorMessage {
  * Different sensor types we know of.
  */
 export enum SensorType {
-    temp = "temp",
-    hum = "hum"
+    gauge = "gauge",
+    counter = "counter"
 }
 
 /**
@@ -257,6 +258,7 @@ export interface Sensor {
     readonly name : string;
     readonly label : string;
     readonly type : SensorType | undefined;
+    readonly icon : string;
 }
 
 /**

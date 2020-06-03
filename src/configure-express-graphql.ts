@@ -13,6 +13,7 @@ import {DeviceWatchdogResolver} from "./resolvers/device-watchdog";
 import { lookupService } from "./configure-services";
 import { GraphQLResolverContext, BackendLoginUser } from "./types";
 import { FavoriteSensorResolver } from "./resolvers/favorite-sensor";
+import { CounterQueryResolver } from "./resolvers/data";
 
 const path = process.env.GRAPHQL_PATH || "/graphql";
 
@@ -32,7 +33,8 @@ export default async (app : Application) => {
             SensorResolver, 
             SettingsResolver, 
             DeviceWatchdogResolver,
-            FavoriteSensorResolver],
+            FavoriteSensorResolver,
+            CounterQueryResolver],
             "dateScalarMode": "isoDate"
     })
 

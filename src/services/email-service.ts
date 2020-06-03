@@ -4,11 +4,11 @@ import fetch from "node-fetch";
 import moment from "moment";
 import constants from "../constants";
 
-const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY as string;
-const GOOGLE_SCOPES = ["https://www.googleapis.com/auth/gmail.send"].join(" ");
-const GOOGLE_EXPIRATION_MINUTES = constants.DEFAULTS.GOOGLE.JWT_EXPIRATION_MINUTES;
-const AUDIENCE = process.env.GOOGLE_TOKEN_URI;
-const ISSUER = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+const GOOGLE_PRIVATE_KEY = constants.GOOGLE.PRIVATE_KEY;
+const GOOGLE_SCOPES = constants.GOOGLE.SCOPES.join(" ");
+const GOOGLE_EXPIRATION_MINUTES = constants.GOOGLE.JWT_EXPIRATION_MINUTES;
+const AUDIENCE = constants.GOOGLE.TOKEN_URI;
+const ISSUER = constants.GOOGLE.SERVICE_ACCOUNT_EMAIL;
 
 export class RFC822Address {
     constructor(name : string, email : string) {

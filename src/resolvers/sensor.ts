@@ -29,7 +29,7 @@ const LastReadingFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context
 @ObjectType()
 class SensorSample {
     constructor(s : types.SensorSample) {
-        this.value = s.value;
+        this.value = Math.round(s.value * 10) / 10;
         this.dt = s.dt;
     }
 
@@ -47,6 +47,7 @@ export class Sensor implements types.Sensor {
         this.name = s.name;
         this.label = s.label;
         this.type = s.type;
+        this.icon = s.icon;
         this.deviceId = s.deviceId;
         this.device = s.device;
     }
@@ -59,6 +60,9 @@ export class Sensor implements types.Sensor {
 
     @Field()
     label : string;
+
+    @Field()
+    icon : string;
 
     @Field(() => String)
     type : types.SensorType | undefined;
@@ -98,6 +102,9 @@ export class UpdateSensorType extends DeleteSensorType {
     @Field()
     @IsEnum(types.SensorType)
     type : types.SensorType;
+
+    @Field()
+    icon : string;
 }
 
 @InputType()

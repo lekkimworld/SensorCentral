@@ -34,17 +34,17 @@ module.exports = (document, elemRoot) => {
             ]
         );
         
-        fetcher.graphql(`{favoriteSensors{id,name,last_reading{value,dt},type,device{id, house{id}}}}`).then(data => {
+        fetcher.graphql(`{favoriteSensors{id,name,icon,last_reading{value,dt},icon,device{id, house{id}}}}`).then(data => {
             const sensors = data.favoriteSensors;
             uiutils.appendDataTable(elemRoot, {
                 "headers": ["NAME", "TYPE", "LAST READING"],
                 "classes": [
                     "", 
-                    "",
+                    "text-center",
                     ""
                 ],
                 "rows": sensors.map(sensor => {
-                    const type_img = `<i class="fa fa-${sensor.type === "temp" ? "thermometer-empty" : "tint"} aria-hidden="true"></i>`;
+                    const type_img = `<i class="fa fa-${sensor.icon}" aria-hidden="true"></i>`;
                     return {
                         "id": sensor.id,
                         "data": sensor,
