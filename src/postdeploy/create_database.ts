@@ -8,7 +8,10 @@ const TARGET_DATABASE_VERSION = 4;
 
 const pool = new Pool({
     'connectionString': process.env.DATABASE_URL,
-    'ssl': process.env.NODE_ENV === 'production' ? true : false
+    "ssl": {
+        "checkServerIdentity": false,
+        "rejectUnauthorized": false
+    } as any
 });
 
 const executeSQLFile = (filename : string) : Promise<void> => {

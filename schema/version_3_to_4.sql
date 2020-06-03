@@ -3,12 +3,13 @@ update SENSOR set icon='thermometer-empty' where type='temp';
 update SENSOR set icon='tint' where type='hum';
 alter table SENSOR alter column icon set not null;
 
-alter type SENSOR_TYPE add value 'gauge';
-alter type SENSOR_TYPE add value 'counter';
-update SENSOR set type = 'gauge';
+ALTER TYPE sensor_type RENAME TO sensor_type_old;
+CREATE TYPE sensor_type AS ENUM('gauge', 'counter');
+ALTER TABLE sensor ALTER COLUMN type TYPE sensor_type USING type::text::sensor_type;
+DROP TYPE sensor_type_old;
 
-delete from pg_enum where enumlabel='temp' and enumtypid = (select oid from pg_type where typname='sensor_type');
-delete from pg_enum where enumlabel='hum' and enumtypid = (select oid from pg_type where typname='sensor_type');
+update SENSOR set type='gauge';
+alter table SENSOR alter column type set not null;
 
 alter table sensor_data add column from_dt timestamp with time zone;
 
