@@ -18,8 +18,8 @@ let queryData = {
 let queryName = "counterGroupedQuery";
 
 const samplesTable = (sensor, samples) => {
-    const samplesDiv = $(`javascript:void(0)${ID_SAMPLES_DIV}`);
-    const samplesTable = $(`javascript:void(0)${ID_SAMPLES_TABLE}`);
+    const samplesDiv = $(`#${ID_SAMPLES_DIV}`);
+    const samplesTable = $(`#${ID_SAMPLES_TABLE}`);
 
     // get sample count
     samplesTable.html("");
@@ -46,17 +46,16 @@ module.exports = {
                     ID_CHART, 
                     result[queryName][0].data.map(d => d.name),
                     result[queryName]);
-                
-                    samplesTable(sensor, result[queryName][0].data)
+                samplesTable(sensor, result[queryName][0].data)
             })
         }
 
         // create div for graph
         elemRoot.append(uiutils.htmlSectionTitle("Graph"));
         elemRoot.append(`
-<div class="clear" id="querySelectors">
-<div class="dropdown float-left">
-    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownGroupby" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+<div class="clear w-100" id="querySelectors">
+<div class="dropdown float-left ml-1 mt-1 w-100">
+    <button class="btn btn-secondary dropdown-toggle w-100" type="button" id="dropdownGroupby" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
         Group by (hour)
     </button>
     <div class="dropdown-menu" rel="groupBy" aria-labelledby="dropdownGroupby">
@@ -67,8 +66,8 @@ module.exports = {
         <a class="dropdown-item" href="javascript:void(0)" rel="year">Year</a>
     </div>
 </div>
-<div class="dropdown float-left ml-2">
-    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownAdjustby" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+<div class="dropdown float-left ml-1 mt-1 w-100">
+    <button class="btn btn-secondary dropdown-toggle w-100" type="button" id="dropdownAdjustby" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
         Adjust by (day)
     </button>
     <div class="dropdown-menu" rel="adjustBy" aria-labelledby="dropdownAdjustby">
@@ -78,8 +77,8 @@ module.exports = {
         <a class="dropdown-item" href="javascript:void(0)" rel="year">Year</a>
     </div>
 </div>
-<div class="dropdown float-left ml-2">
-    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownStart" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+<div class="dropdown float-left ml-1 mt-1 w-100">
+    <button class="btn btn-secondary dropdown-toggle w-100" type="button" id="dropdownStart" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
         Start (Current)
     </button>
     <div class="dropdown-menu" rel="start" aria-labelledby="dropdownStart">
@@ -89,8 +88,8 @@ module.exports = {
     <a class="dropdown-item" href="javascript:void(0)" rel="3">3 back</a>
     </div>
 </div>
-<div class="dropdown float-left ml-2">
-    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownEnd" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+<div class="dropdown float-left ml-1 mt-1 w-100">
+    <button class="btn btn-secondary dropdown-toggle w-100" type="button" id="dropdownEnd" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
         End (Current)
     </button>
     <div class="dropdown-menu" rel="end" aria-labelledby="dropdownEnd">

@@ -1,6 +1,5 @@
 const Chart = require("chart.js");
 
-
 const formatDate = d => {
     const m = d.getMonth();
     const month = m===0 ? "jan" : m===1 ? "feb" : m === 2 ? "mar" : m === 3 ? "apr" : m ===4 ? "may" : m === 5 ? "jun" : m === 6 ? "jul" : m === 7 ? "aug" : m === 8 ? "sep" : m === 9 ? "oct" : m === 10 ? "nov" : "dec";
@@ -22,18 +21,14 @@ const colorMap = {
 };
 const backgroundColors = Object.values(colorMap);
 
-let myChart;
+let myChart = undefined;
 const createOrUpdateChart = (id, chartConfig) => {
-    if (!myChart) {
-        let ctx2d = document.getElementById(id).getContext('2d');
-        myChart = new Chart(ctx2d, chartConfig);
-    } else {
-        // updating with new chart data
-        myChart.config = chartConfig;
-
-        // redraw the chart
-        myChart.update();
+    if (myChart) {
+        myChart.destroy();
+        myChart =undefined;
     }
+    let ctx2d = document.getElementById(id).getContext('2d');
+    myChart = new Chart(ctx2d, chartConfig);
 }
 
 const lineChart = (id, label, samples, inputOptions = {}) => {
