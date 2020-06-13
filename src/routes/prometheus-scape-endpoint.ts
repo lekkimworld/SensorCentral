@@ -30,7 +30,7 @@ router.get("/", (req, res) => {
             sensors.forEach((sensor, idx) => {
                 const redisObj = redisData[idx];
                 if (!redisObj) return;
-                if (!redisObj.value || redisObj.value === Number.MIN_VALUE) return;
+                if (redisObj.value === Number.MIN_VALUE) return;
                 if (!sensor.device) return;
                 if (!sensor.device.house) return;
 

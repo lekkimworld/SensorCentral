@@ -11,7 +11,10 @@ const buildContext = (method) => {
     return ctx;
 }
 const doFetch = (url, ctx, type) => {
+    $("#sensorcentral-spinner").removeClass("d-none");
+
     return fetch(url, ctx).then(resp => {
+        $("#sensorcentral-spinner").addClass("d-none");
         if (type === "text") return resp.text();
         return resp.json();
     })
