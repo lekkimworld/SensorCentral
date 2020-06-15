@@ -97,7 +97,6 @@ export class CounterQueryResolver {
             sensor.id=$1 
         group by sensor.id, period 
         order by sensor.id asc, period asc;`;
-        console.log(query);
 
         // get data
         const results = await Promise.all(data.sensorIds.map(async id => {

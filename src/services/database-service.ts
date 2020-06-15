@@ -6,7 +6,7 @@ const config : PoolConfig = {
 };
 if (process.env.NODE_ENV === "production") {
     config.ssl = true;
-} else if (process.env.NODE_ENV === "development") {
+} else if (process.env.NODE_ENV === "development_xxx") {
     config.ssl = {
         checkServerIdentity: false,
         rejectUnauthorized: false

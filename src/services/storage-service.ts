@@ -235,9 +235,9 @@ export class StorageService extends BaseService {
         // query to devices
         let result;
         if (houseId) {
-            result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where h.id=$1 order by d.name asc", houseId);
+            result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where h.id=$1 order by d.name asc", houseId);
         } else {
-            result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id order by d.name asc");
+            result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id order by d.name asc");
         }
         if (!result) throw Error(`Unable to lookup devices (house ID <${houseId}>)`);
         
@@ -249,6 +249,7 @@ export class StorageService extends BaseService {
                 "lastPing": row.last_ping,
                 "lastRestart": row.last_restart,
                 "lastWatchdogReset": row.last_watchdog_reset,
+                "active": row.deviceactive,
                 "house": {
                     "id": row.houseid,
                     "name": row.housename
@@ -265,7 +266,7 @@ export class StorageService extends BaseService {
      * @throws If device not found
      */
     async getDevice(deviceId : string) {
-        const result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where d.id=$1", deviceId);
+        const result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where d.id=$1", deviceId);
         if (!result || result.rowCount !==1 ) {
             throw Error(`Unable to execute query or unable to find device with ID <${deviceId}>`);
         }
@@ -274,6 +275,7 @@ export class StorageService extends BaseService {
         return {
             "id": row.deviceid, 
             "name": row.devicename,
+            "active": row.deviceactive,
             "lastPing": row.last_ping,
             "lastRestart": row.last_restart,
             "lastWatchdogReset": row.last_watchdog_reset,
@@ -293,20 +295,21 @@ export class StorageService extends BaseService {
      * @param name Name of the device
      * @throws Error if the insertion cannot happen
      */
-    async createDevice({houseId, id, name} : CreateDeviceInput) {
+    async createDevice({houseId, id, name, active} : CreateDeviceInput) {
         // validate name
         const use_name = name.trim();
         const use_id = id.trim();
         const use_house = houseId.trim();
         
         // try and insert device
-        await this.dbService!.query(`insert into device (id, name, houseid) values ($1, $2, $3)`, use_id, use_name, use_house);
+        await this.dbService!.query(`insert into device (id, name, active, houseid) values ($1, $2, $3, $4)`, use_id, use_name, active, use_house);
 
         // publish event
         await this.eventService?.publishTopic(constants.TOPICS.CONTROL, "device.create", {
             "new": {
                 "id": use_id,
-                "name": use_name
+                "name": use_name,
+                "active": active
             }
         });
 
@@ -321,7 +324,7 @@ export class StorageService extends BaseService {
      * @param name New name of the device
      * @throws Error if device not found
      */
-    async updateDevice({id, name} : UpdateDeviceInput) {
+    async updateDevice({id, name, active} : UpdateDeviceInput) {
         // validate
         const use_name = name.trim();
         const use_id = id.trim();
@@ -330,7 +333,7 @@ export class StorageService extends BaseService {
         const device = await this.getDevice(use_id);
         
         // attempt to update the device
-        const result = await this.dbService?.query("update device set name=$1 where id=$2", use_name, use_id);
+        const result = await this.dbService?.query("update device set name=$1, active=$3 where id=$2", use_name, use_id, active);
         if (!result || result.rowCount !== 1) {
             throw Error(`Unable to update device with ID <${use_id}>`);
         }
@@ -339,11 +342,13 @@ export class StorageService extends BaseService {
         await this.eventService?.publishTopic(constants.TOPICS.CONTROL, "device.update", {
             "new": {
                 "id": use_id,
-                "name": use_name
+                "name": use_name,
+                "active": active
             },
             "old": {
                 "id": use_id,
-                "name": device.name
+                "name": device.name,
+                "active": device.active
             }
         });
 

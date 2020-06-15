@@ -4,15 +4,18 @@ import * as fs from "fs";
 import {join} from "path";
 import * as readline from "readline";
 
-const TARGET_DATABASE_VERSION = 4;
+const TARGET_DATABASE_VERSION = 5;
 
-const pool = new Pool({
-    'connectionString': process.env.DATABASE_URL,
-    "ssl": {
+const config = {
+    'connectionString': process.env.DATABASE_URL
+} as any;
+if (process.env.NODE_ENV !== "development") {
+    config.ssl = {
         "checkServerIdentity": false,
         "rejectUnauthorized": false
     } as any
-});
+}
+const pool = new Pool(config);
 
 const executeSQLFile = (filename : string) : Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -54,8 +57,13 @@ const updateSchemaVersion_2to3 = () : Promise<void> => {
 }
 
 const updateSchemaVersion_3to4 = () : Promise<void> => {
-    console.log("Updating database schema from version 2 to 3...");
+    console.log("Updating database schema from version 3 to 4...");
     return executeSQLFile("version_3_to_4.sql");
+}
+
+const updateSchemaVersion_4to5 = () : Promise<void> => {
+    console.log("Updating database schema from version 4 to 5...");
+    return executeSQLFile("version_4_to_5.sql");
 }
 
 pool.query("BEGIN").then(() => {
@@ -84,6 +92,8 @@ pool.query("BEGIN").then(() => {
                     return updateSchemaVersion_2to3();
                 } else if (version === 3) {
                     return updateSchemaVersion_3to4();
+                } else if (version === 4) {
+                    return updateSchemaVersion_4to5();
                 } else if (version === TARGET_DATABASE_VERSION) {
                     console.log("We are at the newest version...");
                     return Promise.resolve();

@@ -9,6 +9,7 @@ export class Device {
         this.id = d.id;
         this.name = d.name;
         this.house = d.house;
+        this.active = d.active;
         this.last_ping = d.lastPing;
         this.last_restart = d.lastRestart;
         this.last_watchdog_reset = d.lastWatchdogReset;
@@ -31,6 +32,9 @@ export class Device {
 
     @Field()
     house : House;
+
+    @Field()
+    active : boolean;
 }
 
 @InputType()
@@ -45,6 +49,9 @@ export class UpdateDeviceInput extends DeleteDeviceInput {
     @Field()
     @Length(2, 128)
     name : string
+
+    @Field()
+    active : boolean
 }
 
 @InputType()

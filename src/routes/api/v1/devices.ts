@@ -53,7 +53,8 @@ router.post("/", async (req, res, next) => {
         const device = await storage.createDevice({
             "houseId": input.house,
             "id": input.id,
-            "name": input.name
+            "name": input.name,
+            "active": input.active
         })
         res.status(201).send(device);
 
@@ -79,7 +80,8 @@ router.put("/", async (req, res, next) => {
     try {
         const device = await storage.updateDevice({
             "id": input.id,
-            "name": input.name
+            "name": input.name,
+            "active": input.active
         })
         res.status(201).send(device);
 
