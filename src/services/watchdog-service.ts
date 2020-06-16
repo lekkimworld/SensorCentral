@@ -120,8 +120,12 @@ export class WatchdogService extends BaseService {
         if (parts[1] === "create") {
             // new device was created
             const deviceId = result.data.new.id;
-            this.logService!.info(`Device with ID <${deviceId}> was created - adding watchdog`);
-            this.addWatchdog(result.data.new as Device);
+            if (result.data.new.active) {
+                this.logService!.info(`Device with ID <${deviceId}> was created - adding watchdog`);
+                this.addWatchdog(result.data.new as Device);
+            } else {
+                this.logService!.info(`Device with ID <${deviceId}> was created INACTIVE - NOT adding watchdog`);
+            }
 
         } else if (parts[1] === "update") {
             // device was updated
