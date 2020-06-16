@@ -15,6 +15,7 @@ let queryData = {
     "adjustBy": "day",
     "groupBy": "hour"
 }
+let = queryAddMissingTimeSeries = false;
 let queryName = "counterGroupedQuery";
 
 const samplesTable = (sensor, samples) => {
@@ -40,7 +41,7 @@ module.exports = {
     actionManualSample: false, 
     "buildUI": (elemRoot, sensor) => {
         const doChart = () => {
-            fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}}){id, name, data{name,value}}}`).then(result => {
+            fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}, addMissingTimeSeries: ${queryAddMissingTimeSeries}}){id, name, data{name,value}}}`).then(result => {
                 const data = result[queryName][0];
                 barChart(
                     ID_CHART, 
@@ -120,6 +121,7 @@ module.exports = {
 
         $("#add_missing_dtseries").click(ev => {
             const add_missing = ev.target.checked;
+            queryAddMissingTimeSeries = add_missing;
             
             // refresh chart
             doChart();

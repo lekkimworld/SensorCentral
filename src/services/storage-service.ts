@@ -431,6 +431,20 @@ export class StorageService extends BaseService {
     }
 
     /**
+     * Returns sensor with specified ID or undefined if not found.
+     * 
+     * @param sensorId ID of sensor to lookup
+     */
+    async getSensorOrUndefined(sensorId : string) {
+        try {
+            const s = await this.getSensor(sensorId);
+            return s;
+        } catch (err) {
+            return undefined;
+        }
+    }
+
+    /**
      * Returns sensor with specified label
      * @param label Label of sensor to lookup
      * @throws Error if sensor not found
