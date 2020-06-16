@@ -42,7 +42,7 @@
                 },
                 "OIDC_CLIENT_ID": "stubOidcClient",
                 "OIDC_CLIENT_SECRET": "secretsarehardtokeep",
-                "OIDC_REDIRECT_URI": "https://sensorcentral-pr-16.herokuapp.com/openid/callback",
+                "OIDC_REDIRECT_URI": "https://sensorcentral-pr-17.herokuapp.com/openid/callback",
                 "OIDC_PROVIDER_URL": "https://cryptic-dawn-16980.herokuapp.com",
                 "OIDC_POST_CLIENT_SECRET": "true"
             },
