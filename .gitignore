@@ -8,3 +8,4 @@ coverage
 .tscache
 server-dist
 src/foo.ts
+/*.sql

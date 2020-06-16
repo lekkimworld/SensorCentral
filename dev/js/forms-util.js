@@ -223,6 +223,13 @@ const DEVICE_CREATE_EDIT = {
                             You must specify the name for the device. Must be unique.
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label for="activeInput">Active</label>
+                        <label class="sensorcentral-switch">
+                            <input type="checkbox" id="activeInput" value="1">
+                            <span class="sensorcentral-slider sensorcentral-round"></span>
+                        </label>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -235,19 +242,25 @@ const DEVICE_CREATE_EDIT = {
     "fnInit": (ctx) => {
         const idField = $("#idInput");
         const nameField = $("#nameInput");
+        const activeField = $("#activeInput");
         if (ctx.device) {
             idField.val(ctx.device.id);
             idField.prop("disabled", true);
             nameField.val(ctx.device.name);
+            activeField.prop("checked", ctx.device.active ? "1" : "");
+        } else {
+            activeField.prop("checked", "1");
         }
         return Promise.resolve();
     },
     "fnGetData": () => {
         const idField = $("#idInput");
         const nameField = $("#nameInput");
+        const activeField = $("#activeInput");
         return {
             "id": idField.val(),
-            "name": nameField.val()
+            "name": nameField.val(),
+            "active": activeField.prop("checked")
         }
     }
 }

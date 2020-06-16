@@ -15,6 +15,7 @@ let queryData = {
     "adjustBy": "day",
     "groupBy": "hour"
 }
+let = queryAddMissingTimeSeries = false;
 let queryName = "counterGroupedQuery";
 
 const samplesTable = (sensor, samples) => {
@@ -40,7 +41,7 @@ module.exports = {
     actionManualSample: false, 
     "buildUI": (elemRoot, sensor) => {
         const doChart = () => {
-            fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}}){id, name, data{name,value}}}`).then(result => {
+            fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}, addMissingTimeSeries: ${queryAddMissingTimeSeries}}){id, name, data{name,value}}}`).then(result => {
                 const data = result[queryName][0];
                 barChart(
                     ID_CHART, 
@@ -104,6 +105,13 @@ module.exports = {
         `);
         elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
 
+        // add selector for adding missing time series
+        elemRoot.append(`<p class="mt-3"><label for="add_missing_dtseries">Add missing time-series</label>
+        <label class="sensorcentral-switch">
+            <input type="checkbox" id="add_missing_dtseries" value="1">
+            <span class="sensorcentral-slider sensorcentral-round"></span>
+        </label></p>`);
+
         // create div's for samples table and load samples
         elemRoot.append(uiutils.htmlSectionTitle("Chart Data"));
         elemRoot.append(`<div id="${ID_SAMPLES_DIV}"><div id="${ID_SAMPLES_TABLE}"></div></div>`);
@@ -111,6 +119,13 @@ module.exports = {
         // create chart
         doChart();
 
+        $("#add_missing_dtseries").click(ev => {
+            const add_missing = ev.target.checked;
+            queryAddMissingTimeSeries = add_missing;
+            
+            // refresh chart
+            doChart();
+        })
         $("#querySelectors").click(ev => {
             const linkRel = ev.target.getAttribute("rel");
             const typeRel = ev.target.parentNode.getAttribute("rel");

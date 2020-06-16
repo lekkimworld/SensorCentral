@@ -7,10 +7,12 @@ const config : PoolConfig = {
 if (process.env.NODE_ENV === "production") {
     config.ssl = true;
 } else if (process.env.NODE_ENV === "development") {
-    config.ssl = {
-        checkServerIdentity: false,
-        rejectUnauthorized: false
-    } as any;
+    if (process.env.DATABASE_SSL) {
+        config.ssl = {
+            checkServerIdentity: false,
+            rejectUnauthorized: false
+        } as any;
+    }
 }
 
 export class DatabaseService extends BaseService {

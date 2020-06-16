@@ -8,12 +8,13 @@ module.exports = (document, elemRoot, ctx) => {
     const houseId = ctx.houseId;
 
     const createDevice = (data) => {
-        fetcher.graphql(`mutation {createDevice(data: {houseId: "${houseId}", id: "${data.id}", name: "${data.name}"}){id}}`).then(body => {
+        fetcher.graphql(`mutation {createDevice(data: {houseId: "${houseId}", id: "${data.id}", name: "${data.name}", active: ${data.active}}){id}}`).then(body => {
             document.location.reload();
         })
     }
     const editDevice = (data) => {
-        fetcher.graphql(`mutation {updateDevice(data: {id: "${data.id}", name: "${data.name}"}){id}}`).then(body => {
+        console.log(data);
+        fetcher.graphql(`mutation {updateDevice(data: {id: "${data.id}", name: "${data.name}", active: ${data.active}}){id}}`).then(body => {
             document.location.reload();
         })
     }
@@ -21,7 +22,7 @@ module.exports = (document, elemRoot, ctx) => {
     const updateUI = () => {
         elemRoot.html("");
     
-        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,watchdog{notify,muted_until},last_ping,last_restart,last_watchdog_reset,house{id,name}}}`).then(data => {
+        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,watchdog{notify,muted_until},last_ping,last_restart,last_watchdog_reset,active,house{id,name}}}`).then(data => {
             const devices = data.devices.sort((a,b) => a.name.localeCompare(b.name));
             const houseName = data.house.name;
     
@@ -41,6 +42,7 @@ module.exports = (document, elemRoot, ctx) => {
                     }}
                 ]
             );
+            uiutils.appendSectionTitle(elemRoot, "Active Devices");
             uiutils.appendDataTable(elemRoot, {
                 "actions": [
                     {"icon": "pencil", "rel": "edit", "click": function(ctx) {
@@ -81,7 +83,7 @@ module.exports = (document, elemRoot, ctx) => {
                     "",
                     "d-none d-sm-table-cell"
                 ],
-                "rows": devices.map(device => {
+                "rows": devices.filter(d => d.active).map(device => {
                     const notify = (function(n) {
                         let notify;
                         
@@ -108,6 +110,30 @@ module.exports = (document, elemRoot, ctx) => {
                         "id": device.id,
                         "data": device,
                         "columns": [device.name, notify, mutedUntil, status, device.id],
+                        "click": function() {
+                            document.location.hash = `configuration/house/${device.house.id}/device/${this.id}`
+                        }
+                    }
+                })
+            });
+
+            uiutils.appendSectionTitle(elemRoot, "Inactive Devices");
+            uiutils.appendDataTable(elemRoot, {
+                "actions": [
+                    {"icon": "pencil", "rel": "edit", "click": function(ctx) {
+                        formsutil.appendDeviceCreateEditForm(ctx.data, editDevice);
+                    }}
+                ],
+                "headers": ["NAME", "ID"],
+                "classes": [
+                    "", 
+                    "",
+                ],
+                "rows": devices.filter(d => !d.active).map(device => {
+                    return {
+                        "id": device.id,
+                        "data": device,
+                        "columns": [device.name, device.id],
                         "click": function() {
                             document.location.hash = `configuration/house/${device.house.id}/device/${this.id}`
                         }

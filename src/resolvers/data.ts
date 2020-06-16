@@ -1,6 +1,8 @@
 import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Ctx, registerEnumType } from "type-graphql";
 import * as types from "../types";
 import { IsEnum } from "class-validator";
+import { Sensor } from "./sensor";
+import { QueryResult } from "pg";
 
 enum CounterQueryTimezone {
     copenhagen = "Europe/Copenhagen",
@@ -82,44 +84,76 @@ class GroupedQueryInput {
 
     @Field({nullable: true, defaultValue: 0, description: "The number of units we adjust the end timestamp by using the supplied unit to adjust by"})
     end : number
+
+    @Field({nullable: true, defaultValue: false, description: "Adds the missing time series into the result set to fill in the result in case of missing data"})
+    addMissingTimeSeries : boolean
 }
 
 @Resolver()
 export class CounterQueryResolver {
     @Query(() => [Dataset], { description: "Returns data for requested sensors grouped as requested", nullable: false })
     async counterGroupedQuery(@Arg("data") data : GroupedQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        // figure out timezone
+        const tz = data.timezone || "Europe/Copenhagen";
+
         // create query with adjusted days
-        const query = `select sensor.id id, sensor.name as name, to_char(dt at time zone $2, '${data.groupBy}') period, sum(value) as value
+        const dataQuery = `select to_char(dt at time zone '${tz}', '${data.groupBy}') period, sum(value) as value
         from sensor_data inner join sensor on sensor_data.id=sensor.id 
         where 
-            dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone $2) at time zone $2 - interval '${data.start} ${data.adjustBy}' and 
-            dt < date_trunc('${data.adjustBy}', current_timestamp at time zone $2) at time zone $2 - interval '${data.end} ${data.adjustBy}' and 
+            dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.start} ${data.adjustBy}' and 
+            dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.end} ${data.adjustBy}' and 
             sensor.id=$1 
-        group by sensor.id, period 
-        order by sensor.id asc, period asc;`;
-        console.log(query);
+        group by period 
+        order by period asc`;
 
-        // get data
-        const results = await Promise.all(data.sensorIds.map(async id => {
-            return ctx.storage.dbService!.query(query, id, data.timezone || "Europe/Copenhagen")
+        // create actual query (adds whether to fill in time series)
+        const query = (() => {
+            if (!data.addMissingTimeSeries) return dataQuery;
+            return `
+                with dt_series as (
+                    select 
+                        to_char(dt, '${data.groupBy}') period, 0 as value 
+                    from 
+                        generate_series(
+                            date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.start} ${data.adjustBy}', 
+                            date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.end} ${data.adjustBy}' - interval '1 minute', 
+                            interval '1 hour'
+                        ) dt group by period), 
+                actuals as (${dataQuery}) 
+                select dt_series.period period, case when actuals.value != 0 then actuals.value else dt_series.value end from dt_series left join actuals on dt_series.period=actuals.period order by period asc`;
+        })();
+
+        // create promises (one query per sensor for the sensor, one query per sensor for the data)
+        let promises : Array<Promise<any>> = data.sensorIds.map(async id => {
+            return ctx.storage.getSensorOrUndefined(id);
+        })
+        promises = promises.concat(data.sensorIds.map(async id => {
+            return ctx.storage.dbService!.query(query, id)
         }));
         
+        // evaluate all queries
+        const results = await Promise.all(promises);
+        
         // create response
-        const dss = results.map((result, idx) => {
-            if (!result || result.rowCount === 0) {
-                const ds = new Dataset(data.sensorIds[idx], undefined);
-                return ds;
+        const dss : Array<Dataset> = [];
+        for (let i=0; i<data.sensorIds.length; i++) {
+            const result = results[data.sensorIds.length + i] as QueryResult;
+            const sensor = results[i] as Sensor;
+            let ds;
+            if (!sensor) {
+                // unknown sensor
+                ds = new Dataset(data.sensorIds[i], undefined);
             } else {
-                const ds = new Dataset(result.rows[0].id, result.rows[0].name);
+                ds = new Dataset(sensor.id, sensor.name);
                 ds.data = result.rows.map((r : any) => {
                     return {
                         "name": r.period,
                         "value": r.value
                     } as DataElement;
                 })
-                return ds;
             }
-        })
+            dss.push(ds);
+        }
         
         return dss;
     }

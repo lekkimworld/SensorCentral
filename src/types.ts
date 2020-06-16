@@ -246,6 +246,7 @@ export interface Device {
     readonly lastRestart : Date;
     readonly lastWatchdogReset : Date;
     readonly lastPing : Date;
+    readonly active : boolean;
 }
 
 /**
