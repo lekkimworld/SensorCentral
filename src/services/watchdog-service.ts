@@ -38,9 +38,13 @@ export class WatchdogService extends BaseService {
     private async initDeviceWatchdogs() {
         const devices = await this.storageService!.getDevices();
         devices.forEach(device => {
-            // create a watchdog per device
-            this.logService!.info(`Adding watchdog for device with ID <${device.id}> and name <${device.name}> with timeout <${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT}>`)
-            this.addWatchdog(device);
+            // create a watchdog per device if active
+            if (!device.active) {
+                this.logService!.info(`NOT adding watchdog for device with ID <${device.id}> and name <${device.name}> as it's INACTIVE`);
+            } else {
+                this.logService!.info(`Adding watchdog for device with ID <${device.id}> and name <${device.name}> with timeout <${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT}>`)
+                this.addWatchdog(device);
+            }
         })
     }
 
@@ -120,7 +124,18 @@ export class WatchdogService extends BaseService {
             this.addWatchdog(result.data.new as Device);
 
         } else if (parts[1] === "update") {
-            // device was updated - ignored
+            // device was updated
+            const deviceId = result.data.new.id;
+
+            if (result.data.new.active && !result.data.old.active) {
+                // device now active - add watchdog
+                this.logService!.info(`Device with ID <${deviceId}> was updated - was INACTIVE, now ACTIVE - adding watchdog`);
+                this.addWatchdog(result.data.new as Device);
+
+            } else if (!result.data.new.active && result.data.old.active) {
+                this.logService!.info(`Device with ID <${deviceId}> was updated - was ACTIVE, now INACTIVE - removing watchdog`);
+                this.removeWatchdog(deviceId);
+            }
 
         } else if (parts[1] === "delete") {
             // device was deleted

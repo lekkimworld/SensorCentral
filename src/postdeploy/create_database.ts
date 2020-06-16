@@ -1,4 +1,4 @@
-import {Pool} from "pg";
+import {Pool, PoolConfig} from "pg";
 require('dotenv').config()
 import * as fs from "fs";
 import {join} from "path";
@@ -7,15 +7,20 @@ import moment from "moment-timezone";
 
 const TARGET_DATABASE_VERSION = 5;
 
-const config = {
+const config : PoolConfig = {
     'connectionString': process.env.DATABASE_URL
-} as any;
-if (process.env.NODE_ENV !== "development") {
-    config.ssl = {
-        "checkServerIdentity": false,
-        "rejectUnauthorized": false
-    } as any
+};
+if (process.env.NODE_ENV === "production") {
+    config.ssl = true;
+} else if (process.env.NODE_ENV === "development") {
+    if (process.env.DATABASE_SSL) {
+        config.ssl = {
+            checkServerIdentity: false,
+            rejectUnauthorized: false
+        } as any;
+    }
 }
+
 const pool = new Pool(config);
 
 const executeSQLFile = (filename : string) : Promise<void> => {

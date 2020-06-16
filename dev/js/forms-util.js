@@ -229,6 +229,7 @@ const DEVICE_CREATE_EDIT = {
                             <input type="checkbox" id="activeInput" value="1">
                             <span class="sensorcentral-slider sensorcentral-round"></span>
                         </label>
+                        <small id="activeHelp" class="form-text text-muted">Making a device inactive sorts it at the bottom and disables the watchdog for the device.</small>
                     </div>
                 </form>
             </div>
