@@ -3,6 +3,7 @@ require('dotenv').config()
 import * as fs from "fs";
 import {join} from "path";
 import * as readline from "readline";
+import moment from "moment-timezone";
 
 const TARGET_DATABASE_VERSION = 5;
 
@@ -42,9 +43,40 @@ const executeSQLFile = (filename : string) : Promise<void> => {
     })
 }
 
-const buildEntireSchema = () : Promise<void> => {
+const TEST_SENSOR_ID_COUNTER = "mysensor_3-1";
+
+const addProgrammaticTestData = async () : Promise<void> => {
+    const mDt = moment().tz("Europe/Copenhagen").set("hours", 12).set("minute", 0).set("second", 0);
+    const mEnd = moment(mDt).subtract(48, "hour");
+
+    while (mDt.isAfter(mEnd)) {
+        const value = Math.floor(Math.random() * 10);
+
+        const str_dt = mDt.toISOString();
+        mDt.subtract(2, "minute");
+        const str_from_dt = mDt.toISOString();
+
+        await pool.query(
+            "insert into sensor_data (id, value, from_dt, dt) values ($1, $2, $3, $4)", 
+            [
+                TEST_SENSOR_ID_COUNTER, 
+                value,
+                str_from_dt,
+                str_dt
+            ]
+        );
+
+    }
+}
+
+const buildEntireSchema = async () : Promise<void> => {
     console.log("Creating entire database schema...");
-    return executeSQLFile(`complete_v${TARGET_DATABASE_VERSION}.sql`);
+    await executeSQLFile(`complete_v${TARGET_DATABASE_VERSION}.sql`)
+    if (process.env.NODE_ENV === "development") {
+        console.log("NODE_ENV is set to development so injecting test data in database...");
+        await executeSQLFile("testdata.sql");
+        await addProgrammaticTestData();
+    }
 }
 
 const updateSchemaVersion_1to2 = () : Promise<void> => {
