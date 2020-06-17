@@ -40,6 +40,7 @@
                 "SESSION_SECRET": {
                     "generator": "secret"
                 },
+                "NODE_ENV": "development",
                 "OIDC_CLIENT_ID": "stubOidcClient",
                 "OIDC_CLIENT_SECRET": "secretsarehardtokeep",
                 "OIDC_REDIRECT_URI": "https://sensorcentral-pr-17.herokuapp.com/openid/callback",
