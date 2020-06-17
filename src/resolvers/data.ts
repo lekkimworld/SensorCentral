@@ -175,8 +175,8 @@ export class CounterQueryResolver {
                         (select dt, value 
                             from sensor_data 
                             where 
-                                dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.start} ${data.adjustBy}' 
-                                and dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.end} ${data.adjustBy}' - interval '1 second' 
+                                dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.start} ${data.adjustBy}' 
+                                and dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.end} ${data.adjustBy}' - interval '1 second' 
                                 and id=$1 
                             order by dt desc
                     ) select dt, value, value-lead(value,1) over (order by dt desc) diff_value from temp1) select to_char(dt at time zone '${tz}', '${data.groupBy}') period, sum(diff_value) as value from temp2 group by period order by period)`
