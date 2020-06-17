@@ -2,4 +2,7 @@ create table SMARTME_SUBSCRIPTION (clientId character varying(36) not null prima
 alter table SMARTME_SUBSCRIPTION add foreign key (login_user_id) references LOGIN_USER (id) on delete cascade;
 alter table smartme_subscription add foreign key (sensorid) references SENSOR (id) on delete cascade;
 
+alter type SENSOR_TYPE add value 'delta';
+update sensor set type='delta' where type='counter';
+
 update DATABASE_VERSION set version=6;

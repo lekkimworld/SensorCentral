@@ -17,7 +17,7 @@ create table DEVICE_WATCHDOG (userId character varying(36) not null, deviceId ch
 alter table DEVICE_WATCHDOG add foreign key (userId) references LOGIN_USER (id) on delete cascade;
 alter table DEVICE_WATCHDOG add foreign key (deviceId) references DEVICE (id) on delete cascade;
 
-create type SENSOR_TYPE as ENUM ('gauge', 'counter');
+create type SENSOR_TYPE as ENUM ('gauge', 'counter', 'delta');
 create table SENSOR (id character varying(36) not null primary key, name character varying(128) not null, deviceid character varying(36) not null, icon character varying(36) not null, type SENSOR_TYPE not null, label character varying(128) not null);
 alter table SENSOR add foreign key (deviceid) references device (id) on delete cascade;
 

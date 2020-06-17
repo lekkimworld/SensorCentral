@@ -48,9 +48,18 @@ const executeSQLFile = (filename : string) : Promise<void> => {
     })
 }
 
-const TEST_SENSOR_ID_COUNTER = "mysensor_3-1";
+const TEST_SENSOR_ID_DELTA = "mysensor_3-1";
+const TEST_SENSOR_ID_COUNTER = "94f7a0f4-d85b-4815-9c77-833be7c28779";
 
 const addProgrammaticTestData = async () : Promise<void> => {
+    // add for delta sensor
+    await addProgrammaticTestData_Delta();
+
+    // add for counter sensor
+    await addProgrammaticTestData_Counter();
+}
+
+const addProgrammaticTestData_Delta = async () : Promise<void> => {
     const mDt = moment().tz("Europe/Copenhagen").set("hours", 12).set("minute", 0).set("second", 0);
     const mEnd = moment(mDt).subtract(48, "hour");
 
@@ -64,13 +73,35 @@ const addProgrammaticTestData = async () : Promise<void> => {
         await pool.query(
             "insert into sensor_data (id, value, from_dt, dt) values ($1, $2, $3, $4)", 
             [
-                TEST_SENSOR_ID_COUNTER, 
+                TEST_SENSOR_ID_DELTA, 
                 value,
                 str_from_dt,
                 str_dt
             ]
         );
+    }
+}
 
+const addProgrammaticTestData_Counter = async () : Promise<void> => {
+    const mDt = moment().tz("Europe/Copenhagen").set("hours", 12).set("minute", 0).set("second", 0);
+    const mEnd = moment(mDt).subtract(48, "hour");
+
+    let value = 27112;
+    while (mDt.isAfter(mEnd)) {
+        const increment = Math.floor(Math.random() * 20);
+        value -= increment; // subtract as we go backwards time
+
+        const str_dt = mDt.toISOString();
+        mDt.subtract(2, "minute");
+
+        await pool.query(
+            "insert into sensor_data (id, value, dt) values ($1, $2, $3)", 
+            [
+                TEST_SENSOR_ID_COUNTER, 
+                value,
+                str_dt
+            ]
+        );
     }
 }
 
