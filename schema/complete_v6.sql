@@ -1,5 +1,5 @@
 create table DATABASE_VERSION (version int not null);
-insert into DATABASE_VERSION (version) values (5);
+insert into DATABASE_VERSION (version) values (6);
 
 create table HOUSE (id character varying(36) not null primary key, name character varying(128) not null);
 alter table HOUSE add constraint HOUSE_NAME_UNIQUE UNIQUE (name);
