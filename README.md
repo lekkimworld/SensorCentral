@@ -23,3 +23,12 @@
 2. If there are schema changes to the database: Set the `DATABASE_URL` in the local `.env` file and run the schema migration tool (use `heroku config --shell --app <name>` to fetch config)
 3. Propagate from staging to production using `heroku pipelines:promote --app <name>`
 4. Scale the web dynos to 1 using `heroku ps:scale web=1`
+
+
+## Test data ##
+
+### Smart.me ###
+clientId = smartme-client-1
+username = cc8f022c-77b0-40de-8595-fb9c5ebb2e0b
+password = 540f779b-6315-4e46-8ff6-4c57f4980609
+sensorId = 94f7a0f4-d85b-4815-9c77-833be7c28779

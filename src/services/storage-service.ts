@@ -18,6 +18,9 @@ import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput } from "../resolve
 import { WatchdogNotificationInput } from "../resolvers/device-watchdog";
 import { QueryResult } from "pg";
 import { UpdateSettingsInput } from "src/resolvers/settings";
+//@ts-ignore
+import aes256 from "aes256";
+
 
 const SENSOR_KEY_PREFIX = 'sensor:';
 const DEVICE_KEY_PREFIX = 'device:';
@@ -858,6 +861,31 @@ export class StorageService extends BaseService {
         const redisData = await this.redisService!.mget(...redisKeys);
         return redisData.map(d => d ? JSON.parse(d) : undefined);
     }
+
+    async getSmartmeInfoForClient(clientId : string) {
+        const result = await this.dbService!.query("select username, password, s.id sensorid, s.deviceid deviceid from smartme_subscription smartme, sensor s where smartme.sensorid=s.id and smartme.clientId=$1", clientId);
+        if (result.rowCount !== 1) throw new Error(`Expected a single result for clientId <${clientId}> but received <${result.rowCount}>`);
+
+        const cipher_username = result.rows[0].username;
+        const cipher_password = result.rows[0].password;
+
+        const passphrase = process.env.SMARTME_KEY;
+        const username = aes256.decrypt(passphrase, cipher_username);
+        const password = aes256.decrypt(passphrase, cipher_password);
+
+        const sensorId = result.rows[0].sensorid;
+        const deviceId = result.rows[0].deviceid;
+        const acceptedAuth = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
+        return {
+            "clientId": clientId,
+            "sensorId": sensorId,
+            "deviceId": deviceId,
+            "authHeader": acceptedAuth
+        };
+    }
+
+
+
 
     /**
      * Update the last ping for the device with the supplied ID
