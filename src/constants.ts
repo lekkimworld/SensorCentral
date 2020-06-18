@@ -17,6 +17,10 @@ export default {
         "PROTOCOL": process.env.APP_PROTOCOL || "https",
         "DOMAIN": process.env.APP_DOMAIN
     },
+    "SMARTME": {
+        "CUTOFF_YEAR": process.env.SMARTME_CUTOFF_YEAR || 2015,
+        "ENCRYPTION_KEY": process.env.SMARTME_KEY
+    },
     'DEFAULTS': {
         'SERVICE': {
             'LOOKUP_TIMEOUT': 2000

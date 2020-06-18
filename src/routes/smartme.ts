@@ -7,9 +7,6 @@ import constants from '../constants';
 import { LogService } from '../services/log-service';
 const {lookupService} = require('../configure-services');
 
-// do not accept samples before this year
-const CUTOFF_YEAR = 2015;
-
 const router = express.Router();
 
 router.post('/:clientId', async (req, res, next) => {
@@ -44,8 +41,8 @@ router.post('/:clientId', async (req, res, next) => {
                 log.warn(`Ignoring powermeter sample as deviceId <${sample.deviceId}> does NOT match expected sensorId <${smartmeInfo.sensorId}>`);
                 return;
             }
-            if (sample.dt.getFullYear() < CUTOFF_YEAR) {
-                log.warn(`Ignoring powermeter sample as timestamp <${sample.dt.toISOString()}> is before ${CUTOFF_YEAR} (spurious sample)`);
+            if (sample.dt.getFullYear() < constants.SMARTME.CUTOFF_YEAR) {
+                log.warn(`Ignoring powermeter sample as timestamp <${sample.dt.toISOString()}> is before ${constants.SMARTME.CUTOFF_YEAR} (spurious sample)`);
                 return;
             }
 
@@ -56,6 +53,9 @@ router.post('/:clientId', async (req, res, next) => {
                 "dt": sample.dt.toISOString(),
                 "value": sample.getValue(Smartme.Obis.ActiveEnergyTotalImport)
             } as IngestedSensorMessage);
+
+            // persist sample
+            storage.persistPowermeterReading(sample);
         })
     })
 })

@@ -10,7 +10,7 @@ module.exports = (document, elemRoot, ctx) => {
         // do title row
         uiutils.appendTitleRow(
             elemRoot, 
-            "Powermeter", 
+            "Powermeter Setup", 
             [
                 {"rel": "create", "icon": "plus", "click": function() {
                     
@@ -206,7 +206,7 @@ module.exports = (document, elemRoot, ctx) => {
                 const houseId = $("#houseInput").val();
                 const deviceId = uuid();
                 return fetcher.graphql(`mutation {createDevice(data: {houseId: "${houseId}", id: "${deviceId}", name: "Kamstrup Powermeter", active: true}){id}}`).then(() => {
-                    return fetcher.graphql(`mutation {createSensor(data: {deviceId: "${deviceId}", id: "${sensorId}", name: "Powermeter (${houseId})", label: "powermeter-${houseId}", type: "counter", icon: "battery-4"}){id}}`);
+                    return fetcher.graphql(`mutation {createSensor(data: {deviceId: "${deviceId}", id: "${sensorId}", name: "Powermeter", label: "powermeter-${houseId}", type: "counter", icon: "battery-4"}){id}}`);
                 }).then(() => {
                     messageShow(resultsId, "Created device and sensor.", "green");
                 })

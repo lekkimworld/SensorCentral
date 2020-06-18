@@ -18,10 +18,11 @@ import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput } from "../resolve
 import { CreateSmartmeSubscriptionType, DeleteSmartmeSubscriptionType } from "../resolvers/smartme";
 import { WatchdogNotificationInput } from "../resolvers/device-watchdog";
 import { QueryResult } from "pg";
-import { UpdateSettingsInput } from "src/resolvers/settings";
+import { UpdateSettingsInput } from "../resolvers/settings";
 //@ts-ignore
 import aes256 from "aes256";
-import { SmartmeSubscription } from "src/resolvers/smartme";
+import { SmartmeSubscription } from "../resolvers/smartme";
+import { Smartme } from "smartme-protobuf-parser";
 
 
 const SENSOR_KEY_PREFIX = 'sensor:';
@@ -478,7 +479,7 @@ export class StorageService extends BaseService {
         await this.getDevice(deviceId);
 
         // create sensor
-        await this.dbService?.query(`insert into sensor (deviceid, id, name, label, type, icon) values ($1, $2, $3, $4, $5, $6)`, deviceId, use_id, use_name, use_label, type, icon);
+        await this.dbService!.query(`insert into sensor (deviceid, id, name, label, type, icon) values ($1, $2, $3, $4, $5, $6)`, deviceId, use_id, use_name, use_label, type, icon);
 
         // get sensor
         const sensor = await this.getSensor(use_id);
@@ -897,7 +898,7 @@ export class StorageService extends BaseService {
 
     async createSmartmeSubscription(user : BackendLoginUser, data : CreateSmartmeSubscriptionType) {
         // encrypt username and password
-        const passphrase = process.env.SMARTME_KEY;
+        const passphrase = constants.SMARTME.ENCRYPTION_KEY;
         const crypt_username = aes256.encrypt(passphrase, data.username);
         const crypt_password = aes256.encrypt(passphrase, data.password);
         
@@ -967,6 +968,43 @@ export class StorageService extends BaseService {
         return this.dbService!.query(str_sql, ...args).then(() => {
             return Promise.resolve();
         })
+    }
+
+    /**
+     * Persist powermeter sample.
+     * 
+     * @param sample 
+     */
+    async persistPowermeterReading(sample : Smartme.DeviceSample) {
+        this.dbService!.query(`insert into powermeter_data (
+            id, 
+            dt, 
+            ActiveEnergyTotalExport, 
+            ActiveEnergyTotalImport, 
+            ActivePowerPhaseL1, 
+            ActivePowerPhaseL2, 
+            ActivePowerPhaseL3, 
+            ActivePowerTotal, 
+            CurrentPhaseL1, 
+            CurrentPhaseL2, 
+            CurrentPhaseL3, 
+            VoltagePhaseL1, 
+            VoltagePhaseL2, 
+            VoltagePhaseL3) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`, 
+            sample.deviceId, 
+            sample.dt.toISOString(), 
+            sample.getValue(Smartme.Obis.ActiveEnergyTotalExport), 
+            sample.getValue(Smartme.Obis.ActiveEnergyTotalImport),
+            sample.getValue(Smartme.Obis.ActivePowerPhaseL1),
+            sample.getValue(Smartme.Obis.ActivePowerPhaseL2),
+            sample.getValue(Smartme.Obis.ActivePowerPhaseL3),
+            sample.getValue(Smartme.Obis.ActivePowerTotal),
+            sample.getValue(Smartme.Obis.CurrentPhaseL1),
+            sample.getValue(Smartme.Obis.CurrentPhaseL2),
+            sample.getValue(Smartme.Obis.CurrentPhaseL3),
+            sample.getValue(Smartme.Obis.VoltagePhaseL1),
+            sample.getValue(Smartme.Obis.VoltagePhaseL2),
+            sample.getValue(Smartme.Obis.VoltagePhaseL3));
     }
 
 
