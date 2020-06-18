@@ -891,7 +891,7 @@ export class StorageService extends BaseService {
         return result.rows.map(r => ({
             "clientId": r.clientid,
             "sensorId": r.sensorid,
-            "url": `${constants.APP.PROTOCOL}://${constants.APP.DOMAIN}/${r.clientid}`
+            "url": `${constants.APP.PROTOCOL}://${constants.APP.DOMAIN}/smartme/${r.clientid}`
         }) as SmartmeSubscription)
     }
 
