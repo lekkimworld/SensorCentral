@@ -115,7 +115,7 @@ const doGroupedQuery = async (query : string, data : GroupedQueryInput, ctx : ty
             ds.data = result.rows.map((r : any) => {
                 return {
                     "name": r.period,
-                    "value": r.value
+                    "value": r.value || 0
                 } as DataElement;
             })
         }

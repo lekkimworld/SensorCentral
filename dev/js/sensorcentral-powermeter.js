@@ -62,7 +62,7 @@ module.exports = (document, elemRoot, ctx) => {
                         ensure a sensor has been created. 
                         <form class="mt-3">
                             ${forms.utils.textField("powermeter4CreateSensor", "Powermeter ID", "Specify the ID of the powermeter to create sensor for. Only required if you have more than one powermeter on your smart.me account.")}
-                            ${forms.utils.toggleButton("createIfMissing", "Create", "Enable to create the mission sensor (and device) if powermeter sensor not found.")}
+                            ${forms.utils.toggleButton("createIfMissing", "Create", "Enable to create a sensor (and device) for the powermeter sensor not found.")}
                             <p class="text-center">
                                 ${forms.utils.buttonPerformAction("Check (and create)", "check")}
                             </p>
