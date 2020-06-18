@@ -115,8 +115,8 @@ module.exports = (document, elemRoot, ctx) => {
         }
         return fetch(`https://api.smart-me.com/api${endpoint}`, opts).then(res => {
             if (res.status === 401) return Promise.reject(Error("Unauthorized - please verify the specified credentials"));
-            if (res.status !== 200) return Promise.reject(Error(`Received a HTTP code ${res.status} which we clearly did not expect...`));
-            return res.json()
+            if (res.status < 200 || res.status > 299) return Promise.reject(Error(`Received a HTTP code ${res.status} which we clearly did not expect...`));
+            return res.json();
         })
     }
 

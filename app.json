@@ -40,6 +40,9 @@
                 "SESSION_SECRET": {
                     "generator": "secret"
                 },
+                "SMARTME_KEY": {
+                    "generator": "secret"
+                },
                 "NODE_ENV": "development",
                 "OIDC_CLIENT_ID": "stubOidcClient",
                 "OIDC_CLIENT_SECRET": "secretsarehardtokeep",
