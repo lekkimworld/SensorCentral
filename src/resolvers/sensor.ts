@@ -2,7 +2,7 @@ import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx, 
 import * as types from "../types";
 import { Device } from "./device";
 import { Length, IsEnum } from "class-validator";
-import { StorageService } from "src/services/storage-service";
+import { StorageService } from "../services/storage-service";
 
 const FavoriteFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context }, next) => {
     const v = await next();

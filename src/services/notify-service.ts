@@ -71,7 +71,7 @@ export class NotifyService extends BaseService {
         }
 
         const data = {
-            "appname": constants.APPNAME,
+            "appname": constants.APP.NAME,
             "device": msg.device,
         }
         this.notifyNotifiers(
@@ -90,7 +90,7 @@ export class NotifyService extends BaseService {
         }
 
         const data = {
-            "appname": constants.APPNAME,
+            "appname": constants.APP.NAME,
             "device": msg.device,
             "timeout": {
                 "ms": constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT,
@@ -113,7 +113,7 @@ export class NotifyService extends BaseService {
         }
 
         const data = {
-            "appname": constants.APPNAME,
+            "appname": constants.APP.NAME,
             "device": msg.device
         }
         this.notifyNotifiers(
@@ -134,7 +134,7 @@ export class NotifyService extends BaseService {
                 // notify using email
                 const msg = new EmailMessage();
                 msg.to = new RFC822Address(`${n.user.fn} ${n.user.ln}`, n.user.email);
-                msg.from = new RFC822Address(constants.APPNAME, n.user.email);
+                msg.from = new RFC822Address(constants.APP.NAME, n.user.email);
                 msg.subject = title;
                 msg.body = message;
                 this.email!.send(msg);

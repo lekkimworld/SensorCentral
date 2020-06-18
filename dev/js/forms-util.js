@@ -10,6 +10,13 @@ const textField = (name, placeholder, fieldExplanation, required = false, valida
 </div>`
 }
 
+const disabledTextField = (name, placeholder) => {
+    return `<div class="form-group">
+    <label for="${name}Input">${placeholder}</label>
+    <input type="text" required class="form-control" id="${name}Input" disabled="1">
+</div>`
+}
+
 const dropdown = (name, label, fieldExplanation, options, addBlank, required = false, validationText) => {
     let use_options = `${addBlank ? "<option></option>" : ""}
         ${Object.keys(options).map(key => `<option value="${key}">${options[key]}</option>`)}`;
@@ -25,6 +32,24 @@ const dropdown = (name, label, fieldExplanation, options, addBlank, required = f
     </div>`
 }
 
+const toggleButton = (name, label, fieldExplanation, on = true, value = "1") => {
+    return `<div class="form-group">
+        <label for="${name}Input">${label}</label><br/>
+        <label class="sensorcentral-switch">
+            <input type="checkbox" id="${name}Input" value="${value}" ${on ? "checked" : ""}>
+            <span class="sensorcentral-slider sensorcentral-round"></span>
+        </label>
+<small id="${name}Help" class="form-text text-muted">${fieldExplanation}</small>
+    </div>`
+}
+
+const buttonClose = (text = "Close") => {
+    return `<button type="button" class="btn btn-secondary" data-dismiss="modal">${text}</button>`;
+}
+
+const buttonPerformAction = (text = "Save Changes", rel = "std") => {
+    return `<button type="button" class="btn btn-primary" id="performAction" rel="${rel}">${text}</button>`;
+}
 
 const DEVICE_JWT = {
     "name": "jwt", 
@@ -47,7 +72,7 @@ const DEVICE_JWT = {
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                ${buttonClose()}
             </div>
         </div>
     </div>
@@ -105,8 +130,8 @@ const MANUAL_SENSOR_SAMPLE = {
             </form>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-primary" id="performAction">Save changes</button>
+            ${buttonClose()}
+            ${buttonPerformAction()}
         </div>
     </div>
 </div>
@@ -157,19 +182,12 @@ const HOUSE_CREATE_EDIT = {
             <div class="modal-body">
                 <form id="createHouseForm" novalidate>
                     <input type="hidden" value="" id="idInput">
-                    <div class="form-group">
-                        <label for="nameInput">Name</label>
-                        <input type="text" required class="form-control" id="nameInput" aria-describedby="nameHelp" placeholder="Enter house name">
-                        <small id="nameHelp" class="form-text text-muted">Specify the name of the house (maximum 128 characters).</small>
-                        <div class="invalid-feedback">
-                            You must specify the name for the house. Must be unique.
-                        </div>
-                    </div>
+                    ${textField("name", "Enter house name", "Specify the name of the house (maximum 128 characters).", true, "You must specify the name for the house. Must be unique.")}
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="performAction">Save changes</button>
+                ${buttonClose()}
+                ${buttonPerformAction()}
             </div>
         </div>
     </div>
@@ -205,37 +223,16 @@ const DEVICE_CREATE_EDIT = {
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body">npx
                 <form id="deviceForm" novalidate>
-                    <div class="form-group">
-                        <label for="idInput">ID</label>
-                        <input type="text" required class="form-control" id="idInput" aria-describedby="nameHelp" placeholder="Enter device ID">
-                        <small id="idHelp" class="form-text text-muted">Specify the ID of the device (maximum 36 characters).</small>
-                        <div class="invalid-feedback">
-                            You must specify the ID for the device. Must be unique.
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="nameInput">Name</label>
-                        <input type="text" required class="form-control" id="nameInput" aria-describedby="nameHelp" placeholder="Enter device name">
-                        <small id="nameHelp" class="form-text text-muted">Specify the name of the device (maximum 128 characters).</small>
-                        <div class="invalid-feedback">
-                            You must specify the name for the device. Must be unique.
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="activeInput">Active</label>
-                        <label class="sensorcentral-switch">
-                            <input type="checkbox" id="activeInput" value="1">
-                            <span class="sensorcentral-slider sensorcentral-round"></span>
-                        </label>
-                        <small id="activeHelp" class="form-text text-muted">Making a device inactive sorts it at the bottom and disables the watchdog for the device.</small>
-                    </div>
+                    ${textField("id", "Enter device ID", "Specify the ID of the device (maximum 36 characters).", true, "You must specify the ID for the device. Must be unique.")}
+                    ${textField("name", "Enter device name", "Specify the name of the device (maximum 128 characters).", true, "You must specify the name for the device. Must be unique.")}
+                    ${toggleButton("active", "Active", "Making a device inactive sorts it at the bottom and disables the watchdog for the device.")}
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="performAction">Save changes</button>
+                ${buttonClose()}
+                ${buttonPerformAction()}
             </div>
         </div>
     </div>
@@ -284,7 +281,8 @@ const SENSOR_CREATE_EDIT = {
                     ${textField("label", "Label", "Specify the label of the sensor (maximum 128 characters).", true, "You must specify the label for the sensor. Must be unique.")}
                     ${dropdown("type", "Type", "Specify the type of the sensor.", {
                         "gauge": "Gauge",
-                        "counter": "Counter"
+                        "counter": "Counter",
+                        "delta": "Delta"
                     }, false, true, "You must specify the type of the sensor.")}
                     ${dropdown("icon", "Icon", "Specify the icon for the sensor.", {
                         "battery-4": "Power",
@@ -294,8 +292,8 @@ const SENSOR_CREATE_EDIT = {
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="performAction">Save changes</button>
+                ${buttonPerformAction("Yes")}
+                ${buttonClose("No")}
             </div>
         </div>
     </div>
@@ -346,18 +344,12 @@ const DELETE_ENTITY = {
             </div>
             <div class="modal-body">
                 ${ctx.message}
-                <div class="form-group">
-                    <label for="idInput">ID</label>
-                    <input type="text" required class="form-control" id="idInput" disabled="1">
-                </div>
-                <div class="form-group">
-                    <label for="nameInput">Name</label>
-                    <input type="text" required class="form-control" id="nameInput" disabled="1">
-                </div>
+                ${disabledTextField("id", "ID")}
+                ${disabledTextField("name", "Name")}
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" id="performAction">Yes</button>
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+                ${buttonPerformAction("Yes")}
+                ${buttonClose("No")}
             </div>
         </div>
     </div>
@@ -400,8 +392,8 @@ const SETTINGS = {
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="performAction">Save changes</button>
+                ${buttonClose()}
+                ${buttonPerformAction()}
             </div>
         </div>
     </div>
@@ -494,5 +486,14 @@ module.exports = {
     },
     appendSettings: (ctx, onPerformAction) => {
         prepareForm(SETTINGS, ctx, onPerformAction);
+    },
+    utils: {
+        textField,
+        toggleButton,
+        dropdown,
+        disabledTextField,
+        buttonClose,
+        buttonPerformAction
     }
+
 }

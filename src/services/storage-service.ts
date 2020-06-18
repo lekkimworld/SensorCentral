@@ -15,11 +15,13 @@ import uuid from "uuid/v1";
 import { CreateSensorType, UpdateSensorType, DeleteSensorType } from "../resolvers/sensor";
 import { DeleteDeviceInput, UpdateDeviceInput, CreateDeviceInput } from "../resolvers/device";
 import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput } from "../resolvers/house";
+import { CreateSmartmeSubscriptionType, DeleteSmartmeSubscriptionType } from "../resolvers/smartme";
 import { WatchdogNotificationInput } from "../resolvers/device-watchdog";
 import { QueryResult } from "pg";
 import { UpdateSettingsInput } from "src/resolvers/settings";
 //@ts-ignore
 import aes256 from "aes256";
+import { SmartmeSubscription } from "src/resolvers/smartme";
 
 
 const SENSOR_KEY_PREFIX = 'sensor:';
@@ -884,8 +886,31 @@ export class StorageService extends BaseService {
         };
     }
 
+    async getSmartmeSubscriptions() {
+        const result = await this.dbService!.query("select clientid, sensorid from smartme_subscription");
+        return result.rows.map(r => ({
+            "clientId": r.clientid,
+            "sensorId": r.sensorid,
+            "url": `${constants.APP.PROTOCOL}://${constants.APP.DOMAIN}/${r.clientid}`
+        }) as SmartmeSubscription)
+    }
 
+    async createSmartmeSubscription(user : BackendLoginUser, data : CreateSmartmeSubscriptionType) {
+        // encrypt username and password
+        const passphrase = process.env.SMARTME_KEY;
+        const crypt_username = aes256.encrypt(passphrase, data.username);
+        const crypt_password = aes256.encrypt(passphrase, data.password);
+        
+        // store in database
+        await this.dbService!.query("insert into smartme_subscription (clientid, sensorid, username, password, login_user_id) values ($1, $2, $3, $4, $5)", data.clientId, data.sensorId, crypt_username, crypt_password, user.id);
+        const subs = await this.getSmartmeSubscriptions();
+        return subs.filter(sub => data.clientId === sub.clientId)[0];
+    }
 
+    async deleteSmartmeSubscription(data : DeleteSmartmeSubscriptionType) {
+        // delete from database
+        await this.dbService!.query("delete from smartme_subscription where clientid=$1", data.clientId);
+    }
 
     /**
      * Update the last ping for the device with the supplied ID

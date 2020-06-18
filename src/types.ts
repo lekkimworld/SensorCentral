@@ -287,6 +287,15 @@ export interface SensorReading extends Sensor {
 }
 
 /**
+ * Describes a smart.me subscription.
+ */
+export interface SmartmeSubscription {
+    readonly clientId : string;
+    readonly sensorId : string;
+    readonly url : string;
+}
+
+/**
  * Type for messages published on the CONTROL topic.
  * 
  */

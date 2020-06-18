@@ -20,6 +20,9 @@ const fillMenus = () => {
             </li>
             <li class="nav-item">
             <a class="nav-link" href="/#configuration/houses">Houses</a>
+            </li>
+            <li class="nav-item">
+            <a class="nav-link" href="/#powermeter">Powermeter</a>
             </li>`;
         htmlUsername = `<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             Username: ${user.email}

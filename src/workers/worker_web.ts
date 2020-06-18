@@ -20,6 +20,18 @@ import constants from '../constants';
 const WORKERS = process.env.WEB_CONCURRENCY || 1;
 console.log(`WEB_CONCURRENCY set to ${WORKERS}`);
 
+// énsure required environment variables are set
+const APP_DOMAIN = process.env.APP_DOMAIN as string;
+if (!APP_DOMAIN) {
+	console.log("APP_DOMAIN environment variable not set - cannot start!");
+	process.exit(1);
+}
+console.log(`APP_DOMAIN set to ${APP_DOMAIN}`);
+if (!process.env.SMARTME_KEY) {
+	console.log("SMARTME_KEY environment variable not set - cannot start!");
+	process.exit(1);
+}
+
 // add services
 services.registerService(new LogService());
 services.registerService(new EventService());
@@ -43,7 +55,7 @@ const main = async () => {
 	const app = await configureExpress();
 
 	// start server
-	console.log(`${constants.APPNAME} -- Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`);
+	console.log(`${constants.APP.NAME} -- Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`);
 	app.listen(process.env.PORT || 8080);
 }
 main();

@@ -49,6 +49,8 @@ const navigationChange = () => {
         require("./sensorcentral-loggedout")(document, elemRoot);
     } else if ("#about" === hash) {
         require("./sensorcentral-about")(document, elemRoot);
+    } else if ("#powermeter" === hash) {
+        require("./sensorcentral-powermeter")(document, elemRoot);
     } else if (!user) {
         require("./sensorcentral-root")(document, elemRoot);
     } else if (hash.indexOf("#configuration") === 0) {

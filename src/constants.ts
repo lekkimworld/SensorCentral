@@ -12,7 +12,11 @@ const JWT = {
 }
 
 export default {
-    "APPNAME": process.env.NODE_ENV === "development" ? "SensorCentral (DEV)" : process.env.NODE_ENV === "staging" ? "SensorCentral (STAGING)" : "SensorCentral",
+    "APP": {
+        "NAME": process.env.NODE_ENV === "development" ? "SensorCentral (DEV)" : process.env.NODE_ENV === "staging" ? "SensorCentral (STAGING)" : "SensorCentral",
+        "PROTOCOL": process.env.APP_PROTOCOL || "https",
+        "DOMAIN": process.env.APP_DOMAIN
+    },
     'DEFAULTS': {
         'SERVICE': {
             'LOOKUP_TIMEOUT': 2000
