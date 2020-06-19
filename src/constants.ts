@@ -19,7 +19,7 @@ export default {
     },
     "SMARTME": {
         "CUTOFF_YEAR": process.env.SMARTME_CUTOFF_YEAR || 2015,
-        "ENCRYPTION_KEY": process.env.SMARTME_KEY
+        "ENCRYPTION_KEY": process.env.SMARTME_KEY as string
     },
     'DEFAULTS': {
         'SERVICE': {

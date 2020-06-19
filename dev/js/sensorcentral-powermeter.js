@@ -239,16 +239,17 @@ module.exports = (document, elemRoot, ctx) => {
                 return ensurePowermeterIdMatchesSpecified(specifiedId);
                 
             }).then(powermeterId => {
-                // generate clientId, username and password for smart.me
-                const clientId = uuid();
+                // generate username and password for smart.me
                 const username = uuid();
                 const password = uuid();    
 
                 // ensure sensor exists in sensorcentral
-                return fetcher.graphql(`{sensor(id: "${powermeterId}"){id,name}}`).then(payload => {
+                return fetcher.graphql(`{sensor(id: "${powermeterId}"){id,name,device{id}}}`).then(data => {
                     // coming here means we have the sensor so all's good - now 
                     // store subscription in sensorcentral
-                    return fetcher.graphql(`mutation {createSmartmeSubscription(data: {sensorId: "${powermeterId}", clientId: "${clientId}", username: "${username}", password: "${password}"}){url}}`);
+                    const deviceId = data.sensor.device.id;
+                    
+                    return fetcher.graphql(`mutation {createSmartmeSubscription(data: {sensorId: "${powermeterId}", deviceId: "${deviceId}", username: "${username}", password: "${password}"}){url}}`);
 
                 }).then(data => {
                     // get callback url

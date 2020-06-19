@@ -1,37 +1,31 @@
-import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx } from "type-graphql";
-import * as types from "../types";
+import { Resolver, ObjectType, Field, Arg, InputType, Mutation } from "type-graphql";
+import { generatePayload } from "../smartme-signature";
 import { Length } from "class-validator";
+import constants from "../constants";
 
 @ObjectType()
-export class SmartmeSubscription implements types.SmartmeSubscription {
-    constructor(s : types.SmartmeSubscription) {
-        this.clientId = s.clientId;
-        this.sensorId = s.sensorId;
-        this.url = s.url;
+export class SmartmeSubscription {
+    constructor(username : string, password : string, deviceId : string, sensorId : string) {
+        this.payload = generatePayload(username, password, deviceId, sensorId);
+        this.url = `${constants.APP.PROTOCOL}://${constants.APP.DOMAIN}/smartme/${this.payload}`
     }
 
-    @Field(() => ID)
-    clientId : string;
-
     @Field()
-    sensorId : string;
+    payload : string;
 
     @Field()
     url : string;
 }
 
 @InputType()
-export class DeleteSmartmeSubscriptionType {
-    @Field(() => ID)
-    @Length(2, 36)
-    clientId : string;
-}
-
-@InputType()
-export class CreateSmartmeSubscriptionType extends DeleteSmartmeSubscriptionType {
+export class CreateSmartmeSubscriptionType {
     @Field()
     @Length(2, 128)
     sensorId : string;
+
+    @Field()
+    @Length(2, 128)
+    deviceId : string;
 
     @Field()
     @Length(2, 128)
@@ -44,21 +38,10 @@ export class CreateSmartmeSubscriptionType extends DeleteSmartmeSubscriptionType
 
 @Resolver()
 export class SmartmeResolver {
-    @Query(() => [SmartmeSubscription], {})
-    async smartmeSubscriptions(@Ctx() ctx : types.GraphQLResolverContext) {
-        const subs = await ctx.storage.getSmartmeSubscriptions();
-        return subs.map(s => new SmartmeSubscription(s));
-    }
     
     @Mutation(() => SmartmeSubscription)
-    async createSmartmeSubscription(@Arg("data") data : CreateSmartmeSubscriptionType, @Ctx() ctx : types.GraphQLResolverContext) {
-        const sub = await ctx.storage.createSmartmeSubscription(ctx.user, data);
-        return new SmartmeSubscription(sub);
+    async createSmartmeSubscription(@Arg("data") data : CreateSmartmeSubscriptionType) {
+        return new SmartmeSubscription(data.username, data.password, data.deviceId, data.sensorId);
     }
 
-    @Mutation(() => Boolean)
-    async deleteSmartmeSubscription(@Arg("data") data : DeleteSmartmeSubscriptionType, @Ctx() ctx : types.GraphQLResolverContext) {
-        await ctx.storage.deleteSmartmeSubscription(data);
-        return true;
-    }
 }

@@ -15,13 +15,12 @@ import uuid from "uuid/v1";
 import { CreateSensorType, UpdateSensorType, DeleteSensorType } from "../resolvers/sensor";
 import { DeleteDeviceInput, UpdateDeviceInput, CreateDeviceInput } from "../resolvers/device";
 import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput } from "../resolvers/house";
-import { CreateSmartmeSubscriptionType, DeleteSmartmeSubscriptionType } from "../resolvers/smartme";
 import { WatchdogNotificationInput } from "../resolvers/device-watchdog";
 import { QueryResult } from "pg";
 import { UpdateSettingsInput } from "../resolvers/settings";
 //@ts-ignore
 import aes256 from "aes256";
-import { SmartmeSubscription } from "../resolvers/smartme";
+
 import { Smartme } from "smartme-protobuf-parser";
 
 
@@ -863,54 +862,6 @@ export class StorageService extends BaseService {
         const redisKeys = deviceIds.map(id => `${DEVICE_KEY_PREFIX}${id}`);
         const redisData = await this.redisService!.mget(...redisKeys);
         return redisData.map(d => d ? JSON.parse(d) : undefined);
-    }
-
-    async getSmartmeInfoForClient(clientId : string) {
-        const result = await this.dbService!.query("select username, password, s.id sensorid, s.deviceid deviceid from smartme_subscription smartme, sensor s where smartme.sensorid=s.id and smartme.clientId=$1", clientId);
-        if (result.rowCount !== 1) throw new Error(`Expected a single result for clientId <${clientId}> but received <${result.rowCount}>`);
-
-        const cipher_username = result.rows[0].username;
-        const cipher_password = result.rows[0].password;
-
-        const passphrase = process.env.SMARTME_KEY;
-        const username = aes256.decrypt(passphrase, cipher_username);
-        const password = aes256.decrypt(passphrase, cipher_password);
-
-        const sensorId = result.rows[0].sensorid;
-        const deviceId = result.rows[0].deviceid;
-        const acceptedAuth = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
-        return {
-            "clientId": clientId,
-            "sensorId": sensorId,
-            "deviceId": deviceId,
-            "authHeader": acceptedAuth
-        };
-    }
-
-    async getSmartmeSubscriptions() {
-        const result = await this.dbService!.query("select clientid, sensorid from smartme_subscription");
-        return result.rows.map(r => ({
-            "clientId": r.clientid,
-            "sensorId": r.sensorid,
-            "url": `${constants.APP.PROTOCOL}://${constants.APP.DOMAIN}/smartme/${r.clientid}`
-        }) as SmartmeSubscription)
-    }
-
-    async createSmartmeSubscription(user : BackendLoginUser, data : CreateSmartmeSubscriptionType) {
-        // encrypt username and password
-        const passphrase = constants.SMARTME.ENCRYPTION_KEY;
-        const crypt_username = aes256.encrypt(passphrase, data.username);
-        const crypt_password = aes256.encrypt(passphrase, data.password);
-        
-        // store in database
-        await this.dbService!.query("insert into smartme_subscription (clientid, sensorid, username, password, login_user_id) values ($1, $2, $3, $4, $5)", data.clientId, data.sensorId, crypt_username, crypt_password, user.id);
-        const subs = await this.getSmartmeSubscriptions();
-        return subs.filter(sub => data.clientId === sub.clientId)[0];
-    }
-
-    async deleteSmartmeSubscription(data : DeleteSmartmeSubscriptionType) {
-        // delete from database
-        await this.dbService!.query("delete from smartme_subscription where clientid=$1", data.clientId);
     }
 
     /**

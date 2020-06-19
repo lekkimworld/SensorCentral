@@ -24,4 +24,3 @@ insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_2-1', 
 insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_2-2', 'Your Sensor 2-2', 'yoursensor_2-2', 'gauge', 'tint', 'yourdevice_2');
 
 insert into sensor (id,name,label,type,icon,deviceid) values ('94f7a0f4-d85b-4815-9c77-833be7c28779', 'My Smartme 4-1', 'mysmartme_4-1', 'counter', 'battery-4', 'mydevice_3');
-insert into SMARTME_SUBSCRIPTION (clientId, sensorId, username, password, login_user_id) values ('smartme-client-1', '94f7a0f4-d85b-4815-9c77-833be7c28779', 'fUG4caskWKnZ6US1jjJ1u6Yw5hSlnTliNjqhVrOoZ13hVojkNl7hoQZtXtziwGlnixVVxA==', 'Og5j6dC4I/5Zsui7+JJYcLEJSKAqdE+oskgZ63E5GC46N0p4f5AC0AYQyk92A2zC/nJFHg==', '8cd0149f-9ffa-47aa-88d1-1795f55e330f');
