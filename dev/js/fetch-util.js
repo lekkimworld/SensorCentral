@@ -57,6 +57,7 @@ const doGraphQL = query => {
         "query": query
     }).then(payload => {
         if (payload.hasOwnProperty("error")) return Promise.reject(Error(payload.error.errors[0].message));
+        if (payload.hasOwnProperty("errors")) return Promise.reject(Error(payload.errors[0].message));
         return Promise.resolve(payload.data);
     });
 }

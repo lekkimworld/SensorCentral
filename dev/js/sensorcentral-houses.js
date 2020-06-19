@@ -33,7 +33,8 @@ module.exports = (document, elemRoot, ctx) => {
                 [
                     {"rel": "create", "icon": "plus", "click": function() {
                         formsutil.appendHouseCreateEditForm(undefined, saveHouse);
-                    }}, {"rel": "refresh", "icon": "refresh", "click": function() {
+                    }}, 
+                    {"rel": "refresh", "icon": "refresh", "click": function() {
                         updateUI(elemRoot, ctx);
                     }}
                 ]

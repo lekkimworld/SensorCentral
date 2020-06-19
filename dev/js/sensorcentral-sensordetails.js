@@ -22,8 +22,10 @@ module.exports = (document, elemRoot, ctx) => {
             module = require("./sensorcentral-sensordetails-gauge");
         } else if (sensor.type === "counter") {
             module = require("./sensorcentral-sensordetails-counter");
+        } else if (sensor.type === "delta") {
+            module = require("./sensorcentral-sensordetails-delta");
         } else {
-            elemRoot.append(`Unknown sensor type ${sensor.type}`);
+            elemRoot.append(`Unknown sensor type: ${sensor.type}`);
             return;
         }
         const actions = [];

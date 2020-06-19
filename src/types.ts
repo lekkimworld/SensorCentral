@@ -205,8 +205,21 @@ export interface IngestedSensorMessage {
  * Different sensor types we know of.
  */
 export enum SensorType {
+    /**
+     * A value that always represents the latest value and that may go up and down.
+     */
     gauge = "gauge",
-    counter = "counter"
+
+    /**
+     * An ever increasing value where deltas can be expressed by subtractig later values 
+     * for prior ones.
+     */
+    counter = "counter",
+
+    /**
+     * A value that only represents a change since last value.
+     */
+    delta = "delta"
 }
 
 /**

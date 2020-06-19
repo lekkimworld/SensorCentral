@@ -141,3 +141,14 @@ body {
     border-radius: 50%;
   }
   
+  .sensorcentral-section {
+    border: 1px solid black;
+
+  }
+
+  .sensorcentral-section .header {
+    background-color: #efefef;
+    padding: 5px;
+    font-weight: bold;
+  }
+  

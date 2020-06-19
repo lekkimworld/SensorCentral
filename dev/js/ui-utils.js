@@ -20,12 +20,14 @@ const fillMenus = () => {
             </li>
             <li class="nav-item">
             <a class="nav-link" href="/#configuration/houses">Houses</a>
-            </li>`;
+            </li>
+            `;
         htmlUsername = `<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             Username: ${user.email}
             </a>
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
-            <a class="dropdown-item" href="javascript:void(0)" id="settings">Settings</a>
+                <a class="dropdown-item" href="/#powermeter">Powermeter Setup</a>
+                <a class="dropdown-item" href="javascript:void(0)" id="settings">Settings</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>
             </div>`;
     }

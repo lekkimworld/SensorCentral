@@ -17,6 +17,7 @@ export default async () => {
     // configure app
     app.use(express.static(path.join(__dirname, '..', 'public')));
     app.use(bodyparser.json());
+    app.use(bodyparser.raw()); // for smart.me protobuf
     configureHandlebars(app);
 
     // sessions

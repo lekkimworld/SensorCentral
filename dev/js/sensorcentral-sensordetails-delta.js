@@ -2,5 +2,5 @@ const {createBuildUIFunctionWithQueryName} = require("./sensorcentral-sensordeta
 
 module.exports = {
     actionManualSample: false, 
-    "buildUI": createBuildUIFunctionWithQueryName("counterGroupedQuery")
+    "buildUI": createBuildUIFunctionWithQueryName("deltaGroupedQuery")
 }

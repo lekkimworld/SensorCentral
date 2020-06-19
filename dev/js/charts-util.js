@@ -45,6 +45,12 @@ const lineChart = (id, label, samples, inputOptions = {}) => {
             "y": s.value
         }
     });
+    const minY = data.reduce((prev, e) => {
+        return e.y < prev ? e.y : prev;
+    },   0);
+    const maxY = data.reduce((prev, e) => {
+        return e.y > prev ? e.y : prev;
+    },   0);
 
     // build labels array
     const labels = data.map(d => `${formatDate(d.x)} ${formatTime(d.x)}`);
@@ -60,7 +66,15 @@ const lineChart = (id, label, samples, inputOptions = {}) => {
         }]
     }
     const chartOptions = {
-        "responsive": options.hasOwnProperty("responsive") && typeof options.responsive === "boolean" ? options.responsive : true
+        "responsive": options.hasOwnProperty("responsive") && typeof options.responsive === "boolean" ? options.responsive : true,
+        "scales": {
+            "yAxes": [{
+                "ticks": {
+                    "min": minY > 0 ? 0 : minY + (minY * 0.5),
+                    "max": Math.ceil(maxY + 0.05 * maxY) + (5 - Math.ceil(maxY + 0.05 * maxY) % 5)
+                }
+            }]
+        }
     }
     const chartConfig = {
         "type": options.type || "line",
@@ -89,7 +103,14 @@ const barChart = (id, labels, data, inputOptions = {}) => {
         datasets
     }
     const chartOptions = {
-        "responsive": options.hasOwnProperty("responsive") && typeof options.responsive === "boolean" ? options.responsive : true
+        "responsive": options.hasOwnProperty("responsive") && typeof options.responsive === "boolean" ? options.responsive : true,
+        "scales": {
+            "yAxes": [{
+                "ticks": {
+                    "min": 0
+                }
+            }]
+        }
     }
 
     const chartConfig = {
