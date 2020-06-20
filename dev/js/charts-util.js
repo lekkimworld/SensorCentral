@@ -107,10 +107,10 @@ const barChart = (id, labels, data, inputOptions = {}) => {
         datasets
     }
 
-    const minY = data.reduce((prev, e) => {
+    const minY = data[0].data.reduce((prev, e) => {
         return e.value < prev ? e.value : prev;
     }, 0);
-    const maxY = data.reduce((prev, e) => {
+    const maxY = data[0].data.reduce((prev, e) => {
         return e.value > prev ? e.value : prev;
     }, 0);
 
