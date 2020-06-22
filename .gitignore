@@ -9,3 +9,4 @@ coverage
 server-dist
 src/foo.ts
 /*.sql
+src/postdeploy/import.ts
