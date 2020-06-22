@@ -10,3 +10,4 @@ server-dist
 src/foo.ts
 /*.sql
 src/postdeploy/import.ts
+src/postdeploy/test_smartme_signature.ts

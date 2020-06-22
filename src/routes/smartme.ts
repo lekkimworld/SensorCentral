@@ -1,7 +1,7 @@
 import express from 'express';
 import decodeSmartmeBuffer, {Smartme} from "smartme-protobuf-parser";
 import { StorageService } from '../services/storage-service';
-import { HttpException, IngestedSensorMessage } from '../types';
+import { HttpException, IngestedSensorMessage, IngestedDeviceMessage } from '../types';
 import { EventService } from '../services/event-service';
 import constants from '../constants';
 import { LogService } from '../services/log-service';
@@ -52,16 +52,22 @@ router.post('/:clientId([a-zA-Z0-9+/=.]+)', async (req, res, next) => {
                 return;
             }
 
-            // send event to persist as sensor_data
-            eventService.publishQueue(constants.QUEUES.SENSOR, {
-                "deviceId": signatureData.deviceId,
-                "id": signatureData.sensorId,
-                "dt": sample.dt.toISOString(),
-                "value": sample.getValue(Smartme.Obis.ActiveEnergyTotalImport)
-            } as IngestedSensorMessage);
+            // publish a device event to feed watchdog
+            const payload : IngestedDeviceMessage = {
+                "id": signatureData.deviceId
+            }
+            eventService.publishQueue(constants.QUEUES.DEVICE, payload).then(() => {
+                // send event to persist as sensor_data
+                eventService.publishQueue(constants.QUEUES.SENSOR, {
+                    "deviceId": signatureData.deviceId,
+                    "id": signatureData.sensorId,
+                    "dt": sample.dt.toISOString(),
+                    "value": sample.getValue(Smartme.Obis.ActiveEnergyTotalImport)
+                } as IngestedSensorMessage);
 
-            // persist sample
-            storage.persistPowermeterReading(sample);
+                // persist sample
+                storage.persistPowermeterReading(sample);
+            })
         })
     })
 })
