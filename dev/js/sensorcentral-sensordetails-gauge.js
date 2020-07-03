@@ -21,7 +21,7 @@ const loadSamples = (sensorId) => {
     // see how many samples we need to get
     const samplesCount = lastSamplesQueryCount ? lastSamplesQueryCount + SAMPLE_COUNT_INCR : SAMPLE_COUNT_LOAD;
     
-    return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: ["${sensorId}"], decimals: 2, sampleCount: ${SAMPLE_COUNT_LOAD}}){id, name, data{x,y}}}`).then(result => {
+    return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: ["${sensorId}"], decimals: 2, sampleCount: ${samplesCount}}){id, name, data{x,y}}}`).then(result => {
         const samples = result["ungroupedQuery"][0];
         lastSamplesQueryCount = samplesCount;
         return Promise.resolve(samples);

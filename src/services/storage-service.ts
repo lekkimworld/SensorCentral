@@ -829,7 +829,7 @@ export class StorageService extends BaseService {
      * @param samples 
      */
     async getLastNSamplesForSensor(sensorId : string, samples : number = 100) : Promise<SensorSample[] | undefined> {
-        return this.dbService?.query(`select value, dt from sensor_data where id='${sensorId}' order by dt asc limit ${samples}`).then(result => {
+        return this.dbService?.query(`select value, dt from sensor_data where id='${sensorId}' order by dt desc limit ${samples}`).then(result => {
             const arr = result.rows.map(row => {
                 return {
                     "id": sensorId,

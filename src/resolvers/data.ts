@@ -257,7 +257,7 @@ export class CounterQueryResolver {
                         "x": r.dt.toISOString(),
                         "y": Math.floor((r.value || 0) * scaleFactor * Math.pow(10, data.decimals)) / Math.pow(10, data.decimals)
                     }
-                })
+                }).reverse();
             }
             dss.push(ds);
         }
