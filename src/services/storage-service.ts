@@ -48,6 +48,7 @@ const convertRowsToSensors = (result : QueryResult) => {
             "label": row.sensorlabel,
             "type": row.sensortype as string,
             "icon": row.sensoricon,
+            "scaleFactor": row.sensorscalefactor,
             "device": {
                 "id": row.deviceid,
                 "name": row.devicename,
@@ -405,10 +406,10 @@ export class StorageService extends BaseService {
             await this.getDevice(use_id);
         
             // query 
-            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, s.icon sensoricon, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.deviceid=$1 order by s.name asc", deviceId);
+            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, s.icon sensoricon, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.deviceid=$1 order by s.name asc", deviceId);
         } else {
             // query 
-            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, s.icon sensoricon, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id order by s.name asc");
+            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.label sensorlabel, s.icon sensoriconv, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id order by s.name asc");
         }
 
         // convert and return
@@ -426,7 +427,7 @@ export class StorageService extends BaseService {
         const use_id = sensorId.trim();
 
         // get sensor
-        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.id=$1 order by s.name asc", use_id);
+        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.id=$1 order by s.name asc", use_id);
         if (!result || result.rowCount !== 1) {
             throw Error(`Unable to find sensor with ID <${sensorId}>`);
         }
@@ -459,7 +460,7 @@ export class StorageService extends BaseService {
         const use_label = label.trim();
 
         // get sensor
-        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.label=$1 order by s.name asc", use_label);
+        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.label=$1 order by s.name asc", use_label);
         if (!result || result.rowCount !== 1) {
             throw Error(`Unable to find sensor with label <${label}>`);
         }
@@ -468,7 +469,7 @@ export class StorageService extends BaseService {
         return sensors[0];
     }
 
-    async createSensor({deviceId, id, name, label, type, icon} : CreateSensorType) {
+    async createSensor({deviceId, id, name, label, type, icon, scaleFactor} : CreateSensorType) {
         // validate 
         const use_id = id.trim();
         const use_name = name.trim();
@@ -478,7 +479,7 @@ export class StorageService extends BaseService {
         await this.getDevice(deviceId);
 
         // create sensor
-        await this.dbService!.query(`insert into sensor (deviceid, id, name, label, type, icon) values ($1, $2, $3, $4, $5, $6)`, deviceId, use_id, use_name, use_label, type, icon);
+        await this.dbService!.query(`insert into sensor (deviceid, id, name, label, type, icon, scalefactor) values ($1, $2, $3, $4, $5, $6, $7)`, deviceId, use_id, use_name, use_label, type, icon, scaleFactor);
 
         // get sensor
         const sensor = await this.getSensor(use_id);
@@ -491,7 +492,8 @@ export class StorageService extends BaseService {
                 "name": use_name,
                 "label": use_label,
                 "type": type,
-                "icon": icon
+                "icon": icon,
+                "scaleFactor": scaleFactor
             }
         });
 
@@ -499,7 +501,7 @@ export class StorageService extends BaseService {
         return sensor;
     }
 
-    async updateSensor({id, name, label, type, icon} : UpdateSensorType) {
+    async updateSensor({id, name, label, type, icon, scaleFactor} : UpdateSensorType) {
         // validate
         const use_id = id.trim();
         const use_name = name.trim();
@@ -509,7 +511,7 @@ export class StorageService extends BaseService {
         const sensor = await this.getSensor(use_id);
 
         // update sensor
-        const result = await this.dbService?.query("update sensor set name=$1, label=$2, type=$3, icon=$5 where id=$4", use_name, use_label, type, use_id, icon);
+        const result = await this.dbService?.query("update sensor set name=$1, label=$2, type=$3, icon=$5, scalefactor=$6 where id=$4", use_name, use_label, type, use_id, icon, scaleFactor);
         if (!result || result.rowCount !== 1) {
             throw Error(`Unable to update sensor with ID <${use_id}>`);
         }
@@ -521,7 +523,8 @@ export class StorageService extends BaseService {
                 "name": use_name,
                 "label": use_label,
                 "type": type,
-                "icon": icon
+                "icon": icon,
+                "scaleFactor": scaleFactor
             },
             "old": {
                 "deviceId": sensor.deviceId,
@@ -529,7 +532,8 @@ export class StorageService extends BaseService {
                 "name": sensor.name,
                 "label": sensor.label,
                 "type": sensor.type,
-                "icon": sensor.icon
+                "icon": sensor.icon,
+                "scaleFactor": sensor.scaleFactor
             }
         });
 
@@ -555,7 +559,8 @@ export class StorageService extends BaseService {
                 "id": use_id,
                 "name": sensor.name,
                 "label": sensor.label,
-                "type": sensor.type
+                "type": sensor.type,
+                "scaleFactor": sensor.scaleFactor
             }
         });
     }
@@ -824,7 +829,7 @@ export class StorageService extends BaseService {
      * @param samples 
      */
     async getLastNSamplesForSensor(sensorId : string, samples : number = 100) : Promise<SensorSample[] | undefined> {
-        return this.dbService?.query(`select value, dt from sensor_data where id='${sensorId}' order by dt desc limit ${samples}`).then(result => {
+        return this.dbService?.query(`select value, dt from sensor_data where id='${sensorId}' order by dt asc limit ${samples}`).then(result => {
             const arr = result.rows.map(row => {
                 return {
                     "id": sensorId,

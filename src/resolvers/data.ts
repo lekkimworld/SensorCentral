@@ -56,14 +56,14 @@ class Dataset {
 @ObjectType()
 class DataElement {
     @Field()
-    name : string;
+    x : string;
 
     @Field()
-    value : number;
+    y : number;
 }
 
 @InputType()
-class GroupedQueryInput {
+abstract class QueryInput {
     @Field(() => [String])
     sensorIds : string[]
 
@@ -71,6 +71,19 @@ class GroupedQueryInput {
     @IsEnum(CounterQueryTimezone)
     timezone : CounterQueryTimezone
 
+    @Field({nullable: true, defaultValue: 3})
+    decimals : number
+}
+
+@InputType()
+class GaugeQueryInput extends QueryInput {
+    @Field({nullable:true, defaultValue: 100})
+    sampleCount : number
+}
+
+
+@InputType()
+class GroupedQueryInput extends QueryInput {
     @Field(() => CounterQueryGroupBy, {nullable: false})
     @IsEnum(CounterQueryGroupBy)
     groupBy : CounterQueryGroupBy
@@ -89,115 +102,166 @@ class GroupedQueryInput {
     addMissingTimeSeries : boolean
 }
 
-const doGroupedQuery = async (query : string, data : GroupedQueryInput, ctx : types.GraphQLResolverContext) => {
-    // create promises (one query per sensor for the sensor, one query per sensor for the data)
-    let promises : Array<Promise<any>> = data.sensorIds.map(async id => {
+const buildQueryForSensorType_Counter = (data : GroupedQueryInput) => {
+    // figure out timezone
+    const tz = data.timezone || "Europe/Copenhagen";
+
+    // create query with adjusted days
+    const dataQuery = `
+        actuals as 
+            (with temp2 as 
+                (with temp1 as 
+                    (select dt, value 
+                        from sensor_data 
+                        where 
+                            dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.start} ${data.adjustBy}' 
+                            and dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.end} ${data.adjustBy}' - interval '1 second' 
+                            and id=$1 
+                        order by dt desc
+                ) select dt, value, value-lead(value,1) over (order by dt desc) diff_value from temp1) select to_char(dt at time zone '${tz}', '${data.groupBy}') period, sum(diff_value) as value from temp2 group by period order by period)`
+
+    // create actual query (adds whether to fill in time series)
+    const query = (() => {
+        if (!data.addMissingTimeSeries) return `with ${dataQuery} select period, sum(value) as value from actuals group by period order by period asc;`;
+        return `
+            with dt_series as (
+                select 
+                    to_char(dt, '${data.groupBy}') period, 0 as value 
+                from 
+                    generate_series(
+                        date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.start} ${data.adjustBy}', 
+                        date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.end} ${data.adjustBy}' - interval '1 minute', 
+                        interval '1 hour'
+                    ) dt group by period), 
+            ${dataQuery} 
+            select dt_series.period period, case when actuals.value != 0 then actuals.value else dt_series.value end from dt_series left join actuals on dt_series.period=actuals.period order by period asc`;
+    })();
+
+    return query;
+}
+
+const buildQueryForSensorType_Delta = (data : GroupedQueryInput) => {
+    // figure out timezone
+    const tz = data.timezone || "Europe/Copenhagen";
+
+    // create query with adjusted days
+    const dataQuery = `select to_char(dt at time zone '${tz}', '${data.groupBy}') period, sum(value) as value
+    from sensor_data inner join sensor on sensor_data.id=sensor.id 
+    where 
+        dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.start} ${data.adjustBy}' and 
+        dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.end} ${data.adjustBy}' and 
+        sensor.id=$1 
+    group by period 
+    order by period asc`;
+
+    // create actual query (adds whether to fill in time series)
+    const query = (() => {
+        if (!data.addMissingTimeSeries) return dataQuery;
+        return `
+            with dt_series as (
+                select 
+                    to_char(dt, '${data.groupBy}') period, 0 as value 
+                from 
+                    generate_series(
+                        date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.start} ${data.adjustBy}', 
+                        date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.end} ${data.adjustBy}' - interval '1 minute', 
+                        interval '1 hour'
+                    ) dt group by period), 
+            actuals as (${dataQuery}) 
+            select dt_series.period period, case when actuals.value != 0 then actuals.value else dt_series.value end from dt_series left join actuals on dt_series.period=actuals.period order by period asc`;
+    })();
+
+    return query;
+}
+
+const doGroupedQuery = async (data : GroupedQueryInput, ctx : types.GraphQLResolverContext) => {
+    // get sensors
+    const sensors = await Promise.all(data.sensorIds.map(id => {
         return ctx.storage.getSensorOrUndefined(id);
-    })
-    promises = promises.concat(data.sensorIds.map(async id => {
-        return ctx.storage.dbService!.query(query, id)
-    }));
-    
-    // evaluate all queries
-    const results = await Promise.all(promises);
+    }))
+
+    // create a query per sensor using correct SQL
+    const dbdata = await Promise.all(sensors.map(sensor => {
+        if (!sensor) return Promise.resolve(undefined);
+        let query;
+        switch (sensor.type) {
+            case types.SensorType.counter:
+                query = buildQueryForSensorType_Counter(data);
+                break;
+            case types.SensorType.delta:
+                query = buildQueryForSensorType_Delta(data);
+                break;
+            default:
+                throw Error(`Supplied sensor type (${sensor.type}) does not support grouped queries`);
+        }
+        return ctx.storage.dbService!.query(query, sensor.id);
+    }))
     
     // create response
     const dss : Array<Dataset> = [];
     for (let i=0; i<data.sensorIds.length; i++) {
-        const result = results[data.sensorIds.length + i] as QueryResult;
-        const sensor = results[i] as Sensor;
+        const result = dbdata[i] as QueryResult;
+        const sensor = sensors[i] as Sensor;
+        
         let ds;
         if (!sensor) {
             // unknown sensor
             ds = new Dataset(data.sensorIds[i], undefined);
         } else {
+            const scaleFactor = sensor.scaleFactor;
             ds = new Dataset(sensor.id, sensor.name);
             ds.data = result.rows.map((r : any) => {
                 return {
-                    "name": r.period,
-                    "value": r.value || 0
+                    "x": r.period,
+                    "y": Math.floor((r.value || 0) * scaleFactor * Math.pow(10, data.decimals)) / Math.pow(10, data.decimals)
                 } as DataElement;
             })
         }
         dss.push(ds);
     }
     
+    // return
     return dss;
 }
 
 @Resolver()
 export class CounterQueryResolver {
-    @Query(() => [Dataset], { description: "Returns data for requested delta-type sensors grouped as requested", nullable: false })
-    async deltaGroupedQuery(@Arg("data") data : GroupedQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
-        // figure out timezone
-        const tz = data.timezone || "Europe/Copenhagen";
-
-        // create query with adjusted days
-        const dataQuery = `select to_char(dt at time zone '${tz}', '${data.groupBy}') period, sum(value) as value
-        from sensor_data inner join sensor on sensor_data.id=sensor.id 
-        where 
-            dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.start} ${data.adjustBy}' and 
-            dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.end} ${data.adjustBy}' and 
-            sensor.id=$1 
-        group by period 
-        order by period asc`;
-
-        // create actual query (adds whether to fill in time series)
-        const query = (() => {
-            if (!data.addMissingTimeSeries) return dataQuery;
-            return `
-                with dt_series as (
-                    select 
-                        to_char(dt, '${data.groupBy}') period, 0 as value 
-                    from 
-                        generate_series(
-                            date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.start} ${data.adjustBy}', 
-                            date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.end} ${data.adjustBy}' - interval '1 minute', 
-                            interval '1 hour'
-                        ) dt group by period), 
-                actuals as (${dataQuery}) 
-                select dt_series.period period, case when actuals.value != 0 then actuals.value else dt_series.value end from dt_series left join actuals on dt_series.period=actuals.period order by period asc`;
-        })();
-
-        return doGroupedQuery(query, data, ctx);
+    @Query(() => [Dataset], { description: "Returns data for requested sensors grouped as requested", nullable: false })
+    async groupedQuery(@Arg("data") data : GroupedQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        return doGroupedQuery(data, ctx);
     }
 
-    @Query(() => [Dataset], { description: "Returns data for requested countere-type sensors grouped as requested", nullable: false })
-    async counterGroupedQuery(@Arg("data") data : GroupedQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
-        // figure out timezone
-        const tz = data.timezone || "Europe/Copenhagen";
-
-        // create query with adjusted days
-        const dataQuery = `
-            actuals as 
-                (with temp2 as 
-                    (with temp1 as 
-                        (select dt, value 
-                            from sensor_data 
-                            where 
-                                dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.start} ${data.adjustBy}' 
-                                and dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.end} ${data.adjustBy}' - interval '1 second' 
-                                and id=$1 
-                            order by dt desc
-                    ) select dt, value, value-lead(value,1) over (order by dt desc) diff_value from temp1) select to_char(dt at time zone '${tz}', '${data.groupBy}') period, sum(diff_value) as value from temp2 group by period order by period)`
-
-        // create actual query (adds whether to fill in time series)
-        const query = (() => {
-            if (!data.addMissingTimeSeries) return `with ${dataQuery} select period, sum(value) as value from actuals group by period order by period asc;`;
-            return `
-                with dt_series as (
-                    select 
-                        to_char(dt, '${data.groupBy}') period, 0 as value 
-                    from 
-                        generate_series(
-                            date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.start} ${data.adjustBy}', 
-                            date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.end} ${data.adjustBy}' - interval '1 minute', 
-                            interval '1 hour'
-                        ) dt group by period), 
-                ${dataQuery} 
-                select dt_series.period period, case when actuals.value != 0 then actuals.value else dt_series.value end from dt_series left join actuals on dt_series.period=actuals.period order by period asc`;
-        })();
-
-        return doGroupedQuery(query, data, ctx);
+    @Query(() => [Dataset], { description: "Returns data for requested sensors", nullable: false })
+    async ungroupedQuery(@Arg("data") data : GaugeQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        const sensors = await Promise.all(data.sensorIds.map(sensorId => {
+            return ctx.storage.getSensorOrUndefined(sensorId);
+        }))
+        const dbdata = await Promise.all(data.sensorIds.map(sensorId => {
+            return ctx.storage.getLastNSamplesForSensor(sensorId, data.sampleCount);
+        }))
+        
+        // build dataset(s);
+        const dss : Array<Dataset> = [];
+        for (let i=0; i<data.sensorIds.length; i++) {
+            const result = dbdata[i] as types.SensorSample[];
+            const sensor = sensors[i] as Sensor;
+            let ds;
+            if (!sensor) {
+                // unknown sensor
+                ds = new Dataset(data.sensorIds[i], undefined);
+            } else {
+                const scaleFactor = sensor.scaleFactor;
+                ds = new Dataset(sensor.id, sensor.name);
+                ds.data = result.map(r => {
+                    return {
+                        "x": r.dt.toISOString(),
+                        "y": Math.floor((r.value || 0) * scaleFactor * Math.pow(10, data.decimals)) / Math.pow(10, data.decimals)
+                    }
+                })
+            }
+            dss.push(ds);
+        }
+        
+        return dss;
     }
 }

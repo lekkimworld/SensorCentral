@@ -1,7 +1,8 @@
 const Chart = require("chart.js");
+const moment = require("moment");
 
-const MIN_Y_FACTOR = 0.5;
-const MAX_Y_FACTOR = 0.05;
+const MIN_Y_FACTOR = 0.1;
+const MAX_Y_FACTOR = 0.1;
 const MAX_Y_ADD = 5;
 
 const formatDate = d => {
@@ -43,10 +44,10 @@ const lineChart = (id, label, samples, inputOptions = {}) => {
     }
 
     // clone the samples array and sort ascending
-    let data = Array.from(samples).sort((a, b) => a.dt-b.dt).map(s => {
+    let data = Array.from(samples.data).map(s => {
         return {
-            "x": s.dt,
-            "y": s.value
+            "x": moment(s.x).toDate(),
+            "y": s.y
         }
     });
     const minY = data.reduce((prev, e) => {
@@ -96,7 +97,7 @@ const barChart = (id, labels, data, inputOptions = {}) => {
     }
     const datasets = (Array.isArray(data) ? data : [data]).map((ds, idx) => {
         const obj = {
-            "data": ds.data.map(e => e.value),
+            "data": ds.data.map(e => e.y),
             "label": ds.name,
             "backgroundColor": backgroundColors[idx]
         }
@@ -108,10 +109,10 @@ const barChart = (id, labels, data, inputOptions = {}) => {
     }
 
     const minY = data[0].data.reduce((prev, e) => {
-        return e.value < prev ? e.value : prev;
+        return e.y < prev ? e.y : prev;
     }, 0);
     const maxY = data[0].data.reduce((prev, e) => {
-        return e.value > prev ? e.value : prev;
+        return e.y > prev ? e.y : prev;
     }, 0);
 
     const chartOptions = {
@@ -119,8 +120,8 @@ const barChart = (id, labels, data, inputOptions = {}) => {
         "scales": {
             "yAxes": [{
                 "ticks": {
-                    "min": minY > 0 ? 0 : minY + (minY * MIN_Y_FACTOR),
-                    "max": Math.ceil(maxY + MAX_Y_FACTOR * maxY) + (MAX_Y_ADD - Math.ceil(maxY + MAX_Y_FACTOR * maxY) % MAX_Y_ADD)
+                    "min": minY > 0 ? 0 : minY - (minY * MIN_Y_FACTOR),
+                    "max": maxY < 0 ? 0 : Math.ceil(maxY + (maxY * MAX_Y_FACTOR))
                 }
             }]
         }

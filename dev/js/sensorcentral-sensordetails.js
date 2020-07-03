@@ -5,7 +5,7 @@ const formutils = require("./forms-util");
 
 module.exports = (document, elemRoot, ctx) => {
     // fetch sensor
-    fetcher.graphql(`{sensor(id:"${ctx.sensorId}"){id, type, name, favorite, device{id,name,house{id,name}}}}`).then(data => {
+    fetcher.graphql(`{sensor(id:"${ctx.sensorId}"){id, type, name, favorite, scaleFactor, device{id,name,house{id,name}}}}`).then(data => {
         const sensor = data.sensor;
         
         // create breadcrumbs

@@ -273,6 +273,7 @@ export interface Sensor {
     readonly label : string;
     readonly type : SensorType | undefined;
     readonly icon : string;
+    readonly scaleFactor : number;
 }
 
 /**

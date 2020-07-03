@@ -5,7 +5,7 @@ import {join} from "path";
 import * as readline from "readline";
 import moment from "moment-timezone";
 
-const TARGET_DATABASE_VERSION = 6;
+const TARGET_DATABASE_VERSION = 7;
 
 const config : PoolConfig = {
     'connectionString': process.env.DATABASE_URL
@@ -44,13 +44,13 @@ const executeSQLFile = (filename : string) : Promise<void> => {
                 })
             }
             executeNext();
-        })
+        })  
     })
 }
 
 const TEST_SENSOR_ID_GAUGE = "mysensor_5-1";
-const TEST_SENSOR_ID_DELTA = "mysensor_3-1";
-const TEST_SENSOR_ID_COUNTER = "94f7a0f4-d85b-4815-9c77-833be7c28779";
+const TEST_SENSOR_ID_DELTA = "mysensor_3-1"; // scalefactor 1/1000 = 0.001
+const TEST_SENSOR_ID_COUNTER = "94f7a0f4-d85b-4815-9c77-833be7c28779"; // scalefactor 1/500 = 0.002
 
 const addProgrammaticTestData = async () : Promise<void> => {
     // add for delta sensor
@@ -165,6 +165,11 @@ const updateSchemaVersion_5to6 = () : Promise<void> => {
     return executeSQLFile("version_5_to_6.sql");
 }
 
+const updateSchemaVersion_6to7 = () : Promise<void> => {
+    console.log("Updating database schema from version 6 to 7...");
+    return executeSQLFile("version_6_to_7.sql");
+}
+
 pool.query("BEGIN").then(() => {
     // query for database_version table
     return pool.query(`select * from information_schema.tables where table_name='database_version'`);
@@ -195,6 +200,8 @@ pool.query("BEGIN").then(() => {
                     return updateSchemaVersion_4to5();
                 } else if (version === 5) {
                     return updateSchemaVersion_5to6();
+                } else if (version === 6) {
+                    return updateSchemaVersion_6to7();
                 } else if (version === TARGET_DATABASE_VERSION) {
                     console.log("We are at the newest version...");
                     return Promise.resolve();
