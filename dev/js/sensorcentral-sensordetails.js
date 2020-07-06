@@ -47,7 +47,7 @@ module.exports = (document, elemRoot, ctx) => {
                         module.updateUI(sensor, body);
                         
                     }).catch(err => {
-                        
+                        console.log(err);
                     })
                 })
             }})

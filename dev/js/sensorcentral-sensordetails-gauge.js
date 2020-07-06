@@ -91,11 +91,9 @@ module.exports = {
     },
     
     updateUI: (sensor, body) => {
-        // add to cache
-        samplesCache.push(body);
-
-        // rebuild chart and table
-        samplesChart(sensor, samplesCache);
-        samplesTable(sensor, samplesCache);
+        loadSamples(sensor.id).then(samples => {
+            samplesChart(sensor, samples);
+            samplesTable(sensor, samples);
+        });
     }
 }
