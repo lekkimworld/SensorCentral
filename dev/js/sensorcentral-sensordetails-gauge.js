@@ -29,7 +29,13 @@ const loadSamples = (sensorId) => {
 }
 
 const samplesChart = (sensor, samples) => {
-    lineChart(ID_CHART, sensor.name, samples);
+    const labels = samples.data.map(d => d.x).map(x => dateutils.formatDMYTime(x));
+    lineChart(ID_CHART, labels, {
+        "dataset": {
+            "label": sensor.name,
+            "data": samples.data.map(d => d.y)
+        }
+    });
 }
 
 const samplesTable = (sensor, samples) => {

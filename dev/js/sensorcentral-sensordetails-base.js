@@ -35,12 +35,18 @@ module.exports = {
     "createBuildUIFunctionWithQueryName": (queryName) => (elemRoot, sensor) => {
         const doChart = () => {
             fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}, addMissingTimeSeries: ${queryAddMissingTimeSeries}}){id, name, data{x,y}}}`).then(result => {
-                const data = result[queryName][0];
+                const querydata = result[queryName][0];
                 barChart(
                     ID_CHART, 
-                    result[queryName][0].data.map(d => d.x),
-                    result[queryName]);
-                samplesTable(sensor, result[queryName][0].data)
+                    querydata.data.map(d => d.x),
+                    {
+                        "dataset": {
+                            "label": sensor.name,
+                            "data": querydata.data.map(d => d.y)
+                        }
+                    }
+                );
+                samplesTable(sensor, querydata.data)
             })
         }
 
