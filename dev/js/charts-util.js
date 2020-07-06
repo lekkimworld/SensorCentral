@@ -1,6 +1,8 @@
 const Chart = require("chart.js");
 const moment = require("moment");
 
+const ID_CHART = "sensorChart";
+
 const MIN_Y_FACTOR = 0.1;
 const MAX_Y_FACTOR = 0.1;
 const MAX_Y_ADD = 5;
@@ -137,7 +139,7 @@ const barChart = (id, labels, inputOptions = {}) => {
             "yAxes": [{
                 "ticks": {
                     "min": minY,
-                    "max": maxY
+                    "max": Math.ceil(maxY + (maxY * MAX_Y_FACTOR))
                 }
             }]
         }
@@ -152,5 +154,6 @@ const barChart = (id, labels, inputOptions = {}) => {
 
 module.exports = {
     lineChart,
-    barChart
+    barChart,
+    ID_CHART
 }

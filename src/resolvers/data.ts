@@ -1,8 +1,10 @@
 import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Ctx, registerEnumType } from "type-graphql";
 import * as types from "../types";
-import { IsEnum } from "class-validator";
+import { IsEnum, Min, Max, Matches } from "class-validator";
 import { Sensor } from "./sensor";
 import { QueryResult } from "pg";
+import moment from "moment";
+import fetch from "node-fetch";
 
 enum CounterQueryTimezone {
     copenhagen = "Europe/Copenhagen",
@@ -55,11 +57,28 @@ class Dataset {
 
 @ObjectType()
 class DataElement {
+    constructor(x : string, y : number) {
+        this.x = x;
+        this.y = y;
+    }
+
     @Field()
     x : string;
 
     @Field()
     y : number;
+}
+
+@InputType()
+class PowerQueryInput {
+    @Field({nullable: true})
+    @Matches(/\d{4}-\d{2}-\d{2}/)
+    date : string;
+
+    @Field({nullable: true})
+    @Max(1)
+    @Min(-15)
+    dayAdjust : number;
 }
 
 @InputType()
@@ -263,5 +282,27 @@ export class CounterQueryResolver {
         }
         
         return dss;
+    }
+
+    @Query(() => Dataset, {description: "Returns hourly prices for the supplied date or today if no date supplied"})
+    async powerQuery(@Arg("data") data : PowerQueryInput) {
+        // calc date to ask for
+        if (data.date) {
+            var m = moment(data.date, "YYYY-MM-DD");
+            const d = m.diff(moment(), "day");
+            if (d < -14 || d > 0) throw Error("When supplying a date you cannot go back more than 14 days or later than tomorrow");
+        }  else {
+            var m = moment().add(data.dayAdjust, "day");
+        }
+
+        const result = await fetch(`https://orsted.dk/api/energymarket/forwardprices/hourly?region=1577811&period=${m.format("YYYY-MM-DD")}`).then(resp => resp.json());
+        const ds = new Dataset("power", m.format("DD-MM-YYYY"));
+        ds.data = result.xvalues.map((v : string, idx : number) => {
+            const m = moment.utc(v, moment.ISO_8601);
+            const y = result.yvalues[idx];
+            return new DataElement(m.format("HH"), y);
+        })
+        return ds;
+        
     }
 }

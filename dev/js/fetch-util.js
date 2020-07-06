@@ -1,44 +1,46 @@
 const storage = require("./storage-utils");
 const moment = require("moment");
 
-const buildContext = (method) => {
-    const ctx = {
-        "method": method ? method.toUpperCase() : "GET",
-        "headers": {
-            "Authorization": `Bearer ${storage.getJWT()}`
-        }
+const buildContext = (options = {}) => {
+    const ctx = Object.assign({}, options);
+    if (!ctx.hasOwnProperty("method")) ctx.method = "GET";
+    if (!ctx.hasOwnProperty("headers")) ctx.headers = {};
+    if (!ctx.hasOwnProperty("type")) {
+        ctx.headers["content-type"] = "application/json";
+    } else {
+        ctx.headers["content-type"] = ctx.type;
+        delete ctx.type;
     }
+    if (!ctx.headers.hasOwnProperty("authorization")) ctx.headers.authorization = `Bearer ${storage.getJWT()}`;
+    
     return ctx;
 }
-const doFetch = (url, ctx, type) => {
+const doFetch = (url, ctx) => {
     $("#sensorcentral-spinner").removeClass("d-none");
-
+    
     return fetch(url, ctx).then(resp => {
         $("#sensorcentral-spinner").addClass("d-none");
-        if (type === "text") return resp.text();
+        if (ctx["content-type"] === "text/plain" || ctx["content-type"] === "text") return resp.text();
         return resp.json();
     })
 }
-const doGet = (url, type = "json") => {
-    return doFetch(url, buildContext());
+const doGet = (url, options = {}) => {
+    return doFetch(url, buildContext(options));
 }
-const doPost = (url, body, type = "json") => {
-    const ctx = buildContext("post");
+const doPost = (url, body, options = {}) => {
+    const ctx = buildContext(Object.assign({}, {"method": "POST"}, options));
     ctx.body = typeof body === "string" ? body : JSON.stringify(body);
-    ctx.headers["Content-Type"] = "application/json";
+    return doFetch(url, ctx);
+}
+const doPut = (url, body, options = {}) => {
+    const ctx = buildContext(Object.assign({}, {"method": "PUT"}, options));
+    ctx.body = typeof body === "string" ? body : JSON.stringify(body);
     return doFetch(url, ctx, type);
 }
-const doPut = (url, body, type = "json") => {
-    const ctx = buildContext("put");
+const doDelete = (url, body, options = {}) => {
+    const ctx = buildContext(Object.assign({}, {"method": "DELETE"}, options));
     ctx.body = typeof body === "string" ? body : JSON.stringify(body);
-    ctx.headers["Content-Type"] = "application/json";
-    return doFetch(url, ctx, type);
-}
-const doDelete = (url, body, type = "json") => {
-    const ctx = buildContext("delete");
-    ctx.body = typeof body === "string" ? body : JSON.stringify(body);
-    ctx.headers["Content-Type"] = "application/json";
-    return doFetch(url, ctx, type);
+    return doFetch(url, ctx);
 }
 const getSamples = (sensorId, samplesCount) => {
     return doGet(`/api/v1/data/samples/${sensorId}/${samplesCount}`).then(samples => {

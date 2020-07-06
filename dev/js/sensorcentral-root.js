@@ -3,6 +3,9 @@ const uiutils = require("./ui-utils");
 const log = require("./logger");
 const fetcher = require("./fetch-util");
 const dateutils = require("./date-utils");
+const {barChart, ID_CHART} = require("./charts-util");
+const moment = require("moment");
+const { Console } = require("console");
 
 module.exports = (document, elemRoot) => {
     if (!storage.isLoggedIn()) {
@@ -23,7 +26,38 @@ module.exports = (document, elemRoot) => {
         // user is authenticated
         const user = storage.getUser();
         elemRoot.html(`<h1>Hello ${user.fn}!</h1>`);
-        
+
+        elemRoot.append(uiutils.htmlSectionTitle("Graph"));
+        elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
+        fetcher.graphql(`query {
+            yesterday: powerQuery(data: {dayAdjust: 0}){...dataFields}
+            today: powerQuery(data: {dayAdjust: -1}){...dataFields}
+            tomorrow: powerQuery(data: {dayAdjust: 1}){...dataFields}
+          }
+          fragment dataFields on Dataset {id,name,data{x,y}}`).then(result => {
+            
+            barChart(
+                ID_CHART,
+                result.today.data.map(v => v.x),
+                {
+                    "datasets": [
+                        {
+                            "label": `Yesterday (${result.yesterday.name})`,
+                            "data": result.yesterday.data.map(v => v.y)
+                        },
+                        {
+                            "label": "Today",
+                            "data": result.today.data.map(v => v.y)
+                        },
+                        {
+                            "label": `Tomorrow (avail. @ 1PM, ${result.tomorrow.name})`,
+                            "data": result.tomorrow.data.map(v => v.y)
+                        }
+                    ]
+                }
+            )
+        })
+       
         fetcher.graphql(`{favoriteSensors{id,name,icon,last_reading{value,dt},icon,device{id, house{id}}}}`).then(data => {
             const sensors = data.favoriteSensors;
             if (!sensors.length) return;

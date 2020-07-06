@@ -1,11 +1,10 @@
 const uiutils = require("./ui-utils");
 const $ = require("jquery");
 const fetcher = require("./fetch-util");
-const {barChart} = require("./charts-util");
+const {barChart, ID_CHART} = require("./charts-util");
 const moment = require("moment");
 const dateutils = require("./date-utils");
 
-const ID_CHART = "sensorChart";
 const ID_SAMPLES_DIV = "samples";
 const ID_SAMPLES_TABLE = "samples_table";
 
