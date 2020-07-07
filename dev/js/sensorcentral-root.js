@@ -22,42 +22,11 @@ module.exports = (document, elemRoot) => {
         return;
     }
 
-    const updateUI = () => {
-        // user is authenticated
-        const user = storage.getUser();
-        elemRoot.html(`<h1>Hello ${user.fn}!</h1>`);
+    const updateFavoriteSensors = () => {
+        const elemRoot = $("#sensorcentral_favorites");
+        elemRoot.html("");
 
-        elemRoot.append(uiutils.htmlSectionTitle("Graph"));
-        elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
-        fetcher.graphql(`query {
-            today: powerQuery(data: {dayAdjust: 0}){...dataFields}
-            yesterday: powerQuery(data: {dayAdjust: -1}){...dataFields}
-            tomorrow: powerQuery(data: {dayAdjust: 1}){...dataFields}
-          }
-          fragment dataFields on Dataset {id,name,data{x,y}}`).then(result => {
-            
-            barChart(
-                ID_CHART,
-                result.today.data.map(v => v.x),
-                {
-                    "datasets": [
-                        {
-                            "label": `Yesterday (${result.yesterday.name})`,
-                            "data": result.yesterday.data.map(v => v.y)
-                        },
-                        {
-                            "label": "Today",
-                            "data": result.today.data.map(v => v.y)
-                        },
-                        {
-                            "label": `Tomorrow (avail. @ 1PM, ${result.tomorrow.name})`,
-                            "data": result.tomorrow.data.map(v => v.y)
-                        }
-                    ]
-                }
-            )
-        })
-       
+        // load favorite sensors
         fetcher.graphql(`{favoriteSensors{id,name,icon,last_reading{value,dt},icon,device{id, house{id}}}}`).then(data => {
             const sensors = data.favoriteSensors;
             if (!sensors.length) return;
@@ -68,9 +37,10 @@ module.exports = (document, elemRoot) => {
                 "Favorite Sensors", 
                 [
                     {"rel": "refresh", "icon": "refresh", "click": () => {
-                        updateUI();
+                        updateFavoriteSensors();
                     }}
-                ]
+                ],
+                "h5"
             );
             
             // build table
@@ -99,5 +69,47 @@ module.exports = (document, elemRoot) => {
             });
         })
     }
-    updateUI();    
+
+    const buildUI = () => {
+        // user is authenticated
+        const user = storage.getUser();
+        elemRoot.html(`<h1>Hello ${user.fn}!</h1>`);
+
+        // add graph with power data
+        elemRoot.append(`
+            <div class="row">
+                <div class="col-lg-6 col-md-12 col-sm-12">
+                    ${uiutils.htmlSectionTitle("Graph")}
+                    <canvas id="${ID_CHART}"></canvas>
+                </div>
+                <div id="sensorcentral_favorites" class="col-lg-6 col-md-12 col-sm-12"></div>
+            </div>
+        `);
+
+        // load power data
+        fetcher.graphql(`query {
+            powerQuery2(data: {daysBack: 2, daysForward: 1}){...dataFields}
+          }
+          fragment dataFields on Dataset {id,name,data{x,y}}`).then(result => {
+            
+            barChart(
+                ID_CHART,
+                result.powerQuery2[0].data.map(v => v.x),
+                {
+                    "datasets": result.powerQuery2.map(r => {
+                        return {
+                            "label": r.name,
+                            "data": r.data.map(v => v.y)    
+                        }
+                    })
+                }
+            )
+        })
+
+        // get favorite sensors and build ui
+        updateFavoriteSensors();
+    }
+    
+    // build UI
+    buildUI();    
 }

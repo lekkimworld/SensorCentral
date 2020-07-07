@@ -75,8 +75,8 @@ const htmlBreadcrumbs = (objs) => {
     }).join(" &gt; ");
 }
 
-const htmlTitleRow = (title, actions) => {
-    const htmlTitle = htmlPageTitle(title);
+const htmlTitleRow = (title, actions, tag = "h3") => {
+    const htmlTitle = htmlPageTitle(title, tag);
     const htmlActions = htmlActionBar(actions);
     const html = `<div class="row">
         ${htmlTitle}
@@ -86,12 +86,12 @@ const htmlTitleRow = (title, actions) => {
 }
 
 const htmlSectionTitle = (title) => {
-    return `<h5 class="mt-4">${title}</h5>`;
+    return `<h5 class="">${title}</h5>`;
 }
 
-const htmlPageTitle = (title) => {
+const htmlPageTitle = (title, tag = "h3") => {
     const html = `<div class="col-lg-9 col-md-9 col-sm-12">
-        <h3>${title}</h3>
+        <${tag}>${title}</${tag}>
     </div>`;
     return html;
 }
@@ -124,8 +124,8 @@ const htmlDataTable = (input = {}) => {
     return html;
 }
 
-const appendTitleRow = (elem, title, actions = []) => {
-    const html = htmlTitleRow(title, actions);
+const appendTitleRow = (elem, title, actions = [], tag = "h3") => {
+    const html = htmlTitleRow(title, actions, tag);
     elem.append(html);
 
     // add click handler

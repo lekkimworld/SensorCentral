@@ -82,6 +82,19 @@ class PowerQueryInput {
 }
 
 @InputType()
+class PowerQueryInput2 {
+    @Field({nullable: false})
+    @Max(15)
+    @Min(0)
+    daysBack : number;
+
+    @Field({nullable: false})
+    @Max(1)
+    @Min(0)
+    daysForward : number;
+}
+
+@InputType()
 abstract class QueryInput {
     @Field(() => [String])
     sensorIds : string[]
@@ -303,6 +316,27 @@ export class CounterQueryResolver {
             return new DataElement(m.format("HH"), y);
         })
         return ds;
+        
+    }
+
+    @Query(() => [Dataset], {description: "Returns hourly prices for the supplied days back and forward"})
+    async powerQuery2(@Arg("data") data : PowerQueryInput2) {
+        // calc dates to ask for
+        const mStart = moment().subtract(data.daysBack, "day");
+        const mStop = moment().add(data.daysForward+1, "day");
+        
+        const body = await fetch(`https://privat.orsted.dk/?obexport_format=csv&obexport_start=${mStart.format("YYYY-MM-DD")}&obexport_end=${mStop.format("YYYY-MM-DD")}&obexport_region=east`).then(resp => resp.text());
+        const dss : Array<Dataset> = [];
+        const xValues = "00:00,01:00,02:00,03:00,04:00,05:00,06:00,07:00,08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00,21:00,22:00,23:00".split(",");
+        body.split("\n").forEach((line, idx) => {
+            if (idx === 0) return;
+            if (line.length === 0) return;
+            const elems = line.split(",");
+            const ds = new Dataset("power", elems[0]);
+            ds.data = elems.slice(1).map((e, idx) => new DataElement(xValues[idx], Number.parseFloat(e)));
+            dss[idx-1] = ds;
+        })
+        return dss;
         
     }
 }
