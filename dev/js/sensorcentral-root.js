@@ -30,8 +30,8 @@ module.exports = (document, elemRoot) => {
         elemRoot.append(uiutils.htmlSectionTitle("Graph"));
         elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
         fetcher.graphql(`query {
-            yesterday: powerQuery(data: {dayAdjust: 0}){...dataFields}
-            today: powerQuery(data: {dayAdjust: -1}){...dataFields}
+            today: powerQuery(data: {dayAdjust: 0}){...dataFields}
+            yesterday: powerQuery(data: {dayAdjust: -1}){...dataFields}
             tomorrow: powerQuery(data: {dayAdjust: 1}){...dataFields}
           }
           fragment dataFields on Dataset {id,name,data{x,y}}`).then(result => {

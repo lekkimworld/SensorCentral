@@ -294,7 +294,7 @@ export class CounterQueryResolver {
         }  else {
             var m = moment().add(data.dayAdjust, "day");
         }
-
+        
         const result = await fetch(`https://orsted.dk/api/energymarket/forwardprices/hourly?region=1577811&period=${m.format("YYYY-MM-DD")}`).then(resp => resp.json());
         const ds = new Dataset("power", m.format("DD-MM-YYYY"));
         ds.data = result.xvalues.map((v : string, idx : number) => {
