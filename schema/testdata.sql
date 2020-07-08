@@ -10,6 +10,7 @@ insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_1-2', 'M
 insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_2-1', 'My Sensor 2-1', 'mysensor_2-1', 'gauge', 'thermometer-empty', 'mydevice_2');
 insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_2-2', 'My Sensor 2-2', 'mysensor_2-2', 'gauge', 'tint', 'mydevice_2');
 insert into sensor (id,name,label,type,icon,scalefactor,deviceid) values ('mysensor_3-1', 'My Delta Sensor 3-1', 'mycounter_3-1', 'delta', 'battery-4', 0.001, 'mydevice_3');
+insert into sensor (id,name,label,type,icon,scalefactor,deviceid) values ('mysensor_3-2', 'My Delta Sensor 3-2', 'mycounter_3-2', 'delta', 'battery-4', 0.001, 'mydevice_3');
 insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_5-1', 'My Gauge Sensor 5-1', 'mycounter_5-1', 'gauge', 'thermometer-empty', 'mydevice_3');
 
 insert into device_watchdog (userId, deviceId, notify, muted_until) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', 'mydevice_2', 'yes', null);

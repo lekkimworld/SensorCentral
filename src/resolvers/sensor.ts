@@ -1,8 +1,13 @@
-import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx, MiddlewareFn, UseMiddleware } from "type-graphql";
+import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx, MiddlewareFn, UseMiddleware, registerEnumType } from "type-graphql";
 import * as types from "../types";
 import { Device } from "./device";
 import { Length, IsEnum } from "class-validator";
 import { StorageService } from "../services/storage-service";
+
+registerEnumType(types.SensorType, {
+    "name": "SensorType",
+    "description": "Types of sensors"
+})
 
 const FavoriteFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context }, next) => {
     const v = await next();
@@ -65,7 +70,8 @@ export class Sensor implements types.Sensor {
     @Field()
     icon : string;
 
-    @Field(() => String)
+    @Field(() => types.SensorType)
+    @IsEnum(types.SensorType)
     type : types.SensorType | undefined;
 
     @Field(() => ID)
@@ -121,13 +127,23 @@ export class CreateSensorType extends UpdateSensorType {
     deviceId : string;
 }
 
+@InputType()
+class SensorsQuery {
+    @Field({nullable: true})
+    @Length(2, 36)
+    deviceId : string;
+
+    @Field(() => types.SensorType, {nullable: true})
+    @IsEnum(types.SensorType)
+    type : types.SensorType
+}
 
 @Resolver()
 export class SensorResolver {
     @Query(() => [Sensor], {})
-    async sensors(@Arg("deviceId") deviceId : string, @Ctx() ctx : types.GraphQLResolverContext) {
-        const sensors = await ctx.storage.getSensors(deviceId);
-        return sensors.map(s => new Sensor(s));
+    async sensors(@Arg("data", {nullable: true}) data : SensorsQuery, @Ctx() ctx : types.GraphQLResolverContext) {
+        const sensors = await ctx.storage.getSensors(data ? data.deviceId : undefined);
+        return sensors.filter(s => data && data.type ? s.type === data.type : true).map(s => new Sensor(s));
     }
 
     @Query(() => Sensor, {})

@@ -22,7 +22,7 @@ module.exports = (document, elemRoot, ctx) => {
         elemRoot.html("");    
     
         // query for sensors and containing device
-        fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(deviceId:"${deviceId}"){id,name,favorite,label,icon,type,scaleFactor}}`).then(data => {
+        fetcher.graphql(`{device(id:"${deviceId}"){id,name,house{id,name}}sensors(data: {deviceId:"${deviceId}"}){id,name,favorite,label,icon,type,scaleFactor}}`).then(data => {
             const sensors = data.sensors.sort((a,b) => a.name.localeCompare(b.name));
             const device = data.device;
     

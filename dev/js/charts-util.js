@@ -28,14 +28,16 @@ const colorMap = {
 };
 const backgroundColors = Object.values(colorMap);
 
-let myChart = undefined;
+const charts = {};
 const createOrUpdateChart = (id, chartConfig) => {
+    let myChart = charts[id];
     if (myChart) {
         myChart.destroy();
-        myChart = undefined;
+        delete charts[id];
     }
     let ctx2d = document.getElementById(id).getContext('2d');
     myChart = new Chart(ctx2d, chartConfig);
+    charts[id] = myChart;
 }
 
 const setResponsiveFlag = (options) => {
@@ -135,15 +137,17 @@ const barChart = (id, labels, inputOptions = {}) => {
         "responsive": options.responsive,
         "scales": {
             "xAxes": [{
+                "stacked": options.stacked
             }],
             "yAxes": [{
                 "ticks": {
                     "min": minY,
                     "max": Math.ceil(maxY + (maxY * MAX_Y_FACTOR))
-                }
+                },
+                "stacked": options.stacked
             }]
-        }
-    }
+        },
+    }   
     const chartConfig = {
         "type": "bar",
         "data": chartData,

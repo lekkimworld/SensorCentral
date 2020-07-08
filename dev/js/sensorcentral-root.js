@@ -5,7 +5,6 @@ const fetcher = require("./fetch-util");
 const dateutils = require("./date-utils");
 const {barChart, ID_CHART} = require("./charts-util");
 const moment = require("moment");
-const { Console } = require("console");
 
 module.exports = (document, elemRoot) => {
     if (!storage.isLoggedIn()) {
@@ -79,19 +78,24 @@ module.exports = (document, elemRoot) => {
         elemRoot.append(`
             <div class="row">
                 <div class="col-lg-6 col-md-12 col-sm-12">
-                    ${uiutils.htmlSectionTitle("Graph")}
+                    ${uiutils.htmlSectionTitle("Power Prices")}
                     <canvas id="${ID_CHART}"></canvas>
                 </div>
-                <div id="sensorcentral_favorites" class="col-lg-6 col-md-12 col-sm-12"></div>
+                <div class="col-lg-6 col-md-12 col-sm-12">
+                    ${uiutils.htmlSectionTitle("Stacked Delta Sensors (this week)")}
+                    <canvas id="sensorcentral_power"></canvas>
+                </div>
+            </div>
+            <div class="row">
+                <div id="sensorcentral_favorites" class="mt-4 col-lg-12 col-md-12 col-sm-12"></div>
             </div>
         `);
 
         // load power data
         fetcher.graphql(`query {
-            powerQuery2(data: {daysBack: 2, daysForward: 1}){...dataFields}
+            powerQuery2(data: {daysBack: 2, daysForward: 1}){id,name,data{x,y}}
           }
-          fragment dataFields on Dataset {id,name,data{x,y}}`).then(result => {
-            
+          `).then(result => {
             barChart(
                 ID_CHART,
                 result.powerQuery2[0].data.map(v => v.x),
@@ -104,6 +108,28 @@ module.exports = (document, elemRoot) => {
                     })
                 }
             )
+        })
+
+        fetcher.graphql(`query {
+            sensors(data: {type: delta}){id,name}
+        }
+        `).then(data => {
+            return fetcher.graphql(`query {
+                groupedQuery(data: {sensorIds: ["${data.sensors.map(s => s.id).join("\",\"")}"], groupBy: day, adjustBy: week, start: 0, end: -1, addMissingTimeSeries: true}){id, name, data{x,y}}
+            }`).then(data => {
+                const datasets = data.groupedQuery.map(q => {
+                    return {
+                        "label": q.name,
+                        "data": q.data.map(d => d.y)
+                    }
+                })
+                const labels = data.groupedQuery[0].data.map(d => d.x);
+                
+                barChart("sensorcentral_power", labels, {
+                    "datasets": datasets,
+                    "stacked": true
+                })
+            })
         })
 
         // get favorite sensors and build ui

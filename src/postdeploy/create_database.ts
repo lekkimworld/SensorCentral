@@ -49,7 +49,8 @@ const executeSQLFile = (filename : string) : Promise<void> => {
 }
 
 const TEST_SENSOR_ID_GAUGE = "mysensor_5-1";
-const TEST_SENSOR_ID_DELTA = "mysensor_3-1"; // scalefactor 1/1000 = 0.001
+const TEST_SENSOR_ID_DELTA1 = "mysensor_3-1"; // scalefactor 1/1000 = 0.001
+const TEST_SENSOR_ID_DELTA2 = "mysensor_3-2"; // scalefactor 1/1000 = 0.001
 const TEST_SENSOR_ID_COUNTER = "94f7a0f4-d85b-4815-9c77-833be7c28779"; // scalefactor 1/500 = 0.002
 
 const addProgrammaticTestData = async () : Promise<void> => {
@@ -57,7 +58,8 @@ const addProgrammaticTestData = async () : Promise<void> => {
     await addProgrammaticTestData_Gauge();
 
     // add for delta sensor
-    await addProgrammaticTestData_Delta();
+    await addProgrammaticTestData_Delta(TEST_SENSOR_ID_DELTA1);
+    await addProgrammaticTestData_Delta(TEST_SENSOR_ID_DELTA2);
 
     // add for counter sensor
     await addProgrammaticTestData_Counter();
@@ -85,7 +87,7 @@ const addProgrammaticTestData_Gauge = async () : Promise<void> => {
     }
 }
 
-const addProgrammaticTestData_Delta = async () : Promise<void> => {
+const addProgrammaticTestData_Delta = async (sensorId : string) : Promise<void> => {
     const mDt = moment().tz("Europe/Copenhagen").set("hours", 12).set("minute", 0).set("second", 0);
     const mEnd = moment(mDt).subtract(48, "hour");
 
@@ -99,7 +101,7 @@ const addProgrammaticTestData_Delta = async () : Promise<void> => {
         await pool.query(
             "insert into sensor_data (id, value, from_dt, dt) values ($1, $2, $3, $4)", 
             [
-                TEST_SENSOR_ID_DELTA, 
+                sensorId, 
                 value,
                 str_from_dt,
                 str_dt
