@@ -23,7 +23,7 @@ const samplesTable = (sensor, samples) => {
         "rows": samples.map(s => {
             return {
                 "data": s,
-                "columns": [s.name, s.value]
+                "columns": [s.x, s.y]
             }
         })
     });
