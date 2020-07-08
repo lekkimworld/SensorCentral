@@ -1,21 +1,15 @@
 const uiutils = require("./ui-utils");
 const $ = require("jquery");
 const fetcher = require("./fetch-util");
-const {barChart} = require("./charts-util");
+const {barChart, ID_CHART} = require("./charts-util");
 const moment = require("moment");
 const dateutils = require("./date-utils");
 
-const ID_CHART = "sensorChart";
 const ID_SAMPLES_DIV = "samples";
 const ID_SAMPLES_TABLE = "samples_table";
 
-let queryData = {
-    "start": 0,
-    "end": -1,
-    "adjustBy": "day",
-    "groupBy": "hour"
-}
-let = queryAddMissingTimeSeries = false;
+let queryData;
+let queryAddMissingTimeSeries;
 
 const samplesTable = (sensor, samples) => {
     const samplesDiv = $(`#${ID_SAMPLES_DIV}`);
@@ -39,13 +33,19 @@ const samplesTable = (sensor, samples) => {
 module.exports = {
     "createBuildUIFunctionWithQueryName": (queryName) => (elemRoot, sensor) => {
         const doChart = () => {
-            fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}, addMissingTimeSeries: ${queryAddMissingTimeSeries}}){id, name, data{name,value}}}`).then(result => {
-                const data = result[queryName][0];
+            fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}, addMissingTimeSeries: ${queryAddMissingTimeSeries}}){id, name, data{x,y}}}`).then(result => {
+                const querydata = result[queryName][0];
                 barChart(
                     ID_CHART, 
-                    result[queryName][0].data.map(d => d.name),
-                    result[queryName]);
-                samplesTable(sensor, result[queryName][0].data)
+                    querydata.data.map(d => d.x),
+                    {
+                        "dataset": {
+                            "label": sensor.name,
+                            "data": querydata.data.map(d => d.y)
+                        }
+                    }
+                );
+                samplesTable(sensor, querydata.data)
             })
         }
 
@@ -103,20 +103,22 @@ module.exports = {
         `);
         elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
 
-        // add selector for adding missing time series
-        elemRoot.append(`<p class="mt-3"><label for="add_missing_dtseries">Add missing time-series</label>
+        // add selector for adding missing time series and for applying scale factor
+        elemRoot.append(`<p class="mt-3">
+        <label for="add_missing_dtseries">Add missing time-series</label>
         <label class="sensorcentral-switch">
             <input type="checkbox" id="add_missing_dtseries" value="1">
             <span class="sensorcentral-slider sensorcentral-round"></span>
-        </label></p>`);
+        </label>
+        </p>`);
+
+        // add selector 
+        elemRoot.append(`<p class="mt-3"></p>`);
 
         // create div's for samples table and load samples
         elemRoot.append(uiutils.htmlSectionTitle("Chart Data"));
         elemRoot.append(`<div id="${ID_SAMPLES_DIV}"><div id="${ID_SAMPLES_TABLE}"></div></div>`);
-
-        // create chart
-        doChart();
-
+        
         $("#add_missing_dtseries").click(ev => {
             const add_missing = ev.target.checked;
             queryAddMissingTimeSeries = add_missing;
@@ -142,5 +144,17 @@ module.exports = {
             // refresh chart
             doChart();
         })
+
+        // set defaults to query data
+        queryData = {
+            "start": 0,
+            "end": -1,
+            "adjustBy": "day",
+            "groupBy": "hour"
+        }
+        queryAddMissingTimeSeries = false;
+
+        // create chart
+        doChart();
     }
 }

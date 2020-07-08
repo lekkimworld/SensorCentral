@@ -1,12 +1,15 @@
 const Chart = require("chart.js");
+const moment = require("moment");
 
-const MIN_Y_FACTOR = 0.5;
-const MAX_Y_FACTOR = 0.05;
+const ID_CHART = "sensorChart";
+
+const MIN_Y_FACTOR = 0.1;
+const MAX_Y_FACTOR = 0.1;
 const MAX_Y_ADD = 5;
 
 const formatDate = d => {
     const m = d.getMonth();
-    const month = m===0 ? "jan" : m===1 ? "feb" : m === 2 ? "mar" : m === 3 ? "apr" : m ===4 ? "may" : m === 5 ? "jun" : m === 6 ? "jul" : m === 7 ? "aug" : m === 8 ? "sep" : m === 9 ? "oct" : m === 10 ? "nov" : "dec";
+    const month = m === 0 ? "jan" : m === 1 ? "feb" : m === 2 ? "mar" : m === 3 ? "apr" : m === 4 ? "may" : m === 5 ? "jun" : m === 6 ? "jul" : m === 7 ? "aug" : m === 8 ? "sep" : m === 9 ? "oct" : m === 10 ? "nov" : "dec";
     return `${d.getDate()} ${month}`;
 }
 
@@ -29,103 +32,118 @@ let myChart = undefined;
 const createOrUpdateChart = (id, chartConfig) => {
     if (myChart) {
         myChart.destroy();
-        myChart =undefined;
+        myChart = undefined;
     }
     let ctx2d = document.getElementById(id).getContext('2d');
     myChart = new Chart(ctx2d, chartConfig);
 }
 
-const lineChart = (id, label, samples, inputOptions = {}) => {
-    // build options
-    const options = Object.assign({}, inputOptions);
+const setResponsiveFlag = (options) => {
     if (!options.hasOwnProperty("responsive") || typeof options.responsive !== "boolean") {
         options.responsive = true;
     }
+}
 
-    // clone the samples array and sort ascending
-    let data = Array.from(samples).sort((a, b) => a.dt-b.dt).map(s => {
-        return {
-            "x": s.dt,
-            "y": s.value
-        }
-    });
-    const minY = data.reduce((prev, e) => {
-        return e.y < prev ? e.y : prev;
-    }, 0);
-    const maxY = data.reduce((prev, e) => {
-        return e.y > prev ? e.y : prev;
-    }, 0);
+const lineChart = (id, labels, inputOptions = {}) => {
+    // build options
+    const options = Object.assign({}, inputOptions);
+    setResponsiveFlag(options);
 
-    // build labels array
-    const labels = data.map(d => `${formatDate(d.x)} ${formatTime(d.x)}`);
+    // get data sets
+    if (options.dataset) {
+        var datasets = [{
+            "label": options.dataset.label,
+            "data": options.dataset.data
+        }]
+    } else if (options.datasets) {
+        var datasets = options.datasets;
+    }
+    datasets.forEach((ds, idx) => {
+        if (!ds.backgroundColor) ds.backgroundColor = backgroundColors[idx];
+        if (!ds.borderColor) ds.borderColor = backgroundColors[idx];
+        ds.pointRadius = 0;
+        ds.fill = false;
+    })
+
+    const minY = options.min || datasets.reduce((prev, ds) => {
+        return ds.data.reduce((prev, e) => e < prev ? e : prev, prev);
+    }, 0);
+    const maxY = options.max || datasets.reduce((prev, ds) => {
+        return ds.data.reduce((prev, e) => e > prev ? e : prev, prev);
+    }, 0);
 
     const chartData = {
         labels,
-        "datasets": [{
-            label,
-            data,
-            "pointRadius": 0,
-            "fill": false,
-            "backgroundColor": backgroundColors[0]
-        }]
+        datasets
     }
     const chartOptions = {
-        "responsive": options.hasOwnProperty("responsive") && typeof options.responsive === "boolean" ? options.responsive : true,
+        "responsive": options.responsive,
         "scales": {
+            "xAxes": [{
+            }],
             "yAxes": [{
                 "ticks": {
-                    "min": minY > 0 ? 0 : minY + (minY * MIN_Y_FACTOR),
-                    "max": Math.ceil(maxY + MAX_Y_FACTOR * maxY) + (MAX_Y_ADD - Math.ceil(maxY + MAX_Y_FACTOR * maxY) % MAX_Y_ADD)
+                    "min": minY,
+                    "max": Math.ceil(maxY + (maxY * MAX_Y_FACTOR))
                 }
             }]
         }
     }
     const chartConfig = {
-        "type": options.type || "line",
+        "type": "line",
         "data": chartData,
         "options": chartOptions
-    }
+    };
     createOrUpdateChart(id, chartConfig);
 };
 
-const barChart = (id, labels, data, inputOptions = {}) => {
+const barChart = (id, labels, inputOptions = {}) => {
     // build options
     const options = Object.assign({}, inputOptions);
-    if (!options.hasOwnProperty("responsive") || typeof options.responsive !== "boolean") {
-        options.responsive = true;
+    setResponsiveFlag(options);
+
+    // create data sets
+    if (options.dataset) {
+        var datasets = [{
+            "label": options.dataset.label,
+            "data": options.dataset.data
+        }]
+    } else if (options.datasets) {
+        var datasets = options.datasets;
     }
-    const datasets = (Array.isArray(data) ? data : [data]).map((ds, idx) => {
-        const obj = {
-            "data": ds.data.map(e => e.value),
-            "label": ds.name,
-            "backgroundColor": backgroundColors[idx]
-        }
-        return obj;
+    datasets.forEach((ds, idx) => {
+        if (!ds.backgroundColor) ds.backgroundColor = backgroundColors[idx];
     })
+
+    const minY = options.min || datasets.reduce((prev, ds) => {
+        return ds.data.reduce((prev, e) => e < prev ? e : prev, prev);
+    }, 0);
+    const maxY = options.max || datasets.reduce((prev, ds) => {
+        if (options.stacked) {
+            const max = ds.data.reduce((prev, e) => e > prev ? e : prev, 0);
+            return prev + max;
+        } else {
+            return ds.data.reduce((prev, e) => e > prev ? e : prev, prev);
+        }
+    }, 0);
+
     const chartData = {
         labels,
         datasets
     }
-
-    const minY = data[0].data.reduce((prev, e) => {
-        return e.value < prev ? e.value : prev;
-    }, 0);
-    const maxY = data[0].data.reduce((prev, e) => {
-        return e.value > prev ? e.value : prev;
-    }, 0);
-
     const chartOptions = {
-        "responsive": options.hasOwnProperty("responsive") && typeof options.responsive === "boolean" ? options.responsive : true,
+        "responsive": options.responsive,
         "scales": {
+            "xAxes": [{
+            }],
             "yAxes": [{
                 "ticks": {
-                    "min": minY > 0 ? 0 : minY + (minY * MIN_Y_FACTOR),
-                    "max": Math.ceil(maxY + MAX_Y_FACTOR * maxY) + (MAX_Y_ADD - Math.ceil(maxY + MAX_Y_FACTOR * maxY) % MAX_Y_ADD)
+                    "min": minY,
+                    "max": Math.ceil(maxY + (maxY * MAX_Y_FACTOR))
                 }
             }]
         }
     }
-
     const chartConfig = {
         "type": "bar",
         "data": chartData,
@@ -136,5 +154,6 @@ const barChart = (id, labels, data, inputOptions = {}) => {
 
 module.exports = {
     lineChart,
-    barChart
+    barChart,
+    ID_CHART
 }

@@ -286,9 +286,14 @@ const SENSOR_CREATE_EDIT = {
                     }, false, true, "You must specify the type of the sensor.")}
                     ${dropdown("icon", "Icon", "Specify the icon for the sensor.", {
                         "battery-4": "Power",
-                        "thermometer-0": "Temperatur",
+                        "thermometer-empty": "Temperatur",
                         "tint": "Humidity"
                     }, false, true, "You must specify the icon for the sensor.")}
+                    ${dropdown("scalefactor", "Scale Factor", "Specify the scale factor for the sensor.", {
+                        "1": "1",
+                        "0.001": "1/1000",
+                        "0.002": "1/500"
+                    }, false, true, "You must specify the scale factor for the sensor.")}
                 </form>
             </div>
             <div class="modal-footer">
@@ -305,12 +310,14 @@ const SENSOR_CREATE_EDIT = {
             const labelField = $("#labelInput");
             const typeField = $("#typeInput");
             const iconField = $("#iconInput");
+            const scaleField = $("#scalefactorInput");
             idField.val(ctx.sensor.id);
             idField.prop("disabled", true);
             nameField.val(ctx.sensor.name);
             labelField.val(ctx.sensor.label);
             typeField.val(ctx.sensor.type);
             iconField.val(ctx.sensor.icon);
+            scaleField.val(ctx.sensor.scaleFactor);
         }
         return Promise.resolve();
     },
@@ -320,12 +327,14 @@ const SENSOR_CREATE_EDIT = {
         const labelField = $("#labelInput");
         const typeField = $("#typeInput");
         const iconField = $("#iconInput");
+        const scaleField = $("#scalefactorInput");
         return {
             "id": idField.val(),
             "name": nameField.val(),
             "label": labelField.val(),
             "type": typeField.val(),
-            "icon": iconField.val()
+            "icon": iconField.val(),
+            "scaleFactor": scaleField.val()
         }
     }
 }

@@ -64,7 +64,8 @@ router.post("/", async (req, res, next) => {
             "name": input.name,
             "label": input.label,
             "type": input.type,
-            "icon": input.icon
+            "icon": input.icon,
+            "scaleFactor": input.scaleFactor
         })
         res.status(201).send(sensor);
 
@@ -105,7 +106,8 @@ router.put("/", async (req, res, next) => {
             "name": input.name,
             "label": input.label,
             "type": input.type,
-            "icon": input.icon
+            "icon": input.icon,
+            "scaleFactor": input.scaleFactor
         })
         res.status(201).send(sensor);
 

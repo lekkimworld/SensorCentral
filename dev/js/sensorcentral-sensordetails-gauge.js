@@ -1,11 +1,11 @@
 const uiutils = require("./ui-utils");
 const $ = require("jquery");
 const fetcher = require("./fetch-util");
-const {lineChart} = require("./charts-util");
+const {lineChart, ID_CHART} = require("./charts-util");
 const moment = require("moment");
 const dateutils = require("./date-utils");
+const { data } = require("jquery");
 
-const ID_CHART = "sensorChart";
 const ID_SAMPLES_DIV = "samples";
 const ID_SAMPLES_TABLE = "samples_table";
 const ID_SAMPLES_LINK = "samples_link";
@@ -14,19 +14,27 @@ const SAMPLE_COUNT_LOAD = 50;
 const SAMPLE_COUNT_INCR = 10;
 const SAMPLE_COUNT_INITIAL_TABLE = 25;
 
-let samplesCache = undefined;
+let lastSamplesQueryCount = undefined;
 
 const loadSamples = (sensorId) => {
     // see how many samples we need to get
-    const samplesCount = samplesCache ? samplesCache.length + SAMPLE_COUNT_INCR : SAMPLE_COUNT_LOAD;
-    return fetcher.getSamples(sensorId, samplesCount).then(samples => {
-        samplesCache = samples;
-        return Promise.resolve(samplesCache);
-    });
+    const samplesCount = lastSamplesQueryCount ? lastSamplesQueryCount + SAMPLE_COUNT_INCR : SAMPLE_COUNT_LOAD;
+    
+    return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: ["${sensorId}"], decimals: 2, sampleCount: ${samplesCount}}){id, name, data{x,y}}}`).then(result => {
+        const samples = result["ungroupedQuery"][0];
+        lastSamplesQueryCount = samplesCount;
+        return Promise.resolve(samples);
+    })
 }
 
 const samplesChart = (sensor, samples) => {
-    lineChart(ID_CHART, sensor.name, samples);
+    const labels = samples.data.map(d => d.x).map(x => dateutils.formatDMYTime(x));
+    lineChart(ID_CHART, labels, {
+        "dataset": {
+            "label": sensor.name,
+            "data": samples.data.map(d => d.y)
+        }
+    });
 }
 
 const samplesTable = (sensor, samples) => {
@@ -39,10 +47,10 @@ const samplesTable = (sensor, samples) => {
     uiutils.appendDataTable(samplesTable, {
         "id": ID_SAMPLES_TABLE,
         "headers": ["DATE/TIME", "VALUE"],
-        "rows": samples.sort((a,b) => b.dt-a.dt).map(s => {
+        "rows": samples.data.map(s => {
             return {
                 "data": s,
-                "columns": [dateutils.formatDMYTime(s.dt), s.value]
+                "columns": [dateutils.formatDMYTime(s.x), s.y]
             }
         })
     });
@@ -54,7 +62,7 @@ module.exports = {
     buildUI: (elemRoot, sensor) => {
         // clear page
         elemRoot.html("");
-        samplesCache = undefined;
+        lastSamplesQueryCount = undefined;
 
         // add link to load more data
         elemRoot.append(`<div id="${ID_SAMPLES_LINK}" class="float-right"><a href="javascript:void(0)">Load Earlier Data</a></div>`);
@@ -82,11 +90,9 @@ module.exports = {
     },
     
     updateUI: (sensor, body) => {
-        // add to cache
-        samplesCache.push(body);
-
-        // rebuild chart and table
-        samplesChart(sensor, samplesCache);
-        samplesTable(sensor, samplesCache);
+        loadSamples(sensor.id).then(samples => {
+            samplesChart(sensor, samples);
+            samplesTable(sensor, samples);
+        });
     }
 }

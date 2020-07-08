@@ -50,6 +50,7 @@ export class Sensor implements types.Sensor {
         this.icon = s.icon;
         this.deviceId = s.deviceId;
         this.device = s.device;
+        this.scaleFactor = s.scaleFactor;
     }
 
     @Field(() => ID)
@@ -69,6 +70,9 @@ export class Sensor implements types.Sensor {
 
     @Field(() => ID)
     deviceId : string;
+
+    @Field()
+    scaleFactor : number;
 
     @Field(() => Device)
     device : types.Device | undefined;
@@ -105,6 +109,9 @@ export class UpdateSensorType extends DeleteSensorType {
 
     @Field()
     icon : string;
+
+    @Field()
+    scaleFactor : number;
 }
 
 @InputType()

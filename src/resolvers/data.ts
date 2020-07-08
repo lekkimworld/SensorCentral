@@ -1,8 +1,10 @@
 import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Ctx, registerEnumType } from "type-graphql";
 import * as types from "../types";
-import { IsEnum } from "class-validator";
+import { IsEnum, Min, Max, Matches } from "class-validator";
 import { Sensor } from "./sensor";
 import { QueryResult } from "pg";
+import moment from "moment";
+import fetch from "node-fetch";
 
 enum CounterQueryTimezone {
     copenhagen = "Europe/Copenhagen",
@@ -55,15 +57,45 @@ class Dataset {
 
 @ObjectType()
 class DataElement {
-    @Field()
-    name : string;
+    constructor(x : string, y : number) {
+        this.x = x;
+        this.y = y;
+    }
 
     @Field()
-    value : number;
+    x : string;
+
+    @Field()
+    y : number;
 }
 
 @InputType()
-class GroupedQueryInput {
+class PowerQueryInput {
+    @Field({nullable: true})
+    @Matches(/\d{4}-\d{2}-\d{2}/)
+    date : string;
+
+    @Field({nullable: true})
+    @Max(1)
+    @Min(-15)
+    dayAdjust : number;
+}
+
+@InputType()
+class PowerQueryInput2 {
+    @Field({nullable: false})
+    @Max(15)
+    @Min(0)
+    daysBack : number;
+
+    @Field({nullable: false})
+    @Max(1)
+    @Min(0)
+    daysForward : number;
+}
+
+@InputType()
+abstract class QueryInput {
     @Field(() => [String])
     sensorIds : string[]
 
@@ -71,6 +103,19 @@ class GroupedQueryInput {
     @IsEnum(CounterQueryTimezone)
     timezone : CounterQueryTimezone
 
+    @Field({nullable: true, defaultValue: 3})
+    decimals : number
+}
+
+@InputType()
+class GaugeQueryInput extends QueryInput {
+    @Field({nullable:true, defaultValue: 100})
+    sampleCount : number
+}
+
+
+@InputType()
+class GroupedQueryInput extends QueryInput {
     @Field(() => CounterQueryGroupBy, {nullable: false})
     @IsEnum(CounterQueryGroupBy)
     groupBy : CounterQueryGroupBy
@@ -89,115 +134,209 @@ class GroupedQueryInput {
     addMissingTimeSeries : boolean
 }
 
-const doGroupedQuery = async (query : string, data : GroupedQueryInput, ctx : types.GraphQLResolverContext) => {
-    // create promises (one query per sensor for the sensor, one query per sensor for the data)
-    let promises : Array<Promise<any>> = data.sensorIds.map(async id => {
+const buildQueryForSensorType_Counter = (data : GroupedQueryInput) => {
+    // figure out timezone
+    const tz = data.timezone || "Europe/Copenhagen";
+
+    // create query with adjusted days
+    const dataQuery = `
+        actuals as 
+            (with temp2 as 
+                (with temp1 as 
+                    (select dt, value 
+                        from sensor_data 
+                        where 
+                            dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.start} ${data.adjustBy}' 
+                            and dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.end} ${data.adjustBy}' - interval '1 second' 
+                            and id=$1 
+                        order by dt desc
+                ) select dt, value, value-lead(value,1) over (order by dt desc) diff_value from temp1) select to_char(dt at time zone '${tz}', '${data.groupBy}') period, sum(diff_value) as value from temp2 group by period order by period)`
+
+    // create actual query (adds whether to fill in time series)
+    const query = (() => {
+        if (!data.addMissingTimeSeries) return `with ${dataQuery} select period, sum(value) as value from actuals group by period order by period asc;`;
+        return `
+            with dt_series as (
+                select 
+                    to_char(dt, '${data.groupBy}') period, 0 as value 
+                from 
+                    generate_series(
+                        date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.start} ${data.adjustBy}', 
+                        date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.end} ${data.adjustBy}' - interval '1 minute', 
+                        interval '1 hour'
+                    ) dt group by period), 
+            ${dataQuery} 
+            select dt_series.period period, case when actuals.value != 0 then actuals.value else dt_series.value end from dt_series left join actuals on dt_series.period=actuals.period order by period asc`;
+    })();
+
+    return query;
+}
+
+const buildQueryForSensorType_Delta = (data : GroupedQueryInput) => {
+    // figure out timezone
+    const tz = data.timezone || "Europe/Copenhagen";
+
+    // create query with adjusted days
+    const dataQuery = `select to_char(dt at time zone '${tz}', '${data.groupBy}') period, sum(value) as value
+    from sensor_data inner join sensor on sensor_data.id=sensor.id 
+    where 
+        dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.start} ${data.adjustBy}' and 
+        dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.end} ${data.adjustBy}' and 
+        sensor.id=$1 
+    group by period 
+    order by period asc`;
+
+    // create actual query (adds whether to fill in time series)
+    const query = (() => {
+        if (!data.addMissingTimeSeries) return dataQuery;
+        return `
+            with dt_series as (
+                select 
+                    to_char(dt, '${data.groupBy}') period, 0 as value 
+                from 
+                    generate_series(
+                        date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.start} ${data.adjustBy}', 
+                        date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.end} ${data.adjustBy}' - interval '1 minute', 
+                        interval '1 hour'
+                    ) dt group by period), 
+            actuals as (${dataQuery}) 
+            select dt_series.period period, case when actuals.value != 0 then actuals.value else dt_series.value end from dt_series left join actuals on dt_series.period=actuals.period order by period asc`;
+    })();
+
+    return query;
+}
+
+const doGroupedQuery = async (data : GroupedQueryInput, ctx : types.GraphQLResolverContext) => {
+    // get sensors
+    const sensors = await Promise.all(data.sensorIds.map(id => {
         return ctx.storage.getSensorOrUndefined(id);
-    })
-    promises = promises.concat(data.sensorIds.map(async id => {
-        return ctx.storage.dbService!.query(query, id)
-    }));
-    
-    // evaluate all queries
-    const results = await Promise.all(promises);
+    }))
+
+    // create a query per sensor using correct SQL
+    const dbdata = await Promise.all(sensors.map(sensor => {
+        if (!sensor) return Promise.resolve(undefined);
+        let query;
+        switch (sensor.type) {
+            case types.SensorType.counter:
+                query = buildQueryForSensorType_Counter(data);
+                break;
+            case types.SensorType.delta:
+                query = buildQueryForSensorType_Delta(data);
+                break;
+            default:
+                throw Error(`Supplied sensor type (${sensor.type}) does not support grouped queries`);
+        }
+        return ctx.storage.dbService!.query(query, sensor.id);
+    }))
     
     // create response
     const dss : Array<Dataset> = [];
     for (let i=0; i<data.sensorIds.length; i++) {
-        const result = results[data.sensorIds.length + i] as QueryResult;
-        const sensor = results[i] as Sensor;
+        const result = dbdata[i] as QueryResult;
+        const sensor = sensors[i] as Sensor;
+        
         let ds;
         if (!sensor) {
             // unknown sensor
             ds = new Dataset(data.sensorIds[i], undefined);
         } else {
+            const scaleFactor = sensor.scaleFactor;
             ds = new Dataset(sensor.id, sensor.name);
             ds.data = result.rows.map((r : any) => {
                 return {
-                    "name": r.period,
-                    "value": r.value || 0
+                    "x": r.period,
+                    "y": Math.floor((r.value || 0) * scaleFactor * Math.pow(10, data.decimals)) / Math.pow(10, data.decimals)
                 } as DataElement;
             })
         }
         dss.push(ds);
     }
     
+    // return
     return dss;
 }
 
 @Resolver()
 export class CounterQueryResolver {
-    @Query(() => [Dataset], { description: "Returns data for requested delta-type sensors grouped as requested", nullable: false })
-    async deltaGroupedQuery(@Arg("data") data : GroupedQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
-        // figure out timezone
-        const tz = data.timezone || "Europe/Copenhagen";
-
-        // create query with adjusted days
-        const dataQuery = `select to_char(dt at time zone '${tz}', '${data.groupBy}') period, sum(value) as value
-        from sensor_data inner join sensor on sensor_data.id=sensor.id 
-        where 
-            dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.start} ${data.adjustBy}' and 
-            dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.end} ${data.adjustBy}' and 
-            sensor.id=$1 
-        group by period 
-        order by period asc`;
-
-        // create actual query (adds whether to fill in time series)
-        const query = (() => {
-            if (!data.addMissingTimeSeries) return dataQuery;
-            return `
-                with dt_series as (
-                    select 
-                        to_char(dt, '${data.groupBy}') period, 0 as value 
-                    from 
-                        generate_series(
-                            date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.start} ${data.adjustBy}', 
-                            date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.end} ${data.adjustBy}' - interval '1 minute', 
-                            interval '1 hour'
-                        ) dt group by period), 
-                actuals as (${dataQuery}) 
-                select dt_series.period period, case when actuals.value != 0 then actuals.value else dt_series.value end from dt_series left join actuals on dt_series.period=actuals.period order by period asc`;
-        })();
-
-        return doGroupedQuery(query, data, ctx);
+    @Query(() => [Dataset], { description: "Returns data for requested sensors grouped as requested", nullable: false })
+    async groupedQuery(@Arg("data") data : GroupedQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        return doGroupedQuery(data, ctx);
     }
 
-    @Query(() => [Dataset], { description: "Returns data for requested countere-type sensors grouped as requested", nullable: false })
-    async counterGroupedQuery(@Arg("data") data : GroupedQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
-        // figure out timezone
-        const tz = data.timezone || "Europe/Copenhagen";
+    @Query(() => [Dataset], { description: "Returns data for requested sensors", nullable: false })
+    async ungroupedQuery(@Arg("data") data : GaugeQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        const sensors = await Promise.all(data.sensorIds.map(sensorId => {
+            return ctx.storage.getSensorOrUndefined(sensorId);
+        }))
+        const dbdata = await Promise.all(data.sensorIds.map(sensorId => {
+            return ctx.storage.getLastNSamplesForSensor(sensorId, data.sampleCount);
+        }))
+        
+        // build dataset(s);
+        const dss : Array<Dataset> = [];
+        for (let i=0; i<data.sensorIds.length; i++) {
+            const result = dbdata[i] as types.SensorSample[];
+            const sensor = sensors[i] as Sensor;
+            let ds;
+            if (!sensor) {
+                // unknown sensor
+                ds = new Dataset(data.sensorIds[i], undefined);
+            } else {
+                const scaleFactor = sensor.scaleFactor;
+                ds = new Dataset(sensor.id, sensor.name);
+                ds.data = result.map(r => {
+                    return {
+                        "x": r.dt.toISOString(),
+                        "y": Math.floor((r.value || 0) * scaleFactor * Math.pow(10, data.decimals)) / Math.pow(10, data.decimals)
+                    }
+                }).reverse();
+            }
+            dss.push(ds);
+        }
+        
+        return dss;
+    }
 
-        // create query with adjusted days
-        const dataQuery = `
-            actuals as 
-                (with temp2 as 
-                    (with temp1 as 
-                        (select dt, value 
-                            from sensor_data 
-                            where 
-                                dt >= date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.start} ${data.adjustBy}' 
-                                and dt < date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${data.end} ${data.adjustBy}' - interval '1 second' 
-                                and id=$1 
-                            order by dt desc
-                    ) select dt, value, value-lead(value,1) over (order by dt desc) diff_value from temp1) select to_char(dt at time zone '${tz}', '${data.groupBy}') period, sum(diff_value) as value from temp2 group by period order by period)`
+    @Query(() => Dataset, {description: "Returns hourly prices for the supplied date or today if no date supplied"})
+    async powerQuery(@Arg("data") data : PowerQueryInput) {
+        // calc date to ask for
+        if (data.date) {
+            var m = moment(data.date, "YYYY-MM-DD");
+            const d = m.diff(moment(), "day");
+            if (d < -14 || d > 0) throw Error("When supplying a date you cannot go back more than 14 days or later than tomorrow");
+        }  else {
+            var m = moment().add(data.dayAdjust, "day");
+        }
+        
+        const result = await fetch(`https://orsted.dk/api/energymarket/forwardprices/hourly?region=1577811&period=${m.format("YYYY-MM-DD")}`).then(resp => resp.json());
+        const ds = new Dataset("power", m.format("DD-MM-YYYY"));
+        ds.data = result.xvalues.map((v : string, idx : number) => {
+            const m = moment.utc(v, moment.ISO_8601);
+            const y = result.yvalues[idx];
+            return new DataElement(m.format("HH"), y);
+        })
+        return ds;
+        
+    }
 
-        // create actual query (adds whether to fill in time series)
-        const query = (() => {
-            if (!data.addMissingTimeSeries) return `with ${dataQuery} select period, sum(value) as value from actuals group by period order by period asc;`;
-            return `
-                with dt_series as (
-                    select 
-                        to_char(dt, '${data.groupBy}') period, 0 as value 
-                    from 
-                        generate_series(
-                            date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.start} ${data.adjustBy}', 
-                            date_trunc('${data.adjustBy}', current_timestamp at time zone '${tz}') - interval '${data.end} ${data.adjustBy}' - interval '1 minute', 
-                            interval '1 hour'
-                        ) dt group by period), 
-                ${dataQuery} 
-                select dt_series.period period, case when actuals.value != 0 then actuals.value else dt_series.value end from dt_series left join actuals on dt_series.period=actuals.period order by period asc`;
-        })();
-
-        return doGroupedQuery(query, data, ctx);
+    @Query(() => [Dataset], {description: "Returns hourly prices for the supplied days back and forward"})
+    async powerQuery2(@Arg("data") data : PowerQueryInput2) {
+        // calc dates to ask for
+        const mStart = moment().subtract(data.daysBack, "day");
+        const mStop = moment().add(data.daysForward+1, "day");
+        
+        const body = await fetch(`https://privat.orsted.dk/?obexport_format=csv&obexport_start=${mStart.format("YYYY-MM-DD")}&obexport_end=${mStop.format("YYYY-MM-DD")}&obexport_region=east`).then(resp => resp.text());
+        const dss : Array<Dataset> = [];
+        const xValues = "00:00,01:00,02:00,03:00,04:00,05:00,06:00,07:00,08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00,21:00,22:00,23:00".split(",");
+        body.split("\n").forEach((line, idx) => {
+            if (idx === 0) return;
+            if (line.length === 0) return;
+            const elems = line.split(",");
+            const ds = new Dataset("power", elems[0]);
+            ds.data = elems.slice(1).map((e, idx) => new DataElement(xValues[idx], Number.parseFloat(e)));
+            dss[idx-1] = ds;
+        })
+        return dss;
+        
     }
 }
