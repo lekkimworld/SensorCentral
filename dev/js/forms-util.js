@@ -223,7 +223,7 @@ const DEVICE_CREATE_EDIT = {
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">npx
+            <div class="modal-body">
                 <form id="deviceForm" novalidate>
                     ${textField("id", "Enter device ID", "Specify the ID of the device (maximum 36 characters).", true, "You must specify the ID for the device. Must be unique.")}
                     ${textField("name", "Enter device name", "Specify the name of the device (maximum 128 characters).", true, "You must specify the name for the device. Must be unique.")}
@@ -286,8 +286,9 @@ const SENSOR_CREATE_EDIT = {
                     }, false, true, "You must specify the type of the sensor.")}
                     ${dropdown("icon", "Icon", "Specify the icon for the sensor.", {
                         "battery-4": "Power",
-                        "thermometer-empty": "Temperatur",
-                        "tint": "Humidity"
+                        "thermometer-empty": "Temperature",
+                        "tint": "Humidity",
+                        "tachometer": "Tachometer"
                     }, false, true, "You must specify the icon for the sensor.")}
                     ${dropdown("scalefactor", "Scale Factor", "Specify the scale factor for the sensor.", {
                         "1": "1",
