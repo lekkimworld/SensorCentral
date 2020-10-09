@@ -3,7 +3,7 @@ const uiutils = require("./ui-utils");
 const log = require("./logger");
 const fetcher = require("./fetch-util");
 const dateutils = require("./date-utils");
-const {barChart, ID_CHART} = require("./charts-util");
+const { barChart, ID_CHART } = require("./charts-util");
 const moment = require("moment");
 
 module.exports = (document, elemRoot) => {
@@ -26,27 +26,28 @@ module.exports = (document, elemRoot) => {
         elemRoot.html("");
 
         // load favorite sensors
-        fetcher.graphql(`{favoriteSensors{id,name,icon,last_reading{value,dt},icon,device{id, house{id}}}}`).then(data => {
+        fetcher.graphql(`{favoriteSensors{id,name,icon,scaleFactor,last_reading{value,dt},icon,device{id, house{id}}}}`).then(data => {
             const sensors = data.favoriteSensors;
             if (!sensors.length) return;
 
             // add title
             uiutils.appendTitleRow(
                 elemRoot,
-                "Favorite Sensors", 
-                [
-                    {"rel": "refresh", "icon": "refresh", "click": () => {
+                "Favorite Sensors", [{
+                    "rel": "refresh",
+                    "icon": "refresh",
+                    "click": () => {
                         updateFavoriteSensors();
-                    }}
-                ],
+                    }
+                }],
                 "h5"
             );
-            
+
             // build table
             uiutils.appendDataTable(elemRoot, {
                 "headers": ["NAME", "TYPE", "LAST READING"],
                 "classes": [
-                    "", 
+                    "",
                     "text-center",
                     ""
                 ],
@@ -56,8 +57,8 @@ module.exports = (document, elemRoot) => {
                         "id": sensor.id,
                         "data": sensor,
                         "columns": [
-                            sensor.name, 
-                            type_img, 
+                            sensor.name,
+                            type_img,
                             sensor.last_reading ? `${sensor.last_reading.value} (${dateutils.formatDMYTime(sensor.last_reading.dt)})` : "None found"
                         ],
                         "click": function() {
@@ -72,10 +73,7 @@ module.exports = (document, elemRoot) => {
     const buildUI = () => {
         // user is authenticated
         const user = storage.getUser();
-        elemRoot.html(`<h1>Hello ${user.fn}!</h1>`);
-
-        // add graph with power data
-        elemRoot.append(`
+        elemRoot.html(`
             <div class="row">
                 <div class="col-lg-6 col-md-12 col-sm-12">
                     ${uiutils.htmlSectionTitle("Power Prices")}
@@ -98,12 +96,11 @@ module.exports = (document, elemRoot) => {
           `).then(result => {
             barChart(
                 ID_CHART,
-                result.powerQuery2[0].data.map(v => v.x),
-                {
+                result.powerQuery2[0].data.map(v => v.x), {
                     "datasets": result.powerQuery2.map(r => {
                         return {
                             "label": r.name,
-                            "data": r.data.map(v => v.y)    
+                            "data": r.data.map(v => v.y)
                         }
                     })
                 }
@@ -124,7 +121,7 @@ module.exports = (document, elemRoot) => {
                     }
                 })
                 const labels = data.groupedQuery[0].data.map(d => d.x);
-                
+
                 barChart("sensorcentral_power", labels, {
                     "datasets": datasets,
                     "stacked": true
@@ -135,7 +132,7 @@ module.exports = (document, elemRoot) => {
         // get favorite sensors and build ui
         updateFavoriteSensors();
     }
-    
+
     // build UI
-    buildUI();    
+    buildUI();
 }

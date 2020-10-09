@@ -1,4 +1,4 @@
-#SensorCentral#
+# SensorCentral #
 
 
 ## Migration from release to release ##
@@ -34,3 +34,15 @@ clientId = smartme-client-1
 username = cc8f022c-77b0-40de-8595-fb9c5ebb2e0b
 password = 540f779b-6315-4e46-8ff6-4c57f4980609
 sensorId = 94f7a0f4-d85b-4815-9c77-833be7c28779
+
+## Change Log ##
+
+### Functionality ideas ###
+* Power prices using nordpool-node npm package (https://github.com/samuelmr/nordpool-node), pipe through cache layer in Redis that caches 5 days worth of data
+* On device page allow user to change watch dog settings incl. set custom date/time for "not until" for the watchdog
+* "Widget" to graph multiple gauge sensors together
+* Move to a "house"-selector model so you select a house and work for that house - that will make power graphs more logical to use. "House"-selector in the user-dropdown.
+
+### 1.6.7 ###
+* Remove "Hello <name>" on frontpage
+* Use scale factor on front page

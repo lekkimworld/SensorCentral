@@ -796,7 +796,7 @@ export class StorageService extends BaseService {
      * @param user 
      */
     async getFavoriteSensors(user : BackendLoginUser) {
-        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc", user.id);
+        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s join device d on s.deviceid=d.id left outer join house h on d.houseid=h.id where s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc", user.id);
         const sensors = convertRowsToSensors(result);
         return sensors;
     }
@@ -829,12 +829,13 @@ export class StorageService extends BaseService {
      * @param samples 
      */
     async getLastNSamplesForSensor(sensorId : string, samples : number = 100) : Promise<SensorSample[] | undefined> {
-        return this.dbService?.query(`select value, dt from sensor_data where id='${sensorId}' order by dt desc limit ${samples}`).then(result => {
+
+        return this.dbService?.query(`select sd.value as value, sd.dt dt, case when s.scalefactor is null then 1 else s.scalefactor end from sensor_data sd left outer join sensor s on sd.id=s.id where sd.id='${sensorId}' order by dt desc limit ${samples}`).then(result => {
             const arr = result.rows.map(row => {
                 return {
                     "id": sensorId,
                     "dt": row.dt,
-                    "value": row.value
+                    "value": row.value * row.scalefactor
                 } as SensorSample;
             })
             return Promise.resolve(arr);
