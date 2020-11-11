@@ -1,10 +1,11 @@
 import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Ctx, registerEnumType } from "type-graphql";
 import * as types from "../types";
-import { IsEnum, Min, Max, Matches } from "class-validator";
+import { IsEnum, Matches } from "class-validator";
 import { Sensor } from "./sensor";
 import { QueryResult } from "pg";
 import moment from "moment";
-import fetch from "node-fetch";
+import constants from "../constants";
+const nordpool = require("lekkimworld-nordpool");
 
 enum CounterQueryTimezone {
     copenhagen = "Europe/Copenhagen",
@@ -44,12 +45,16 @@ class Dataset {
         this.id=id;
         this.name=name;
         this.data = [];
+        this.fromCache = false;
     }
     @Field(() => ID)
     id : string;
 
     @Field(() => String, {nullable: true})
     name : string | undefined;
+
+    @Field(() => Boolean, {nullable: false})
+    fromCache : boolean;
 
     @Field(() => [DataElement])
     data : DataElement[]
@@ -75,23 +80,8 @@ class PowerQueryInput {
     @Matches(/\d{4}-\d{2}-\d{2}/)
     date : string;
 
-    @Field({nullable: true})
-    @Max(1)
-    @Min(-15)
-    dayAdjust : number;
-}
-
-@InputType()
-class PowerQueryInput2 {
-    @Field({nullable: false})
-    @Max(15)
-    @Min(0)
-    daysBack : number;
-
-    @Field({nullable: false})
-    @Max(1)
-    @Min(0)
-    daysForward : number;
+    @Field({nullable: true, defaultValue: false})
+    ignoreCache : boolean;
 }
 
 @InputType()
@@ -298,45 +288,69 @@ export class CounterQueryResolver {
     }
 
     @Query(() => Dataset, {description: "Returns hourly prices for the supplied date or today if no date supplied"})
-    async powerQuery(@Arg("data") data : PowerQueryInput) {
+    async powerQuery(@Arg("data") data : PowerQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
         // calc date to ask for
-        if (data.date) {
-            var m = moment(data.date, "YYYY-MM-DD");
-            const d = m.diff(moment(), "day");
-            if (d < -14 || d > 0) throw Error("When supplying a date you cannot go back more than 14 days or later than tomorrow");
-        }  else {
-            var m = moment().add(data.dayAdjust, "day");
-        }
-        
-        const result = await fetch(`https://orsted.dk/api/energymarket/forwardprices/hourly?region=1577811&period=${m.format("YYYY-MM-DD")}`).then(resp => resp.json());
-        const ds = new Dataset("power", m.format("DD-MM-YYYY"));
-        ds.data = result.xvalues.map((v : string, idx : number) => {
-            const m = moment.utc(v, moment.ISO_8601);
-            const y = result.yvalues[idx];
-            return new DataElement(m.format("HH"), y);
-        })
-        return ds;
-        
-    }
+        const m = data.date ? moment(data.date, "YYYY-MM-DD") : moment();
 
-    @Query(() => [Dataset], {description: "Returns hourly prices for the supplied days back and forward"})
-    async powerQuery2(@Arg("data") data : PowerQueryInput2) {
-        // calc dates to ask for
-        const mStart = moment().subtract(data.daysBack, "day");
-        const mStop = moment().add(data.daysForward+1, "day");
-        
-        const body = await fetch(`https://privat.orsted.dk/?obexport_format=csv&obexport_start=${mStart.format("YYYY-MM-DD")}&obexport_end=${mStop.format("YYYY-MM-DD")}&obexport_region=east`).then(resp => resp.text());
-        const dss : Array<Dataset> = [];
-        const xValues = "00:00,01:00,02:00,03:00,04:00,05:00,06:00,07:00,08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00,21:00,22:00,23:00".split(",");
-        body.split("\n").forEach((line, idx) => {
-            if (idx === 0) return;
-            if (line.length === 0) return;
-            const elems = line.split(",");
-            const ds = new Dataset("power", elems[0]);
-            ds.data = elems.slice(1).map((e, idx) => new DataElement(xValues[idx], Number.parseFloat(e)));
-            dss[idx-1] = ds;
+        // create dataset
+        const ds = new Dataset("power", m.format("DD-MM-YYYY"));
+
+        // see if we could potentially have the data
+        const midnight = moment().hour(0).minute(0).second(0).millisecond(0).add(1, "day");
+        if (midnight.diff(m) <= 0) {
+            // supplied date is in the future
+            const tomorrowMidnight = moment().hour(0).minute(0).second(0).millisecond(0).add(2, "day");
+            const today2pm = moment().hour(14).minute(0).second(0).millisecond(0);
+            if (tomorrowMidnight.diff(m) <= 0) {
+                // supplied date is after tomorrow midnight - we never have 
+                // that data
+                return ds;
+            } else {
+                // we could have the data for tomorrow if it's after 2pm
+                if (moment().diff(today2pm) < 0) {
+                    // it's before 2pm - we cannot have the data yet
+                    return ds;
+                }
+            }
+        }
+
+        // look in cache if allowed
+        if (!data.ignoreCache) {
+            const data = await ctx.storage.getPowerData(m.format("YYYY-MM-DD"));
+            if (data) {
+                // found in cache
+                ds.data = data as any as DataElement[];
+                ds.fromCache = true;
+                return ds;
+            }
+        }
+
+        // get data
+        const results : any[] = await new Promise((resolve, reject) => {
+            const opts = {
+                "currency": constants.DEFAULTS.NORDPOOL.CURRENCY,
+                "area": constants.DEFAULTS.NORDPOOL.AREA,
+                "date": m.format("YYYY-MM-DD")
+            }
+            const prices = new nordpool.Prices();
+            prices.hourly(opts, (err : Error | undefined, results : any[] | undefined) => {
+                if (err) return reject(err);
+                resolve(results);
+            });
         })
-        return dss;
         
+        // map data
+        ds.data = results.map((v : any) => {
+            let date = v.date;
+            let price = Number.parseFloat((v.value / 1000).toFixed(2)); // unit i MWh
+            let time = date.tz(constants.DEFAULTS.TIMEZONE).format("H:mm");
+            return new DataElement(time, price);
+        })
+
+        // cache
+        ctx.storage.setPowerData(m.format("YYYY-MM-DD"), ds.data);
+
+        // return
+        return ds;
     }
 }

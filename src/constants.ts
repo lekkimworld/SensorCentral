@@ -31,7 +31,8 @@ export default {
         'REDIS': {
             'DEVICE_EXPIRATION_SECS': (process.env.REDIS_DEVICE_EXPIRATION_SECS ? Number.parseInt(process.env.REDIS_DEVICE_EXPIRATION_SECS) : 20 * 60) as number,
             'SENSOR_EXPIRATION_SECS': (process.env.REDIS_SENSOR_EXPIRATION_SECS ? Number.parseInt(process.env.REDIS_SENSOR_EXPIRATION_SECS) : 20 * 60) as number,
-            'LOGINUSER_EXPIRATION_SECS': (process.env.REDIS_LOGINUSER_EXPIRATION_SECS ? Number.parseInt(process.env.REDIS_LOGINUSER_EXPIRATION_SECS) : 8 * 60 * 60) as number
+            'LOGINUSER_EXPIRATION_SECS': (process.env.REDIS_LOGINUSER_EXPIRATION_SECS ? Number.parseInt(process.env.REDIS_LOGINUSER_EXPIRATION_SECS) : 8 * 60 * 60) as number,
+            'POWERDATA_EXPIRATION_SECS': (process.env.REDIS_POWERDATA_EXPIRATION_SECS ? Number.parseInt(process.env.REDIS_POWERDATA_EXPIRATION_SECS) : 12 * 60 * 60) as number
         },
         "NOTIFY": {
             "DEVICE": {
@@ -56,6 +57,10 @@ export default {
         "JWT": {
             "USER_SCOPES": [JWT.SCOPE_ADMIN, JWT.SCOPE_API, JWT.SCOPE_ADMIN_JWT, JWT.SCOPE_SENSORDATA],
             "DEVICE_SCOPES": [JWT.SCOPE_API, JWT.SCOPE_SENSORDATA]
+        },
+        "NORDPOOL": {
+            "CURRENCY": "DKK",
+            "AREA": "DK2"
         }
     },
     JWT,

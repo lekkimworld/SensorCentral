@@ -89,24 +89,36 @@ module.exports = (document, elemRoot) => {
             </div>
         `);
 
-        // load power data
-        fetcher.graphql(`query {
-            powerQuery2(data: {daysBack: 2, daysForward: 1}){id,name,data{x,y}}
-          }
-          `).then(result => {
+        // load power data - build query 2 days back, today and tomorrow
+        const m = moment().subtract(2, "days");
+        let powerquery = "query {";
+        for (let i = 0; i < 4; i++) {
+            powerquery += `query${i}: powerQuery(data: {date: "${m.format("YYYY-MM-DD")}"}){id,name,fromCache,data{x,y}}\n`;
+            m.add(1, "day");
+        }
+        powerquery += "}";
+        fetcher.graphql(powerquery).then(result => {
+            // build labels and datasets
+            const labels = result["query0"].data.map(v => v.x);
+            const datasets = Object.keys(result).reduce((prev, key) => {
+                if (!result[key] || !result[key].data || !result[key].data.length) return prev;
+                prev.push({
+                    "label": result[key].name,
+                    "data": result[key].data.map(v => v.y)
+                })
+                return prev;
+            }, [])
+
+            // do chart
             barChart(
                 ID_CHART,
-                result.powerQuery2[0].data.map(v => v.x), {
-                    "datasets": result.powerQuery2.map(r => {
-                        return {
-                            "label": r.name,
-                            "data": r.data.map(v => v.y)
-                        }
-                    })
+                labels, {
+                    datasets
                 }
             )
         })
 
+        // load sensor data
         fetcher.graphql(`query {
             sensors(data: {type: delta}){id,name}
         }

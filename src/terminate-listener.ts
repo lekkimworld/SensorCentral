@@ -18,13 +18,13 @@ export default (callback : CallbackFunction) => {
     // catch SIGTERM event (Heroku) and exit normally
     process.on('SIGTERM', function () {
         console.log('SIGTERM (Heroku)...');
-        process.exit(3);
+        process.exit(0);
     });
 
     // catch ctrl+c event and exit normally
     process.on('SIGINT', function () {
         console.log('Ctrl-C...');
-        process.exit(2);
+        process.exit(0);
     });
 
     //catch uncaught exceptions, trace, then exit normally

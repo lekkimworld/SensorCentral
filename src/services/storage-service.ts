@@ -101,6 +101,33 @@ export class StorageService extends BaseService {
     }
 
     /**
+     * Try and lookup powerdata in cache. 
+     * @param key 
+     */
+    async getPowerData(key : string) : Promise<object | undefined> {
+        const data = await this.redisService!.get(`powerdata_${key}`);
+        if (data) {
+            this.redisService!.expire(`powerdata_${key}`, constants.DEFAULTS.REDIS.POWERDATA_EXPIRATION_SECS);
+            return JSON.parse(data);
+        } else {
+            return undefined;
+        }
+    }
+
+    /**
+     * Set powerdata in cache. 
+     * @param key 
+     * @param data 
+     */
+    async setPowerData(key : string, data : object) {
+        const str = JSON.stringify(data);
+        return await this.redisService!.setex(
+            `powerdata_${key}`, 
+            constants.DEFAULTS.REDIS.POWERDATA_EXPIRATION_SECS, 
+            str);
+    }
+
+    /**
      * Returns the house with the supplied ID.
      * 
      * @param houseid ID of the house to return
