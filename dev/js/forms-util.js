@@ -2,7 +2,7 @@ const fetcher = require("./fetch-util");
 const ID_ELEM_FORM = "sensorcentral-form";
 
 const textField = (name, placeholder, fieldExplanation, required = false, validationText) => {
-    return `<div class="form-group">
+        return `<div class="form-group">
     <label for="${name}Input">${placeholder}</label>
     <input type="text" ${required ? "required" : ""} class="form-control" id="${name}Input" aria-describedby="${name}Help" placeholder="${placeholder}">
     <small id="${name}Help" class="form-text text-muted">${fieldExplanation || placeholder}</small>
@@ -87,6 +87,68 @@ const DEVICE_JWT = {
             $("#jwtInput").prop("disabled", true);
             return Promise.resolve();
         })
+    }
+}
+const DATE_SELECT_FORM = {
+    "name": "dateselect",
+    "html": `<div class="modal fade" id="dateselectModal" tabindex="-1" role="dialog" aria-labelledby="dateselectModalLabel" aria-hidden="true">
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="dateselectModalLabel">Date Select</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="dateselectForm" novalidate>
+                <div class="form-group">
+                    <label for="dtInput">Date</label>
+                    <div class='input-group date' id='datetimepicker1'>
+                        <input type='text' class="form-control" />
+                        <span class="input-group-addon">
+                            <span class="fa fa-calendar"></span>
+                        </span>
+                    </div>
+                    <small id="dtHelp" class="form-text text-muted">Specify the date.</small>
+                    <div class="invalid-feedback">
+                        You must specify the date.
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            ${buttonClose()}
+            ${buttonPerformAction()}
+        </div>
+    </div>
+</div>
+</div>`,
+    "fnInit": (ctx) => {
+        // init date picker
+        $('#datetimepicker1').datetimepicker({
+            locale: 'da_dk',
+            inline: true,
+            sideBySide: true,
+            format: 'LD',
+            icons: {
+                time: "fa fa-clock-o",
+                date: "fa fa-calendar",
+                up: "fa fa-arrow-up",
+                down: "fa fa-arrow-down",
+                next: "fa fa-arrow-right",
+                previous: "fa fa-arrow-left"
+            }
+        });
+
+        return Promise.resolve();
+    },
+    "fnGetData": () => {
+        // build return data
+        const data = {
+            "date": $('#datetimepicker1').data("DateTimePicker").date()
+        }
+        return data;
     }
 }
 const MANUAL_SENSOR_SAMPLE = {
@@ -478,6 +540,9 @@ const prepareForm = (formdata, ctx, onPerformAction) => {
 module.exports = {
     appendManualSampleForm: (sensor, onPerformAction) => {
         prepareForm(MANUAL_SENSOR_SAMPLE, {"sensor": sensor}, onPerformAction);
+    },
+    appendDateSelectForm: (ctx, onPerformAction) => {
+        prepareForm(DATE_SELECT_FORM, ctx, onPerformAction);
     },
     appendJWTForm: (device) => {
         prepareForm(DEVICE_JWT, {"device": device});

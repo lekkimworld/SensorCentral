@@ -10,11 +10,11 @@ const fillMenus = () => {
     const user = storage.getUser();
     const elemUsername = $("#navbarUsernameDropdown");
     const elemMenuitems = $("#navbarMenuItems");
-    
+
     let htmlMenu = "";
     let htmlUsername = "";
     if (user) {
-        htmlMenu = 
+        htmlMenu =
             `<li class="nav-item">
             <a class="nav-link" href="/#root">Home</a>
             </li>
@@ -47,7 +47,7 @@ const fillMenus = () => {
 
             // ensure menu is hidden
             $('.navbar-collapse').removeClass('show');
-            
+
             // tell server to log us out
             document.location.hash = "#loggedout";
         })
@@ -85,8 +85,8 @@ const htmlTitleRow = (title, actions, tag = "h3") => {
     return html;
 }
 
-const htmlSectionTitle = (title) => {
-    return `<h5 class="">${title}</h5>`;
+const htmlSectionTitle = (title, classList) => {
+    return `<h5 class="${classList ? classList : ""}">${title}</h5>`;
 }
 
 const htmlPageTitle = (title, tag = "h3") => {
@@ -106,12 +106,12 @@ const htmlActionBar = (actions) => {
 }
 
 const htmlDataTable = (input = {}) => {
-    const ctx = Object.assign({}, input);
-    if (!ctx.hasOwnProperty("headers")) ctx.headers = [];
-    if (!ctx.hasOwnProperty("rows")) ctx.rows = [];
-    if (!ctx.hasOwnProperty("actions")) ctx.actions = undefined;
-    if (!ctx.hasOwnProperty("classes")) ctx.classes = [];
-    const html = `<table class="table table-bordered table-hover" ${input.id ? `id="${input.id}"` : ""}>
+        const ctx = Object.assign({}, input);
+        if (!ctx.hasOwnProperty("headers")) ctx.headers = [];
+        if (!ctx.hasOwnProperty("rows")) ctx.rows = [];
+        if (!ctx.hasOwnProperty("actions")) ctx.actions = undefined;
+        if (!ctx.hasOwnProperty("classes")) ctx.classes = [];
+        const html = `<table class="table table-bordered table-hover" ${input.id ? `id="${input.id}"` : ""}>
     <thead>
         <tr>
             ${ctx.actions ? `<th scope="col" class="d-none d-lg-table-cell"></th>` : ""}${ctx.headers.map((h, idx) => `<th scope="col" class="${ctx.classes[idx]}">${h}</th>`).join("")}

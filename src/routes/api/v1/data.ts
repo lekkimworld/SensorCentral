@@ -8,6 +8,7 @@ import constants from "../../../constants";
 import {formatDate} from "../../../utils";
 import moment from 'moment';
 import { ensureScopeFactory, hasScope } from '../../../middleware/ensureScope';
+import uuid from 'uuid';
 
 const router = express.Router();
 
@@ -217,6 +218,49 @@ router.post("/", (req, res, next) => {
 			next(new HttpException(500, `Unable to find device from payload or other error (${err.message})`, err));
 		})
 	})
+})
+
+router.post("/power", async (req, res) => {
+	const obj = req.body;
+
+	const storage = await lookupService("storage") as StorageService;
+	const data : Array<any> = await Promise.all(obj.dates.map((d : string) => storage.getPowerData(d)));
+
+	let str = "";
+	if (obj.type === "csv") {
+		const colA = [""];
+		colA.push(...data[0].map((v : any) => v.x));
+		const colsN = data.reduce((cols : Array<Array<string>>, d : any, idx : number) => {
+			if (!d)  return cols;
+			const col = [];
+			col.push(`foo${idx}`);
+			col.push(...d.map((v : any) => v.y));
+			cols.push(col);
+			return cols;
+		}, []);
+		
+		for (let i=0; i<colA.length; i++) {
+			str += colA[i];
+			str += ";";
+			for (let k=0; k<colsN.length; k++) {
+				str += colsN[k][i];
+				str += ";";
+			}
+			str += "\n";
+		}
+	} else {
+		// stay in json
+		str = JSON.stringify(data);
+	}
+	
+	// set in redis
+	const key = uuid();
+	storage.setTemporaryData(key, 120, str);
+
+	// respond
+	res.status(200).type("json").send({
+		"downloadKey": key
+	});
 })
 
 export default router;

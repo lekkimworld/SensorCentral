@@ -127,6 +127,14 @@ export class StorageService extends BaseService {
             str);
     }
 
+    async setTemporaryData(key : string, ttl : number, data : string) {
+        this.redisService!.setex(key, ttl, data);
+    }
+
+    async getTemporaryData(key : string) : Promise<string> {
+        return this.redisService!.get(key);
+    }
+
     /**
      * Returns the house with the supplied ID.
      * 
