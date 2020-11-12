@@ -5,7 +5,7 @@ import { Sensor } from "./sensor";
 import { QueryResult } from "pg";
 import moment from "moment";
 import constants from "../constants";
-const nordpool = require("lekkimworld-nordpool");
+const nordpool = require("nordpool");
 
 enum CounterQueryTimezone {
     copenhagen = "Europe/Copenhagen",

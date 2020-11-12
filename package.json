@@ -69,6 +69,7 @@
         "node-excel-export": "^1.4.4",
         "node-fetch": "^2.6.1",
         "node-pushover": "^0.2.2",
+        "nordpool": "^2.0.2",
         "openid-client": "^3.14.2",
         "pg": "^7.18.2",
         "redis": "^2.8.0",
