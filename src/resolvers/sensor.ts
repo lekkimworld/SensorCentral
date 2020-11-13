@@ -143,7 +143,7 @@ export class SensorResolver {
     @Query(() => [Sensor], {})
     async sensors(@Arg("data", {nullable: true}) data : SensorsQuery, @Ctx() ctx : types.GraphQLResolverContext) {
         const sensors = await ctx.storage.getSensors(data ? data.deviceId : undefined);
-        return sensors.filter(s => data && data.type ? s.type === data.type : true).map(s => new Sensor(s));
+        return sensors.filter(s => s.device?.house.id === ctx.user.houseId).filter(s => data && data.type ? s.type === data.type : true).map(s => new Sensor(s));
     }
 
     @Query(() => Sensor, {})

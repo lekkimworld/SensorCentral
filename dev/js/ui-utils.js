@@ -21,6 +21,9 @@ const fillMenus = () => {
             <li class="nav-item">
             <a class="nav-link" href="/#configuration/houses">Houses</a>
             </li>
+            <li class="nav-item">
+            <a class="nav-link" href="/#configuration/house/${user.houseId}">Sensors</a>
+            </li>
             `;
         htmlUsername = `<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             Username: ${user.email}
@@ -28,8 +31,11 @@ const fillMenus = () => {
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
                 <a class="dropdown-item" href="/#powermeter">Powermeter Setup</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="settings">Settings</a>
-                <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>
-            </div>`;
+                <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>`;
+        user.houses.forEach(house => {
+            htmlUsername += `<a class="dropdown-item" href="/#house-${house.id}" id="house" date-id="${house.id}">House: ${house.name}</a>`
+        })
+        htmlUsername += `</div>`;
     }
     htmlMenu += `<li class="nav-item">
         <a href="/#about" class="nav-link">About</a>

@@ -688,7 +688,13 @@ export class StorageService extends BaseService {
         }
     }
 
-    async getOrCreateLoginUser({source, oidc_sub, email, fn, ln} : CreateLoginUserInput) : Promise<BackendLoginUser> {
+    /**
+     * After logging using OIDC returns the user logging in from the database or 
+     * inserts the user in the database and returns the internal user id.
+     * 
+     * @param param0 
+     */
+    async getOrCreateLoginUserId({source, oidc_sub, email, fn, ln} : CreateLoginUserInput) : Promise<string> {
         // see if we can find the user by sub based on source
         let result : QueryResult | undefined;
         switch (source) {
@@ -712,14 +718,8 @@ export class StorageService extends BaseService {
             }
 
             // return
-            return {
-                email,
-                "id": row.id,
-                "houseId": "*",
-                "fn": row.fn,
-                "ln": row.ln,
-                "scopes": constants.DEFAULTS.JWT.USER_SCOPES
-            } as BackendLoginUser;
+            return row.id;
+
         } else {
             // we need to add the user
             const id = uuid();
@@ -730,14 +730,27 @@ export class StorageService extends BaseService {
             }
 
             // return
-            return {
-                id,
-                email,
-                fn,
-                ln, 
-                houseId: "*",
-                scopes: constants.DEFAULTS.JWT.USER_SCOPES
-            } as BackendLoginUser;
+            return id;
+        }
+    }
+
+    /**
+     * Update the cached backend user with the supplied houseId.
+     * 
+     * @param userId
+     * @param houseId
+     * @returns true if updated or false if user not found
+     */
+    async updateCachedBackendLoginUser(userId : string, houseId : string) : Promise<boolean> {
+        const redisKey = `${LOGIN_KEY_PREFIX}${userId}`;
+        const str_user = await this.redisService!.get(redisKey);
+        if (str_user) {
+            const user_obj = JSON.parse(str_user) as BackendLoginUser;
+            user_obj.houseId = houseId;
+            await this.redisService!.set(redisKey, JSON.stringify(user_obj));
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -749,7 +762,7 @@ export class StorageService extends BaseService {
      */
     async lookupBackendLoginUser(id : string) {
         // start in redis
-        const redisKey = `${LOGIN_KEY_PREFIX}:${id}`;
+        const redisKey = `${LOGIN_KEY_PREFIX}${id}`;
         const str_user = await this.redisService!.get(redisKey);
         if (str_user) {
             const user_obj = JSON.parse(str_user) as BackendLoginUser;
@@ -757,7 +770,7 @@ export class StorageService extends BaseService {
         }
 
         // not found - look up in database
-        const result = await this.dbService!.query("select id, fn, ln, email from login_user where id=$1", id);
+        const result = await this.dbService!.query("select id, fn, ln, email, h.houseId houseId from login_user l left join (select userId, houseId from user_house_access where userId=$1 and is_default=true) h on l.id=h.userId where l.id=$2;", id, id);
         let user_obj : BackendLoginUser;
         if (!result || result.rowCount === 0) {
             // maybe a device - look for device
@@ -767,7 +780,8 @@ export class StorageService extends BaseService {
                 user_obj = {
                     "id": device.id,
                     "houseId": device.house.id,
-                    "scopes": constants.DEFAULTS.JWT.DEVICE_SCOPES
+                    "scopes": constants.DEFAULTS.JWT.DEVICE_SCOPES,
+                    "houses": []
                 }
             } catch (err){
                 throw Error(`Unable to find user OR device with id <${id}>`);
@@ -775,12 +789,14 @@ export class StorageService extends BaseService {
         } else {
             // found user - create object
             const row = result.rows[0];
+            const houses = await this.getHouses();
             user_obj = {
                 "id": row.id,
                 "fn": row.fn,
                 "ln": row.ln,
                 "email": row.email,
-                "houseId": "*",
+                "houseId": row.houseid,
+                "houses": houses,
                 "scopes": constants.DEFAULTS.JWT.USER_SCOPES
             };
         }

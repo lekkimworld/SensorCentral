@@ -25,3 +25,7 @@ insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_2-1', 
 insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_2-2', 'Your Sensor 2-2', 'yoursensor_2-2', 'gauge', 'tint', 'yourdevice_2');
 
 insert into sensor (id,name,label,type,icon,scalefactor,deviceid) values ('94f7a0f4-d85b-4815-9c77-833be7c28779', 'My Smartme 4-1', 'mysmartme_4-1', 'counter', 'battery-4', 0.002, 'mydevice_3');
+
+insert into USER_HOUSE_ACCESS (userId, houseId, is_default) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', '2cd9038f-9ffa-47aa-88d1-1795f44e220d', true);
+insert into USER_HOUSE_ACCESS (userId, houseId, is_default) values ('8cd0149f-9ffa-47aa-88d1-1795f55e330f', '1cd8038f-9ffa-47aa-88d1-1795f33e110f', false);
+

@@ -1,6 +1,6 @@
 import express from "express";
 import {getOidcClient} from "../oidc-authentication-utils";
-import { HttpException, LoginSource, BackendLoginUser } from "../types";
+import { HttpException, LoginSource } from "../types";
 import { StorageService, CreateLoginUserInput } from "../services/storage-service";
 //@ts-ignore
 import { lookupService } from "../configure-services";
@@ -8,7 +8,11 @@ import { buildBaseHandlebarsContext } from "../utils";
 
 // create a router
 const router = express.Router();
-    
+
+/**
+ * Callback from the OIDC provider.
+ * 
+ */
 router.get("/callback", async (req, res, next) => {
     const nonce = req.session!.nonce;
     if (!nonce) return next(new HttpException(417, `No nonce found (<${nonce}>)`));
@@ -32,7 +36,7 @@ router.get("/callback", async (req, res, next) => {
         
         // ensure we have a row in LOGIN_USER for the user
         lookupService("storage").then((storage : StorageService) => {
-            return storage.getOrCreateLoginUser({
+            return storage.getOrCreateLoginUserId({
                 source: LoginSource.google, 
                 oidc_sub: claims.sub as string, 
                 email: claims.email as string,
@@ -40,9 +44,9 @@ router.get("/callback", async (req, res, next) => {
                 fn: claims.given_name
             } as CreateLoginUserInput);
 
-        }).then((user : BackendLoginUser) => {
-            // set the claims we received, set user in session and redirect
-            req.session!.user = user;
+        }).then((userId : string) => {
+            // set the claims we received, set userId in session and redirect
+            req.session!.userId = userId;
 
             // redirect
             res.redirect("/openid/loggedin");
@@ -50,6 +54,9 @@ router.get("/callback", async (req, res, next) => {
     });
 })
 
+/**
+ * After logging in the user is redirected to this URL.
+ */
 router.get("/loggedin", ({res}) => {
     return res!.render("loggedin", Object.assign({}, buildBaseHandlebarsContext()));
 })

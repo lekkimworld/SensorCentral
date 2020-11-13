@@ -23,6 +23,16 @@ export interface LoginUser {
     readonly id : string;
 
     /**
+     * Current active house Id.
+     */
+    readonly houseId : string;
+
+    /**
+     * Houses the user have access to.
+     */
+    readonly houses : House[];
+
+    /**
      * Firstname. Maybe undefined if this is a device commuhicating 
      * with the API using a JWT.
      */
@@ -77,7 +87,7 @@ export interface BackendLoginUser extends LoginUser {
      * The ID of the house the user may work on/for or "*" if 
      * the user may work with all houses.
      */
-    readonly houseId : string;
+    houseId : string;
 
     /**
      * The scopes that the user has.

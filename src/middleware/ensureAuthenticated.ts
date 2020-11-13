@@ -1,17 +1,24 @@
 import { Request, Response, NextFunction } from "express";
 import constants from "../constants";
-import { HttpException, BackendLoginUser } from "../types";
+import { HttpException } from "../types";
 import jwt from "jsonwebtoken";
 //@ts-ignore
 import { lookupService } from "../configure-services";
 import { StorageService } from "../services/storage-service";
 
 export default async (req : Request, res : Response, next : NextFunction) => {
-    // see if we have a session and hence a user
-    if (req.session && req.session.user) {
-        // we do - get it and set in res.locals
-        const user = req.session.user as BackendLoginUser;
+    // see if we have a session with a userId
+    if (req.session && req.session.userId) {
+        // we do - get userId and convert to a user object
+        const userId = req.session.userId;
+        const storage = await lookupService("storage") as StorageService;
+        const user = await storage.lookupBackendLoginUser(userId);
         res.locals.user = user;
+
+        // remove userId from session
+        delete req.session.userId;
+        
+        // continue
         return next();
     }
     
