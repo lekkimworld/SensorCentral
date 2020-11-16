@@ -1,8 +1,9 @@
 import express from 'express';
-const {lookupService} = require('../configure-services');
-import { BaseService, Sensor, RedisSensorMessage, Device, RedisDeviceMessage } from '../types';
-import { StorageService } from '../services/storage-service';
-import { LogService } from '../services/log-service';
+const {lookupService} = require('../../../configure-services');
+import { BaseService, Sensor, RedisSensorMessage, Device, RedisDeviceMessage } from '../../../types';
+import { StorageService } from '../../../services/storage-service';
+import { LogService } from '../../../services/log-service';
+import { QueueListenerService } from '../../../services/queuelistener-service';
 
 const router = express.Router();
 
@@ -11,17 +12,21 @@ router.get("/", (req, res) => {
     res.set({
         'Content-Type': 'text/plain'
     })
+
+    // get user
+    const user = res.locals.user;
     
-    lookupService(['storage', 'log']).then((svcs : BaseService[]) => {
+    lookupService([StorageService.NAME, LogService.NAME, QueueListenerService.NAME]).then((svcs : BaseService[]) => {
         // define common buffer
         const storage = svcs[0] as StorageService;
         const log = svcs[1] as LogService;
+        const queue = svcs[2] as QueueListenerService;
         const buffer : string[] = [];
 
         // get sensors from storage service
-        storage.getSensors().then(sensors => {
+        storage.getAllSensors(user).then(sensors => {
             const sensorIds = sensors.map(s => s.id);
-            return Promise.all([Promise.resolve(sensors), storage.getRedisSensorMessage(...sensorIds)]);
+            return Promise.all([Promise.resolve(sensors), queue.getRedisSensorMessage(...sensorIds)]);
         }).then(data => {
             const sensors = data[0] as Sensor[];
             const redisData = data[1] as RedisSensorMessage[];
@@ -45,11 +50,11 @@ router.get("/", (req, res) => {
             })
 
             // get devices
-            return storage.getDevices();
+            return storage.getAllDevices(user);
 
         }).then(devices => {
             const deviceIds = devices.map(d => d.id);
-            return Promise.all([Promise.resolve(devices), storage.getRedisDeviceMessage(...deviceIds)]);
+            return Promise.all([Promise.resolve(devices), queue.getRedisDeviceMessage(...deviceIds)]);
 
         }).then(data => {
             const devices = data[0] as Device[];

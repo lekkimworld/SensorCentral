@@ -23,6 +23,12 @@ router.use(ensureAuthenticated);
 // *****************************************
 // DATA
 // *****************************************
+import scrapeRoutes from "./prometheus-scape-endpoint";
+router.use('/scrapedata', scrapeRoutes);
+
+// *****************************************
+// DATA
+// *****************************************
 import dataRoutes from "./data";
 router.use('/data', dataRoutes);
 

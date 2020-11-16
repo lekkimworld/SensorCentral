@@ -20,11 +20,13 @@ const fillMenus = () => {
             </li>
             <li class="nav-item">
             <a class="nav-link" href="/#configuration/houses">Houses</a>
-            </li>
-            <li class="nav-item">
-            <a class="nav-link" href="/#configuration/house/${user.houseId}">Sensors</a>
+            </li>`;
+        if (user.houseId) {
+            htmlMenu += `<li class="nav-item">
+            <a class="nav-link" href="/#configuration/house/${user.houseId}">Devices</a>
             </li>
             `;
+        }
         htmlUsername = `<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             Username: ${user.email}
             </a>

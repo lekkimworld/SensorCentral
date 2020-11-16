@@ -2,8 +2,10 @@ import {BaseService} from "../types";
 import * as events from "../configure-queues-topics";
 
 export class EventService extends BaseService {
+    public static NAME = "event";
+
     constructor() {
-        super("event");
+        super(EventService.NAME);
     }
     terminate() {
         return events.close();

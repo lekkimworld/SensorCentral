@@ -13,9 +13,10 @@ router.get("/:houseid", async (req, res, next) => {
     const houseid = req.params.houseid;
     if (!houseid) return next(new HttpException(417, "No house ID supplied"));
 
+    const user = res.locals.user;
     const storage = await lookupService("storage") as StorageService;
     try {
-        const devices = await storage.getDevices(houseid);
+        const devices = await storage.getDevices(user, houseid);
         return res.status(200).send(devices);
 
     } catch (err) {
@@ -50,7 +51,7 @@ router.post("/", async (req, res, next) => {
     
     const storage = await lookupService("storage") as StorageService;
     try {
-        const device = await storage.createDevice({
+        const device = await storage.createDevice(user, {
             "houseId": input.house,
             "id": input.id,
             "name": input.name,
@@ -76,9 +77,10 @@ router.put("/", async (req, res, next) => {
         return next(new HttpException(417, "Missing name"));
     }
     
+    const user = res.locals.user;
     const storage = await lookupService("storage") as StorageService;
     try {
-        const device = await storage.updateDevice({
+        const device = await storage.updateDevice(user, {
             "id": input.id,
             "name": input.name,
             "active": input.active
@@ -100,9 +102,10 @@ router.delete("/", async (req, res, next) => {
         return next(new HttpException(417, "Missing ID"));
     }
     
+    const user = res.locals.user;
     const storage = await lookupService("storage") as StorageService;
     try {
-        await storage.deleteDevice({
+        await storage.deleteDevice(user, {
             "id": input.id
         })
         res.status(202);

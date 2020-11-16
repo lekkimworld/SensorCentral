@@ -44,14 +44,8 @@ sensorId = 94f7a0f4-d85b-4815-9c77-833be7c28779
 ### 1.6.8 ###
 * Use ts-node instead of transpile
 * Power prices using nordpool-node npm package (https://github.com/samuelmr/nordpool-node), pipe through cache layer in Redis that caches
-
+* Prometheus scrapedata endpoint moved to /api/v1/scrapedata and requires authentication
 * Move to a "house"-selector model so you select a house and work for that house - that will make power graphs more logical to use. "House"-selector in the user-dropdown.
-
-in login.ts change GET /jwt to require selection of a house to set a houseid in the jwt
-after login require user to select house (he has access to) - used when getting jwt to burn houseid into jwt
-all requests are authenticated so we can extract houseid from jwt
-remove houseid from all graphql requests
-
 
 ### 1.6.7 ###
 * Remove "Hello <name>" on frontpage

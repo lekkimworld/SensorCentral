@@ -49,8 +49,9 @@ ${this.body}`
 }
 
 export class EmailService extends BaseService {
+    public static NAME = "email";
     constructor() {
-        super("email");
+        super(EmailService.NAME);
     }
 
     async send(msg : EmailMessage) {

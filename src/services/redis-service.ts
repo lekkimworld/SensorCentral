@@ -23,8 +23,10 @@ const promisifiedClient = {
 }
 
 export class RedisService extends BaseService {
+    public static NAME = "redis";
+
     constructor() {
-        super("redis");
+        super(RedisService.NAME);
     }
     
     terminate() {

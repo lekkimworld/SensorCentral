@@ -11,6 +11,7 @@ import { EmailService, EmailMessage, RFC822Address } from "./email-service";
 import Handlebars from "handlebars";
 
 export class NotifyService extends BaseService {
+    public static NAME = "notify";
     pushoverLastSent? : Moment;
     logService? : LogService;
     eventService? : EventService;
@@ -19,8 +20,8 @@ export class NotifyService extends BaseService {
     templates = new Map<string,any>();
 
     constructor() {
-        super("notify");
-        this.dependencies = ['log','event', 'storage', "email"];
+        super(NotifyService.NAME);
+        this.dependencies = [LogService.NAME, EventService.NAME, StorageService.NAME, EmailService.NAME];
     }
 
     init(callback : (err? : Error) => {}, services : BaseService[]) {

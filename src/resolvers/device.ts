@@ -65,31 +65,31 @@ export class CreateDeviceInput extends UpdateDeviceInput{
 export class DeviceResolver {
     @Query(() => [Device], {description: "Returns all devices for the house with the specified houseId"})
     async devices(@Arg("houseId") houseId : string, @Ctx() ctx : types.GraphQLResolverContext) {
-        const devices = await ctx.storage.getDevices(houseId);
+        const devices = await ctx.storage.getDevices(ctx.user, houseId);
         return devices.map(d => new Device(d));
     }
 
     @Query(() => Device!, {description: "Returns the device with the specified id"})
     async device(@Arg("id") id : string, @Ctx() ctx : types.GraphQLResolverContext) {
-        const device = await ctx.storage.getDevice(id);
+        const device = await ctx.storage.getDevice(ctx.user, id);
         return new Device(device);
     }
     
     @Mutation(() => Device)
     async createDevice(@Arg("data") data : CreateDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
-        const device = await ctx.storage.createDevice(data);
+        const device = await ctx.storage.createDevice(ctx.user, data);
         return new Device(device);
     }
 
     @Mutation(() => Device)
     async updateDevice(@Arg("data") data : UpdateDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
-        const device = await ctx.storage.updateDevice(data);
+        const device = await ctx.storage.updateDevice(ctx.user, data);
         return new Device(device);
     }
 
     @Mutation(() => Boolean)
     async deleteDevice(@Arg("data") data : DeleteDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
-        await ctx.storage.deleteDevice(data);
+        await ctx.storage.deleteDevice(ctx.user, data);
         return true;
     }
 }

@@ -1,10 +1,11 @@
 import express from "express";
 import {getOidcClient} from "../oidc-authentication-utils";
 import { HttpException, LoginSource } from "../types";
-import { StorageService, CreateLoginUserInput } from "../services/storage-service";
+import { CreateLoginUserInput } from "../services/identity-service";
 //@ts-ignore
 import { lookupService } from "../configure-services";
 import { buildBaseHandlebarsContext } from "../utils";
+import { IdentityService } from "../services/identity-service";
 
 // create a router
 const router = express.Router();
@@ -35,8 +36,8 @@ router.get("/callback", async (req, res, next) => {
         }
         
         // ensure we have a row in LOGIN_USER for the user
-        lookupService("storage").then((storage : StorageService) => {
-            return storage.getOrCreateLoginUserId({
+        lookupService(IdentityService.NAME).then((identity : IdentityService) => {
+            return identity.getOrCreateLoginUserId({
                 source: LoginSource.google, 
                 oidc_sub: claims.sub as string, 
                 email: claims.email as string,

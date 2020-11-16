@@ -1,6 +1,5 @@
 import { Application } from "express";
 import postSensorDataRouter from './routes/post-sensor-data';
-import prometheusScrapeRouter from "./routes/prometheus-scape-endpoint";
 import apiV1Routes from "./routes/api/v1/api_routes";
 import smartmeRoutes from "./routes/smartme";
 import attachGetRoot from "./routes/get-root";
@@ -12,7 +11,6 @@ export default async (app : Application) => {
 	// add anonymous routes
 	app.use("/", attachGetRoot);
 	app.use('/', postSensorDataRouter);
-	app.use('/scrapedata', prometheusScrapeRouter);
 	app.use('/download', downloadRouter);
 
 	// add login routes (anonymous)

@@ -14,8 +14,9 @@ router.use(ensureReadScopeWhenGetRequest);
  */
 //@ts-ignore
 router.get("/", async (req, res, next) => {
-    const storage = await lookupService("storage") as StorageService;
-    const houses = await storage.getHouses();
+    const user = res.locals.user;
+    const storage = await lookupService(StorageService.NAME) as StorageService;
+    const houses = await storage.getHouses(user);
     res.status(200).send(houses);
 })
 
@@ -25,11 +26,12 @@ router.get("/", async (req, res, next) => {
  */
 router.get("/:houseid", async (req, res, next) => {
     const houseId = req.params.houseid;
+    const user = res.locals.user;
     if (!houseId) return next(new HttpException(417, "House ID not supplied"));
 
-    const storage = await lookupService("storage") as StorageService;
+    const storage = await lookupService(StorageService.NAME) as StorageService;
     try {
-        const house = await storage.getHouse(houseId);
+        const house = await storage.getHouse(user, houseId);
         return res.status(200).send(house);
 
     } catch (err) {
@@ -51,8 +53,9 @@ router.post("/", async (req, res, next) => {
     }
     
     try {
-        const storage = await lookupService("storage") as StorageService;
-        const house = await storage.createHouse({
+        const storage = await lookupService(StorageService.NAME) as StorageService;
+        const user = res.locals.user;
+        const house = await storage.createHouse(user, {
             "name": input.name
         })
         res.status(201).send(house);
@@ -76,8 +79,9 @@ router.put("/", async (req, res, next) => {
     }
     
     try {
-        const storage = await lookupService("storage") as StorageService;
-        const house = await storage.updateHouse({
+        const user = res.locals.user;
+        const storage = await lookupService(StorageService.NAME) as StorageService;
+        const house = await storage.updateHouse(user, {
             "id": input.id,
             "name": input.name
         })
@@ -99,8 +103,9 @@ router.delete("/", async (req, res, next) => {
     }
     
     try {
-        const storage = await lookupService("storage") as StorageService;
-        await storage.deleteHouse({
+        const user = res.locals.user;
+        const storage = await lookupService(StorageService.NAME) as StorageService;
+        await storage.deleteHouse(user, {
             "id": input.id
         })
         res.status(202).send();

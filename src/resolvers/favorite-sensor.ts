@@ -7,7 +7,7 @@ export class FavoriteSensorResolver {
     @Query(() => [Sensor])
     async favoriteSensors(@Ctx() context : GraphQLResolverContext) {
         const sensors = await context.storage.getFavoriteSensors(context.user);
-        return sensors;
+        return sensors.filter(s => s.device?.house.id === context.user.houseId);
     }
 
     @Mutation(() => Boolean)

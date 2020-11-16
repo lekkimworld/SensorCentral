@@ -199,7 +199,7 @@ const buildQueryForSensorType_Delta = (data : GroupedQueryInput) => {
 const doGroupedQuery = async (data : GroupedQueryInput, ctx : types.GraphQLResolverContext) => {
     // get sensors
     const sensors = await Promise.all(data.sensorIds.map(id => {
-        return ctx.storage.getSensorOrUndefined(id);
+        return ctx.storage.getSensorOrUndefined(ctx.user, id);
     }))
 
     // create a query per sensor using correct SQL
@@ -256,10 +256,10 @@ export class CounterQueryResolver {
     @Query(() => [Dataset], { description: "Returns data for requested sensors", nullable: false })
     async ungroupedQuery(@Arg("data") data : GaugeQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
         const sensors = await Promise.all(data.sensorIds.map(sensorId => {
-            return ctx.storage.getSensorOrUndefined(sensorId);
+            return ctx.storage.getSensorOrUndefined(ctx.user, sensorId);
         }))
         const dbdata = await Promise.all(data.sensorIds.map(sensorId => {
-            return ctx.storage.getLastNSamplesForSensor(sensorId, data.sampleCount);
+            return ctx.storage.getLastNSamplesForSensor(ctx.user, sensorId, data.sampleCount);
         }))
         
         // build dataset(s);

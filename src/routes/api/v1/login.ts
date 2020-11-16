@@ -2,33 +2,11 @@ import express from "express";
 import { getAuthenticationUrl, AuthenticationUrlPayload } from "../../../oidc-authentication-utils";
 import { DeviceJWTPayload, HttpException, BrowserLoginPayload, BackendLoginUser, LoginUser } from "../../../types";
 import ensureAuthenticated from "../../../middleware/ensureAuthenticated";
-import jwt from "jsonwebtoken";
-import constants from "../../../constants";
 import { ensureAdminJWTScope } from "../../../middleware/ensureScope";
 //@ts-ignore
 import {lookupService} from "../../../configure-services";
 import { StorageService } from "../../../services/storage-service";
-
-const generateJWT = async (userOrDeviceId : string, houseId : string, scopes : string[]) => {
-    const token = await jwt.sign({
-        "scopes": scopes.join(" "),
-        "houseid": houseId
-    }, process.env.API_JWT_SECRET as string, {
-        "algorithm": "HS256",
-        "issuer": constants.JWT.OUR_ISSUER,
-        "audience": constants.JWT.AUDIENCE,
-        "subject": userOrDeviceId
-    });
-    return token;
-}
-
-const generateUserJWT = async (userId : string, houseId : string) => {
-    return generateJWT(userId, houseId, constants.DEFAULTS.JWT.USER_SCOPES);
-}
-
-const generateDeviceJWT = async (deviceId : string, houseId : string) => {
-    return generateJWT(deviceId, houseId, constants.DEFAULTS.JWT.DEVICE_SCOPES);
-}
+import { IdentityService } from "../../../services/identity-service";
 
 const router = express.Router();
 
@@ -62,6 +40,7 @@ router.get("/", async (req, res, next) => {
  */
 router.post("/jwt", ensureAuthenticated, ensureAdminJWTScope, async (req, res, next) => {
     // validate
+    const user = res.locals.user;
     const deviceid = req.body.device;
     const houseid = req.body.house;
     if (!deviceid) {
@@ -71,9 +50,12 @@ router.post("/jwt", ensureAuthenticated, ensureAdminJWTScope, async (req, res, n
         return next(new HttpException(417, "Missing house ID in \"house\" property"));
     }
 
+    // get security service
+    const identity = await lookupService(IdentityService.NAME) as IdentityService;
+
     try {
         // create JWT
-        const token = await generateDeviceJWT(deviceid, houseid);
+        const token = await identity.generateDeviceJWT(user, deviceid);
         return res.send({
             token
         } as DeviceJWTPayload);
@@ -92,22 +74,25 @@ router.post("/jwt", ensureAuthenticated, ensureAdminJWTScope, async (req, res, n
  */
 //@ts-ignore
 router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
-    const user = res.locals.user as BackendLoginUser;
+    // get services
+    const svcs = await lookupService([StorageService.NAME, IdentityService.NAME]);
+    const storage = svcs[0] as StorageService;
+    const identity = svcs[1] as IdentityService;
 
     // get all houses for the user
-    const storage = await lookupService("storage") as StorageService;
-    const houses = await storage.getHouses();
+    const user = res.locals.user as BackendLoginUser;
+    const houses = await storage.getHouses(user);
 
     // get houseid for jwt
     let houseId = req.params.houseId;
-    if (!houseId) {
+    if (!houseId && houses && houses.length) {
         // pick first houseid
         houseId = houses[0].id;
     }
 
     try {
         // create JWT for user
-        const token = await generateUserJWT(user.id, houseId);
+        const token = await identity.generateUserJWT(user, houseId);
         const payload = {
             "jwt": token,
             "user": {
@@ -116,12 +101,12 @@ router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
                 "ln": user.ln,
                 "houseId": houseId,
                 "email": user.email,
-                "houses": houses
+                "houses": houses && houses.length ? houses : undefined
             } as LoginUser
         } as BrowserLoginPayload;
 
         // remove cached user
-        storage.updateCachedBackendLoginUser(user.id, houseId);
+        identity.updateCachedBackendLoginUser(user.id, houseId);
 
         // send
         res.send(payload);

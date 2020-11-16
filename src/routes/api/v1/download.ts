@@ -9,7 +9,7 @@ const router = express.Router();
 router.get("/power/:downloadKey/:as", async (req, res) => {
     const id = req.params.downloadKey;
     const asType = req.params.as;
-	const storage = await lookupService("storage") as StorageService;
+	const storage = await lookupService(StorageService.NAME) as StorageService;
 	const data = await storage.getTemporaryData(id);
 	if (!data) return res.status(404).end();
 

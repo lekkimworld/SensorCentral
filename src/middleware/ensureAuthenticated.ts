@@ -4,15 +4,15 @@ import { HttpException } from "../types";
 import jwt from "jsonwebtoken";
 //@ts-ignore
 import { lookupService } from "../configure-services";
-import { StorageService } from "../services/storage-service";
+import { IdentityService } from "../services/identity-service";
 
 export default async (req : Request, res : Response, next : NextFunction) => {
     // see if we have a session with a userId
     if (req.session && req.session.userId) {
         // we do - get userId and convert to a user object
         const userId = req.session.userId;
-        const storage = await lookupService("storage") as StorageService;
-        const user = await storage.lookupBackendLoginUser(userId);
+        const identity = await lookupService(IdentityService.NAME) as IdentityService;
+        const user = await identity.lookupBackendIdentity(userId);
         res.locals.user = user;
 
         // remove userId from session
@@ -42,9 +42,9 @@ export default async (req : Request, res : Response, next : NextFunction) => {
             }
 
             // lookup user
-            const storage = await lookupService("storage") as StorageService;
+            const identity = await lookupService(IdentityService.NAME) as IdentityService;
             try {
-                const user = await storage.lookupBackendLoginUser(decoded.sub);
+                const user = await identity.lookupBackendIdentity(decoded.sub);
                 res.locals.user = user;
 
                 // forward

@@ -16,10 +16,12 @@ if (process.env.NODE_ENV === "production") {
 }
 
 export class DatabaseService extends BaseService {
+    public static NAME = "db";
+
     _pool? : Pool;
 
     constructor() {
-        super("db");
+        super(DatabaseService.NAME);
     }
 
     //@ts-ignore

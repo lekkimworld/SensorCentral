@@ -18,19 +18,20 @@ export enum LoginSource {
  */
 export interface LoginUser {
     /**
-     * Our internal userid.
+     * Our internal user id (or device id if issued for a device).
      */
     readonly id : string;
 
     /**
-     * Current active house Id.
+     * Current active house ID (or undefined if user have no houses).
      */
-    readonly houseId : string;
+    readonly houseId? : string;
 
     /**
-     * Houses the user have access to.
+     * Houses the user have access to. Maybe undefined if this is a device commuhicating 
+     * with the API using a JWT or the user has no houses.
      */
-    readonly houses : House[];
+    readonly houses? : House[];
 
     /**
      * Firstname. Maybe undefined if this is a device commuhicating 
