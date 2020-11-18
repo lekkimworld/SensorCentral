@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { BaseService, ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage, 
-	IngestedSensorMessage, SensorSample, HttpException, BackendLoginUser } from '../../../types';
+	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity } from '../../../types';
 import { LogService } from '../../../services/log-service';
 import { EventService } from '../../../services/event-service';
 import { StorageService } from '../../../services/storage-service';
@@ -107,7 +107,7 @@ router.post("/", async (req, res, next) => {
 	const eventService = services[2] as EventService;
 
 	const body = req.body
-	const user = res.locals.user as BackendLoginUser;
+	const user = res.locals.user as BackendIdentity;
 	
 	// basic validation and get device id
 	logService.debug("Starting basic validation of payload");
@@ -118,8 +118,8 @@ router.post("/", async (req, res, next) => {
 	
 	// validate API user subject matches the payload device id and raise an error if 
 	// not or user does not have admin scope
-	if (deviceId !== user.id && !hasScope(user, constants.JWT.SCOPE_ADMIN)) {
-		logService.warn(`Caller sent a payload subject <${deviceId}> which is different from JWT subject <${user.id}>`);
+	if (deviceId !== user.identity.callerId && !hasScope(user, constants.JWT.SCOPE_ADMIN)) {
+		logService.warn(`Caller sent a payload subject <${deviceId}> which is different from JWT subject <${user.identity.callerId}>`);
 		return next(new HttpException(401, "Attempt to post data for device blocked as api context is for another device"));
 	}
 	

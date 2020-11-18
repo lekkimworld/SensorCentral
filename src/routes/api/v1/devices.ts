@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
-import { HttpException, BackendLoginUser } from '../../../types';
-import { ensureReadScopeWhenGetRequest, ensureAdminScope, accessAllHouses } from '../../../middleware/ensureScope';
+import { HttpException, BackendIdentity } from '../../../types';
+import { ensureReadScopeWhenGetRequest, ensureAdminScope } from '../../../middleware/ensureScope';
 const {lookupService} = require('../../../configure-services');
 
 const router = express.Router();
@@ -44,12 +44,8 @@ router.post("/", async (req, res, next) => {
     }
 
     // ensure access to house
-    const user = res.locals.user as BackendLoginUser;
-    if (!accessAllHouses(user) && user.houseId !== input.house.trim()) {
-        return next(new HttpException(401, "You may not create sensors for the supplied house ID"));
-    }
-    
-    const storage = await lookupService("storage") as StorageService;
+    const user = res.locals.user as BackendIdentity;
+    const storage = await lookupService(StorageService.NAME) as StorageService;
     try {
         const device = await storage.createDevice(user, {
             "houseId": input.house,

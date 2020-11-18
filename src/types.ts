@@ -2,7 +2,7 @@ import { StorageService } from "./services/storage-service";
 
 export interface GraphQLResolverContext {
     readonly storage : StorageService;
-    readonly user : BackendLoginUser;
+    readonly user : BackendIdentity;
 }
 
 /**
@@ -13,54 +13,128 @@ export enum LoginSource {
 }
 
 /**
- * Logged in user info which may sent to user ie. contains no 
- * sensitive information.
+ * Logged in user identity.
  */
-export interface LoginUser {
+export interface Identity {
     /**
-     * Our internal user id (or device id if issued for a device).
+     * Caller ID i.e. our internal user id OR device id if issued for a device 
+     * OR * if user have access to all data.
      */
-    readonly id : string;
+    readonly callerId : string;
 
     /**
-     * Current active house ID (or undefined if user have no houses).
+     * The id of the user being impersonated if a 
+     * device is contacting the service.
      */
-    readonly houseId? : string;
+    readonly impersonationId : string | undefined;
 
     /**
-     * Houses the user have access to. Maybe undefined if this is a device commuhicating 
-     * with the API using a JWT or the user has no houses.
+     * Current active house ID OR undefined if user have no houses 
+     * OR * if user have access to all houses.
      */
-    readonly houses? : House[];
-
-    /**
-     * Firstname. Maybe undefined if this is a device commuhicating 
-     * with the API using a JWT.
-     */
-    readonly fn? : string;
-
-    /**
-     * Lastname. Maybe undefined if this is a device commuhicating 
-     * with the API using a JWT.
-     */
-    readonly ln? : string;
-
-    /**
-     * User email. Maybe undefined if this is a device commuhicating 
-     * with the API using a JWT.
-     */
-    readonly email? : string;
+    readonly houseId : string | undefined;
 }
 
+export interface NamedPrincipal {
+    toString() : string;
+    isUser() : boolean;
+    isDevice() : boolean;
+    isSystem() : boolean;
+}
+export class UserPrincipal implements NamedPrincipal {
+    readonly id : string;
+    readonly fn : string;
+    readonly ln : string;
+    readonly email : string;
+
+    constructor(id : string, fn : string, ln : string, email : string) {
+        this.id = id;
+        this.fn = fn;
+        this.ln = ln;
+        this.email = email;
+    }
+
+    public isUser() {
+        return true;
+    }
+
+    public isDevice() {
+        return false;
+    }
+
+    public isSystem() {
+        return false;
+    }
+
+    public toString() {
+        return `USER - ${this.fn} ${this.ln} (${this.id}, ${this.email})`;
+    }
+}
+export class DevicePrincipal implements NamedPrincipal {
+    name : string;
+
+    constructor(name : string) {
+        this.name = name;
+    }
+
+    public isUser() {
+        return false;
+    }
+
+    public isDevice() {
+        return true;
+    }
+
+    public isSystem() {
+        return false;
+    }
+
+    public toString() {
+        return `DEVICE - ${this.name}`;
+    }
+}
+export class SystemPrincipal implements NamedPrincipal {
+    name : string;
+
+    constructor(name : string) {
+        this.name = name;
+    }
+
+    public isUser() {
+        return false;
+    }
+
+    public isDevice() {
+        return false;
+    }
+
+    public isSystem() {
+        return true;
+    }
+
+    public toString() {
+        return `SYSTEM - ${this.name}`;
+    }
+}
+
+
+export interface BrowserUser {
+    readonly id : string;
+    readonly fn : string;
+    readonly ln : string;
+    readonly email : string;
+    readonly houseId : string | undefined;
+    readonly houses : House[] | undefined;
+}
 /**
  * Payload sent to browser following a UI login by a user.
  * 
  */
-export interface BrowserLoginPayload {
+export interface BrowserLoginResponse {
     /**
-     * Information about the user.
+     * Info about the user i.e. name etc.
      */
-    readonly user : LoginUser;
+    readonly userinfo : BrowserUser;
 
     /**
      * JWT to use when contacting the backend.
@@ -72,7 +146,7 @@ export interface BrowserLoginPayload {
  * Payload sent to browser when requesting a JWT for a device.
  * 
  */
-export interface DeviceJWTPayload {
+export interface JWTPayload {
     /**
      * Device specific JWT to use when contacting the backend from a device.
      */
@@ -80,20 +154,13 @@ export interface DeviceJWTPayload {
 }
 
 /**
- * Extension of LoginUser to store information required for the 
- * backend.
+ * Represents the identity of the entity calling the backend services 
+ * i.e. a user, device or a system account. This object is constructed 
+ * by the middleware when a user is authenticated and is set in res.locals.identity.
  */
-export interface BackendLoginUser extends LoginUser {
-    /**
-     * The ID of the house the user may work on/for or "*" if 
-     * the user may work with all houses.
-     */
-    houseId : string;
-
-    /**
-     * The scopes that the user has.
-     * 
-     */
+export interface BackendIdentity {
+    readonly identity  : Identity;
+    readonly principal : NamedPrincipal;
     readonly scopes : string[];
 }
 
@@ -145,7 +212,7 @@ export interface DeviceWatchdog {
  * A device watchdog notifier.
  */
 export interface DeviceWatchdogNotifier extends DeviceWatchdog{
-    user : LoginUser;
+    user : UserPrincipal;
     settings : NotificationSettings;
 }
 

@@ -24,7 +24,7 @@ router.get("/", (req, res) => {
         const buffer : string[] = [];
 
         // get sensors from storage service
-        storage.getAllSensors(user).then(sensors => {
+        storage.getSensors(user).then(sensors => {
             const sensorIds = sensors.map(s => s.id);
             return Promise.all([Promise.resolve(sensors), queue.getRedisSensorMessage(...sensorIds)]);
         }).then(data => {

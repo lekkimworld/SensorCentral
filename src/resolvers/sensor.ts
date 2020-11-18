@@ -2,7 +2,7 @@ import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx, 
 import * as types from "../types";
 import { Device } from "./device";
 import { Length, IsEnum } from "class-validator";
-import { StorageService } from "../services/storage-service";
+import { SensorQueryData, StorageService } from "../services/storage-service";
 
 registerEnumType(types.SensorType, {
     "name": "SensorType",
@@ -142,17 +142,11 @@ class SensorsQuery {
 export class SensorResolver {
     @Query(() => [Sensor], {})
     async sensors(@Arg("data") data : SensorsQuery, @Ctx() ctx : types.GraphQLResolverContext) {
-        let sensors;
-        if (data.deviceId) {
-            sensors = await ctx.storage.getSensors(ctx.user, data.deviceId);
-        } else {
-            sensors = await ctx.storage.getAllSensors(ctx.user);
-        }
-        if (data.type) {
-            return sensors.filter(s => s.device?.house.id === ctx.user.houseId).filter(s => data && data.type ? s.type === data.type : true).map(s => new Sensor(s));
-        } else {
-            return sensors;
-        }
+        let sensors = await ctx.storage.getSensors(ctx.user, {
+            deviceId: data.deviceId,
+            type: data.type
+        } as SensorQueryData);
+        return sensors;
     }
 
     @Query(() => Sensor, {})
@@ -163,8 +157,10 @@ export class SensorResolver {
 
     @Query(() => Sensor, {})
     async querySensor(@Arg("label") label : string, @Ctx() ctx : types.GraphQLResolverContext) {
-        const sensor = await ctx.storage.getSensorByLabel(ctx.user, label);
-        return new Sensor(sensor);
+        const sensor = await ctx.storage.getSensors(ctx.user, {
+            label
+        } as SensorQueryData);
+        return sensor;
     }
 
     @Mutation(() => Sensor)

@@ -31,6 +31,8 @@ const navigationChange = () => {
         // user is switching house
         const houseId = hash.substring(7);
         return fetcher.get(`/api/v1/login/jwt/${houseId}`).then(body => {
+            console.log(houseId);
+            console.log(body);
             storage.setUser(body);
             document.location.href = "/#root";
         })

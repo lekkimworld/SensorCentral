@@ -1,7 +1,7 @@
 import constants from "../constants";
 import jwt from "jsonwebtoken";
 import { LogService } from "./log-service";
-import { BackendLoginUser, BaseService, LoginSource, LoginUser } from "../types";
+import { BackendIdentity, BaseService, BrowserLoginResponse, BrowserUser, DevicePrincipal, Identity, LoginSource, SystemPrincipal } from "../types";
 import { DatabaseService } from "./database-service";
 import { StorageService } from "./storage-service";
 import { QueryResult } from "pg";
@@ -15,8 +15,7 @@ export interface CreateLoginUserInput {
     fn : string;
     ln : string;
 }
-
-const generateJWT = async (userId : string | undefined, deviceId : string | undefined, houseId : string, scopes : string[]) => {
+const generateJWT = async (userId : string | undefined, deviceId : string | undefined, houseId : string | undefined, scopes : string[]) => {
     const payload = {
         "scopes": scopes.join(" "),
         "houseid": houseId
@@ -26,11 +25,11 @@ const generateJWT = async (userId : string | undefined, deviceId : string | unde
         "issuer": constants.JWT.OUR_ISSUER,
         "audience": constants.JWT.AUDIENCE
     } as any;
-    if (userId) {
-        options["subject"] = userId;
-    } else if (deviceId) {
+    if (userId && deviceId) {
         options["subject"] = deviceId;
-        payload["device"] = true;
+        payload["imp"] = userId;
+    } else if (userId) {
+        options["subject"] = userId;
     } else {
         throw Error("Must supply userId or deviceId");
     }
@@ -50,7 +49,7 @@ export class IdentityService extends BaseService {
     private db : DatabaseService;
     private storage : StorageService;
     private redis : RedisService;
-    private authUser : LoginUser;
+    private authUser : BackendIdentity;
 
     constructor() {
         super(IdentityService.NAME);
@@ -62,31 +61,122 @@ export class IdentityService extends BaseService {
         this.db = services[1] as DatabaseService;
         this.storage = services[2] as StorageService;
         this.redis = services[3] as RedisService;
-        this.authUser = await this.getServicePrincipal(IdentityService.NAME);
+        this.authUser = await this.getServiceBackendIdentity(IdentityService.NAME);
         callback();
     }
 
-    async generateUserJWT(user : LoginUser, houseId : string) {
-        this.log.info(`Issuing JWT for user <${user.id}> for house <${houseId}>`);
+    private getRedisKey(userId : string, impId : string) : string {
+        return `${LOGIN_KEY_PREFIX}${userId}_${impId ? impId : userId}`;
+    }
+
+    async verifyJWT(token : string) : Promise<BackendIdentity> {
+        const secret = process.env.API_JWT_SECRET as string;
+        let decoded : any;
+        try {
+            // verify token
+            decoded = await jwt.verify(token, secret, {
+                "algorithms": ["HS256"],
+                "audience": constants.JWT.AUDIENCE,
+                "issuer": constants.JWT.ISSUERS
+            })
+        } catch (err) {
+            throw Error(`Unable to verify JWT: ${err.message}`);
+        }
+
+        // we verified the token - now see if we have a BackendIdentity cached
+        const redis_key = this.getRedisKey(decoded.sub, decoded.imp);
+        const str_user = await this.redis.get(redis_key);
+        if (str_user) {
+            const user_obj = JSON.parse(str_user) as BackendIdentity;
+            return user_obj;
+        }
+
+        // backend identity not found - create
+        let ident : BackendIdentity;
+        if (decoded.imp) {
+            // there is an impersonation id in the token so it's for a non-user
+            const device = await this.storage.getDevice(this.authUser, decoded.sub);
+            ident = {
+                "identity": {
+                    "callerId": decoded.sub,
+                    "impersonationId": decoded.imp,
+                    "houseId": decoded.houseId
+                } as Identity,
+                "principal": new DevicePrincipal(device.name),
+                "scopes": decoded.scopes.split(" ")
+            } as BackendIdentity;
+            
+        } else {
+            // lookup user
+            const user = await this.storage.getUser(this.authUser, decoded.sub);
+            ident = {
+                "identity": {
+                    "callerId": decoded.sub,
+                    "impersonationId": undefined,
+                    "houseId": decoded.houseId
+                } as Identity,
+                "principal": user,
+                "scopes": decoded.scopes.split(" ")
+            } as BackendIdentity;
+        }
+
+        // cache
+        this.redis.setex(
+            redis_key, 
+            constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS, 
+            JSON.stringify(ident));
+
+        // return
+        return ident;
+    }
+
+    async generateUserJWT(user : BackendIdentity, houseId : string | undefined) {
+        this.log.info(`Issuing JWT for user <${user}> for house <${houseId}>`);
 
         // get house
-        const house = await this.storage.getHouse(user, houseId);
-        return generateJWT(user.id, undefined, house.id, constants.DEFAULTS.JWT.USER_SCOPES);
+        if (houseId) {
+            const house = await this.storage.getHouse(user, houseId);
+            return generateJWT(user.identity.callerId, undefined, house.id, constants.DEFAULTS.JWT.USER_SCOPES);
+        } else {
+            return generateJWT(user.identity.callerId, undefined, undefined, constants.DEFAULTS.JWT.USER_SCOPES);
+        }
     }
     
-    async generateDeviceJWT(user : LoginUser, deviceId : string) {
-        this.log.info(`Issuing JWT for device <${deviceId}> on behalf of user <${user.id}>`);
+    async generateDeviceJWT(user : BackendIdentity, deviceId : string) {
+        this.log.info(`Issuing JWT for device <${deviceId}> on behalf of user <${user}>`);
 
         // get device
         const device = await this.storage.getDevice(user, deviceId);
-        return generateJWT(undefined, device.id, device.house.id, constants.DEFAULTS.JWT.DEVICE_SCOPES);
+        return generateJWT(user.identity.callerId, device.id, device.house.id, constants.DEFAULTS.JWT.DEVICE_SCOPES);
     }
 
-    getServicePrincipal(serviceName : string) : LoginUser {
+    getImpersonationIdentity(user : BackendIdentity, userId : string) : BackendIdentity {
+        if (userId === "*") throw Error(`Cannot issue impersonation user for userId=*`);
+        if (user && user.identity.callerId === "*") {
+            return {
+                "identity": {
+                    "callerId": userId,
+                    "impersonationId": user.identity.callerId,
+                    "houseId": user.identity.houseId
+                },
+                "principal": user.principal,
+                "scopes": [constants.JWT.SCOPE_API]
+            } as BackendIdentity;
+        }
+
+        throw Error(`Calling user not allowed to get impersonation users`);
+    }
+
+    getServiceBackendIdentity(serviceName : string) : BackendIdentity {
         return {
-            "id": serviceName,
-            "houseId": "*",
-        } as LoginUser;
+            "identity": {
+                "callerId": "*",
+                "impersonationId": undefined,
+                "houseId": "*"
+            },
+            "principal": new SystemPrincipal(serviceName),
+            "scopes": [constants.JWT.SCOPE_ADMIN]
+        } as BackendIdentity;
     }
 
     /**
@@ -95,7 +185,7 @@ export class IdentityService extends BaseService {
      * 
      * @param param0 
      */
-    async getOrCreateLoginUserId({source, oidc_sub, email, fn, ln} : CreateLoginUserInput) : Promise<string> {
+    async getOrCreateBrowserLoginResponse({source, oidc_sub, email, fn, ln} : CreateLoginUserInput) : Promise<BrowserLoginResponse> {
         // see if we can find the user by sub based on source
         let result : QueryResult | undefined;
         switch (source) {
@@ -118,8 +208,23 @@ export class IdentityService extends BaseService {
                     break;
             }
 
+            // find default house id if any
+            result = await this.db!.query("select houseId from user_house_access where userId=$1 and is_default=true", row.id);
+
             // return
-            return row.id;
+            const houses = await this.storage.getHousesForUser(this.authUser, row.id);
+            const houseId = result.rowCount === 1 ? result.rows[0].houseId : undefined;
+            return {
+                "userinfo": {
+                    "id": row.id,
+                    "fn": row.fn,
+                    "ln": row.ln,
+                    "email": row.email,
+                    "houses": houses,
+                    "houseId": houseId
+                } as BrowserUser,
+                "jwt": await this.generateUserJWT(this.getImpersonationIdentity(this.authUser, row.id), houseId)
+            } as BrowserLoginResponse;
 
         } else {
             // we need to add the user
@@ -131,81 +236,42 @@ export class IdentityService extends BaseService {
             }
 
             // return
-            return id;
-        }
-    }
-
-    /**
-     * Update the cached backend user with the supplied houseId.
-     * 
-     * @param userId
-     * @param houseId
-     * @returns true if updated or false if user not found
-     */
-    async updateCachedBackendLoginUser(userId : string, houseId : string) : Promise<boolean> {
-        const redisKey = `${LOGIN_KEY_PREFIX}${userId}`;
-        const str_user = await this.redis!.get(redisKey);
-        if (str_user) {
-            const user_obj = JSON.parse(str_user) as BackendLoginUser;
-            user_obj.houseId = houseId;
-            await this.redis!.set(redisKey, JSON.stringify(user_obj));
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * Finds the BackendLoginUser instance for the id supplied in Redis or 
-     * looks up in the database and caches in Redis.
-     * 
-     * @param user User or Device ID
-     */
-    async lookupBackendIdentity(userId : string) {
-        // start in redis
-        const redisKey = `${LOGIN_KEY_PREFIX}${userId}`;
-        const str_user = await this.redis!.get(redisKey);
-        if (str_user) {
-            const user_obj = JSON.parse(str_user) as BackendLoginUser;
-            return user_obj;
-        }
-
-        // not found - look up in database
-        const result = await this.db!.query("select id, fn, ln, email, h.houseId houseId from login_user l left join (select userId, houseId from user_house_access where userId=$1 and is_default=true) h on l.id=h.userId where l.id=$2;", userId, userId);
-        let user_obj : BackendLoginUser;
-        if (!result || result.rowCount === 0) {
-            // unable to find user - maybe a device - look for device
-            try {
-                // find device
-                const device = await this.storage.getDevice(this.authUser, userId);
-                user_obj = {
-                    "id": device.id,
-                    "houseId": device.house.id,
-                    "scopes": constants.DEFAULTS.JWT.DEVICE_SCOPES,
+            return {
+                "userinfo": {
+                    "id": id,
+                    "fn": fn,
+                    "ln": ln,
+                    "email": email,
+                    "houseId": undefined,
                     "houses": []
-                }
-            } catch (err){
-                throw Error(`Unable to find user OR device with id <${userId}>`);
-            }
-        } else {
-            // found user - create object
-            const row = result.rows[0];
-            const houses = await this.storage.getHousesForUser(this.authUser, userId);
-            user_obj = {
-                "id": row.id,
-                "fn": row.fn,
-                "ln": row.ln,
-                "email": row.email,
-                "houseId": row.houseid,
-                "houses": houses,
-                "scopes": constants.DEFAULTS.JWT.USER_SCOPES
-            };
+                } as BrowserUser,
+                "jwt": await this.generateUserJWT(this.getImpersonationIdentity(this.authUser, id), undefined)
+            } as BrowserLoginResponse;
         }
-
-        // save in redis (do not wait)
-        this.redis!.setex(redisKey, constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS, JSON.stringify(user_obj));
-
-        // return 
-        return user_obj;
     }
+
+    async getLoginUserIdentity(userId : string, houseId : string | undefined) : Promise<BackendIdentity> {
+        // lookup user
+        const user = await this.storage.getUser(this.authUser, userId);
+        const ident = {
+            "identity": {
+                "callerId": user.id,
+                "impersonationId": undefined,
+                "houseId": houseId
+            } as Identity,
+            "principal": user,
+            "scopes": constants.DEFAULTS.JWT.USER_SCOPES
+        } as BackendIdentity;
+
+        // cache
+        const redis_key = this.getRedisKey(user.id, user.id);
+        this.redis.setex(
+            redis_key, 
+            constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS, 
+            JSON.stringify(ident));
+
+        // return
+        return ident;
+    }
+    
 }

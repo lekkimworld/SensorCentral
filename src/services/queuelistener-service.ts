@@ -5,8 +5,9 @@ import { LogService } from "./log-service";
 import { DatabaseService } from "./database-service";
 import {BaseService, Device, Sensor, TopicSensorMessage, RedisSensorMessage, 
     TopicDeviceMessage, TopicControlMessage, ControlMessageTypes, 
-    IngestedSensorMessage, IngestedDeviceMessage, IngestedControlMessage, LoginUser, 
-    RedisDeviceMessage } from "../types";
+    IngestedSensorMessage, IngestedDeviceMessage, IngestedControlMessage, 
+    RedisDeviceMessage, 
+    BackendIdentity} from "../types";
 import { ISubscriptionResult } from "../configure-queues-topics";
 import moment = require("moment");
 import Moment from 'moment';
@@ -29,7 +30,7 @@ export class QueueListenerService extends BaseService {
     redisService? : RedisService;
     storage : StorageService;
     security : IdentityService;
-    authUser : LoginUser;
+    authUser : BackendIdentity;
 
     constructor() {
         super(QueueListenerService.NAME);
@@ -48,7 +49,7 @@ export class QueueListenerService extends BaseService {
         this.security = services[5] as IdentityService;
 
         // get auth user for service
-        this.authUser = await this.security.getServicePrincipal(QueueListenerService.NAME);
+        this.authUser = await this.security.getServiceBackendIdentity(QueueListenerService.NAME);
 
         // listen to device queue to persist and augment device reading
         this.addListenerToDeviceQueue();

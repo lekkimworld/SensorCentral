@@ -1,6 +1,6 @@
 import {Watchdog, WatchdogFood} from "watchdog";
 import constants from "../constants";
-import { BaseService, Device, TopicControlMessage, ControlMessageTypes, LoginUser } from "../types";
+import { BaseService, Device, TopicControlMessage, ControlMessageTypes, BackendIdentity } from "../types";
 import { LogService } from "./log-service";
 import { EventService } from "./event-service";
 import { StorageService } from "./storage-service";
@@ -16,7 +16,7 @@ export class WatchdogService extends BaseService {
     eventService? : EventService;
     storageService? : StorageService;
     security : IdentityService;
-    authUser : LoginUser;
+    authUser : BackendIdentity;
 
     constructor() {
         super(WatchdogService.NAME);
@@ -29,7 +29,7 @@ export class WatchdogService extends BaseService {
         this.security = services[3] as unknown as IdentityService;
 
         // request auth token
-        this.authUser = await this.security.getServicePrincipal(WatchdogService.NAME);
+        this.authUser = await this.security.getServiceBackendIdentity(WatchdogService.NAME);
 
         // callback
         callback();

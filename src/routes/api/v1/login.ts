@@ -1,6 +1,6 @@
 import express from "express";
 import { getAuthenticationUrl, AuthenticationUrlPayload } from "../../../oidc-authentication-utils";
-import { DeviceJWTPayload, HttpException, BrowserLoginPayload, BackendLoginUser, LoginUser } from "../../../types";
+import { JWTPayload, HttpException, BrowserLoginResponse, BackendIdentity, UserPrincipal } from "../../../types";
 import ensureAuthenticated from "../../../middleware/ensureAuthenticated";
 import { ensureAdminJWTScope } from "../../../middleware/ensureScope";
 //@ts-ignore
@@ -58,7 +58,7 @@ router.post("/jwt", ensureAuthenticated, ensureAdminJWTScope, async (req, res, n
         const token = await identity.generateDeviceJWT(user, deviceid);
         return res.send({
             token
-        } as DeviceJWTPayload);
+        } as JWTPayload);
 
     } catch (err) {
         return next(new HttpException(500, "Unable to generate JWT", err));
@@ -77,10 +77,10 @@ router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
     // get services
     const svcs = await lookupService([StorageService.NAME, IdentityService.NAME]);
     const storage = svcs[0] as StorageService;
-    const identity = svcs[1] as IdentityService;
+    const identitySvcs = svcs[1] as IdentityService;
 
     // get all houses for the user
-    const user = res.locals.user as BackendLoginUser;
+    const user = res.locals.user as BackendIdentity;
     const houses = await storage.getHouses(user);
 
     // get houseid for jwt
@@ -91,22 +91,22 @@ router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
     }
 
     try {
-        // create JWT for user
-        const token = await identity.generateUserJWT(user, houseId);
+        const jwt = await identitySvcs.generateUserJWT(user, houseId);
+        const p = user.principal as UserPrincipal;
         const payload = {
-            "jwt": token,
-            "user": {
-                "id": user.id,
-                "fn": user.fn,
-                "ln": user.ln,
+            "userinfo": {
+                "id": user.identity.callerId,
+                "email": p.email,
+                "fn": p.fn,
+                "ln": p.ln,
                 "houseId": houseId,
-                "email": user.email,
-                "houses": houses && houses.length ? houses : undefined
-            } as LoginUser
-        } as BrowserLoginPayload;
+                "houses": houses
+            },
+            jwt
+        } as BrowserLoginResponse;
 
         // remove cached user
-        identity.updateCachedBackendLoginUser(user.id, houseId);
+        identitySvcs.getLoginUserIdentity(user.identity.callerId, houseId);
 
         // send
         res.send(payload);

@@ -1,22 +1,23 @@
 import { Request, Response, NextFunction } from "express";
 import constants from "../constants";
-import { HttpException } from "../types";
-import jwt from "jsonwebtoken";
+import { BrowserLoginResponse, HttpException } from "../types";
 //@ts-ignore
 import { lookupService } from "../configure-services";
 import { IdentityService } from "../services/identity-service";
 
 export default async (req : Request, res : Response, next : NextFunction) => {
+    // get service
+    const identity = await lookupService(IdentityService.NAME) as IdentityService;
+
     // see if we have a session with a userId
-    if (req.session && req.session.userId) {
+    if (req.session && req.session.browserResponse) {
         // we do - get userId and convert to a user object
-        const userId = req.session.userId;
-        const identity = await lookupService(IdentityService.NAME) as IdentityService;
-        const user = await identity.lookupBackendIdentity(userId);
+        const resp = req.session.browserResponse as BrowserLoginResponse;
+        const user = await identity.getLoginUserIdentity(resp.userinfo.id, resp.userinfo.houseId);
         res.locals.user = user;
 
-        // remove userId from session
-        delete req.session.userId;
+        // remove from session
+        delete req.session.browserResponse;
         
         // continue
         return next();
@@ -25,34 +26,17 @@ export default async (req : Request, res : Response, next : NextFunction) => {
     if (req.headers && req.headers.authorization && req.headers.authorization.indexOf("Bearer ") === 0) {
         // get token
         const token = req.headers.authorization.substring(7);
-        const secret = process.env.API_JWT_SECRET as string;
 
         try {
             // verify token
-            const decoded : any = await jwt.verify(token, secret, {
-                "algorithms": ["HS256"],
-                "audience": constants.JWT.AUDIENCE,
-                "issuer": constants.JWT.ISSUERS
-            })
-            if (!decoded) return next(new HttpException(401, `Didn't get decoded JWT as expected`));
-
+            const ident = await identity.verifyJWT(token);
+            
             // verify scope contains api
-            if (!decoded.scopes || !decoded.scopes.split(" ").includes(constants.JWT.SCOPE_API)) {
+            if (!ident.scopes.includes(constants.JWT.SCOPE_API)) {
                 return next(new HttpException(401, `Missing ${constants.JWT.SCOPE_API} scope`));
             }
-
-            // lookup user
-            const identity = await lookupService(IdentityService.NAME) as IdentityService;
-            try {
-                const user = await identity.lookupBackendIdentity(decoded.sub);
-                res.locals.user = user;
-
-                // forward
-                return next();
-
-            } catch (err) {
-                return next(new HttpException(401, "Login not known", err));
-            }
+            res.locals.user = ident;
+            return next();
 
         } catch (err) {
             if (err) return next(new HttpException(401, `Error: ${err.message}`, err));

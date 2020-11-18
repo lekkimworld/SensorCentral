@@ -1,6 +1,6 @@
 import express from "express";
 import {getOidcClient} from "../oidc-authentication-utils";
-import { HttpException, LoginSource } from "../types";
+import { BrowserLoginResponse, HttpException, LoginSource } from "../types";
 import { CreateLoginUserInput } from "../services/identity-service";
 //@ts-ignore
 import { lookupService } from "../configure-services";
@@ -37,7 +37,7 @@ router.get("/callback", async (req, res, next) => {
         
         // ensure we have a row in LOGIN_USER for the user
         lookupService(IdentityService.NAME).then((identity : IdentityService) => {
-            return identity.getOrCreateLoginUserId({
+            return identity.getOrCreateBrowserLoginResponse({
                 source: LoginSource.google, 
                 oidc_sub: claims.sub as string, 
                 email: claims.email as string,
@@ -45,9 +45,9 @@ router.get("/callback", async (req, res, next) => {
                 fn: claims.given_name
             } as CreateLoginUserInput);
 
-        }).then((userId : string) => {
+        }).then((output : BrowserLoginResponse) => {
             // set the claims we received, set userId in session and redirect
-            req.session!.userId = userId;
+            req.session!.browserResponse = output;
 
             // redirect
             res.redirect("/openid/loggedin");
