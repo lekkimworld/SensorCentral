@@ -41,7 +41,7 @@ sensorId = 94f7a0f4-d85b-4815-9c77-833be7c28779
 * On device page allow user to change watch dog settings incl. set custom date/time for "not until" for the watchdog
 * "Widget" to graph multiple gauge sensors together
 
-### 1.6.8 ###
+### 1.7.0 ###
 * Use ts-node instead of transpile
 * Power prices using nordpool-node npm package (https://github.com/samuelmr/nordpool-node), pipe through cache layer in Redis that caches
 * Prometheus scrapedata endpoint moved to /api/v1/scrapedata and requires authentication
