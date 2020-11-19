@@ -489,7 +489,7 @@ const HOUSE_ACCESS = {
                 user to the list below. To remove a user click the "-" icon next to the name. 
                 Existing users are listed in regular font, users you are adding 
                 are shown in italics nd users you are removing are shown as strikethough. Click Save to 
-                effectuate the changes. You cannot remove all users from a house.
+                effectuate the changes. You as the owner are not shown.
                 </p>
                 <div class="color-red" id="${formname}Error"></div>
                 ${textField("email", "Email", "Specify the email address of the user to grant access")}
