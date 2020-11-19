@@ -1,5 +1,5 @@
 import constants from "../constants";
-import {BaseService, Device, Sensor, House, 
+import {BaseService, Device, Sensor, 
     WatchdogNotification, 
     SensorSample, NotifyUsing, PushoverSettings, DeviceWatchdogNotifier, 
     NotificationSettings, BackendIdentity, DeviceWatchdog, SensorType, UserPrincipal } from "../types";
@@ -12,7 +12,7 @@ import moment = require("moment");
 import uuid from "uuid/v1";
 import { CreateSensorType, UpdateSensorType, DeleteSensorType } from "../resolvers/sensor";
 import { DeleteDeviceInput, UpdateDeviceInput, CreateDeviceInput } from "../resolvers/device";
-import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput, FavoriteHouseInput } from "../resolvers/house";
+import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput, FavoriteHouseInput, House } from "../resolvers/house";
 import { WatchdogNotificationInput } from "../resolvers/device-watchdog";
 import { QueryResult } from "pg";
 import { UpdateSettingsInput } from "../resolvers/settings";
@@ -54,6 +54,8 @@ export interface SensorQueryData {
     label? : string;
 }
 
+const POWERDATA_REDIS_KEY = "powerdata:";
+
 export class StorageService extends BaseService {
     public static NAME = "storage";
     dbService? : DatabaseService;
@@ -84,7 +86,7 @@ export class StorageService extends BaseService {
      * @param userIdOrEmail 
      */
     async getUser(user : BackendIdentity, id : string) : Promise<UserPrincipal> {
-        if (!this.isAllAccessUser(user)) {
+        if (!this.isAllDataAccessUser(user)) {
             throw Error("Must have access to all users to use this method");
         }
         const result = await this.dbService!.query("select id, email, fn, ln, google_sub from login_user where id=$1 OR google_sub=$2 OR email=$3", id, id, id);
@@ -100,9 +102,9 @@ export class StorageService extends BaseService {
      * @param key 
      */
     async getPowerData(key : string) : Promise<object | undefined> {
-        const data = await this.redisService!.get(`powerdata_${key}`);
+        const data = await this.redisService!.get(`${POWERDATA_REDIS_KEY}${key}`);
         if (data) {
-            this.redisService!.expire(`powerdata_${key}`, constants.DEFAULTS.REDIS.POWERDATA_EXPIRATION_SECS);
+            this.redisService!.expire(`${POWERDATA_REDIS_KEY}${key}`, constants.DEFAULTS.REDIS.POWERDATA_EXPIRATION_SECS);
             return JSON.parse(data);
         } else {
             return undefined;
@@ -117,7 +119,7 @@ export class StorageService extends BaseService {
     async setPowerData(key : string, data : object) {
         const str = JSON.stringify(data);
         return await this.redisService!.setex(
-            `powerdata_${key}`, 
+            `${POWERDATA_REDIS_KEY}${key}`, 
             constants.DEFAULTS.REDIS.POWERDATA_EXPIRATION_SECS, 
             str);
     }
@@ -154,7 +156,7 @@ export class StorageService extends BaseService {
             result = await this.dbService!.query(`select id, name from house h where h.id=$1`, houseid);
             if (result.rowCount !== 1) throw Error(`Unable to find a single House with ID <${houseid}>`);
         } else {
-            result = await this.dbService!.query(`select id, name from house h, user_house_access u where h.id=u.houseId and u.houseId=$2 and u.userId=$1`, user.identity.callerId, houseid);
+            result = await this.dbService!.query(`select id, name from house h, user_house_access u where h.id=u.houseId and u.houseId=$2 and u.userId=$1`, this.getUserIdFromUser(user), houseid);
             if (result.rowCount !== 1) throw Error(`Unable to find a single House with ID or the user do not have access <${houseid}>`);
         }        
 
@@ -174,9 +176,9 @@ export class StorageService extends BaseService {
     async getHouses(user : BackendIdentity) : Promise<House[]> {
         let result;
         if (this.isAllHousesAccessUser(user)) {
-            result = await this.dbService!.query("select id, name from house h");
+            result = await this.dbService!.query("select id, name from house h order by name asc");
         } else {
-            result = await this.dbService!.query("select id, name from house h, user_house_access u where u.userId=$1 and h.id=u.houseId", user.identity.callerId);
+            result = await this.dbService!.query("select id, name from house h, user_house_access u where u.userId=$1 and h.id=u.houseId order by name asc", this.getUserIdFromUser(user));
         }
 
         // map to houses
@@ -227,7 +229,7 @@ export class StorageService extends BaseService {
             this.dbService!.query("BEGIN").then(() => {
                 return this.dbService!.query("insert into house (id, name) values ($1, $2)", house_id, use_name);
             }).then(() => {
-                this.dbService!.query("insert into user_house_access (userId, houseId) values ($1, $2)", user.identity.callerId, house_id);
+                this.dbService!.query("insert into user_house_access (userId, houseId) values ($1, $2)", this.getUserIdFromUser(user), house_id);
             }).then(() => {
                 this.dbService!.query("COMMIT");
                 resolve();
@@ -290,14 +292,29 @@ export class StorageService extends BaseService {
     }
 
     /**
-     * Favorites the house for the current house.
+     * Favorites the supplied house for the user.
      * 
      * @param user 
      * @param data 
      */
-    async favoriteHouse(user : BackendIdentity, {id} : FavoriteHouseInput) : Promise<House> {
+    async getFavoriteHouse(user : BackendIdentity) : Promise<House | undefined> {
+        const result = await this.dbService!.query("select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1 and u.is_default=true", this.getUserIdFromUser(user));
+        if (result.rowCount !== 1) return undefined;
+        return {
+            "id": result.rows[0].id,
+            "name": result.rows[0].name
+        } as House;
+    }
+
+    /**
+     * Favorites the supplied house for the user.
+     * 
+     * @param user 
+     * @param data 
+     */
+    async setFavoriteHouse(user : BackendIdentity, {id} : FavoriteHouseInput) : Promise<House> {
         return this.dbService!.query(`BEGIN;`).then(() => {
-            return this.dbService!.query("select userId, houseId, is_default from user_house_access where userId=$1 and houseId=$2", user.identity.callerId, id);
+            return this.dbService!.query("select userId, houseId, is_default from user_house_access where userId=$1 and houseId=$2", this.getUserIdFromUser(user), id);
         }).then(result => {
             if (result.rowCount !== 1) {
                 // user do not have access
@@ -305,9 +322,9 @@ export class StorageService extends BaseService {
             }
 
             // mark all user houses as not-default
-            return this.dbService!.query(`update user_house_access set is_default=false WHERE userId=$1`, user.identity.callerId); 
+            return this.dbService!.query(`update user_house_access set is_default=false WHERE userId=$1`, this.getUserIdFromUser(user)); 
         }).then(() => {
-            return this.dbService!.query(`update user_house_access set is_default=true where userId=$1 and houseId=$2;`, user.identity.callerId, id); 
+            return this.dbService!.query(`update user_house_access set is_default=true where userId=$1 and houseId=$2;`, this.getUserIdFromUser(user), id); 
         }).then(() => {
             return this.dbService!.query(`COMMIT;`);
         }).then(() => {
@@ -368,10 +385,10 @@ export class StorageService extends BaseService {
     async getAllDevices(user : BackendIdentity) : Promise<Device[]> {
         // query to devices
         let result;
-        if (this.isAllAccessUser(user)) {
+        if (this.isAllDataAccessUser(user)) {
             result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d join house h on d.houseid=h.id order by d.name asc");
         } else {
-            result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d, house h, user_house_access u where d.houseid=h.id and h.id=u.houseid and u.userId=$1 order by d.name asc", user.identity.callerId);
+            result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d, house h, user_house_access u where d.houseid=h.id and h.id=u.houseid and u.userId=$1 order by d.name asc", this.getUserIdFromUser(user));
         }
         
         // return house
@@ -405,10 +422,10 @@ export class StorageService extends BaseService {
         
         // query to devices
         let result;
-        if (this.isAllAccessUser(user)) {
+        if (this.isAllDataAccessUser(user)) {
             result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where h.id=$1 order by d.name asc", houseId);
         } else {
-            result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d, house h, user_house_access u where d.houseid=h.id and h.id=u.houseId and h.id=$1 and u.userId=$2 order by d.name asc", houseId, user.identity.callerId);
+            result = await this.dbService?.query("select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d, house h, user_house_access u where d.houseid=h.id and h.id=u.houseId and h.id=$1 and u.userId=$2 order by d.name asc", houseId, this.getUserIdFromUser(user));
         }
 
         // return house
@@ -436,9 +453,9 @@ export class StorageService extends BaseService {
     async getDevice(user : BackendIdentity, deviceId : string) : Promise<Device> {
         // ensure user have access to the house for the device in question
         let result;
-        if (false === this.isAllAccessUser(user)) {
-            result = await this.dbService!.query(`select d.id id from device d, house h, user_house_access u where d.id=$2 and d.houseId=h.id and h.id=u.houseId and u.userId=$1`, user.identity.callerId, deviceId);
-            if (result.rowCount !== 1) throw Error(`User (ID ${user.identity.callerId}) may not have access to house for device (ID ${deviceId})`);
+        if (false === this.isAllDataAccessUser(user)) {
+            result = await this.dbService!.query(`select d.id id from device d, house h, user_house_access u where d.id=$2 and d.houseId=h.id and h.id=u.houseId and u.userId=$1`, this.getUserIdFromUser(user), deviceId);
+            if (result.rowCount !== 1) throw Error(`User (${user}) may not have access to house for device (ID ${deviceId})`);
         }
 
         // get device
@@ -472,9 +489,9 @@ export class StorageService extends BaseService {
      */
     async createDevice(user : BackendIdentity, {houseId, id, name, active} : CreateDeviceInput) : Promise<Device> {
         // ensure user have access to house
-        if (false === this.isAllAccessUser(user)) {
-            const result = await this.dbService!.query("select houseId from user_house_access where houseId=$1 and userId=$2", houseId, user.identity.callerId);
-            if (result.rowCount !== 1) throw Error(`User (ID <${user.identity.callerId}>) do not have access to house (ID <${houseId}>)`);
+        if (false === this.isAllDataAccessUser(user)) {
+            const result = await this.dbService!.query("select houseId from user_house_access where houseId=$1 and userId=$2", houseId, this.getUserIdFromUser(user));
+            if (result.rowCount !== 1) throw Error(`User (ID <${user}>) do not have access to house (ID <${houseId}>)`);
         }
 
         // validate name
@@ -578,10 +595,10 @@ export class StorageService extends BaseService {
      */
     async getSensors(user : BackendIdentity, queryData? : SensorQueryData) : Promise<Sensor[]> {
         let result;
-        if (this.isAllAccessUser(user)) {
+        if (this.isAllDataAccessUser(user)) {
             result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, house h where s.deviceId=d.id and d.houseId=h.id order by s.name asc");
         } else {
-            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1 and u.houseId=$2) h where s.deviceId=d.id and d.houseId=h.id order by s.name asc", user.identity.callerId, user.identity.houseId);
+            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1 and u.houseId=$2) h where s.deviceId=d.id and d.houseId=h.id order by s.name asc", this.getUserIdFromUser(user), user.identity.houseId);
         }
 
         // convert and filter
@@ -605,17 +622,17 @@ export class StorageService extends BaseService {
      */
     async getSensor(user : BackendIdentity, sensorId : string) : Promise<Sensor> {
         // trim id
-        const use_id = sensorId.trim();
+        const use_sensorId = sensorId.trim();
 
         // get sensor
         let result;
-        if (this.isAllAccessUser(user)) {
-            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, house h where s.deviceId=d.id and d.houseId=h.id and s.id=$1 order by s.name asc", use_id);
+        if (this.isAllDataAccessUser(user)) {
+            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, house h where s.deviceId=d.id and d.houseId=h.id and s.id=$1 order by s.name asc", sensorId);
         } else {
-            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1) h where s.deviceId=d.id and d.houseId=h.id and s.id=$2 order by s.name asc", user.identity.callerId, use_id);
+            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1) h where s.deviceId=d.id and d.houseId=h.id and s.id=$2 order by s.name asc", this.getUserIdFromUser(user), use_sensorId);
         }
         if (!result || result.rowCount !== 1) {
-            throw Error(`Unable to find sensor with ID <${sensorId}>`);
+            throw Error(`Unable to find sensor with ID <${use_sensorId}>`);
         }
 
         // return
@@ -636,33 +653,6 @@ export class StorageService extends BaseService {
         } catch (err) {
             return undefined;
         }
-    }
-
-    /**
-     * Returns sensor with specified label
-     * 
-     * @param user
-     * @param label Label of sensor to lookup
-     * @throws Error if sensor not found or user not not have access to enclosing house
-     */
-    async getSensorByLabel(user : BackendIdentity, label : string) : Promise<Sensor> {
-        // trim 
-        const use_label = label.trim();
-
-        // get sensor
-        let result;
-        if (this.isAllAccessUser(user)) {
-            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, house h, where s.deviceid=d.id and d.houseid=h.id and s.label=$1 order by s.name asc", use_label);
-        } else {
-            result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1) h where s.deviceid=d.id and d.houseid=h.id and s.label=$2 order by s.name asc", user.identity.callerId, use_label);
-        }
-        if (!result || result.rowCount !== 1) {
-            throw Error(`Unable to find sensor with label <${label}> or user do not have access`);
-        }
-
-        // return
-        const sensors = convertRowsToSensors(result);
-        return sensors[0];
     }
 
     /**
@@ -791,7 +781,7 @@ export class StorageService extends BaseService {
      * @param user 
      */
     async getFavoriteSensors(user : BackendIdentity) {
-        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1 and u.houseId=$2) h where s.deviceid=d.id and d.houseid=h.id and s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc", user.identity.callerId, user.identity.houseId);
+        const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1 and u.houseId=$2) h where s.deviceid=d.id and d.houseid=h.id and s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc", this.getUserIdFromUser(user), user.identity.houseId);
         const sensors = convertRowsToSensors(result);
         return sensors;
     }
@@ -803,7 +793,7 @@ export class StorageService extends BaseService {
      * @param id
      */
     async addFavoriteSensor(user : BackendIdentity, id : string) {
-        await this.dbService!.query("insert into favorite_sensor (userId, sensorId) values ($1, $2) on conflict do nothing", user.identity.callerId, id);
+        await this.dbService!.query("insert into favorite_sensor (userId, sensorId) values ($1, $2) on conflict do nothing", this.getUserIdFromUser(user), id);
     }
 
     /**
@@ -813,7 +803,7 @@ export class StorageService extends BaseService {
      * @param id
      */
     async removeFavoriteSensor(user : BackendIdentity, id : string) {
-        await this.dbService!.query("delete from favorite_sensor where userId=$1 and sensorId=$2", user.identity.callerId, id);
+        await this.dbService!.query("delete from favorite_sensor where userId=$1 and sensorId=$2", this.getUserIdFromUser(user), id);
     }
 
     /**
@@ -872,7 +862,7 @@ export class StorageService extends BaseService {
         await this.getDevice(user, deviceId);
 
         // get watchdogs
-        const result = await this.dbService!.query("select notify, muted_until from device_watchdog where userId=$1 and deviceId=$2", user.identity.callerId, deviceId);
+        const result = await this.dbService!.query("select notify, muted_until from device_watchdog where userId=$1 and deviceId=$2", this.getUserIdFromUser(user), deviceId);
         if (result.rowCount === 0) {
             return {
                 "notify": WatchdogNotification.no,
@@ -897,13 +887,13 @@ export class StorageService extends BaseService {
         }
         let str_muted_until = data.notify === WatchdogNotification.muted ? mutedUntil?.toISOString() : undefined;
         
-        let result = await this.dbService!.query("select userId, deviceId from device_watchdog where userId=$1 AND deviceId=$2", user.identity.callerId, data.id);
+        let result = await this.dbService!.query("select userId, deviceId from device_watchdog where userId=$1 AND deviceId=$2", this.getUserIdFromUser(user), data.id);
         if (!result || result.rowCount === 0) {
             // insert
-            result = await this.dbService!.query("insert into device_watchdog (notify, muted_until, userId, deviceId) values ($1, $2, $3, $4)", data.notify, str_muted_until, user.identity.callerId, data.id);
+            result = await this.dbService!.query("insert into device_watchdog (notify, muted_until, userId, deviceId) values ($1, $2, $3, $4)", data.notify, str_muted_until, this.getUserIdFromUser(user), data.id);
         } else {
             // update
-            result = await this.dbService!.query("update device_watchdog set notify=$1, muted_until=$2 where userId=$3 AND deviceId=$4", data.notify, str_muted_until, user.identity.callerId, data.id);
+            result = await this.dbService!.query("update device_watchdog set notify=$1, muted_until=$2 where userId=$3 AND deviceId=$4", data.notify, str_muted_until, this.getUserIdFromUser(user), data.id);
         }
     }
 
@@ -913,8 +903,8 @@ export class StorageService extends BaseService {
      * @param user 
      */
     async settings(user : BackendIdentity) : Promise<NotificationSettings> {
-        const result = await this.dbService!.query("select default_notify_using, pushover_userkey, pushover_apptoken from login_user where id=$1", user.identity.callerId);
-        if (!result || !result.rowCount) throw Error(`Unable to find login with ID <${user.identity.callerId}>`);
+        const result = await this.dbService!.query("select default_notify_using, pushover_userkey, pushover_apptoken from login_user where id=$1", this.getUserIdFromUser(user));
+        if (!result || !result.rowCount) throw Error(`Unable to find login with ID <${this.getUserIdFromUser(user)}>`);
 
         const r = result.rows[0];
         const notifyUsing = (function(n : string) {
@@ -947,7 +937,7 @@ export class StorageService extends BaseService {
      * @param data 
      */
     async updateSettings(user : BackendIdentity, data : UpdateSettingsInput) : Promise<void> {
-        await this.dbService!.query("update login_user set default_notify_using=$1, pushover_apptoken=$2, pushover_userkey=$3 where id=$4", data.notify_using, data.pushover_apptoken, data.pushover_userkey, user.identity.callerId);
+        await this.dbService!.query("update login_user set default_notify_using=$1, pushover_apptoken=$2, pushover_userkey=$3 where id=$4", data.notify_using, data.pushover_apptoken, data.pushover_userkey, this.getUserIdFromUser(user));
     }
     
     /**
@@ -1011,12 +1001,18 @@ export class StorageService extends BaseService {
             sample.getValue(Smartme.Obis.VoltagePhaseL3));
     }
 
-    private isAllAccessUser(user : BackendIdentity) {
+    private isAllDataAccessUser(user : BackendIdentity) {
         return user.identity.callerId === "*";
     }
 
     private isAllHousesAccessUser(user : BackendIdentity) {
         return user && user.identity.houseId === "*";
+    }
+
+    private getUserIdFromUser(user : BackendIdentity) : string {
+        if (!user) throw Error("Must supply a user object");
+        if (user.identity.impersonationId) return user.identity.impersonationId;
+        return user.identity.callerId;
     }
 
 }

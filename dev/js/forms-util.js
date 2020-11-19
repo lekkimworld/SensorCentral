@@ -119,7 +119,7 @@ const DATE_SELECT_FORM = {
         </div>
         <div class="modal-footer">
             ${buttonClose()}
-            ${buttonPerformAction()}
+            ${buttonPerformAction("Apply")}
         </div>
     </div>
 </div>

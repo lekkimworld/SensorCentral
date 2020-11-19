@@ -213,7 +213,7 @@ export class IdentityService extends BaseService {
 
             // return
             const houses = await this.storage.getHousesForUser(this.authUser, row.id);
-            const houseId = result.rowCount === 1 ? result.rows[0].houseId : undefined;
+            const houseId = result.rowCount === 1 ? result.rows[0].houseid : undefined;
             return {
                 "userinfo": {
                     "id": row.id,

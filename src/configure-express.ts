@@ -21,7 +21,7 @@ export default async () => {
     configureHandlebars(app);
 
     // sessions
-    const redisService = await lookupService("redis") as RedisService;
+    const redisService = await lookupService(RedisService.NAME) as RedisService;
     app.use(configureSessionWithRedis(redisService.getClient()));
 
     // add routes to app

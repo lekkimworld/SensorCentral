@@ -85,9 +85,13 @@ router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
 
     // get houseid for jwt
     let houseId = req.params.houseId;
-    if (!houseId && houses && houses.length) {
-        // pick first houseid
-        houseId = houses[0].id;
+    if (!houseId) {
+        if (user.identity.houseId) {
+            houseId = user.identity.houseId;
+        } else if (houses && houses.length) {
+            // pick first houseid
+            houseId = houses[0].id;
+        }
     }
 
     try {

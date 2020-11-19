@@ -22,7 +22,7 @@ module.exports = (document, elemRoot, ctx) => {
         elemRoot.html("");
 
         // load houses
-        fetcher.graphql(`{houses{id,name}}`).then(data => {
+        fetcher.graphql(`{houses{id,name,favorite}}`).then(data => {
             // sort
             const houses = data.houses.sort((a, b) => a.name.localeCompare(b.name));
 

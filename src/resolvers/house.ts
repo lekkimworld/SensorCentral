@@ -1,6 +1,16 @@
-import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx } from "type-graphql";
+import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, MiddlewareFn, Ctx, UseMiddleware } from "type-graphql";
 import * as types from "../types";
 import { Length } from "class-validator";
+
+const FavoriteFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context }, next) => {
+    const v = await next();
+    if (info.fieldName === "favorite") {
+        const house = await context.storage.getFavoriteHouse(context.user);
+        return house.id === root.id;
+    } else {
+        return v;
+    }
+};
 
 @ObjectType()
 export class House implements types.House {
@@ -13,6 +23,10 @@ export class House implements types.House {
 
     @Field()
     name : string;
+
+    @Field()
+    @UseMiddleware(FavoriteFetchOnDemand)
+    favorite : boolean;
 }
 
 @InputType()
@@ -71,7 +85,7 @@ export class HouseResolver {
 
     @Mutation(() => House)
     async favoriteHouse(@Arg("data") data : FavoriteHouseInput, @Ctx() ctx : types.GraphQLResolverContext) {
-        const house = await ctx.storage.favoriteHouse(ctx.user, data);
+        const house = await ctx.storage.setFavoriteHouse(ctx.user, data);
         return house;
     }
 

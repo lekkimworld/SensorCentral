@@ -39,7 +39,7 @@ export default async (req : Request, res : Response, next : NextFunction) => {
             return next();
 
         } catch (err) {
-            if (err) return next(new HttpException(401, `Error: ${err.message}`, err));
+            return next(new HttpException(401, "Unable to ensure an authentic session", err));
         }
     }
 
