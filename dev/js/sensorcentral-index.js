@@ -5,6 +5,7 @@ const log = require("./logger.js");
 const uiutils = require("./ui-utils.js");
 const storage = require("./storage-utils");
 const fetcher = require("./fetch-util");
+const formsUtil = require('./forms-util');
 
 // register service worder
 if ('serviceWorker' in navigator) {
@@ -15,8 +16,13 @@ if ('serviceWorker' in navigator) {
 }
 
 const navigationChange = () => {
-    // set / clear username dropdown and menus
-    uiutils.fillMenus();
+    try {
+        // set / clear username dropdown and menus
+        uiutils.fillMenus();
+    } catch (err) {
+        formsUtil.appendError(err);
+        return;
+    }
 
     // get hash
     const hash = document.location.hash;
@@ -26,6 +32,8 @@ const navigationChange = () => {
         return fetch("/api/v1/login/jwt").then(resp => resp.json()).then(body => {
             storage.setUser(body);
             document.location.href = "/#root";
+        }).catch(err => {
+            formsUtil.appendError(err);
         })
     } else if (hash.indexOf("#house-") === 0) {
         // user is switching house
@@ -35,6 +43,8 @@ const navigationChange = () => {
             console.log(body);
             storage.setUser(body);
             document.location.href = "/#root";
+        }).catch(err => {
+            formsUtil.appendError(err);
         })
     }
 

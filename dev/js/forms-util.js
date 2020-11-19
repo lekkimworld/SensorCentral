@@ -1,5 +1,11 @@
 const fetcher = require("./fetch-util");
+const storage = require("./storage-utils");
 const ID_ELEM_FORM = "sensorcentral-form";
+
+const logout = () => {
+    storage.logout();
+    document.location.hash = "#loggedout";
+}
 
 const textField = (name, placeholder, fieldExplanation, required = false, validationText) => {
         return `<div class="form-group">
@@ -404,12 +410,12 @@ const SENSOR_CREATE_EDIT = {
 
 const DELETE_ENTITY = {
     "name": "trash",
-    "html": (ctx) => {
-        return `<div class="modal fade" id="trashModal" tabindex="-1" role="dialog" aria-labelledby="trashModalLabel" aria-hidden="true">
+    "html": (formname, ctx) => {
+        return `<div class="modal fade" id="${formname}Modal" tabindex="-1" role="dialog" aria-labelledby="${formname}ModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="trashModalLabel">${ctx.title}</h5>
+                <h5 class="modal-title" id="${formname}ModalLabel">${ctx.title}</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -440,6 +446,42 @@ const DELETE_ENTITY = {
             "id": idField.val()
         }
     }
+}
+
+const HOUSE_ACCESS = {
+    "name": "house_access",
+    "html": "",
+    "fnInit": (ctx) => {
+        console.log(ctx);
+        return Promise.resolve();
+    },
+    "fnGetData": () => {
+        return {};
+    }
+}
+
+const ERROR_FORM = {
+    "name": "error",
+    "html": (formname, ctx) => {
+        return `<div class="modal fade" id="${formname}Modal" tabindex="-1" role="dialog" aria-labelledby="${formname}ModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="${formname}ModalLabel">Oooops!</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                ${ctx.message}
+            </div>
+            <div class="modal-footer">
+                ${buttonPerformAction("Logout")}
+                ${buttonClose()}
+            </div>
+        </div>
+    </div>
+</div>`}
 }
 
 const SETTINGS = {
@@ -495,13 +537,13 @@ const SETTINGS = {
 const prepareForm = (formdata, ctx, onPerformAction) => {
     const elem = $(`#${ID_ELEM_FORM}`);
     if (typeof formdata.html === "function") {
-        elem.html(formdata.html(ctx.form));
+        elem.html(formdata.html(formdata.name, ctx.form));
     } else {
         elem.html(formdata.html);
     }
 
     new Promise((resolve, reject) => {
-        if (formdata.fnInit) {
+        if (formdata.fnInit && typeof formdata.fnInit === "function") {
             formdata.fnInit(ctx).then(resolve);
         } else {
             resolve();
@@ -562,13 +604,25 @@ module.exports = {
     appendSettings: (ctx, onPerformAction) => {
         prepareForm(SETTINGS, ctx, onPerformAction);
     },
+    appendError: (err, onPerformAction) => {
+        prepareForm(ERROR_FORM, {
+            "form": {
+                "error": err,
+                "message": err.message
+            }
+        }, onPerformAction || logout)
+    },
+    appendHouseAccessForm: (ctx, onPerformAction) => {
+        prepareForm(HOUSE_ACCESS, ctx, onPerformAction);
+    },
     utils: {
         textField,
         toggleButton,
         dropdown,
         disabledTextField,
         buttonClose,
-        buttonPerformAction
+        buttonPerformAction,
+        logout
     }
 
 }

@@ -76,7 +76,9 @@ module.exports = (document, elemRoot, ctx) => {
                         "icon": "lock",
                         "rel": "lock",
                         "click": function(ctx) {
-
+                            formsutil.appendHouseAccessForm(ctx.data, (data) => {
+                                console.log(data);
+                            })
                         }
                     },
                     {
