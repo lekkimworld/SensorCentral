@@ -24,6 +24,21 @@ import { Smartme } from "smartme-protobuf-parser";
 import { IdentityService } from "./identity-service";
 
 /**
+ * serial executes Promises sequentially.
+ * @param {funcs} An array of funcs that return promises.
+ * @example
+ * const urls = ['/url1', '/url2', '/url3']
+ * serial(urls.map(url => () => $.ajax(url)))
+ *     .then(console.log.bind(console))
+ */
+const serial = (funcs : (() => Promise<any>)[]) => {
+    const concat = (list : any) => Array.prototype.concat.bind(list)
+    const promiseConcat = (f : any) => (x : any) => f().then(concat(x))
+    const promiseReduce = (acc : any, x : any) => acc.then(promiseConcat(x))
+    return funcs.reduce(promiseReduce, Promise.resolve([]))
+}
+
+/**
  * Converts sensors from the query result to an array of sensors
  * @param result 
  */
@@ -85,10 +100,8 @@ export class StorageService extends BaseService {
      * @param user 
      * @param userIdOrEmail 
      */
+    //@ts-ignore
     async getUser(user : BackendIdentity, id : string) : Promise<UserPrincipal> {
-        if (!this.isAllDataAccessUser(user)) {
-            throw Error("Must have access to all users to use this method");
-        }
         const result = await this.dbService!.query("select id, email, fn, ln, google_sub from login_user where id=$1 OR google_sub=$2 OR email=$3", id, id, id);
         if (!result || result.rowCount !== 1) {
             throw Error(`Unable to find user by Google subject, ID or email (<${id}>)`);
@@ -225,31 +238,29 @@ export class StorageService extends BaseService {
         }
 
         // insert house row
-        await new Promise((resolve, reject) => {
-            this.dbService!.query("BEGIN").then(() => {
-                return this.dbService!.query("insert into house (id, name) values ($1, $2)", house_id, use_name);
-            }).then(() => {
-                this.dbService!.query("insert into user_house_access (userId, houseId) values ($1, $2)", this.getUserIdFromUser(user), house_id);
-            }).then(() => {
-                this.dbService!.query("COMMIT");
-                resolve();
-            }).catch(err => {
-                this.logService!.warn(`Unable to create house due to error: ${err.message}`);
-                reject(err);
+        return this.dbService!.query("BEGIN").then(() => {
+            return this.dbService!.query("insert into house (id, name) values ($1, $2)", house_id, use_name);
+        }).then(() => {
+            return this.dbService!.query("insert into user_house_access (userId, houseId, owner) values ($1, $2, TRUE)", this.getUserIdFromUser(user), house_id);
+        }).then(() => {
+            return this.dbService!.query("COMMIT");
+        }).then(() => {
+            // publish event
+            this.eventService?.publishTopic(constants.TOPICS.CONTROL, "house.create", {
+                "new": {
+                    "id": house_id,
+                    "name": use_name
+                },
+                "user": user
+            });
+        }).then(() => {
+            return this.getHouse(user, house_id);
+        }).catch(err => {
+            this.logService!.warn(`Unable to create house due to error: ${err.message}`);
+            return this.dbService!.query("ROLLBACK").then(() => {
+                return Promise.reject(Error(`Unable to create house due to error (${err.message})`));
             })
         })
-
-        // publish event
-        this.eventService?.publishTopic(constants.TOPICS.CONTROL, "house.create", {
-            "new": {
-                "id": house_id,
-                "name": use_name
-            },
-            "user": user
-        });
-
-        // return house
-        return this.getHouse(user, house_id);
     }
 
     /**
@@ -307,6 +318,35 @@ export class StorageService extends BaseService {
     }
 
     /**
+     * Returns true if the userId is the owner of the house with houseId
+     * @param user 
+     * @param userId 
+     * @param houseId 
+     */
+    async isHouseOwner(user : BackendIdentity, userId : string, houseId : string) : Promise<boolean> {
+        // ensure access
+        const house = await this.getHouse(user, houseId);
+        const result = await this.dbService!.query("select owner from user_house_access where userId=$1 and houseId=$2", userId, house.id);
+        if (!result || result.rowCount !== 1) {
+            throw Error(`User (ID <${userId}>) does not have access to the house (ID <${houseId}>)`);
+        }
+        return result.rows[0].owner;
+    }
+
+    /**
+     * 
+     * @param user 
+     * @param houseId 
+     */
+    async getHouseUsers(user : BackendIdentity, houseId : string) : Promise<UserPrincipal[]> {
+        // ensure access to house
+        const house = await this.getHouse(user, houseId);
+        const result = await this.dbService?.query("select id, fn, ln, email from login_user l, user_house_access u where l.id=u.userId and u.houseId=$1", house.id);
+        if (!result || result.rowCount === 0) return [];
+        return result?.rows.map(r => new UserPrincipal(r.id, r.fn, r.ln, r.email));
+    }
+
+    /**
      * Favorites the supplied house for the user.
      * 
      * @param user 
@@ -347,6 +387,51 @@ export class StorageService extends BaseService {
         }).catch((err : Error) => {
             this.dbService!.query(`ROLLBACK;`);
             return Promise.reject(Error(`Unable to set house as favorite: ${err.message}`));
+        })
+    }
+
+    async grantHouseAccess(user : BackendIdentity, houseId : string, userId : string | Array<string>) : Promise<boolean> {
+        // get house to ensure access
+        const house = await this.getHouse(user, houseId);
+
+        return this.dbService!.query("BEGIN").then(() => {
+            return serial((Array.isArray(userId) ? userId : [userId]).map(uid => () => {
+                return this.dbService!.query("insert into user_house_access (userId, houseId) values ($1, $2) on conflict do nothing", uid, house.id);
+            }));
+            
+        }).then(() => {
+            return this.dbService!.query("COMMIT");
+        }).then(() => {
+            return Promise.resolve(true);
+        }).catch(err => {
+            return this.dbService!.query("ROLLBACK").then(() => {
+                return Promise.reject(Error(`Unable to grant access for users to house (${err.message})`));
+            })
+        })
+    }
+
+    async revokeHouseAccess(user : BackendIdentity, houseId : string, userId : string | Array<string>) : Promise<boolean> {
+        // get house to ensure access
+        const house = await this.getHouse(user, houseId);
+        return this.dbService!.query("BEGIN").then(() => {
+            return serial((Array.isArray(userId) ? userId : [userId]).map(uid => () => {
+                return this.dbService!.query("delete from user_house_access where userId=$1 and houseId=$2 and owner=false", uid, house.id);
+            }));
+            
+        }).then(() => {
+            return this.dbService!.query("select count(*) count from user_house_access where houseId=$1", house.id);
+        }).then(result => {
+            if (result.rows[0].count === 0) {
+                // cannot remove all access
+                return Promise.reject(Error("Cannot delete last user with access to house"));
+            }
+            return this.dbService!.query("COMMIT");
+        }).then(() => {
+            return Promise.resolve(true);
+        }).catch(err => {
+            return this.dbService!.query("ROLLBACK").then(() => {
+                return Promise.reject(err);
+            })
         })
     }
     

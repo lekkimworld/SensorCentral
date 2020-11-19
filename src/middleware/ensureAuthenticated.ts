@@ -15,9 +15,6 @@ export default async (req : Request, res : Response, next : NextFunction) => {
         const resp = req.session.browserResponse as BrowserLoginResponse;
         const user = await identity.getLoginUserIdentity(resp.userinfo.id, resp.userinfo.houseId);
         res.locals.user = user;
-
-        // remove from session
-        delete req.session.browserResponse;
         
         // continue
         return next();

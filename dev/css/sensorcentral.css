@@ -24,6 +24,10 @@
     color: #000;
 }
 
+.color-red {
+    color: #f00;
+}
+
 .color-gray {
     color: #818182;
 }
@@ -42,7 +46,16 @@ body {
 }
 
 .font-small {
-    font-size: 0.8rem;;
+    font-size: 0.8rem;
+    ;
+}
+
+.text-italic {
+    font-style: italic;
+}
+
+.text-strikethrough {
+    text-decoration: line-through;
 }
 
 .page-footer {
@@ -52,6 +65,14 @@ body {
 
 .main-body {
     min-height: 400px;
+}
+
+.sensorcentral-btn-small {
+    font-size: 1rem;
+    padding-top: 0x;
+    padding-bottom: 0px;
+    padding-left: 7px;
+    padding-right: 7px;
 }
 
 .sensorcentral-size-1_5x {
@@ -67,34 +88,40 @@ body {
 }
 
 #sensorcentral-spinner {
-    position:fixed;
-    top:0;
-    bottom:0;
-    left:0;
-    right:0;
-    background-color:#fff;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #fff;
     text-align: center;
-    opacity:0.8;
-    z-index:1001;
+    opacity: 0.8;
+    z-index: 1001;
 }
 
+
 /* The switch - the box around the slider */
+
 .sensorcentral-switch {
     position: relative;
     display: inline-block;
     width: 60px;
     height: 34px;
-  }
-  
-  /* Hide default HTML checkbox */
-  .sensorcentral-switch input {
+}
+
+
+/* Hide default HTML checkbox */
+
+.sensorcentral-switch input {
     opacity: 0;
     width: 0;
     height: 0;
-  }
-  
-  /* The slider */
-  .sensorcentral-slider {
+}
+
+
+/* The slider */
+
+.sensorcentral-slider {
     position: absolute;
     cursor: pointer;
     top: 0;
@@ -104,9 +131,9 @@ body {
     background-color: #ccc;
     -webkit-transition: .4s;
     transition: .4s;
-  }
-  
-  .sensorcentral-slider:before {
+}
+
+.sensorcentral-slider:before {
     position: absolute;
     content: "";
     height: 26px;
@@ -116,39 +143,39 @@ body {
     background-color: white;
     -webkit-transition: .4s;
     transition: .4s;
-  }
-  
-  input:checked + .sensorcentral-slider {
+}
+
+input:checked+.sensorcentral-slider {
     background-color: #2196F3;
-  }
-  
-  input:focus + .sensorcentral-slider {
+}
+
+input:focus+.sensorcentral-slider {
     box-shadow: 0 0 1px #2196F3;
-  }
-  
-  input:checked + .sensorcentral-slider:before {
+}
+
+input:checked+.sensorcentral-slider:before {
     -webkit-transform: translateX(26px);
     -ms-transform: translateX(26px);
     transform: translateX(26px);
-  }
-  
-  /* Rounded sliders */
-  .sensorcentral-slider.sensorcentral-round {
+}
+
+
+/* Rounded sliders */
+
+.sensorcentral-slider.sensorcentral-round {
     border-radius: 34px;
-  }
-  
-  .sensorcentral-slider.sensorcentral-round:before {
+}
+
+.sensorcentral-slider.sensorcentral-round:before {
     border-radius: 50%;
-  }
-  
-  .sensorcentral-section {
+}
+
+.sensorcentral-section {
     border: 1px solid black;
+}
 
-  }
-
-  .sensorcentral-section .header {
+.sensorcentral-section .header {
     background-color: #efefef;
     padding: 5px;
     font-weight: bold;
-  }
-  
+}

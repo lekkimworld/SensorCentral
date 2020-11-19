@@ -12,7 +12,7 @@ create table LOGIN_USER (id character varying(36) not null primary key, google_s
 alter table LOGIN_USER add constraint USER_EMAIL_UNIQUE UNIQUE (email);
 alter table LOGIN_USER add constraint GOOGLE_SUB_UNIQUE UNIQUE (google_sub);
 
-create table USER_HOUSE_ACCESS (userId character varying(36) not null, houseId character varying(36) not null, is_default boolean default false not null);
+create table USER_HOUSE_ACCESS (userId character varying(36) not null, houseId character varying(36) not null, owner boolean default false not null, is_default boolean default false not null);
 alter table USER_HOUSE_ACCESS ADD FOREIGN KEY (houseId) REFERENCES HOUSE(id) ON DELETE CASCADE;
 alter table USER_HOUSE_ACCESS ADD FOREIGN KEY (userId) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
 alter table USER_HOUSE_ACCESS ADD PRIMARY KEY (userId, houseId);

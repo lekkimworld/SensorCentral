@@ -1,6 +1,25 @@
+const { trim } = require("jquery");
 const fetcher = require("./fetch-util");
 const storage = require("./storage-utils");
 const ID_ELEM_FORM = "sensorcentral-form";
+
+const removeForm = () => {
+    // remove form
+    const elem = $(`#${ID_ELEM_FORM}`);
+    $('.modal-backdrop').remove();
+    $('body').removeClass('modal-open');
+    elem.html("");
+}
+
+const appendError = (err, onPerformAction) => {
+    removeForm();
+    prepareForm(ERROR_FORM, {
+        "form": {
+            "error": err,
+            "message": err.message
+        }
+    }, onPerformAction || logout)
+}
 
 const logout = () => {
     storage.logout();
@@ -57,6 +76,10 @@ const buttonPerformAction = (text = "Save Changes", rel = "std") => {
     return `<button type="button" class="btn btn-primary" id="performAction" rel="${rel}">${text}</button>`;
 }
 
+const button = (text, rel, classList) => {
+    return `<button type="button" class="btn ${classList ? classList.join(" ") : "btn-primary"}" rel="${rel}">${text}</button>`;
+}
+
 const DEVICE_JWT = {
     "name": "jwt", 
     "html": `<div class="modal fade" id="jwtModal" tabindex="-1" role="dialog" aria-labelledby="jwtModalLabel" aria-hidden="true">
@@ -83,7 +106,7 @@ const DEVICE_JWT = {
         </div>
     </div>
 </div>`,
-    "fnInit": (ctx) => {
+    "fnInit": (formdata, ctx) => {
         return fetcher.post("/api/v1/login/jwt", {
             "house": ctx.device.house.id,
             "device": ctx.device.id
@@ -130,7 +153,7 @@ const DATE_SELECT_FORM = {
     </div>
 </div>
 </div>`,
-    "fnInit": (ctx) => {
+    "fnInit": (formdata, ctx) => {
         // init date picker
         $('#datetimepicker1').datetimepicker({
             locale: 'da_dk',
@@ -204,7 +227,7 @@ const MANUAL_SENSOR_SAMPLE = {
     </div>
 </div>
 </div>`,
-    "fnInit": (ctx) => {
+    "fnInit": (formdata, ctx) => {
         // init date picker
         $('#datetimepicker1').datetimepicker({
             locale: 'da_dk',
@@ -260,7 +283,7 @@ const HOUSE_CREATE_EDIT = {
         </div>
     </div>
 </div>`,
-    "fnInit": (ctx) => {
+    "fnInit": (formdata, ctx) => {
         if (ctx.house) {
             const nameField = $("#nameInput");
             const idField = $("#idInput");
@@ -305,7 +328,7 @@ const DEVICE_CREATE_EDIT = {
         </div>
     </div>
 </div>`,
-    "fnInit": (ctx) => {
+    "fnInit": (formdata, ctx) => {
         const idField = $("#idInput");
         const nameField = $("#nameInput");
         const activeField = $("#activeInput");
@@ -372,7 +395,7 @@ const SENSOR_CREATE_EDIT = {
         </div>
     </div>
 </div>`,
-    "fnInit": (ctx) => {
+    "fnInit": (formdata, ctx) => {
         if (ctx.sensor) {
             const idField = $("#idInput");
             const nameField = $("#nameInput");
@@ -433,7 +456,7 @@ const DELETE_ENTITY = {
     </div>
 </div>`
     },
-    "fnInit": (ctx) => {
+    "fnInit": (formdata, ctx) => {
         const idField = $("#idInput");
         const nameField = $("#nameInput");
         nameField.val(ctx.name);
@@ -449,14 +472,130 @@ const DELETE_ENTITY = {
 }
 
 const HOUSE_ACCESS = {
-    "name": "house_access",
-    "html": "",
-    "fnInit": (ctx) => {
-        console.log(ctx);
-        return Promise.resolve();
+    "name": "houseaccess",
+    "html": (formname, ctx) => {
+        return `<div class="modal fade" id="${formname}Modal" tabindex="-1" role="dialog" aria-labelledby="${formname}ModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="${formname}ModalLabel">House Access</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>
+                Search by email for the user to grant access to the house and click Add to add the 
+                user to the list below. To remove a user click the "-" icon next to the name. 
+                Existing users are listed in regular font, users you are adding 
+                are shown in italics nd users you are removing are shown as strikethough. Click Save to 
+                effectuate the changes. You cannot remove all users from a house.
+                </p>
+                <div class="color-red" id="${formname}Error"></div>
+                ${textField("email", "Email", "Specify the email address of the user to grant access")}
+                ${button("Add", "add")}
+                <div class="mt-2" id="${formname}Users"></div>
+            </div>
+            <div class="modal-footer">
+                ${button("Save", "save")}
+                ${buttonClose("Cancel")}
+            </div>
+        </div>
+    </div>
+</div>`
     },
-    "fnGetData": () => {
-        return {};
+    "users": [],
+    "emails": new Set(),
+    "_addUser": (formdata, u) => {
+        const elem = $("#houseaccessUsers");
+        elem.append(`
+        <div class="row mb-1" id="user-${u.id}">
+            <div class="col-1">${button("-", `remove-${u.id}`, ["btn-danger", "sensorcentral-btn-small"])}</div>
+            <div class="col ${u.action === "add" ? "text-italic" : u.action === "remove" ? "text-strikethrough" : ""}">${u.fn} ${u.ln} (${u.email})</div>
+        </div>`);
+        formdata.users.push(u);
+        formdata.emails.add(u.email);
+    },
+    "_rebuildUsers": (formdata) => {
+        const elem = $("#houseaccessUsers");
+        elem.html("");
+        formdata.users.forEach(u => {
+            elem.append(`
+            <div class="row mb-1" id="user-${u.id}">
+                <div class="col-1">${button("-", `remove-${u.id}`, ["btn-danger", "sensorcentral-btn-small"])}</div>
+                <div class="col ${u.action === "add" ? "text-italic" : u.action === "remove" ? "text-strikethrough" : ""}">${u.fn} ${u.ln} (${u.email})</div>
+            </div>`);
+        })
+    },
+    "fnClickHandler": (formdata, house, rel) => {
+        if (rel.indexOf("remove-") === 0) {
+            const id = rel.substring(7);
+            formdata.users = formdata.users.reduce((prev, u) => {
+                if (u.id !== id) {
+                    prev.push(u);
+                } else if (u.action === "add") {
+                    // was added - remove completely
+                } else {
+                    u.action = "remove";
+                    prev.push(u);
+                }
+                return prev;
+            }, [])
+            formdata.emails = new Set(formdata.users.map(u => u.email));
+            formdata.users.filter(u => u.id === id).forEach(u => u.action = u.action = "remove");
+            formdata._rebuildUsers(formdata);
+
+        } else if (rel === "add") {
+            const elemError = $("#houseaccessError");
+            const elem = $("#emailInput");
+            const email = elem.val().trim();
+
+            if (!email || !email.trim().length) return;
+            if (formdata.emails.has(email)) {
+                elemError.text(`User with email (${email}) already have access.`);
+                elem.text("");
+                return;
+            }
+            
+            // load user
+            fetcher.graphql(`{user(email: "${email}"){id,fn,ln,email}}`).then(data => {
+                data.user.action = "add";
+                formdata._addUser(formdata, data.user);
+                
+                // clear field
+                elem.val("");
+                elemError.text("");
+
+            }).catch(err => {
+                elemError.text(`Unable to find user with email (${email})`);
+            })
+            
+        } else if (rel === "save") {
+            fetcher.graphql(`mutation {
+                addHouseUsers(data: {houseId: "${house.id}", ids: [${formdata.users.filter(u => u.action === "add").map(u => {
+                    return `"${u.id}"`
+                })}]})
+                removeHouseUsers(data: {houseId: "${house.id}", ids: [${formdata.users.filter(u => u.action === "remove").map(u => {
+                    return `"${u.id}"`
+                })}]})
+            }`)
+            removeForm();
+        }
+    },
+    "fnInit": (formdata, ctx) => {
+        // reset
+        formdata.users = [];
+        formdata.emails = new Set();
+
+        // get uers
+        return fetcher.graphql(`{houseUsers(id: "${ctx.id}"){id,fn,ln,email}}`).then(data => {
+            const elem = $("#houseaccessUsers");
+            const me = storage.getUser();
+            data.houseUsers.filter(u => u.id !== me.id).forEach(u => {
+                u.action = "";
+                formdata._addUser(formdata, u);
+            })
+        })
     }
 }
 
@@ -512,7 +651,7 @@ const SETTINGS = {
         </div>
     </div>
 </div>`,
-    "fnInit": (ctx) => {
+    "fnInit": (formdata, ctx) => {
         const apptokenField = $("#pushoverApptokenInput");
         const userkeyField = $("#pushoverUserkeyInput");
         const notifyField = $("#notifyInput");
@@ -534,6 +673,8 @@ const SETTINGS = {
     }
 }
 
+
+
 const prepareForm = (formdata, ctx, onPerformAction) => {
     const elem = $(`#${ID_ELEM_FORM}`);
     if (typeof formdata.html === "function") {
@@ -544,13 +685,25 @@ const prepareForm = (formdata, ctx, onPerformAction) => {
 
     new Promise((resolve, reject) => {
         if (formdata.fnInit && typeof formdata.fnInit === "function") {
-            formdata.fnInit(ctx).then(resolve);
+            formdata.fnInit(formdata, ctx).then(resolve).catch(err => {
+                reject(err);
+            });
         } else {
             resolve();
         }
     }).then(() => {
         // show dialog
         $(`#${formdata.name}Modal`).modal("show");
+
+        // support for click handlers
+        if (formdata.fnClickHandler && typeof formdata.fnClickHandler === "function") {
+            $(`#${formdata.name}Modal`).on("click", (evt) => {
+                const rel = evt.target.getAttribute("rel");
+                if (rel) {
+                    formdata.fnClickHandler(formdata, ctx, rel);
+                }
+            })
+        }
 
         // add save handler
         $("#performAction").on("click", () => {
@@ -562,18 +715,16 @@ const prepareForm = (formdata, ctx, onPerformAction) => {
             }
 
             // get data
-            const data = formdata.hasOwnProperty("fnGetData") ? formdata.fnGetData() : {};
+            const data = formdata.hasOwnProperty("fnGetData") ? formdata.fnGetData(formdata) : {};
 
             // remove form
-            if (form) form.classList.remove('was-validated');
-            $(`#${formdata.id}`).modal("hide"); 
-            $('.modal-backdrop').remove();
-            $('body').removeClass('modal-open');
-            elem.html("");
+            removeForm();
 
             // callback
             if (onPerformAction) onPerformAction(data);
         });
+    }).catch(err => {
+        appendError(err);
     })
 }
 
@@ -604,14 +755,7 @@ module.exports = {
     appendSettings: (ctx, onPerformAction) => {
         prepareForm(SETTINGS, ctx, onPerformAction);
     },
-    appendError: (err, onPerformAction) => {
-        prepareForm(ERROR_FORM, {
-            "form": {
-                "error": err,
-                "message": err.message
-            }
-        }, onPerformAction || logout)
-    },
+    appendError,
     appendHouseAccessForm: (ctx, onPerformAction) => {
         prepareForm(HOUSE_ACCESS, ctx, onPerformAction);
     },

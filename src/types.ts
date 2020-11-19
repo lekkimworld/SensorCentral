@@ -326,6 +326,7 @@ export interface House {
     readonly id : string;
     readonly name : string;
     readonly favorite : boolean;
+    readonly owner : boolean;
 }
 
 /**

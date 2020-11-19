@@ -22,7 +22,7 @@ module.exports = (document, elemRoot, ctx) => {
         elemRoot.html("");
 
         // load houses
-        fetcher.graphql(`{houses{id,name,favorite}}`).then(data => {
+        fetcher.graphql(`{houses{id,name,favorite,owner}}`).then(data => {
             // sort
             const houses = data.houses.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -73,21 +73,20 @@ module.exports = (document, elemRoot, ctx) => {
                         }
                     },
                     {
-                        "icon": "lock",
-                        "rel": "lock",
-                        "click": function(ctx) {
-                            formsutil.appendHouseAccessForm(ctx.data, (data) => {
-                                console.log(data);
-                            })
-                        }
-                    },
-                    {
                         "rel": "favorite",
                         "icon": (data) => data.favorite ? "star" : "star-o",
                         "click": (ctx) => {
                             fetcher.graphql(`mutation {favoriteHouse(data: {id: "${ctx.id}"}){id}}`).then(body => {
                                 document.location.reload();
                             })
+                        }
+                    },
+                    {
+                        "icon": "lock",
+                        "rel": "lock",
+                        "visible": row => row.data.owner,
+                        "click": function(ctx) {
+                            formsutil.appendHouseAccessForm(ctx.data)
                         }
                     }
                 ],

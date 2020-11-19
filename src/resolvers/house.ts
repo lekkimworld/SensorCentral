@@ -1,6 +1,7 @@
 import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, MiddlewareFn, Ctx, UseMiddleware } from "type-graphql";
 import * as types from "../types";
 import { Length } from "class-validator";
+import { User } from "./user";
 
 const FavoriteFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context }, next) => {
     const v = await next();
@@ -11,6 +12,26 @@ const FavoriteFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context },
         return v;
     }
 };
+
+const IsOwnerFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context }, next) => {
+    const v = await next();
+    if (info.fieldName === "owner") {
+        const rc = await context.storage.isHouseOwner(context.user, context.user.identity.callerId, root.id);
+        return rc;
+    } else {
+        return v;
+    }
+};
+
+@ObjectType()
+class HouseUser extends User {
+    readonly owner : boolean;
+
+    constructor(u : types.UserPrincipal, owner : boolean) {
+        super(u);
+        this.owner = owner;
+    }
+}
 
 @ObjectType()
 export class House implements types.House {
@@ -27,6 +48,10 @@ export class House implements types.House {
     @Field()
     @UseMiddleware(FavoriteFetchOnDemand)
     favorite : boolean;
+
+    @Field()
+    @UseMiddleware(IsOwnerFetchOnDemand)
+    owner : boolean;
 }
 
 @InputType()
@@ -34,6 +59,15 @@ export class FavoriteHouseInput {
     @Field(() => ID)
     @Length(1, 36)
     id : string
+}
+
+@InputType()
+export class HouseUsersInput {
+    @Field(() => [String])
+    ids : []
+
+    @Field()
+    houseId : string
 }
 
 @InputType()
@@ -93,5 +127,21 @@ export class HouseResolver {
     async deleteHouse(@Arg("data") data : DeleteHouseInput, @Ctx() ctx : types.GraphQLResolverContext) {
         await ctx.storage.deleteHouse(ctx.user, data);
         return true;
+    }
+
+    @Query(() => [HouseUser], { description: "Returns the users with access to the specified house" })
+    async houseUsers(@Arg("id") id : string, @Ctx() ctx : types.GraphQLResolverContext) : Promise<HouseUser[]> {
+        const users = await ctx.storage.getHouseUsers(ctx.user, id);
+        return users.map(u => new HouseUser(u, false));
+    }
+
+    @Mutation(() => Boolean)
+    async addHouseUsers(@Arg("data") data : HouseUsersInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        return ctx.storage.grantHouseAccess(ctx.user, data.houseId, data.ids);
+    }
+
+    @Mutation(() => Boolean)
+    async removeHouseUsers(@Arg("data") data : HouseUsersInput, @Ctx() ctx : types.GraphQLResolverContext) {
+        return ctx.storage.revokeHouseAccess(ctx.user, data.houseId, data.ids);
     }
 }

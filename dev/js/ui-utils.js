@@ -126,7 +126,7 @@ const htmlDataTable = (input = {}) => {
         </tr>
     </thead>
     <tbody>
-        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td class="d-none d-lg-table-cell"><center>${ctx.actions.filter(a => a.icon).map(a => `<button class="btn fa fa-${typeof a.icon === "function" ? a.icon(r.data) : a.icon} sensorcentral-size-1_5x" aria-hidden="true" rel="${a.rel}"></button>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<td class="${ctx.classes[idx]}">${d}</td>` : `<td class="${ctx.classes[idx]}">${d}</td>`).join("")}</tr>`).join("")}
+        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td class="d-none d-lg-table-cell"><center>${ctx.actions.filter(a => typeof a.visible === "function" ? a.visible(r) : true).filter(a => a.icon).map(a => `<button class="btn fa fa-${typeof a.icon === "function" ? a.icon(r.data) : a.icon} sensorcentral-size-1_5x" aria-hidden="true" rel="${a.rel}"></button>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<td class="${ctx.classes[idx]}">${d}</td>` : `<td class="${ctx.classes[idx]}">${d}</td>`).join("")}</tr>`).join("")}
     </tbody>
 </table>`;
     return html;
