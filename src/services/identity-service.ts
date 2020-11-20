@@ -100,12 +100,22 @@ export class IdentityService extends BaseService {
                 "identity": {
                     "callerId": decoded.sub,
                     "impersonationId": decoded.imp,
-                    "houseId": decoded.houseId
+                    "houseId": decoded.houseid
                 } as Identity,
                 "principal": new DevicePrincipal(device.name),
                 "scopes": decoded.scopes.split(" ")
             } as BackendIdentity;
             
+        } else if (decoded.sub === "*") {
+            ident = {
+                "identity": {
+                    "callerId": decoded.sub,
+                    "impersonationId": undefined,
+                    "houseId": decoded.houseId
+                } as Identity,
+                "principal": new SystemPrincipal("God"),
+                "scopes": decoded.scopes.split(" ")
+            } as BackendIdentity;
         } else {
             // lookup user
             const user = await this.storage.getUser(this.authUser, decoded.sub);
@@ -128,6 +138,10 @@ export class IdentityService extends BaseService {
 
         // return
         return ident;
+    }
+
+    async generateGodJWT() {
+        return generateJWT("*", undefined, "*", constants.DEFAULTS.JWT.USER_SCOPES);
     }
 
     async generateUserJWT(user : BackendIdentity, houseId : string | undefined) {
