@@ -17,7 +17,9 @@
     3. Delete pull request branch (`git branch -d <name>`)
 5. If there are schema changes to the database: Set the `DATABASE_URL` in the local `.env` file and run the schema migration tool (use `heroku config --shell --app <name>` to fetch config). You might need to set `DATABASE_SSL=true` in your `.env` to ensure we connect with TLS to Postgres.
 6. Perform any manual steps described in a `manualsteps_<from version>_to_<to version>.sql`file
-7. If there are schema changes to the database: Scale the web dynos to 0 using `heroku ps:scale web=1`
+7. If there are schema changes to the database run the `src/postdeploy/create_database.ts` script to update schema
+8. Change `DATABASE_URL` in the `.env` file back
+9. Scale the web dynos to 1 using `heroku ps:scale web=1 --app <name>`
 
 ### Moving to production ###
 1. Scale the web dynos to 0 using `heroku ps:scale web=0`

@@ -1,32 +1,45 @@
 import { Request, Response, NextFunction } from "express";
 import constants from "../constants";
-import { BrowserLoginResponse, HttpException } from "../types";
+import { BackendIdentity, BrowserLoginResponse, HttpException } from "../types";
 //@ts-ignore
 import { lookupService } from "../configure-services";
 import { IdentityService } from "../services/identity-service";
+import { LogService } from "../services/log-service";
+
+const backendIdentityToString = (user : BackendIdentity) => {
+    return `[BackendIdentity - identity.callerId <${user.identity.callerId}> identity.houseId <${user.identity.houseId}> identity.impersonationId <${user.identity.impersonationId}> principal <${user.principal.toString()}>]`;
+}
 
 export default async (req : Request, res : Response, next : NextFunction) => {
-    // get service
-    const identity = await lookupService(IdentityService.NAME) as IdentityService;
+    // get services
+    const svcs = await lookupService([IdentityService.NAME, LogService.NAME])
+    const identity = svcs[0] as IdentityService;
+    const log = svcs[1] as LogService;
 
     // see if we have a session with a userId
+    log.debug("Looking for session and browserResponse in session");
     if (req.session && req.session.browserResponse) {
         // we do - get userId and convert to a user object
+        log.debug("Found session and browserResponse in session - getting identity");
         const resp = req.session.browserResponse as BrowserLoginResponse;
         const user = await identity.getLoginUserIdentity(resp.userinfo.id, resp.userinfo.houseId);
+        log.debug(`Found identity from session: ${backendIdentityToString(user)}`)
         res.locals.user = user;
         
         // continue
         return next();
     }
     
+    log.debug("Looking for authorization header and bearer token");
     if (req.headers && req.headers.authorization && req.headers.authorization.indexOf("Bearer ") === 0) {
         // get token
         const token = req.headers.authorization.substring(7);
+        log.debug(`Found bearer token <${token.substring(0,7)}...>`);
 
         try {
             // verify token
             const ident = await identity.verifyJWT(token);
+            log.debug(`Verified identity from bearer token: ${backendIdentityToString(ident)}`);
             
             // verify scope contains api
             if (!ident.scopes.includes(constants.JWT.SCOPE_API)) {
