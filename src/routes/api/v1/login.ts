@@ -7,7 +7,7 @@ import { ensureAdminJWTScope } from "../../../middleware/ensureScope";
 import {lookupService} from "../../../configure-services";
 import { StorageService } from "../../../services/storage-service";
 import { IdentityService } from "../../../services/identity-service";
-import { LogService } from "src/services/log-service";
+import { LogService } from "../../../services/log-service";
 
 const router = express.Router();
 
