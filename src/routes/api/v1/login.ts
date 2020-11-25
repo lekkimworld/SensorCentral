@@ -117,8 +117,13 @@ router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
         } as BrowserLoginResponse;
         logSvcs.debug(`Generated new BrowserLoginResponse <${JSON.stringify(payload)}>`);
 
-        // remove cached user
+        // remove cached user (ensure also removed from session if there)
         identitySvcs.removeCachedIdentity(user);
+        if (req.session && req.session.browserResponse) {
+            const session = req.session as any;
+            delete session.browserResponse;
+            session.save();
+        }
 
         // send
         res.send(payload);

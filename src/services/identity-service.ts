@@ -123,7 +123,7 @@ export class IdentityService extends BaseService {
                 "identity": {
                     "callerId": decoded.sub,
                     "impersonationId": undefined,
-                    "houseId": decoded.houseId
+                    "houseId": decoded.houseid
                 } as Identity,
                 "principal": user,
                 "scopes": decoded.scopes.split(" ")
