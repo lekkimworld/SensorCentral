@@ -287,5 +287,15 @@ export class IdentityService extends BaseService {
         // return
         return ident;
     }
+
+    /**
+     * Removes a cache backend identity.
+     * 
+     * @param user 
+     */
+    removeCachedIdentity(user : BackendIdentity) {
+        const redis_key = this.getRedisKey(user.identity.callerId, user.identity.callerId);
+        this.redis.del(redis_key);
+    }
     
 }

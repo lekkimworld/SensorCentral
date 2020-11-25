@@ -110,7 +110,7 @@ router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
         } as BrowserLoginResponse;
 
         // remove cached user
-        identitySvcs.getLoginUserIdentity(user.identity.callerId, houseId);
+        identitySvcs.removeCachedIdentity(user);
 
         // send
         res.send(payload);
