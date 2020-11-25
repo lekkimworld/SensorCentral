@@ -1,26 +1,35 @@
 import {Watchdog, WatchdogFood} from "watchdog";
 import constants from "../constants";
-import { BaseService, Device, TopicControlMessage, ControlMessageTypes } from "../types";
+import { BaseService, Device, TopicControlMessage, ControlMessageTypes, BackendIdentity } from "../types";
 import { LogService } from "./log-service";
 import { EventService } from "./event-service";
 import { StorageService } from "./storage-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
+import { IdentityService } from "./identity-service";
 
 const _watchdogs : Map<String,Watchdog<string,string>> = new Map();
 
 export class WatchdogService extends BaseService {
+    public static NAME = "watchdog";
+
     logService? : LogService;
     eventService? : EventService;
     storageService? : StorageService;
+    security : IdentityService;
+    authUser : BackendIdentity;
 
     constructor() {
-        super("watchdog");
-        this.dependencies = ["log","event","storage"];
+        super(WatchdogService.NAME);
+        this.dependencies = [LogService.NAME, EventService.NAME, StorageService.NAME, IdentityService.NAME];
     }
     async init(callback : (err? : Error) => {}, services : BaseService[]) {
         this.logService = services[0] as unknown as LogService;
         this.eventService = services[1] as unknown as EventService;
         this.storageService = services[2] as unknown as StorageService;
+        this.security = services[3] as unknown as IdentityService;
+
+        // request auth token
+        this.authUser = await this.security.getServiceBackendIdentity(WatchdogService.NAME);
 
         // callback
         callback();
@@ -36,7 +45,7 @@ export class WatchdogService extends BaseService {
     }
 
     private async initDeviceWatchdogs() {
-        const devices = await this.storageService!.getDevices();
+        const devices = await this.storageService!.getAllDevices(this.authUser);
         devices.forEach(device => {
             // create a watchdog per device if active
             if (!device.active) {
@@ -62,7 +71,7 @@ export class WatchdogService extends BaseService {
             // fetch device from db
             let device;
             try {
-                device = await this.storageService?.getDevice(deviceId);
+                device = await this.storageService?.getDevice(this.authUser, deviceId);
             } catch (err) {
                 // device not found / no longer found
                 this.logService?.info(`Device for watchdog for ID <${deviceId}> not found in database removing`);

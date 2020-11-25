@@ -18,12 +18,15 @@ const promisifiedClient = {
     'setex': promisify(client.setex).bind(client),
     'keys': promisify(client.keys).bind(client),
     'mget': promisify(client.mget).bind(client),
-    'expire': promisify(client.expire).bind(client)
+    'expire': promisify(client.expire).bind(client),
+    'del': promisify(client.del).bind(client)
 }
 
 export class RedisService extends BaseService {
+    public static NAME = "redis";
+
     constructor() {
-        super("redis");
+        super(RedisService.NAME);
     }
     
     terminate() {
@@ -33,6 +36,9 @@ export class RedisService extends BaseService {
         });
     }
 
+    del(key:string) : Promise<string> {
+        return promisifiedClient.del(key);
+    }
     get(key:string) : Promise<string> {
         return promisifiedClient.get(key);
     }

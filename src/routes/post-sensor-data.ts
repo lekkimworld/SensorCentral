@@ -18,6 +18,7 @@ const postControlEvent = (eventSvc : EventService, logSvc : LogService, payload 
 
 router.post('/', (req, res, next) => {
 	// get data and see if array
+	const user = res.locals.user;
 	const body = req.body
 	const postObj : any = (function()  {
 		if (!body) {
@@ -73,7 +74,7 @@ router.post('/', (req, res, next) => {
 		} else {
 			deviceId = postObj.deviceId;
 		}
-		storage.getDevice(deviceId).then(device => {
+		storage.getDevice(user, deviceId).then(device => {
 			// we found the device- acknowledge post to caller
 			let j = JSON.stringify(postObj, undefined, 2);
 			logSvc.debug(`Received: ${j}`)

@@ -5,7 +5,7 @@ import {join} from "path";
 import * as readline from "readline";
 import moment from "moment-timezone";
 
-const TARGET_DATABASE_VERSION = 7;
+const TARGET_DATABASE_VERSION = 8;
 
 const config : PoolConfig = {
     'connectionString': process.env.DATABASE_URL
@@ -172,6 +172,11 @@ const updateSchemaVersion_6to7 = () : Promise<void> => {
     return executeSQLFile("version_6_to_7.sql");
 }
 
+const updateSchemaVersion_7to8 = () : Promise<void> => {
+    console.log("Updating database schema from version 7 to 8...");
+    return executeSQLFile("version_7_to_8.sql");
+}
+
 pool.query("BEGIN").then(() => {
     // query for database_version table
     return pool.query(`select * from information_schema.tables where table_name='database_version'`);
@@ -204,6 +209,8 @@ pool.query("BEGIN").then(() => {
                     return updateSchemaVersion_5to6();
                 } else if (version === 6) {
                     return updateSchemaVersion_6to7();
+                } else if (version === 7) {
+                    return updateSchemaVersion_7to8();
                 } else if (version === TARGET_DATABASE_VERSION) {
                     console.log("We are at the newest version...");
                     return Promise.resolve();

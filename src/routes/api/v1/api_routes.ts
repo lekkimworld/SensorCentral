@@ -21,6 +21,18 @@ router.use('/login', loginRoutes);
 router.use(ensureAuthenticated);
 
 // *****************************************
+// JWT
+// *****************************************
+import jwtRoutes from "./jwt";
+router.use('/jwt', jwtRoutes);
+
+// *****************************************
+// PROMETHEUS
+// *****************************************
+import scrapeRoutes from "./prometheus-scape-endpoint";
+router.use('/scrapedata', scrapeRoutes);
+
+// *****************************************
 // DATA
 // *****************************************
 import dataRoutes from "./data";

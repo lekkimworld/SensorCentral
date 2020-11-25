@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
-import { HttpException, BackendLoginUser } from '../../../types';
-import { ensureReadScopeWhenGetRequest, ensureAdminScope, accessAllHouses } from '../../../middleware/ensureScope';
+import { HttpException, BackendIdentity } from '../../../types';
+import { ensureReadScopeWhenGetRequest, ensureAdminScope } from '../../../middleware/ensureScope';
 const {lookupService} = require('../../../configure-services');
 
 const router = express.Router();
@@ -13,9 +13,10 @@ router.get("/:houseid", async (req, res, next) => {
     const houseid = req.params.houseid;
     if (!houseid) return next(new HttpException(417, "No house ID supplied"));
 
+    const user = res.locals.user;
     const storage = await lookupService("storage") as StorageService;
     try {
-        const devices = await storage.getDevices(houseid);
+        const devices = await storage.getDevices(user, houseid);
         return res.status(200).send(devices);
 
     } catch (err) {
@@ -43,14 +44,10 @@ router.post("/", async (req, res, next) => {
     }
 
     // ensure access to house
-    const user = res.locals.user as BackendLoginUser;
-    if (!accessAllHouses(user) && user.houseId !== input.house.trim()) {
-        return next(new HttpException(401, "You may not create sensors for the supplied house ID"));
-    }
-    
-    const storage = await lookupService("storage") as StorageService;
+    const user = res.locals.user as BackendIdentity;
+    const storage = await lookupService(StorageService.NAME) as StorageService;
     try {
-        const device = await storage.createDevice({
+        const device = await storage.createDevice(user, {
             "houseId": input.house,
             "id": input.id,
             "name": input.name,
@@ -76,9 +73,10 @@ router.put("/", async (req, res, next) => {
         return next(new HttpException(417, "Missing name"));
     }
     
+    const user = res.locals.user;
     const storage = await lookupService("storage") as StorageService;
     try {
-        const device = await storage.updateDevice({
+        const device = await storage.updateDevice(user, {
             "id": input.id,
             "name": input.name,
             "active": input.active
@@ -100,9 +98,10 @@ router.delete("/", async (req, res, next) => {
         return next(new HttpException(417, "Missing ID"));
     }
     
+    const user = res.locals.user;
     const storage = await lookupService("storage") as StorageService;
     try {
-        await storage.deleteDevice({
+        await storage.deleteDevice(user, {
             "id": input.id
         })
         res.status(202);

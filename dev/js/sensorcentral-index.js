@@ -4,33 +4,54 @@ const $ = require("jquery");
 const log = require("./logger.js");
 const uiutils = require("./ui-utils.js");
 const storage = require("./storage-utils");
+const fetcher = require("./fetch-util");
+const formsUtil = require('./forms-util');
 
 // register service worder
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
         .then(function() {
-            console.log(`[ServiceWorker] Registered (${nameVersion})`); 
+            console.log(`[ServiceWorker] Registered (${nameVersion})`);
         });
 }
 
 const navigationChange = () => {
-    // set / clear username dropdown and menus
-    uiutils.fillMenus();
-    
+    try {
+        // set / clear username dropdown and menus
+        uiutils.fillMenus();
+    } catch (err) {
+        formsUtil.appendError(err);
+        return;
+    }
+
     // get hash
     const hash = document.location.hash;
     const path = document.location.pathname;
     if ("/openid/loggedin" === path) {
-        // user has been logged it
+        // user has been logged it - go ask for a JWT based on us having a session
         return fetch("/api/v1/login/jwt").then(resp => resp.json()).then(body => {
             storage.setUser(body);
             document.location.href = "/#root";
+        }).catch(err => {
+            formsUtil.appendError(err);
+        })
+    } else if (hash.indexOf("#house-") === 0) {
+        // user is switching house
+        const houseId = hash.substring(7);
+        return fetcher.get(`/api/v1/login/jwt/${houseId}`).then(body => {
+            storage.setUser(body);
+            document.location.href = "/#root";
+        }).catch(err => {
+            formsUtil.appendError(err);
         })
     }
+
+
+    // build ui
     const elemRoot = $("#main-body");
     const user = storage.getUser();
     log.debug(`navigationChange - hash <${hash}>`);
-    
+
     if ("#login" === hash) {
         fetch("/api/v1/login").then(resp => resp.json()).then(body => {
             if (body.hasOwnProperty("error")) {
@@ -62,15 +83,15 @@ const navigationChange = () => {
         } else if (parts.length === 3 && parts[1] === "house") {
             // list devices for house
             log.debug(`Rendering sensorcentral-devices with parts <${parts.join()}>`);
-            require("./sensorcentral-devices")(document, elemRoot, {"houseId": parts[2]});
+            require("./sensorcentral-devices")(document, elemRoot, { "houseId": parts[2] });
         } else if (parts.length === 5 && parts[1] === "house" && parts[3] === "device") {
             // list sensors for device
             log.debug(`Rendering sensorcentral-sensors with parts <${parts.join()}>`);
-            require("./sensorcentral-sensors")(document, elemRoot, {"houseId": parts[2], "deviceId": parts[4]});
+            require("./sensorcentral-sensors")(document, elemRoot, { "houseId": parts[2], "deviceId": parts[4] });
         } else if (parts.length === 7 && parts[1] === "house" && parts[3] === "device" && parts[5] === "sensor") {
             // sensor details
             log.debug(`Rendering sensorcentral-sensordetails with parts <${parts.join()}>`);
-            require("./sensorcentral-sensordetails")(document, elemRoot, {"houseId": parts[2], "deviceId": parts[4], "sensorId": parts[6]});
+            require("./sensorcentral-sensordetails")(document, elemRoot, { "houseId": parts[2], "deviceId": parts[4], "sensorId": parts[6] });
         }
     } else if ("#settings" === hash) {
         require("./sensorcentral-settings")(document, elemRoot);
@@ -83,4 +104,3 @@ const navigationChange = () => {
 };
 window.addEventListener("DOMContentLoaded", navigationChange);
 window.addEventListener("hashchange", navigationChange);
-

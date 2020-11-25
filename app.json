@@ -9,7 +9,7 @@
     "repository": "https://github.com/lekkimworld/sensorcentral",
     "success_url": "/",
     "env": {
-        
+
     },
     "formation": {
         "web": {
@@ -17,8 +17,7 @@
             "size": "free"
         }
     },
-    "addons": [
-        {
+    "addons": [{
             "plan": "heroku-redis:hobby-dev"
         },
         {
@@ -46,10 +45,10 @@
                 "NODE_ENV": "development",
                 "OIDC_CLIENT_ID": "stubOidcClient",
                 "OIDC_CLIENT_SECRET": "secretsarehardtokeep",
-                "OIDC_REDIRECT_URI": "https://sensorcentral-pr-18.herokuapp.com/openid/callback",
+                "OIDC_REDIRECT_URI": "https://sensorcentral-pr-19.herokuapp.com/openid/callback",
                 "OIDC_PROVIDER_URL": "https://cryptic-dawn-16980.herokuapp.com",
                 "OIDC_POST_CLIENT_SECRET": "true",
-                "APP_DOMAIN": "sensorcentral-pr-18.herokuapp.com"
+                "APP_DOMAIN": "sensorcentral-pr-19.herokuapp.com"
             },
             "scripts": {
                 "postdeploy": "node server-dist/postdeploy/create_database.js"

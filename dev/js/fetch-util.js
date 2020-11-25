@@ -12,14 +12,17 @@ const buildContext = (options = {}) => {
         delete ctx.type;
     }
     if (!ctx.headers.hasOwnProperty("authorization")) ctx.headers.authorization = `Bearer ${storage.getJWT()}`;
-    
+
     return ctx;
 }
 const doFetch = (url, ctx) => {
     $("#sensorcentral-spinner").removeClass("d-none");
-    
+
     return fetch(url, ctx).then(resp => {
         $("#sensorcentral-spinner").addClass("d-none");
+        const headers = resp.headers || {};
+        if (headers.get("content-type").indexOf("application/octet-stream") === 0) return resp.blob();
+        if (headers.get("content-disposition") && headers.get("content-disposition").indexOf("attachment") === 0) return resp.blob();
         if (ctx["content-type"] === "text/plain" || ctx["content-type"] === "text") return resp.text();
         return resp.json();
     })
@@ -28,17 +31,17 @@ const doGet = (url, options = {}) => {
     return doFetch(url, buildContext(options));
 }
 const doPost = (url, body, options = {}) => {
-    const ctx = buildContext(Object.assign({}, {"method": "POST"}, options));
+    const ctx = buildContext(Object.assign({}, { "method": "POST" }, options));
     ctx.body = typeof body === "string" ? body : JSON.stringify(body);
     return doFetch(url, ctx);
 }
 const doPut = (url, body, options = {}) => {
-    const ctx = buildContext(Object.assign({}, {"method": "PUT"}, options));
+    const ctx = buildContext(Object.assign({}, { "method": "PUT" }, options));
     ctx.body = typeof body === "string" ? body : JSON.stringify(body);
     return doFetch(url, ctx, type);
 }
 const doDelete = (url, body, options = {}) => {
-    const ctx = buildContext(Object.assign({}, {"method": "DELETE"}, options));
+    const ctx = buildContext(Object.assign({}, { "method": "DELETE" }, options));
     ctx.body = typeof body === "string" ? body : JSON.stringify(body);
     return doFetch(url, ctx);
 }

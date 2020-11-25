@@ -26,8 +26,10 @@ const logit = (level : Level, msg : string, err? : Error) => {
 }
 
 export class LogService extends BaseService {
+    public static NAME = "log";
+
     constructor() {
-        super("log");
+        super(LogService.NAME);
     }
     debug(msg:string) : void {
         logit(DEBUG, msg);

@@ -23,9 +23,9 @@ module.exports = {
     },
     setUser: (body) => {
         if (body) {
-            localStorage.setItem(KEY_USER, JSON.stringify(body.user));
+            localStorage.setItem(KEY_USER, JSON.stringify(body.userinfo));
             localStorage.setItem(KEY_JWT, body.jwt);
-        }  else {
+        } else {
             localStorage.removeItem(KEY_USER);
             localStorage.removeItem(KEY_JWT);
         }

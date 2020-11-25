@@ -11,16 +11,17 @@ import {SettingsResolver} from "./resolvers/settings";
 import {DeviceWatchdogResolver} from "./resolvers/device-watchdog";
 //@ts-ignore
 import { lookupService } from "./configure-services";
-import { GraphQLResolverContext, BackendLoginUser } from "./types";
+import { GraphQLResolverContext, BackendIdentity } from "./types";
 import { FavoriteSensorResolver } from "./resolvers/favorite-sensor";
 import { CounterQueryResolver } from "./resolvers/data";
 import { SmartmeResolver } from "./resolvers/smartme";
+import { StorageService } from "./services/storage-service";
 
 const path = process.env.GRAPHQL_PATH || "/graphql";
 
 export default async (app : Application) => {
     // storage service
-    const storage = await lookupService("storage");
+    const storage = await lookupService(StorageService.NAME);
     
     // attach a middleware to the graphql path to ensure user is authenticated 
     // either with a session or a JWT
@@ -48,7 +49,7 @@ export default async (app : Application) => {
     const apolloServer = new ApolloServer({
         schema,
         "context": ({ res }) : GraphQLResolverContext => {
-            const user = res.locals.user as BackendLoginUser;
+            const user = res.locals.user as BackendIdentity;
             return {
                 storage,
                 user

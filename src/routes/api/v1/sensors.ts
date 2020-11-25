@@ -1,7 +1,7 @@
 import express from 'express';
-import {ensureAdminScope, ensureReadScopeWhenGetRequest, accessAllHouses} from "../../../middleware/ensureScope"; 
+import {ensureAdminScope, ensureReadScopeWhenGetRequest } from "../../../middleware/ensureScope"; 
 import { StorageService } from '../../../services/storage-service';
-import { HttpException, BackendLoginUser } from '../../../types';
+import { HttpException, BackendIdentity } from '../../../types';
 const {lookupService} = require('../../../configure-services');
 
 const router = express.Router();
@@ -15,9 +15,10 @@ router.use(ensureReadScopeWhenGetRequest);
 router.get("/:sensorid", async (req, res, next) => {
     if (!req.params.sensorid) return next(new HttpException(417, "Did not receive sensor id"));
 
-    const storage = lookupService("storage") as StorageService;
+    const user = res.locals.user;
+    const storage = lookupService(StorageService.NAME) as StorageService;
     try {
-        const sensor = storage.getSensor(req.params.sensorid)
+        const sensor = storage.getSensor(user, req.params.sensorid)
         res.status(200).send(sensor);
 
     } catch(err) {
@@ -51,14 +52,10 @@ router.post("/", async (req, res, next) => {
     }
 
     // ensure access to house
-    const user = res.locals.user as BackendLoginUser;
-    if (!accessAllHouses(user) && user.houseId !== input.house.trim()) {
-        return next(new HttpException(401, "You may not create sensors for the supplied house ID"));
-    }
-
-    const storage = await lookupService("storage") as StorageService;
+    const user = res.locals.user as BackendIdentity;
+    const storage = await lookupService(StorageService.NAME) as StorageService;
     try {
-        const sensor = await storage.createSensor({
+        const sensor = await storage.createSensor(user, {
             "deviceId": input.device,
             "id": input.id,
             "name": input.name,
@@ -94,14 +91,10 @@ router.put("/", async (req, res, next) => {
     }
     
     // ensure access to house
-    const user = res.locals.user as BackendLoginUser;
-    if (!accessAllHouses(user) && user.houseId !== input.house.trim()) {
-        return next(new HttpException(401, "You may not create sensors for the supplied house ID"));
-    }
-    
-    const storage = await lookupService("storage") as StorageService;
+    const user = res.locals.user as BackendIdentity;
+    const storage = await lookupService(StorageService.NAME) as StorageService;
     try {
-        const sensor = await storage.updateSensor({
+        const sensor = await storage.updateSensor(user, {
             "id": input.id,
             "name": input.name,
             "label": input.label,
@@ -126,9 +119,10 @@ router.delete("/", async (req, res, next) => {
         return next(new HttpException(417, "Missing ID"));
     }
     
+    const user = res.locals.user;
     const storage = await lookupService("storage") as StorageService;
     try {
-        await storage.deleteSensor({
+        await storage.deleteSensor(user, {
             "id": input.id
         })
         res.status(202);

@@ -1,7 +1,7 @@
 const uiutils = require("./ui-utils");
 const $ = require("jquery");
 const fetcher = require("./fetch-util");
-const {barChart, ID_CHART} = require("./charts-util");
+const { barChart, ID_CHART } = require("./charts-util");
 const moment = require("moment");
 const dateutils = require("./date-utils");
 
@@ -36,9 +36,8 @@ module.exports = {
             fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}, addMissingTimeSeries: ${queryAddMissingTimeSeries}}){id, name, data{x,y}}}`).then(result => {
                 const querydata = result[queryName][0];
                 barChart(
-                    ID_CHART, 
-                    querydata.data.map(d => d.x),
-                    {
+                    ID_CHART,
+                    querydata.data.map(d => d.x), {
                         "dataset": {
                             "label": sensor.name,
                             "data": querydata.data.map(d => d.y)
@@ -118,15 +117,15 @@ module.exports = {
         // create div's for samples table and load samples
         elemRoot.append(uiutils.htmlSectionTitle("Chart Data"));
         elemRoot.append(`<div id="${ID_SAMPLES_DIV}"><div id="${ID_SAMPLES_TABLE}"></div></div>`);
-        
-        $("#add_missing_dtseries").click(ev => {
+
+        $("#add_missing_dtseries").on("click", ev => {
             const add_missing = ev.target.checked;
             queryAddMissingTimeSeries = add_missing;
-            
+
             // refresh chart
             doChart();
         })
-        $("#querySelectors").click(ev => {
+        $("#querySelectors").on("click", ev => {
             const linkRel = ev.target.getAttribute("rel");
             const typeRel = ev.target.parentNode.getAttribute("rel");
             if (!linkRel || !typeRel) return;

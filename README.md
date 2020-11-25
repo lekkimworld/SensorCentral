@@ -38,10 +38,22 @@ sensorId = 94f7a0f4-d85b-4815-9c77-833be7c28779
 ## Change Log ##
 
 ### Functionality ideas ###
-* Power prices using nordpool-node npm package (https://github.com/samuelmr/nordpool-node), pipe through cache layer in Redis that caches 5 days worth of data
 * On device page allow user to change watch dog settings incl. set custom date/time for "not until" for the watchdog
 * "Widget" to graph multiple gauge sensors together
+* Implement average graphs for gauge sensors (select avg(value), to_timestamp((floor(extract('epoch' from dt) / 86400)) * 86400) at time zone 'utc' as interval_alias from sensor_data where id='28FF46C76017059A' and dt > to_date('20200101', 'YYYYMMDD') and dt < to_date('20200201', 'YYYYMMDD') group by interval_alias order by interval_alias)
+
+### 1.7.0 ###
+* Use ts-node when running app instead of transpiling typescript to javascript first
+* Power prices using nordpool-node npm package (https://github.com/samuelmr/nordpool-node), pipe through cache layer in Redis that caches. Allow user to select arbitrary date for power data. Allow user to export power data shown to CSV.
+* Prometheus scrapedata endpoint moved to /api/v1/scrapedata and requires authentication
 * Move to a "house"-selector model so you select a house and work for that house - that will make power graphs more logical to use. "House"-selector in the user-dropdown.
+* Add house owner
+* Allow house owner to add / remove users to their house
+* Verify access to houses and date on requests
+* Device JWT's now contain both deviceid and the userid of the user who issued the JWT to ensure that the device can only impersonate that user
+* Set a house as default and that will be shown on login
+* Hide widget data on front page if no data for the widget
+* Allow issue of JWT for "all access user" through API
 
 ### 1.6.7 ###
 * Remove "Hello <name>" on frontpage

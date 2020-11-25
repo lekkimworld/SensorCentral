@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.post('/:clientId([a-zA-Z0-9+/=.]+)', async (req, res, next) => {
     // get storage service
-    const services = await lookupService(["storage", "event", "log"]);
+    const services = await lookupService([StorageService.NAME, EventService.NAME, LogService.NAME]);
     const storage = services[0] as StorageService;
     const eventService = services[1] as EventService;
     const log = services[2] as LogService;

@@ -1,18 +1,14 @@
 import { Request, Response, NextFunction } from "express";
-import { HttpException, BackendLoginUser } from "../types";
+import { HttpException, BackendIdentity } from "../types";
 import constants from "../constants";
 
-export const hasScope = (user : BackendLoginUser, scope : string) => {
+export const hasScope = (user : BackendIdentity, scope : string) => {
     return user.scopes && user.scopes.includes(scope);
-}
-
-export const accessAllHouses = (user : BackendLoginUser) => {
-    return user.houseId === "*";
 }
 
 export const ensureScopesWithMethodFactory = (scopes : string[], method? : string) => (req : Request, res : Response, next : NextFunction) => {
     // get user
-    const user = res.locals.user as BackendLoginUser;
+    const user = res.locals.user as BackendIdentity;
     
     // ensure user has all required scopes
     if ((!method || method === req.method) && scopes.every(s => user.scopes.includes(s))) {

@@ -10,26 +10,34 @@ const fillMenus = () => {
     const user = storage.getUser();
     const elemUsername = $("#navbarUsernameDropdown");
     const elemMenuitems = $("#navbarMenuItems");
-    
+
     let htmlMenu = "";
     let htmlUsername = "";
     if (user) {
-        htmlMenu = 
+        htmlMenu =
             `<li class="nav-item">
             <a class="nav-link" href="/#root">Home</a>
             </li>
             <li class="nav-item">
             <a class="nav-link" href="/#configuration/houses">Houses</a>
+            </li>`;
+        if (user.houseId) {
+            htmlMenu += `<li class="nav-item">
+            <a class="nav-link" href="/#configuration/house/${user.houseId}">Devices</a>
             </li>
             `;
+        }
         htmlUsername = `<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             Username: ${user.email}
             </a>
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
                 <a class="dropdown-item" href="/#powermeter">Powermeter Setup</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="settings">Settings</a>
-                <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>
-            </div>`;
+                <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>`;
+        user.houses.forEach(house => {
+            htmlUsername += `<a class="dropdown-item" href="/#house-${house.id}" id="house" date-id="${house.id}">House: ${house.name}</a>`
+        })
+        htmlUsername += `</div>`;
     }
     htmlMenu += `<li class="nav-item">
         <a href="/#about" class="nav-link">About</a>
@@ -47,7 +55,7 @@ const fillMenus = () => {
 
             // ensure menu is hidden
             $('.navbar-collapse').removeClass('show');
-            
+
             // tell server to log us out
             document.location.hash = "#loggedout";
         })
@@ -85,8 +93,8 @@ const htmlTitleRow = (title, actions, tag = "h3") => {
     return html;
 }
 
-const htmlSectionTitle = (title) => {
-    return `<h5 class="">${title}</h5>`;
+const htmlSectionTitle = (title, classList) => {
+    return `<h5 class="${classList ? classList : ""}">${title}</h5>`;
 }
 
 const htmlPageTitle = (title, tag = "h3") => {
@@ -106,19 +114,19 @@ const htmlActionBar = (actions) => {
 }
 
 const htmlDataTable = (input = {}) => {
-    const ctx = Object.assign({}, input);
-    if (!ctx.hasOwnProperty("headers")) ctx.headers = [];
-    if (!ctx.hasOwnProperty("rows")) ctx.rows = [];
-    if (!ctx.hasOwnProperty("actions")) ctx.actions = undefined;
-    if (!ctx.hasOwnProperty("classes")) ctx.classes = [];
-    const html = `<table class="table table-bordered table-hover" ${input.id ? `id="${input.id}"` : ""}>
+        const ctx = Object.assign({}, input);
+        if (!ctx.hasOwnProperty("headers")) ctx.headers = [];
+        if (!ctx.hasOwnProperty("rows")) ctx.rows = [];
+        if (!ctx.hasOwnProperty("actions")) ctx.actions = undefined;
+        if (!ctx.hasOwnProperty("classes")) ctx.classes = [];
+        const html = `<table class="table table-bordered table-hover" ${input.id ? `id="${input.id}"` : ""}>
     <thead>
         <tr>
             ${ctx.actions ? `<th scope="col" class="d-none d-lg-table-cell"></th>` : ""}${ctx.headers.map((h, idx) => `<th scope="col" class="${ctx.classes[idx]}">${h}</th>`).join("")}
         </tr>
     </thead>
     <tbody>
-        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td class="d-none d-lg-table-cell"><center>${ctx.actions.filter(a => a.icon).map(a => `<button class="btn fa fa-${typeof a.icon === "function" ? a.icon(r.data) : a.icon} sensorcentral-size-1_5x" aria-hidden="true" rel="${a.rel}"></button>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<td class="${ctx.classes[idx]}">${d}</td>` : `<td class="${ctx.classes[idx]}">${d}</td>`).join("")}</tr>`).join("")}
+        ${ctx.rows.map(r => `<tr id="${r.id}">${ctx.actions ? `<td class="d-none d-lg-table-cell"><center>${ctx.actions.filter(a => typeof a.visible === "function" ? a.visible(r) : true).filter(a => a.icon).map(a => `<button class="btn fa fa-${typeof a.icon === "function" ? a.icon(r.data) : a.icon} sensorcentral-size-1_5x" aria-hidden="true" rel="${a.rel}"></button>`).join("")}</center></td>` : ""}${r.columns.map((d, idx) => idx===0 ? `<td class="${ctx.classes[idx]}">${d}</td>` : `<td class="${ctx.classes[idx]}">${d}</td>`).join("")}</tr>`).join("")}
     </tbody>
 </table>`;
     return html;

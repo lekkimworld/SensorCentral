@@ -51,7 +51,7 @@ export class DeviceWatchdogResolver {
     @Mutation(() => Device)
     async updateDeviceWatchdog(@Arg("data") data : WatchdogNotificationInput, @Ctx() context: types.GraphQLResolverContext) {
         await context.storage.updateDeviceWatchdog(context.user, data);
-        const device = await context.storage.getDevice(data.id);
+        const device = await context.storage.getDevice(context.user, data.id);
         return device;
     }
 }

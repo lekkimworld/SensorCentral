@@ -1,31 +1,12 @@
 import express from "express";
 import { getAuthenticationUrl, AuthenticationUrlPayload } from "../../../oidc-authentication-utils";
-import { DeviceJWTPayload, HttpException, BrowserLoginPayload, BackendLoginUser, LoginUser } from "../../../types";
+import { JWTPayload, HttpException, BrowserLoginResponse, BackendIdentity, UserPrincipal } from "../../../types";
 import ensureAuthenticated from "../../../middleware/ensureAuthenticated";
-import jwt from "jsonwebtoken";
-import constants from "../../../constants";
 import { ensureAdminJWTScope } from "../../../middleware/ensureScope";
-
-const generateJWT = async (userOrDeviceId : string, houseId : string, scopes : string[]) => {
-    const token = await jwt.sign({
-        "scopes": scopes.join(" "),
-        "houseid": houseId
-    }, process.env.API_JWT_SECRET as string, {
-        "algorithm": "HS256",
-        "issuer": constants.JWT.OUR_ISSUER,
-        "audience": constants.JWT.AUDIENCE,
-        "subject": userOrDeviceId
-    });
-    return token;
-}
-
-const generateUserJWT = async (userId : string) => {
-    return generateJWT(userId, "*", constants.DEFAULTS.JWT.USER_SCOPES);
-}
-
-const generateDeviceJWT = async (deviceId : string, houseId : string) => {
-    return generateJWT(deviceId, houseId, constants.DEFAULTS.JWT.DEVICE_SCOPES);
-}
+//@ts-ignore
+import {lookupService} from "../../../configure-services";
+import { StorageService } from "../../../services/storage-service";
+import { IdentityService } from "../../../services/identity-service";
 
 const router = express.Router();
 
@@ -59,6 +40,7 @@ router.get("/", async (req, res, next) => {
  */
 router.post("/jwt", ensureAuthenticated, ensureAdminJWTScope, async (req, res, next) => {
     // validate
+    const user = res.locals.user;
     const deviceid = req.body.device;
     const houseid = req.body.house;
     if (!deviceid) {
@@ -68,12 +50,15 @@ router.post("/jwt", ensureAuthenticated, ensureAdminJWTScope, async (req, res, n
         return next(new HttpException(417, "Missing house ID in \"house\" property"));
     }
 
+    // get security service
+    const identity = await lookupService(IdentityService.NAME) as IdentityService;
+
     try {
         // create JWT
-        const token = await generateDeviceJWT(deviceid, houseid);
+        const token = await identity.generateDeviceJWT(user, deviceid);
         return res.send({
             token
-        } as DeviceJWTPayload);
+        } as JWTPayload);
 
     } catch (err) {
         return next(new HttpException(500, "Unable to generate JWT", err));
@@ -81,24 +66,54 @@ router.post("/jwt", ensureAuthenticated, ensureAdminJWTScope, async (req, res, n
 })
 
 /**
- * Returns a payload to the authenticated caller with a JWT and a user object.
+ * Returns a payload to the authenticated caller with a JWT and a user object. If called 
+ * with a houseId we check that the houseId is valid for the user and if yes returns a 
+ * JWT with that houseId. If no houseId is supplied the JWT returned is for the default 
+ * house if any.
  * 
  */
 //@ts-ignore
-router.get("/jwt", ensureAuthenticated, async (req, res, next) => {
-    const user = res.locals.user as BackendLoginUser;
+router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
+    // get services
+    const svcs = await lookupService([StorageService.NAME, IdentityService.NAME]);
+    const storage = svcs[0] as StorageService;
+    const identitySvcs = svcs[1] as IdentityService;
+
+    // get all houses for the user
+    const user = res.locals.user as BackendIdentity;
+    const houses = await storage.getHouses(user);
+
+    // get houseid for jwt
+    let houseId = req.params.houseId;
+    if (!houseId) {
+        if (user.identity.houseId) {
+            houseId = user.identity.houseId;
+        } else if (houses && houses.length) {
+            // pick first houseid
+            houseId = houses[0].id;
+        }
+    }
+
     try {
-        // create JWT for user
-        const token = await generateUserJWT(user.id);
-        res.send({
-            "jwt": token,
-            "user": {
-                "id": user.id,
-                "fn": user.fn,
-                "ln": user.ln,
-                "email": user.email
-            } as LoginUser
-        } as BrowserLoginPayload);
+        const jwt = await identitySvcs.generateUserJWT(user, houseId);
+        const p = user.principal as UserPrincipal;
+        const payload = {
+            "userinfo": {
+                "id": user.identity.callerId,
+                "email": p.email,
+                "fn": p.fn,
+                "ln": p.ln,
+                "houseId": houseId,
+                "houses": houses
+            },
+            jwt
+        } as BrowserLoginResponse;
+
+        // remove cached user
+        identitySvcs.getLoginUserIdentity(user.identity.callerId, houseId);
+
+        // send
+        res.send(payload);
 
     } catch (err) {
         return next(new HttpException(500, "Unable to generate JWT", err));
