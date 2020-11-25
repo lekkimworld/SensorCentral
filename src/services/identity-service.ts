@@ -296,6 +296,7 @@ export class IdentityService extends BaseService {
     removeCachedIdentity(user : BackendIdentity) {
         const redis_key = this.getRedisKey(user.identity.callerId, user.identity.callerId);
         this.redis.del(redis_key);
+        this.log.debug(`Deleted cached identity in Redis using key <${redis_key}>`);
     }
     
 }
