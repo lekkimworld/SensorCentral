@@ -136,6 +136,9 @@ class SensorsQuery {
     @Field(() => types.SensorType, {nullable: true})
     @IsEnum(types.SensorType)
     type : types.SensorType
+
+    @Field(() => [String], {nullable: true})
+    sensorIds : string[]
 }
 
 @Resolver()
@@ -143,8 +146,9 @@ export class SensorResolver {
     @Query(() => [Sensor], {})
     async sensors(@Arg("data") data : SensorsQuery, @Ctx() ctx : types.GraphQLResolverContext) {
         let sensors = await ctx.storage.getSensors(ctx.user, {
-            deviceId: data.deviceId,
-            type: data.type
+            "sensorIds": data.sensorIds,
+            "deviceId": data.deviceId,
+            "type": data.type
         } as SensorQueryData);
         return sensors;
     }

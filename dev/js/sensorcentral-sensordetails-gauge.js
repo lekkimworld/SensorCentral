@@ -1,7 +1,7 @@
 const uiutils = require("./ui-utils");
 const $ = require("jquery");
 const fetcher = require("./fetch-util");
-const {lineChart, ID_CHART} = require("./charts-util");
+const { buildGaugeChart, ID_CHART_CONTAINER } = require("./charts-util");
 const moment = require("moment");
 const dateutils = require("./date-utils");
 const { data } = require("jquery");
@@ -16,30 +16,10 @@ const SAMPLE_COUNT_INITIAL_TABLE = 25;
 
 let lastSamplesQueryCount = undefined;
 
-const loadSamples = (sensorId) => {
-    // see how many samples we need to get
-    const samplesCount = lastSamplesQueryCount ? lastSamplesQueryCount + SAMPLE_COUNT_INCR : SAMPLE_COUNT_LOAD;
-    
-    return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: ["${sensorId}"], decimals: 2, sampleCount: ${samplesCount}}){id, name, data{x,y}}}`).then(result => {
-        const samples = result["ungroupedQuery"][0];
-        lastSamplesQueryCount = samplesCount;
-        return Promise.resolve(samples);
-    })
-}
-
-const samplesChart = (sensor, samples) => {
-    const labels = samples.data.map(d => d.x).map(x => dateutils.formatDMYTime(x));
-    lineChart(ID_CHART, labels, {
-        "dataset": {
-            "label": sensor.name,
-            "data": samples.data.map(d => d.y)
-        }
-    });
-}
-
-const samplesTable = (sensor, samples) => {
+const samplesTable = (sensor, samplesInput) => {
     const samplesDiv = $(`#${ID_SAMPLES_DIV}`);
     const samplesTable = $(`#${ID_SAMPLES_TABLE}`);
+    const samples = Array.isArray(samplesInput) ? samplesInput[0] : samplesInput;
 
     // get sample count
     samplesCount = Number.parseInt(samplesDiv.attr(ATTR_SAMPLES_COUNT)) + SAMPLE_COUNT_INCR;
@@ -58,6 +38,23 @@ const samplesTable = (sensor, samples) => {
     return Promise.resolve();
 }
 
+const buildChartAndTable = (sensor, initial = false) => {
+    const samplesCount = lastSamplesQueryCount ? lastSamplesQueryCount + SAMPLE_COUNT_INCR : SAMPLE_COUNT_LOAD;
+    lastSamplesQueryCount = samplesCount;
+
+    buildGaugeChart({ "sensors": [sensor], "samplesCount": samplesCount }).then(samples => {
+        if (!samples) return;
+        samplesTable(sensor, samples);
+
+        if (initial) {
+            // add link to load more
+            $(`#${ID_SAMPLES_LINK}`).on("click", () => {
+                buildChartAndTable(sensor, false);
+            })
+        }
+    })
+}
+
 module.exports = {
     buildUI: (elemRoot, sensor) => {
         // clear page
@@ -69,30 +66,17 @@ module.exports = {
 
         // create div for graph
         elemRoot.append(uiutils.htmlSectionTitle("Graph"));
-        elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
-        
+        elemRoot.append(`<div id="${ID_CHART_CONTAINER}"></div>`);
+
         // create div's for samples table and load samples
         elemRoot.append(uiutils.htmlSectionTitle("Samples"));
         elemRoot.append(`<div id="${ID_SAMPLES_DIV}" ${ATTR_SAMPLES_COUNT}="0"><div id="${ID_SAMPLES_TABLE}"></div></div>`);
 
-        loadSamples(sensor.id).then(samples => {
-            samplesChart(sensor, samples);
-            samplesTable(sensor, samples);
-        }).then(() => {
-            // add link to load more
-            $(`#${ID_SAMPLES_LINK}`).on("click", () => {
-                loadSamples(sensor.id).then(samples => {
-                    samplesChart(sensor, samples);
-                    samplesTable(sensor, samples);
-                })
-            })
-        });
+        // show chart and table
+        buildChartAndTable(sensor, true);
     },
-    
+
     updateUI: (sensor, body) => {
-        loadSamples(sensor.id).then(samples => {
-            samplesChart(sensor, samples);
-            samplesTable(sensor, samples);
-        });
+        buildChartAndTable(sensor, true);
     }
 }

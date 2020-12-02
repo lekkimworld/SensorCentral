@@ -65,6 +65,7 @@ const convertRowsToSensors = (result : QueryResult) => {
 
 export interface SensorQueryData {
     deviceId? : string;
+    sensorIds? : Array<string>,
     type? : SensorType;
     label? : string;
 }
@@ -692,6 +693,7 @@ export class StorageService extends BaseService {
             if (queryData.deviceId) sensors = sensors.filter(s => s.device?.id === queryData.deviceId);
             if (queryData.type) sensors = sensors.filter(s => s.type === queryData.type);
             if (queryData.label) sensors = sensors.filter(s => s.label === queryData.label);
+            if (queryData.sensorIds) sensors = sensors.filter(s => queryData.sensorIds?.includes(s.id));
         }
         
         // return

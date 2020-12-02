@@ -1,7 +1,12 @@
 const Chart = require("chart.js");
 const moment = require("moment");
+const uiutils = require("./ui-utils");
+const fetcher = require("./fetch-util");
+const $ = require("jquery");
+const dateutils = require("./date-utils");
 
 const ID_CHART = "sensorChart";
+const ID_CHART_CONTAINER = "sensorChartContainer";
 
 const MIN_Y_FACTOR = 0.1;
 const MAX_Y_FACTOR = 0.1;
@@ -81,8 +86,7 @@ const lineChart = (id, labels, inputOptions = {}) => {
     const chartOptions = {
         "responsive": options.responsive,
         "scales": {
-            "xAxes": [{
-            }],
+            "xAxes": [{}],
             "yAxes": [{
                 "ticks": {
                     "min": minY,
@@ -147,7 +151,7 @@ const barChart = (id, labels, inputOptions = {}) => {
                 "stacked": options.stacked
             }]
         },
-    }   
+    }
     const chartConfig = {
         "type": "bar",
         "data": chartData,
@@ -156,8 +160,72 @@ const barChart = (id, labels, inputOptions = {}) => {
     createOrUpdateChart(id, chartConfig);
 };
 
+const buildGaugeChart = ({ deviceId, sensorIds, sensors, samplesCount }) => {
+        return new Promise((resolve, reject) => {
+                    if (!deviceId && !sensors && !sensorIds) return Promise.reject(Error("Must supply deviceId, sensors or sensorIds"));
+                    if (sensors) {
+                        // use the sensors we received
+                        resolve(sensors);
+                    } else if (deviceId) {
+                        fetcher.graphql(`{sensors(data: {deviceId:"${deviceId}"}){id,name}}`).then(data => {
+                            resolve(data.sensors);
+                        })
+                    } else {
+                        fetcher.graphql(`query {sensors(data: {sensorIds: [${sensorIds.map(s => `"${s}"`).join()}]}){id,name}}`).then(data => {
+                resolve(data.sensors);
+            })
+        }
+    }).then(sensors => {
+        if (!sensors || !sensors.length) return Promise.reject(Error("No sensors to chart."));
+        const sensorIdsStr = sensors.map(s => `"${s.id}"`);
+        return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: [${sensorIdsStr.join()}], decimals: 2, sampleCount: ${samplesCount}}){id, name, data{x,y}}}`);
+    }).then(result => {
+        const samples = result["ungroupedQuery"];
+        return Promise.resolve(samples);
+    }).then(samples => {
+        if (!samples || !Array.isArray(samples)) return Promise.reject(Error("No data received or samples was not an array of data."));
+        if (!samples.length) return Promise.resolve();
+        if (samples[0].data.length <= 1) return Promise.reject(Error("Cannot chart as only one sample."));
+
+        // generate labels from first series
+        const labels = samples[0].data.map(d => d.x).map(x => dateutils.formatDMYTime(x));
+
+        // build datasets
+        const datasets = samples.map(sample => {
+            return {
+                "label": sample.name,
+                "data": sample.data.map(d => d.y)
+            }
+        })
+        return Promise.resolve({
+            labels,
+            datasets,
+            samples
+        })
+    }).then(data => {
+        if (!data) {
+            return Promise.reject(Error("No data found for chart."));
+        } else {
+            // build chart
+            $(`#${ID_CHART_CONTAINER}`).html(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`)
+            lineChart(
+                ID_CHART, 
+                data.labels, 
+                {
+                    "datasets": data.datasets
+                }
+            );
+            return Promise.resolve(data.samples);
+        }
+    }).catch(err => {
+        $(`#${ID_CHART_CONTAINER}`).html(err.message);
+    })
+}
+
 module.exports = {
     lineChart,
     barChart,
-    ID_CHART
+    buildGaugeChart,
+    ID_CHART,
+    ID_CHART_CONTAINER
 }
