@@ -1,6 +1,6 @@
 const uiutils = require("./ui-utils");
 const $ = require("jquery");
-const { buildGaugeChart, ID_CHART_CONTAINER } = require("./charts-util");
+const { addChartContainer, buildGaugeChart } = require("./charts-util");
 const fetcher = require("./fetch-util");
 const dateutils = require("./date-utils");
 const formsutil = require("./forms-util");
@@ -53,9 +53,16 @@ module.exports = (document, elemRoot, ctx) => {
                 ]
             );
 
-            // create div for graph
-            elemRoot.append(uiutils.htmlSectionTitle("Graph"));
-            elemRoot.append(`<div id="${ID_CHART_CONTAINER}" class="mb-3"></div>`);
+            // create context for chart and create it
+            const chartCtx = addChartContainer(elemRoot, {
+                "append": true,
+                "actions": [
+                    "INTERVAL", "DOWNLOAD"
+                ]
+            });
+            chartCtx.gaugeChart({
+                "deviceId": device.id
+            })
 
             uiutils.appendDataTable(elemRoot, {
                 "actions": [{
@@ -120,9 +127,6 @@ module.exports = (document, elemRoot, ctx) => {
                     }
                 })
             });
-
-            // build chart
-            buildGaugeChart({ "deviceId": device.id, "samplesCount": 50 });
         })
     }
 

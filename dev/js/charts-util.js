@@ -4,9 +4,13 @@ const uiutils = require("./ui-utils");
 const fetcher = require("./fetch-util");
 const $ = require("jquery");
 const dateutils = require("./date-utils");
+const formutils = require("./forms-util");
+const uuid = require("uuid/v1");
 
-const ID_CHART = "sensorChart";
-const ID_CHART_CONTAINER = "sensorChartContainer";
+const ID_CHART_BASE = "sensorChart";
+const ID_CHART_CONTAINER = `${ID_CHART_BASE}_container`;
+const ID_CHART_ACTIONS = `${ID_CHART_BASE}_actions`;
+const ID_CHART_BODY = `${ID_CHART_BASE}_body`;
 
 const MIN_Y_FACTOR = 0.1;
 const MAX_Y_FACTOR = 0.1;
@@ -43,6 +47,12 @@ const createOrUpdateChart = (id, chartConfig) => {
     let ctx2d = document.getElementById(id).getContext('2d');
     myChart = new Chart(ctx2d, chartConfig);
     charts[id] = myChart;
+}
+
+const createCanvasForContainer = id => {
+    const canvasId = `${id}_canvas`;
+    $(`#${id}`).html(`<canvas id="${canvasId}" width="${window.innerWidth - 20}px" height="${window.innerHeight < 400 ? 200 : 300}px"></canvas>`)
+    return canvasId;
 }
 
 const setResponsiveFlag = (options) => {
@@ -103,6 +113,85 @@ const lineChart = (id, labels, inputOptions = {}) => {
     createOrUpdateChart(id, chartConfig);
 };
 
+const timeChart = (id, datasets, options = {}) => {
+    if (!options.hasOwnProperty("animation")) options.animation = {}
+    if (!options.animation.hasOwnProperty("duration")) options.animation.duration = 500;
+    setResponsiveFlag(options);
+
+    const cfg = {
+        "data": {
+            "datasets": datasets.map((ds, idx) => ({
+                label: ds.name,
+                backgroundColor: backgroundColors[idx % backgroundColors.length],
+                borderColor: backgroundColors[idx % backgroundColors.length],
+                data: ds.data.map(s => ({
+                    x: moment(s.x),
+                    y: s.y
+                })),
+                type: 'line',
+                pointRadius: 0,
+                fill: false,
+                lineTension: 0,
+                borderWidth: 2
+            }))
+        },
+        "options": {
+            "responsive": options.responsive,
+            "animation": options.animation,
+            "scales": {
+                "xAxes": [{
+                    "type": 'time',
+                    "distribution": 'series',
+                    "offset": true,
+                    "ticks": {
+                        major: {
+                            enabled: true,
+                            fontStyle: 'bold'
+                        },
+                        source: 'data',
+                        autoSkip: true,
+                        autoSkipPadding: 75,
+                        maxRotation: 0,
+                        sampleSize: 100
+                    },
+                    afterBuildTicks: function(scale, ticks) {
+                        var majorUnit = scale._majorUnit;
+                        var firstTick = ticks[0];
+                        var i, ilen, val, tick, currMajor, lastMajor;
+
+                        val = moment(ticks[0].value);
+                        if ((majorUnit === 'minute' && val.second() === 0) ||
+                            (majorUnit === 'hour' && val.minute() === 0) ||
+                            (majorUnit === 'day' && val.hour() === 9) ||
+                            (majorUnit === 'month' && val.date() <= 3 && val.isoWeekday() === 1) ||
+                            (majorUnit === 'year' && val.month() === 0)) {
+                            firstTick.major = true;
+                        } else {
+                            firstTick.major = false;
+                        }
+                        lastMajor = val.get(majorUnit);
+
+                        for (i = 1, ilen = ticks.length; i < ilen; i++) {
+                            tick = ticks[i];
+                            val = moment(tick.value);
+                            currMajor = val.get(majorUnit);
+                            tick.major = currMajor !== lastMajor;
+                            lastMajor = currMajor;
+                        }
+                        return ticks;
+                    }
+                }],
+                "yAxes": [{
+                    gridLines: {
+                        drawBorder: false
+                    }
+                }]
+            }
+        }
+    };
+    createOrUpdateChart(id, cfg);
+}
+
 const barChart = (id, labels, inputOptions = {}) => {
     // build options
     const options = Object.assign({}, inputOptions);
@@ -157,18 +246,20 @@ const barChart = (id, labels, inputOptions = {}) => {
         "data": chartData,
         "options": chartOptions
     };
-    createOrUpdateChart(id, chartConfig);
+
+    const canvasId = createCanvasForContainer(id);
+    createOrUpdateChart(canvasId, chartConfig);
 };
 
-const buildGaugeChart = ({ deviceId, sensorIds, sensors, samplesCount }) => {
+const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount = 50, start, end }) => {
         return new Promise((resolve, reject) => {
                     if (!deviceId && !sensors && !sensorIds) return Promise.reject(Error("Must supply deviceId, sensors or sensorIds"));
                     if (sensors) {
                         // use the sensors we received
-                        resolve(sensors);
+                        resolve(sensors.filter(s => s.type ? s.type === "gauge" : true));
                     } else if (deviceId) {
-                        fetcher.graphql(`{sensors(data: {deviceId:"${deviceId}"}){id,name}}`).then(data => {
-                            resolve(data.sensors);
+                        fetcher.graphql(`{sensors(data: {deviceId:"${deviceId}"}){id,name, type}}`).then(data => {
+                            resolve(data.sensors.filter(s => s.type === "gauge"));
                         })
                     } else {
                         fetcher.graphql(`query {sensors(data: {sensorIds: [${sensorIds.map(s => `"${s}"`).join()}]}){id,name}}`).then(data => {
@@ -176,9 +267,13 @@ const buildGaugeChart = ({ deviceId, sensorIds, sensors, samplesCount }) => {
             })
         }
     }).then(sensors => {
-        if (!sensors || !sensors.length) return Promise.reject(Error("No sensors to chart."));
+        if (!sensors || !sensors.length) return Promise.reject(Error("No gauge sensors to chart."));
         const sensorIdsStr = sensors.map(s => `"${s.id}"`);
-        return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: [${sensorIdsStr.join()}], decimals: 2, sampleCount: ${samplesCount}}){id, name, data{x,y}}}`);
+        if (start && end) {
+            return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: [${sensorIdsStr.join()}], decimals: 2, start: "${start.toISOString()}", end: "${end.toISOString()}"}){id, name, data{x,y}}}`);
+        } else {
+            return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: [${sensorIdsStr.join()}], decimals: 2, sampleCount: ${samplesCount}}){id, name, data{x,y}}}`);
+        }
     }).then(result => {
         const samples = result["ungroupedQuery"];
         return Promise.resolve(samples);
@@ -187,36 +282,15 @@ const buildGaugeChart = ({ deviceId, sensorIds, sensors, samplesCount }) => {
         if (!samples.length) return Promise.resolve();
         if (samples[0].data.length <= 1) return Promise.reject(Error("Cannot chart as only one sample."));
 
-        // generate labels from first series
-        const labels = samples[0].data.map(d => d.x).map(x => dateutils.formatDMYTime(x));
+        // build chart
+        const canvasId = createCanvasForContainer(elementId);
 
-        // build datasets
-        const datasets = samples.map(sample => {
-            return {
-                "label": sample.name,
-                "data": sample.data.map(d => d.y)
-            }
-        })
-        return Promise.resolve({
-            labels,
-            datasets,
+        timeChart(
+            canvasId, 
             samples
-        })
-    }).then(data => {
-        if (!data) {
-            return Promise.reject(Error("No data found for chart."));
-        } else {
-            // build chart
-            $(`#${ID_CHART_CONTAINER}`).html(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`)
-            lineChart(
-                ID_CHART, 
-                data.labels, 
-                {
-                    "datasets": data.datasets
-                }
-            );
-            return Promise.resolve(data.samples);
-        }
+        );
+        return Promise.resolve(samples);
+        
     }).catch(err => {
         $(`#${ID_CHART_CONTAINER}`).html(err.message);
     })
@@ -225,7 +299,123 @@ const buildGaugeChart = ({ deviceId, sensorIds, sensors, samplesCount }) => {
 module.exports = {
     lineChart,
     barChart,
-    buildGaugeChart,
-    ID_CHART,
-    ID_CHART_CONTAINER
+    timeChart,
+    addChartContainer: (elemRoot, options = {}) => {
+        if (!options.hasOwnProperty("actions")) options.actions = [];
+        if (!options.hasOwnProperty("title")) options.title = "Chart";
+        if (!options.hasOwnProperty("classList")) options.classList = [];
+        if (!options.hasOwnProperty("append")) options.append = false;
+
+        // create ids
+        const uid = uuid();
+        const containerId = `${ID_CHART_CONTAINER}_${uid}`;
+        const actionsId = `${ID_CHART_ACTIONS}_${uid}`
+        const bodyId = `${ID_CHART_BODY}_${uid}`
+        const bodyhtml = `<div id="${containerId}">
+            ${uiutils.htmlSectionTitle(options.title || "", "float-left")}
+            <span id="${actionsId}"></span>
+            <div id="${bodyId}"></div>
+        </div>`;
+
+        // set html
+        if (options.append) {
+            elemRoot.append(bodyhtml);
+        } else {
+            elemRoot.html(bodyhtml);
+        }
+
+        // create context
+        let chartOptions;
+        let chartFn;
+        const state = {};
+        const ctx = {
+            "_state": state,
+            "reload": (ctx) => {
+                if (!chartFn) return Promise.reject(Error("Not called before"));
+                const options = Object.assign({}, chartOptions);
+                options.start = ctx.start_dt;
+                options.end = ctx.end_dt;
+                return chartFn(bodyId, options).then(data => {
+                    state.data = data;
+                    return Promise.resolve(data);
+                })
+            },
+            "gaugeChart": (options) => {
+                chartOptions = options;
+                chartFn = buildGaugeChart;
+                return buildGaugeChart(bodyId, options).then(data => {
+                    state.data = data;
+                    return Promise.resolve(data);
+                })
+            },
+            "timeChart": (datasets, options) => {
+                chartOptions = options;
+                chartFn = timeChart;
+                return timeChart(bodyId, datasets, options);
+            },
+            "barChart": (labels, options) => {
+                chartOptions = options;
+                chartFn = barChart;
+                return barChart(bodyId, labels, options);
+            }
+        };
+
+        // filter non compliant actions
+        const stdActions = new Map();
+        stdActions.set("INTERVAL", {
+            "id": "calendar",
+            "icon": "fa-calendar",
+            "callback": (chartCtx) => {
+                formutils.appendIntervalSelectForm({}, (formCtx) => {
+                    const p = ctx.reload(formCtx);
+                    if (p) {
+                        p.then(data => {
+                            if (options.hasOwnProperty("callback") && typeof options.callback === "function") {
+                                options.callback("INTERVAL", data)
+                            }
+                        })
+                    }
+                })
+            }
+        })
+        stdActions.set("DOWNLOAD", {
+            "id": "save",
+            "icon": "fa-save",
+            "callback": (ctx) => {
+                console.log(state.data)
+                fetcher.post(`/api/v1/data/ungrouped`, {
+                    "data": state.data,
+                    "type": "csv"
+                }).then(obj => {
+                    window.open(`/download/ungrouped/${obj.downloadKey}/attachment`, "_new");
+                })
+            }
+        })
+        const availableStdActions = Array.from(stdActions.keys());
+
+        // remove non-available standard actions or actions mission id, icon or callback
+        options.actions = options.actions.filter(action => {
+            if (typeof action === "string" && availableStdActions.includes(action)) return true;
+            if (typeof action === "object" && action.id && action.icon && typeof action.callback === "function") return true;
+            return false;
+        }).map(action => {
+            if (typeof action === "object") return action;
+            return stdActions.get(action);
+        })
+
+        // build actions
+        const htmlActions = options.actions.reduce((buffer, action) => {
+            buffer += `<i id="${uid}_${action.id}" class="btn fa ${action.icon} float-left p-0 ml-2" aria-hidden="true"></i>`;
+            return buffer;
+        }, "")
+        $(`#${actionsId}`).html(htmlActions);
+        options.actions.forEach(action => {
+            $(`#${uid}_${action.id}`).on("click", () => {
+                action.callback(ctx);
+            })
+        })
+        
+        // return context
+        return ctx;
+    }
 }

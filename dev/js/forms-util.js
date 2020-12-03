@@ -3,6 +3,22 @@ const fetcher = require("./fetch-util");
 const storage = require("./storage-utils");
 const ID_ELEM_FORM = "sensorcentral-form";
 
+const createDateTimePicker = id => {
+    $(`#${id}`).datetimepicker({
+        locale: 'da_dk',
+        inline: true,
+        sideBySide: true,
+        icons: {
+            time: "fa fa-clock-o",
+            date: "fa fa-calendar",
+            up: "fa fa-arrow-up",
+            down: "fa fa-arrow-down",
+            next: "fa fa-arrow-right",
+            previous: "fa fa-arrow-left"
+        }
+    });
+}
+
 const removeForm = () => {
     // remove form
     const elem = $(`#${ID_ELEM_FORM}`);
@@ -180,6 +196,72 @@ const DATE_SELECT_FORM = {
         return data;
     }
 }
+const INTERVAL_SELECT_FORM = {
+    "name": "intervalselect",
+    "html": (formname, ctx) => {
+        return `<div class="modal fade" id="${formname}Modal" tabindex="-1" role="dialog" aria-labelledby="${formname}ModalLabel" aria-hidden="true">
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="${formname}ModalLabel">Interval Selection</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="${formname}Form" novalidate>
+                <div class="form-group">
+                    <label for="dtInput">Start Date</label>
+                    <div class='input-group date' id='start_dt'>
+                        <input type='text' class="form-control" />
+                        <span class="input-group-addon">
+                            <span class="fa fa-calendar"></span>
+                        </span>
+                    </div>
+                    <small id="dtHelp" class="form-text text-muted">Specify the start date/time.</small>
+                    <div class="invalid-feedback">
+                        You must specify the start date/time.
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="dtInput">End Date</label>
+                    <div class='input-group date' id='end_dt'>
+                        <input type='text' class="form-control" />
+                        <span class="input-group-addon">
+                            <span class="fa fa-calendar"></span>
+                        </span>
+                    </div>
+                    <small id="dtHelp" class="form-text text-muted">Specify the end date/time.</small>
+                    <div class="invalid-feedback">
+                        You must specify the end date/time.
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            ${buttonClose()}
+            ${buttonPerformAction("Apply")}
+        </div>
+    </div>
+</div>
+</div>`},
+    "fnInit": (formdata, ctx) => {
+        // init date/time pickers
+        createDateTimePicker("start_dt");
+        createDateTimePicker("end_dt");
+        return Promise.resolve();
+    },
+    "fnGetData": () => {
+        // build return data
+        const sdt = $('#start_dt').data("DateTimePicker").date();
+        const edt = $('#end_dt').data("DateTimePicker").date();
+        const data = {
+            "start_dt": edt.isAfter(sdt) ? sdt : edt,
+            "end_dt": edt.isAfter(sdt) ? edt : sdt 
+        }
+        return data;
+    }
+}
 const MANUAL_SENSOR_SAMPLE = {
     "name": "sample",
     "html": `<div class="modal fade" id="sampleModal" tabindex="-1" role="dialog" aria-labelledby="sampleModalLabel" aria-hidden="true">
@@ -229,19 +311,7 @@ const MANUAL_SENSOR_SAMPLE = {
 </div>`,
     "fnInit": (formdata, ctx) => {
         // init date picker
-        $('#datetimepicker1').datetimepicker({
-            locale: 'da_dk',
-            inline: true,
-            sideBySide: true,
-            icons: {
-                time: "fa fa-clock-o",
-                date: "fa fa-calendar",
-                up: "fa fa-arrow-up",
-                down: "fa fa-arrow-down",
-                next: "fa fa-arrow-right",
-                previous: "fa fa-arrow-left"
-            }
-        });
+        createDateTimePicker("datetimepicker1");
         
         // disable id-field
         $("#idInput").prop("disabled", true);
@@ -736,6 +806,9 @@ module.exports = {
     },
     appendDateSelectForm: (ctx, onPerformAction) => {
         prepareForm(DATE_SELECT_FORM, ctx, onPerformAction);
+    },
+    appendIntervalSelectForm: (ctx, onPerformAction) => {
+        prepareForm(INTERVAL_SELECT_FORM, ctx, onPerformAction);
     },
     appendJWTForm: (device) => {
         prepareForm(DEVICE_JWT, {"device": device});

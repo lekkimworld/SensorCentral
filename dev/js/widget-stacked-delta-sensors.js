@@ -1,5 +1,5 @@
 const fetcher = require("./fetch-util");
-const { barChart } = require("./charts-util");
+const { addChartContainer, barChart } = require("./charts-util");
 const moment = require("moment");
 const uiutils = require("./ui-utils");
 
@@ -12,10 +12,8 @@ module.exports = (elem) => {
         if (data.sensors.length === 0) {
             // no delta sensors
         } else {
-            elem.html(`
-                ${uiutils.htmlSectionTitle("Stacked Delta Sensors (this week)")}
-                <canvas id="sensorcentral_power"></canvas>
-            `);
+
+            const chartCtx = addChartContainer(elem, { title: "Stacked Delta Sensors (this week)" });
             return fetcher.graphql(`query {
                 groupedQuery(data: {sensorIds: ["${data.sensors.map(s => s.id).join("\",\"")}"], groupBy: day, adjustBy: week, start: 0, end: -1, addMissingTimeSeries: true}){id, name, data{x,y}}
             }`).then(data => {
@@ -27,7 +25,7 @@ module.exports = (elem) => {
                 })
                 const labels = data.groupedQuery[0].data.map(d => d.x);
 
-                barChart("sensorcentral_power", labels, {
+                chartCtx.barChart(labels, {
                     "datasets": datasets,
                     "stacked": true
                 })

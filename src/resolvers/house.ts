@@ -7,6 +7,7 @@ const FavoriteFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context },
     const v = await next();
     if (info.fieldName === "favorite") {
         const house = await context.storage.getFavoriteHouse(context.user);
+        if (!house) return false;
         return house.id === root.id;
     } else {
         return v;

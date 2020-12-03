@@ -101,6 +101,12 @@ abstract class QueryInput {
 class GaugeQueryInput extends QueryInput {
     @Field({nullable:true, defaultValue: 100})
     sampleCount : number
+
+    @Field({nullable:true})
+    start : Date
+
+    @Field({nullable:true})
+    end : Date
 }
 
 
@@ -259,7 +265,11 @@ export class CounterQueryResolver {
             return ctx.storage.getSensorOrUndefined(ctx.user, sensorId);
         }))
         const dbdata = await Promise.all(data.sensorIds.map(sensorId => {
-            return ctx.storage.getLastNSamplesForSensor(ctx.user, sensorId, data.sampleCount);
+            if (data.start && data.end) {
+                return ctx.storage.getSamplesForSensor(ctx.user, sensorId, data.start, data.end, 10);
+            } else {
+                return ctx.storage.getLastNSamplesForSensor(ctx.user, sensorId, data.sampleCount);
+            }
         }))
         
         // build dataset(s);

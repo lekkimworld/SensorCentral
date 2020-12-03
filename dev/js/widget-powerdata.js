@@ -1,6 +1,6 @@
 const fetcher = require("./fetch-util");
 const formutils = require("./forms-util");
-const { barChart, ID_CHART } = require("./charts-util");
+const { addChartContainer, barChart } = require("./charts-util");
 const moment = require("moment");
 const uiutils = require("./ui-utils");
 
@@ -8,14 +8,31 @@ const uiutils = require("./ui-utils");
 let visibleDates = [];
 
 module.exports = (elem) => {
-    elem.html(`
-        <div>
-            ${uiutils.htmlSectionTitle("Power Prices", "float-left")}
-            <i id="powerdata-save" class="btn fa fa-save float-left p-0 ml-2" aria-hidden="true"></i>
-            <i id="powerdata-calendar" class="btn fa fa-calendar float-left ml-2 p-0" aria-hidden="true"></i>
-        </div>
-        <canvas id="${ID_CHART}" data-dates=""></canvas>
-    `);
+    const chartCtx = addChartContainer(elem, {
+        title: "Power Prices",
+        actions: [{
+                "id": "save",
+                "icon": "fa-save",
+                "callback": () => {
+                    fetcher.post(`/api/v1/data/power`, {
+                        "dates": visibleDates,
+                        "type": "csv"
+                    }).then(obj => {
+                        window.open(`/download/power/${obj.downloadKey}/attachment`, "_new");
+                    })
+                }
+            },
+            {
+                "id": "calendar",
+                "icon": "fa-calendar",
+                "callback": () => {
+                    formutils.appendDateSelectForm(undefined, (data) => {
+                        loadAndShowPowerdata(data.date);
+                    })
+                }
+            }
+        ]
+    })
 
     // load power data - build query 2 days back, today and tomorrow
     const loadAndShowPowerdata = input => {
@@ -41,8 +58,7 @@ module.exports = (elem) => {
             }, [])
 
             // do chart
-            barChart(
-                ID_CHART,
+            chartCtx.barChart(
                 labels, {
                     datasets
                 }

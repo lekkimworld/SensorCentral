@@ -1,4 +1,6 @@
 const storage = require("./storage-utils");
+const { timeChart } = require("./charts-util");
+const fetcher = require("./fetch-util");
 
 module.exports = (document, elemRoot) => {
     if (!storage.isLoggedIn()) {
@@ -25,11 +27,14 @@ module.exports = (document, elemRoot) => {
                 id="sensorcentral_stackeddelta"></div>
         </div>
         <div class="row">
-            <div class="mt-4 col-lg-12 col-md-12 col-sm-12"
+            <div class="col-lg-6 col-md-12 col-sm-12"
                 id="sensorcentral_favorites"></div>
+            <div class="col-lg-6 col-md-12 col-sm-12"
+                id="sensorcentral_favgauges"></div>
         </div>
     `);
     require("./widget-powerdata")($("#sensorcentral_powerdata"));
     require("./widget-stacked-delta-sensors")($("#sensorcentral_stackeddelta"));
     require("./widget-favorite-sensors")($("#sensorcentral_favorites"));
+    require("./widget-chart-favorite-gauge-sensors")($("#sensorcentral_favgauges"));
 }
