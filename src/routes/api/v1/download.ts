@@ -6,8 +6,9 @@ import moment from 'moment';
 
 const router = express.Router();
 
-router.get("/power/:downloadKey/:as", async (req, res) => {
+router.get("/:filename/:downloadKey/:as", async (req, res) => {
     const id = req.params.downloadKey;
+    const filename = req.params.filename;
     const asType = req.params.as;
 	const storage = await lookupService(StorageService.NAME) as StorageService;
 	const data = await storage.getTemporaryData(id);
@@ -15,7 +16,7 @@ router.get("/power/:downloadKey/:as", async (req, res) => {
 
     if (!asType || asType === "attachment") {
         res.type("application/octet-stream");
-        res.setHeader("Content-Disposition", `attachment; filename="powerdata_export_${formatDate(moment(), "YYYYMMDD_HHmm")}.csv"`);
+        res.setHeader("Content-Disposition", `attachment; filename="sensorcentral_${filename}_dataexport_${formatDate(moment(), "YYYYMMDD_HHmm")}.csv"`);
     } else {
         res.type("json");
     }

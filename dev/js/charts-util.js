@@ -51,7 +51,7 @@ const createOrUpdateChart = (id, chartConfig) => {
 
 const createCanvasForContainer = id => {
     const canvasId = `${id}_canvas`;
-    $(`#${id}`).html(`<canvas id="${canvasId}" width="${window.innerWidth - 20}px" height="${window.innerHeight < 400 ? 200 : 300}px"></canvas>`)
+    $(`#${id}`).html(`<canvas id="${canvasId}" width="${window.innerWidth - 20}px" height="${window.innerHeight < 400 ? 200 : 400}px"></canvas>`)
     return canvasId;
 }
 
@@ -335,6 +335,7 @@ module.exports = {
                 const options = Object.assign({}, chartOptions);
                 options.start = ctx.start_dt;
                 options.end = ctx.end_dt;
+                chartOptions = options;
                 return chartFn(bodyId, options).then(data => {
                     state.data = data;
                     return Promise.resolve(data);
@@ -382,13 +383,16 @@ module.exports = {
             "id": "save",
             "icon": "fa-save",
             "callback": (ctx) => {
-                console.log(state.data)
-                fetcher.post(`/api/v1/data/ungrouped`, {
-                    "data": state.data,
-                    "type": "csv"
-                }).then(obj => {
-                    window.open(`/download/ungrouped/${obj.downloadKey}/attachment`, "_new");
-                })
+                if (chartFn === buildGaugeChart) {
+                    fetcher.post(`/api/v1/data/ungrouped`, {
+                        "options": chartOptions,
+                        "type": "csv"
+                    }).then(obj => {
+                        window.open(`/download/ungrouped/${obj.downloadKey}/attachment`, "_new");
+                    })
+                } else {
+                    formutils.appendError(Error("Can only create download for ungrouped query."));
+                }
             }
         })
         const availableStdActions = Array.from(stdActions.keys());

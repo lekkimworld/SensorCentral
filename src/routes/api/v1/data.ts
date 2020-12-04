@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { BaseService, ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage, 
-	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity } from '../../../types';
+	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity, SensorType } from '../../../types';
 import { LogService } from '../../../services/log-service';
 import { EventService } from '../../../services/event-service';
 import { StorageService } from '../../../services/storage-service';
@@ -10,6 +10,7 @@ import {formatDate} from "../../../utils";
 import moment from 'moment';
 import { ensureScopeFactory, hasScope } from '../../../middleware/ensureScope';
 import uuid from 'uuid';
+import { Sensor } from 'src/resolvers/sensor';
 
 const router = express.Router();
 
@@ -234,7 +235,7 @@ router.post("/power", async (req, res) => {
 		const colsN = data.reduce((cols : Array<Array<string>>, d : any, idx : number) => {
 			if (!d)  return cols;
 			const col = [];
-			col.push(`foo${idx}`);
+			col.push(`${obj.dates[idx]}`);
 			col.push(...d.map((v : any) => v.y));
 			cols.push(col);
 			return cols;
@@ -254,6 +255,82 @@ router.post("/power", async (req, res) => {
 		str = JSON.stringify(data);
 	}
 	
+	// set in redis
+	const key = uuid();
+	storage.setTemporaryData(key, 120, str);
+
+	// respond
+	res.status(200).type("json").send({
+		"downloadKey": key
+	});
+})
+
+router.post("/ungrouped", async (req, res) => {
+	const obj = req.body;
+	const user = res.locals.user as BackendIdentity;
+	if (!obj.hasOwnProperty("options") || typeof obj.options !== "object") throw new HttpException(417, "Must supply options key (object) in body");
+	if (!obj.options.hasOwnProperty("sensors") && !obj.options.hasOwnProperty("sensorIds") && !obj.options.hasOwnProperty("deviceId")) throw new HttpException(417, "Must supply sensors, sensorIds or deviceId in options");
+	const opts = obj.options;
+	const storage = await lookupService(StorageService.NAME) as StorageService;
+	
+	// get sensors
+	let sensors = opts.sensors;
+	if (!sensors) {
+		if (opts.sensorIds) {
+			sensors = await storage.getSensors(user, {sensorIds: opts.sensorIds});
+		} else {
+			sensors = await storage.getSensors(user, {deviceId: opts.deviceId});
+		}
+	}
+	sensors = sensors.filter((s : Sensor) => s.type === SensorType.gauge);
+
+	// get data
+	let data;
+	if (opts.start && opts.end) {
+		data = await Promise.all(sensors.map((sensor : Sensor) => storage.getSamplesForSensor(user, sensor.id, opts.start, opts.end)));
+	} else {
+		data = await Promise.all(sensors.map((sensor : Sensor) => storage.getLastNSamplesForSensor(user, sensor.id)));
+	}
+
+	let str = "";
+	if (obj.type === "csv") {
+		const colsN = data.reduce((cols : Array<Array<string>>, d : any, idx : number) => {
+			if (!d)  return cols;
+			const data = d.filter((e:any) => e.dt && e.value);
+			const col1 = data.map((e : any) => moment(e.dt).format("YYYY-MM-DD"));
+			const col2 = data.map((e : any) => moment(e.dt).format("HH:mm:ss"));
+			const col3 = data.map((e : any) => e.value);
+			col1.unshift(sensors[idx].id);
+			col2.unshift(sensors[idx].name);
+			col3.unshift(sensors[idx].type);
+			cols.push(col1);
+			cols.push(col2);
+			cols.push(col3);
+			return cols;
+		}, []);
+		
+		let i=0;
+		let doWhile = 0;
+		do {
+			doWhile = 0;
+			for (let k=0; k<colsN.length; ) {
+				const col1 = colsN[k++];
+				const col2 = colsN[k++];
+				const col3 = colsN[k++];
+				if (i < col1.length) {
+					str += `${col1[i]};${col2[i]};${col3[i]};`;
+					doWhile++;
+				} else {
+					str += ";;;";
+				}
+			}
+			i++;
+			str += "\n";
+		} while (doWhile != 0)
+	} else {
+		str = JSON.stringify(data);
+	}
+
 	// set in redis
 	const key = uuid();
 	storage.setTemporaryData(key, 120, str);
