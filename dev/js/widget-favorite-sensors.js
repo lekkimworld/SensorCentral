@@ -3,9 +3,10 @@ const dateutils = require("./date-utils");
 const uiutils = require("./ui-utils");
 
 module.exports = (elem) => {
-    elem.html("");
-
     const updateFavoriteSensors = () => {
+        // clear element
+        elem.html("");
+
         // load favorite sensors
         fetcher.graphql(`{favoriteSensors{id,name,icon,scaleFactor,last_reading{value,dt},icon,device{id, house{id}}}}`).then(data => {
             const sensors = data.favoriteSensors;
@@ -14,13 +15,7 @@ module.exports = (elem) => {
             // add title
             uiutils.appendTitleRow(
                 elem,
-                "Favorite Sensors", [{
-                    "rel": "refresh",
-                    "icon": "refresh",
-                    "click": () => {
-                        updateFavoriteSensors();
-                    }
-                }],
+                "Favorite Sensors", [],
                 "h5"
             );
 
