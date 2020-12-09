@@ -8,6 +8,7 @@ import {lookupService} from "../../../configure-services";
 import { StorageService } from "../../../services/storage-service";
 import { IdentityService } from "../../../services/identity-service";
 import { LogService } from "../../../services/log-service";
+import constants from "../../../constants";
 
 const router = express.Router();
 
@@ -119,11 +120,16 @@ router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
         logSvcs.debug(`Generated new BrowserLoginResponse <${JSON.stringify(payload)}>`);
 
         // remove cached user (ensure also removed from session if there)
+        // UNLESS graphql playgrond enabled
         identitySvcs.removeCachedIdentity(user);
         const session = req.session as any;
         if (session && session.browserResponse) {
-            delete session.browserResponse;
-            session.save();
+            if (constants.DEFAULTS.GRAPHQL_ENABLE_PLAYGROUND) {
+                logSvcs.warn("GraphQL is ENABLED so will not delete browserResponse from session - will cause issued switching house unless cookie expired");
+            } else {
+                delete session.browserResponse;
+                session.save();
+            }
         }
 
         // send

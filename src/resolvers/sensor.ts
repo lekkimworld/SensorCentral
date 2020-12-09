@@ -159,12 +159,16 @@ export class SensorResolver {
         return new Sensor(sensor);
     }
 
-    @Query(() => Sensor, {})
+    @Query(() => Sensor, {nullable: true})
     async querySensor(@Arg("label") label : string, @Ctx() ctx : types.GraphQLResolverContext) {
-        const sensor = await ctx.storage.getSensors(ctx.user, {
+        const sensors = await ctx.storage.getSensors(ctx.user, {
             label
         } as SensorQueryData);
-        return sensor;
+        if (sensors && Array.isArray(sensors) && sensors.length) {
+            return sensors[0];
+        } else {
+            return undefined;
+        }
     }
 
     @Mutation(() => Sensor)
