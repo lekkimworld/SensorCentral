@@ -1024,6 +1024,10 @@ export class StorageService extends BaseService {
      * @param data 
      */
     async updateSettings(user : BackendIdentity, data : UpdateSettingsInput) : Promise<void> {
+        if (data.notify_using === NotifyUsing.pushover && (!data.pushover_apptoken || !data.pushover_userkey)) {
+            // must supply pushover tokens if using pushover
+            throw Error("Must supply pushover tokens if notifying via pushover");
+        }
         await this.dbService!.query("update login_user set default_notify_using=$1, pushover_apptoken=$2, pushover_userkey=$3 where id=$4", data.notify_using, data.pushover_apptoken, data.pushover_userkey, this.getUserIdFromUser(user));
     }
     

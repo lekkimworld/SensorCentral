@@ -26,12 +26,12 @@ export class UpdateSettingsInput {
     @IsEnum(types.NotifyUsing)
     notify_using : types.NotifyUsing
 
-    @Field()
-    @Length(1, 128)
+    @Field({nullable: true})
+    @Length(0, 128)
     pushover_userkey : string;
 
-    @Field()
-    @Length(1, 128)
+    @Field({nullable: true})
+    @Length(0, 128)
     pushover_apptoken : string;
 }
 
