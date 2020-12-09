@@ -20,8 +20,9 @@ router.get("/", async (req, res, next) => {
     const result = await getAuthenticationUrl();
 
     // save nonce, save session
-    req.session!.nonce = result.nonce;
-    req.session!.save(err => {
+    const session = req.session as any;
+    session!.nonce = result.nonce;
+    session!.save((err : Error) => {
         // abort if errror
         if (err) {
             return next(new HttpException(500, "Unable to save session", err));
@@ -119,8 +120,8 @@ router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
 
         // remove cached user (ensure also removed from session if there)
         identitySvcs.removeCachedIdentity(user);
-        if (req.session && req.session.browserResponse) {
-            const session = req.session as any;
+        const session = req.session as any;
+        if (session && session.browserResponse) {
             delete session.browserResponse;
             session.save();
         }

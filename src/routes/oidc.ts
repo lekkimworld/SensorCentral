@@ -15,7 +15,8 @@ const router = express.Router();
  * 
  */
 router.get("/callback", async (req, res, next) => {
-    const nonce = req.session!.nonce;
+    const session = req.session as any;
+    const nonce = session!.nonce;
     if (!nonce) return next(new HttpException(417, `No nonce found (<${nonce}>)`));
     
     // get client
@@ -47,7 +48,8 @@ router.get("/callback", async (req, res, next) => {
 
         }).then((output : BrowserLoginResponse) => {
             // set the claims we received, set userId in session and redirect
-            req.session!.browserResponse = output;
+            const session = req.session as any;
+            session!.browserResponse = output;
 
             // redirect
             res.redirect("/openid/loggedin");
