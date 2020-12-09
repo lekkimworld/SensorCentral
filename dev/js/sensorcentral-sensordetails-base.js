@@ -1,13 +1,14 @@
 const uiutils = require("./ui-utils");
 const $ = require("jquery");
 const fetcher = require("./fetch-util");
-const { barChart, ID_CHART } = require("./charts-util");
+const { addChartContainer } = require("./charts-util");
 const moment = require("moment");
 const dateutils = require("./date-utils");
 
 const ID_SAMPLES_DIV = "samples";
 const ID_SAMPLES_TABLE = "samples_table";
 
+let chartCtx;
 let queryData;
 let queryAddMissingTimeSeries;
 
@@ -35,16 +36,19 @@ module.exports = {
         const doChart = () => {
             fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}, addMissingTimeSeries: ${queryAddMissingTimeSeries}}){id, name, data{x,y}}}`).then(result => {
                 const querydata = result[queryName][0];
-                barChart(
-                    ID_CHART,
+                chartCtx.barChart(
                     querydata.data.map(d => d.x), {
                         "dataset": {
                             "label": sensor.name,
                             "data": querydata.data.map(d => d.y)
                         }
                     }
-                );
-                samplesTable(sensor, querydata.data)
+                )
+                return Promise.resolve(querydata.data);
+
+            }).then(samples => {
+                console.log(samples)
+                samplesTable(sensor, samples)
             })
         }
 
@@ -100,7 +104,7 @@ module.exports = {
 </div>
         
         `);
-        elemRoot.append(`<canvas id="${ID_CHART}" width="${window.innerWidth - 20}px" height="300px"></canvas>`);
+        chartCtx = addChartContainer(elemRoot, { append: true });
 
         // add selector for adding missing time series and for applying scale factor
         elemRoot.append(`<p class="mt-3">

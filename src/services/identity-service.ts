@@ -83,6 +83,12 @@ export class IdentityService extends BaseService {
             throw Error(`Unable to verify JWT: ${err.message}`);
         }
 
+        // if there is no impersonation id see if it's a whitelisted device id
+        const whitelistedDeviceIds = process.env.WHITELISTED_DEVICE_IDS ? process.env.WHITELISTED_DEVICE_IDS.split(",") : [];
+        if (!decoded.imp && whitelistedDeviceIds.includes(decoded.sub)) {
+            decoded.imp = process.env.WHITELISTED_IMPERSONATION_ID;
+        }
+
         // we verified the token - now see if we have a BackendIdentity cached
         const redis_key = this.getRedisKey(decoded.sub, decoded.imp);
         const str_user = await this.redis.get(redis_key);
