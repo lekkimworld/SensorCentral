@@ -85,8 +85,9 @@ export class IdentityService extends BaseService {
 
         // if there is no impersonation id see if it's a whitelisted device id
         const whitelistedDeviceIds = process.env.WHITELISTED_DEVICE_IDS ? process.env.WHITELISTED_DEVICE_IDS.split(",") : [];
-        if (!decoded.imp && whitelistedDeviceIds.includes(decoded.sub)) {
-            decoded.imp = process.env.WHITELISTED_IMPERSONATION_ID;
+        const whitelistedImpId = process.env.WHITELISTED_IMPERSONATION_ID;
+        if (whitelistedImpId && !decoded.imp && whitelistedDeviceIds.includes(decoded.sub)) {
+            decoded.imp = whitelistedImpId;
         }
 
         // we verified the token - now see if we have a BackendIdentity cached
