@@ -236,7 +236,7 @@ router.post("/power", async (req, res) => {
 			if (!d)  return cols;
 			const col = [];
 			col.push(`${obj.dates[idx]}`);
-			col.push(...d.map((v : any) => v.y));
+			col.push(...d.map((v : any) => v.y.toString().replace(/\./, ",")));
 			cols.push(col);
 			return cols;
 		}, []);
@@ -298,7 +298,7 @@ router.post("/ungrouped", async (req, res) => {
 			const data = d.filter((e:any) => e.dt !== undefined);
 			const col1 = data.map((e : any) => moment(e.dt).format("YYYY-MM-DD"));
 			const col2 = data.map((e : any) => moment(e.dt).format("HH:mm:ss"));
-			const col3 = data.map((e : any) => e.value);
+			const col3 = data.map((e : any) => e.value.toString().replace(/\./, ","));
 			col1.unshift(sensors[idx].id);
 			col2.unshift(sensors[idx].name);
 			col3.unshift(sensors[idx].type);
