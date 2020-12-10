@@ -280,7 +280,7 @@ const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount
     }).then(samples => {
         if (!samples || !Array.isArray(samples)) return Promise.reject(Error("No data received or samples was not an array of data."));
         if (!samples.length) return Promise.resolve();
-        if (samples[0].data.length <= 1) return Promise.reject(Error("Cannot chart as only one sample."));
+        if (samples.length === 1 && samples[0].data.length <= 1) return Promise.reject(Error("Cannot chart as only one sample."));
 
         // build chart
         const canvasId = createCanvasForContainer(elementId);

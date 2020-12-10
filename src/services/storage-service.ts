@@ -22,6 +22,7 @@ import aes256 from "aes256";
 import {lookupService} from "../configure-services";
 import { Smartme } from "smartme-protobuf-parser";
 import { IdentityService } from "./identity-service";
+import { FavoriteSensorsInput } from "src/resolvers/favorite-sensor";
 
 /**
  * serial executes Promises sequentially.
@@ -869,9 +870,14 @@ export class StorageService extends BaseService {
      * 
      * @param user 
      */
-    async getFavoriteSensors(user : BackendIdentity) {
+    async getFavoriteSensors(user : BackendIdentity, data? : FavoriteSensorsInput) {
         const result = await this.dbService!.query("select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1 and u.houseId=$2) h where s.deviceid=d.id and d.houseid=h.id and s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc", this.getUserIdFromUser(user), user.identity.houseId);
-        const sensors = convertRowsToSensors(result);
+        let sensors = convertRowsToSensors(result);
+        if (data) {
+            if (data.type) {
+                sensors = sensors.filter(s => s.type === data.type);
+            }
+        }
         return sensors;
     }
 
