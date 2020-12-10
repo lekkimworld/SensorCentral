@@ -133,6 +133,10 @@ class SensorsQuery {
     @Length(2, 36)
     deviceId : string;
 
+    @Field({nullable: true})
+    @Length(2, 36)
+    houseId : string;
+
     @Field(() => types.SensorType, {nullable: true})
     @IsEnum(types.SensorType)
     type : types.SensorType
@@ -148,7 +152,8 @@ export class SensorResolver {
         let sensors = await ctx.storage.getSensors(ctx.user, {
             "sensorIds": data.sensorIds,
             "deviceId": data.deviceId,
-            "type": data.type
+            "type": data.type,
+            "houseId": data.houseId
         } as SensorQueryData);
         return sensors;
     }

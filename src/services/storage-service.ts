@@ -68,6 +68,7 @@ export interface SensorQueryData {
     sensorIds? : Array<string>,
     type? : SensorType;
     label? : string;
+    houseId? : string;
 }
 
 const POWERDATA_REDIS_KEY = "powerdata:";
@@ -690,6 +691,7 @@ export class StorageService extends BaseService {
         // convert and filter
         let sensors = convertRowsToSensors(result);
         if (queryData) {
+            if (queryData.houseId) sensors = sensors.filter(s => s.device?.house.id === queryData.houseId);
             if (queryData.deviceId) sensors = sensors.filter(s => s.device?.id === queryData.deviceId);
             if (queryData.type) sensors = sensors.filter(s => s.type === queryData.type);
             if (queryData.label) sensors = sensors.filter(s => s.label === queryData.label);

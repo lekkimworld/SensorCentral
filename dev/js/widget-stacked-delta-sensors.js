@@ -1,12 +1,14 @@
 const fetcher = require("./fetch-util");
-const { addChartContainer, barChart } = require("./charts-util");
+const { addChartContainer } = require("./charts-util");
 const moment = require("moment");
 const uiutils = require("./ui-utils");
+const storageutils = require("./storage-utils");
 
 module.exports = (elem) => {
-    // load sensor data
+    // get favorite sensors in the currently selected house
+    const user = storageutils.getUser();
     fetcher.graphql(`query {
-        sensors(data: {type: delta}){id,name}
+        sensors(data: {type: delta, houseId: "${user.houseId}"}){id,name}
     }
     `).then(data => {
         if (data.sensors.length === 0) {
