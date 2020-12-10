@@ -5,6 +5,7 @@ import constants from "../constants";
 import { LogService } from '../services/log-service';
 import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException } from '../types';
 import { StorageService } from 'src/services/storage-service';
+import { IdentityService } from 'src/services/identity-service';
 
 const router = express.Router();
 
@@ -18,7 +19,6 @@ const postControlEvent = (eventSvc : EventService, logSvc : LogService, payload 
 
 router.post('/', (req, res, next) => {
 	// get data and see if array
-	const user = res.locals.user;
 	const body = req.body
 	const postObj : any = (function()  {
 		if (!body) {
@@ -55,11 +55,12 @@ router.post('/', (req, res, next) => {
 	}
 
 	// lookup services
-	services.lookupService(["log", "event", "storage"]).then((svcs : BaseService[]) => {
+	services.lookupService(["log", "event", "storage", "identity"]).then((svcs : BaseService[]) => {
 		// get services
 		const logSvc = svcs[0] as LogService;
 		const eventSvc = svcs[1] as EventService;
 		const storage = svcs[2] as StorageService;
+		const identity = svcs[3] as IdentityService;
 
 		// get data obj if there
 		const dataObj = postObj.data || undefined;
@@ -74,6 +75,11 @@ router.post('/', (req, res, next) => {
 		} else {
 			deviceId = postObj.deviceId;
 		}
+
+		// get impersonation user
+		const user = identity.getServiceBackendIdentity("legacydatapost");
+		logSvc.warn("Getting service backend identity as device is using LEGACY data access");
+
 		storage.getDevice(user, deviceId).then(device => {
 			// we found the device- acknowledge post to caller
 			let j = JSON.stringify(postObj, undefined, 2);

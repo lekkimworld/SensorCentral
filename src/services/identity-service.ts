@@ -189,7 +189,8 @@ export class IdentityService extends BaseService {
     }
 
     getServiceBackendIdentity(serviceName : string) : BackendIdentity {
-        return {
+        this.log.info(`Creating Service Backend Identity for <${serviceName}>`);
+        const ident = {
             "identity": {
                 "callerId": "*",
                 "impersonationId": undefined,
@@ -198,6 +199,7 @@ export class IdentityService extends BaseService {
             "principal": new SystemPrincipal(serviceName),
             "scopes": [constants.JWT.SCOPE_ADMIN]
         } as BackendIdentity;
+        return ident;
     }
 
     /**
