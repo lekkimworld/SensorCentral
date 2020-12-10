@@ -73,6 +73,7 @@ export interface SensorQueryData {
 }
 
 const POWERDATA_REDIS_KEY = "powerdata:";
+export const LAST_N_SAMPLES = 100;
 
 export class StorageService extends BaseService {
     public static NAME = "storage";
@@ -1046,7 +1047,7 @@ export class StorageService extends BaseService {
      * @param sensorId 
      * @param samples 
      */
-    async getLastNSamplesForSensor(user : BackendIdentity, sensorId : string, samples : number = 100, applyScaleFactor : boolean = true) : Promise<SensorSample[] | undefined> {
+    async getLastNSamplesForSensor(user : BackendIdentity, sensorId : string, samples : number = LAST_N_SAMPLES, applyScaleFactor : boolean = true) : Promise<SensorSample[] | undefined> {
         // get sensor to validate access
         await this.getSensor(user, sensorId);
 

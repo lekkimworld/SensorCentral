@@ -284,7 +284,6 @@ const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount
 
         // build chart
         const canvasId = createCanvasForContainer(elementId);
-
         timeChart(
             canvasId, 
             samples

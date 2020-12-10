@@ -1,9 +1,9 @@
 import * as express from 'express';
 import { BaseService, ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage, 
-	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity, SensorType } from '../../../types';
+	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity } from '../../../types';
 import { LogService } from '../../../services/log-service';
 import { EventService } from '../../../services/event-service';
-import { StorageService } from '../../../services/storage-service';
+import { LAST_N_SAMPLES, StorageService } from '../../../services/storage-service';
 const {lookupService} = require('../../../configure-services');
 import constants from "../../../constants";
 import {formatDate} from "../../../utils";
@@ -282,21 +282,20 @@ router.post("/ungrouped", async (req, res) => {
 			sensors = await storage.getSensors(user, {deviceId: opts.deviceId});
 		}
 	}
-	sensors = sensors.filter((s : Sensor) => s.type === SensorType.gauge);
 
 	// get data
 	let data;
 	if (opts.start && opts.end) {
-		data = await Promise.all(sensors.map((sensor : Sensor) => storage.getSamplesForSensor(user, sensor.id, opts.start, opts.end)));
+		data = await Promise.all(sensors.map((sensor : Sensor) => storage.getSamplesForSensor(user, sensor.id, opts.start, opts.end, 1, false)));
 	} else {
-		data = await Promise.all(sensors.map((sensor : Sensor) => storage.getLastNSamplesForSensor(user, sensor.id)));
+		data = await Promise.all(sensors.map((sensor : Sensor) => storage.getLastNSamplesForSensor(user, sensor.id, LAST_N_SAMPLES, false)));
 	}
 
 	let str = "";
 	if (obj.type === "csv") {
 		const colsN = data.reduce((cols : Array<Array<string>>, d : any, idx : number) => {
 			if (!d)  return cols;
-			const data = d.filter((e:any) => e.dt && e.value);
+			const data = d.filter((e:any) => e.dt !== undefined);
 			const col1 = data.map((e : any) => moment(e.dt).format("YYYY-MM-DD"));
 			const col2 = data.map((e : any) => moment(e.dt).format("HH:mm:ss"));
 			const col3 = data.map((e : any) => e.value);
