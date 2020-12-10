@@ -78,7 +78,7 @@ router.post('/', (req, res, next) => {
 
 		// get impersonation user
 		const user = identity.getServiceBackendIdentity("legacydatapost");
-		logSvc.warn("Getting service backend identity as device is using LEGACY data access");
+		logSvc.warn(`Getting service backend identity as device (<${deviceId}>) is using LEGACY data access`);
 
 		storage.getDevice(user, deviceId).then(device => {
 			// we found the device- acknowledge post to caller
