@@ -107,6 +107,9 @@ class GaugeQueryInput extends QueryInput {
 
     @Field({nullable:true})
     end : Date
+
+    @Field({nullable: true, defaultValue: true})
+    applyScaleFactor : boolean
 }
 
 
@@ -266,9 +269,9 @@ export class CounterQueryResolver {
         }))
         const dbdata = await Promise.all(data.sensorIds.map(sensorId => {
             if (data.start && data.end) {
-                return ctx.storage.getSamplesForSensor(ctx.user, sensorId, data.start, data.end, 10);
+                return ctx.storage.getSamplesForSensor(ctx.user, sensorId, data.start, data.end, 1, data.applyScaleFactor);
             } else {
-                return ctx.storage.getLastNSamplesForSensor(ctx.user, sensorId, data.sampleCount);
+                return ctx.storage.getLastNSamplesForSensor(ctx.user, sensorId, data.sampleCount, data.applyScaleFactor);
             }
         }))
         
@@ -282,12 +285,11 @@ export class CounterQueryResolver {
                 // unknown sensor
                 ds = new Dataset(data.sensorIds[i], undefined);
             } else {
-                const scaleFactor = sensor.scaleFactor;
                 ds = new Dataset(sensor.id, sensor.name);
                 ds.data = result.map(r => {
                     return {
                         "x": r.dt.toISOString(),
-                        "y": Math.floor((r.value || 0) * scaleFactor * Math.pow(10, data.decimals)) / Math.pow(10, data.decimals)
+                        "y": Math.floor((r.value || 0) * Math.pow(10, data.decimals)) / Math.pow(10, data.decimals)
                     }
                 }).reverse();
             }

@@ -16,15 +16,17 @@ const samplesTable = (sensor, samples) => {
     const samplesDiv = $(`#${ID_SAMPLES_DIV}`);
     const samplesTable = $(`#${ID_SAMPLES_TABLE}`);
 
+    const isXDate = samples[0].x.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z/);
+
     // get sample count
     samplesTable.html("");
     uiutils.appendDataTable(samplesTable, {
         "id": ID_SAMPLES_TABLE,
-        "headers": ["PERIOD", "VALUE"],
+        "headers": isXDate ? ["DATE", "TIME", "VALUE"] : ["TIME", "VALUE"],
         "rows": samples.map(s => {
             return {
                 "data": s,
-                "columns": [s.x, s.y]
+                "columns": isXDate ? [moment(s.x).format("DD/MM-YYYY"), moment(s.x).format("HH:mm"), s.y] : [s.x, s.y]
             }
         })
     });
@@ -32,6 +34,26 @@ const samplesTable = (sensor, samples) => {
 }
 
 module.exports = {
+    "createGaugeChart": (elemRoot, sensor, options = {}) => {
+        // create div for graph
+        const chartCtx = addChartContainer(elemRoot, Object.assign({}, {
+            "actions": ["INTERVAL", "DOWNLOAD"],
+            "callback": (action, samples) => {
+                samplesTable(sensor, samples[0].data);
+            }
+        }, options));
+
+        // create div's for samples table and load samples
+        elemRoot.append(uiutils.htmlSectionTitle("Chart Data"));
+        elemRoot.append(`<div id="${ID_SAMPLES_DIV}"><div id="${ID_SAMPLES_TABLE}"></div></div>`);
+
+        // build chart
+        chartCtx.gaugeChart({
+            "sensors": [sensor]
+        }).then(samples => {
+            samplesTable(sensor, samples[0].data);
+        })
+    },
     "createBuildUIFunctionWithQueryName": (queryName) => (elemRoot, sensor) => {
         const doChart = () => {
             fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}, addMissingTimeSeries: ${queryAddMissingTimeSeries}}){id, name, data{x,y}}}`).then(result => {
@@ -47,7 +69,6 @@ module.exports = {
                 return Promise.resolve(querydata.data);
 
             }).then(samples => {
-                console.log(samples)
                 samplesTable(sensor, samples)
             })
         }

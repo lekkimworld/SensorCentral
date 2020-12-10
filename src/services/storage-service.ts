@@ -1040,7 +1040,7 @@ export class StorageService extends BaseService {
      * @param sensorId 
      * @param samples 
      */
-    async getLastNSamplesForSensor(user : BackendIdentity, sensorId : string, samples : number = 100) : Promise<SensorSample[] | undefined> {
+    async getLastNSamplesForSensor(user : BackendIdentity, sensorId : string, samples : number = 100, applyScaleFactor : boolean = true) : Promise<SensorSample[] | undefined> {
         // get sensor to validate access
         await this.getSensor(user, sensorId);
 
@@ -1050,7 +1050,7 @@ export class StorageService extends BaseService {
                 return {
                     "id": sensorId,
                     "dt": row.dt,
-                    "value": row.value * row.scalefactor
+                    "value": applyScaleFactor ? row.value * row.scalefactor : row.value
                 } as SensorSample;
             })
             return Promise.resolve(arr);
@@ -1066,7 +1066,7 @@ export class StorageService extends BaseService {
      * @param start
      * @param end 
      */
-    async getSamplesForSensor(user : BackendIdentity, sensorId : string, start : Date, end : Date, onlyEveryXSample : number = 1) : Promise<SensorSample[] | undefined> {
+    async getSamplesForSensor(user : BackendIdentity, sensorId : string, start : Date, end : Date, onlyEveryXSample : number = 1, applyScaleFactor : boolean = true) : Promise<SensorSample[] | undefined> {
         // get sensor to validate access
         await this.getSensor(user, sensorId);
 
@@ -1076,7 +1076,7 @@ export class StorageService extends BaseService {
                 return {
                     "id": sensorId,
                     "dt": row.dt,
-                    "value": row.value * row.scalefactor
+                    "value": applyScaleFactor ? row.value * row.scalefactor : row.value
                 } as SensorSample;
             })
             return Promise.resolve(arr);

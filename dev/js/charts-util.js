@@ -256,7 +256,7 @@ const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount
                     if (!deviceId && !sensors && !sensorIds) return Promise.reject(Error("Must supply deviceId, sensors or sensorIds"));
                     if (sensors) {
                         // use the sensors we received
-                        resolve(sensors.filter(s => s.type ? s.type === "gauge" : true));
+                        resolve(sensors);
                     } else if (deviceId) {
                         fetcher.graphql(`{sensors(data: {deviceId:"${deviceId}"}){id,name, type}}`).then(data => {
                             resolve(data.sensors.filter(s => s.type === "gauge"));
@@ -270,9 +270,9 @@ const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount
         if (!sensors || !sensors.length) return Promise.reject(Error("No gauge sensors to chart."));
         const sensorIdsStr = sensors.map(s => `"${s.id}"`);
         if (start && end) {
-            return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: [${sensorIdsStr.join()}], decimals: 2, start: "${start.toISOString()}", end: "${end.toISOString()}"}){id, name, data{x,y}}}`);
+            return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: [${sensorIdsStr.join()}], decimals: 2, start: "${start.toISOString()}", end: "${end.toISOString()}", applyScaleFactor: false}){id, name, data{x,y}}}`);
         } else {
-            return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: [${sensorIdsStr.join()}], decimals: 2, sampleCount: ${samplesCount}}){id, name, data{x,y}}}`);
+            return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: [${sensorIdsStr.join()}], decimals: 2, sampleCount: ${samplesCount}, applyScaleFactor: false}){id, name, data{x,y}}}`);
         }
     }).then(result => {
         const samples = result["ungroupedQuery"];
@@ -292,7 +292,7 @@ const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount
         return Promise.resolve(samples);
         
     }).catch(err => {
-        $(`#${ID_CHART_CONTAINER}`).html(err.message);
+        $(`#${elementId}`).html(err.message);
     })
 }
 

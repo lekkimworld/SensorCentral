@@ -46,6 +46,7 @@ sensorId = 94f7a0f4-d85b-4815-9c77-833be7c28779
 
 ### 1.7.6 ###
 * Fix issue where stacked delta widget showed sensors from all houses the user had access to
+* Allow user to see delta sensor as a line chart
 
 ### 1.7.5 ###
 * Use ts-node when running app instead of transpiling typescript to javascript first
