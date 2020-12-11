@@ -296,15 +296,18 @@ router.post("/ungrouped", async (req, res) => {
 		const colsN = data.reduce((cols : Array<Array<string>>, d : any, idx : number) => {
 			if (!d)  return cols;
 			const data = d.filter((e:any) => e.dt !== undefined);
-			const col1 = data.map((e : any) => moment(e.dt).format("YYYY-MM-DD"));
+			const col1 = data.map((e : any) => moment(e.dt).format("DD-MM-YYYY"));
 			const col2 = data.map((e : any) => moment(e.dt).format("HH:mm:ss"));
-			const col3 = data.map((e : any) => e.value.toString().replace(/\./, ","));
+			const col3 = data.map((e : any) => moment(e.dt).format("DD-MM-YYYY HH:mm:ss"));
+			const col4 = data.map((e : any) => e.value.toString().replace(/\./, ","));
 			col1.unshift(sensors[idx].id);
 			col2.unshift(sensors[idx].name);
 			col3.unshift(sensors[idx].type);
+			col4.unshift("");
 			cols.push(col1);
 			cols.push(col2);
 			cols.push(col3);
+			cols.push(col4);
 			return cols;
 		}, []);
 		
@@ -316,11 +319,12 @@ router.post("/ungrouped", async (req, res) => {
 				const col1 = colsN[k++];
 				const col2 = colsN[k++];
 				const col3 = colsN[k++];
+				const col4 = colsN[k++];
 				if (i < col1.length) {
-					str += `${col1[i]};${col2[i]};${col3[i]};`;
+					str += `${col1[i]};${col2[i]};${col3[i]};${col4[i]};`;
 					doWhile++;
 				} else {
-					str += ";;;";
+					str += ";;;;";
 				}
 			}
 			i++;
