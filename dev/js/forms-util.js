@@ -604,7 +604,9 @@ const DEVICE_EDIT_WATCHDOG = {
         return fetcher.graphql(`{device(id:"${device.id}"){id,name,watchdog{notify,muted_until}}}`).then(data => {
             const wd = data.device.watchdog;
             if (wd.muted_until) {
-                $("#dt").data("DateTimePicker").date(moment(wd.muted_until))
+                $("#dt").data("DateTimePicker").date(moment(wd.muted_until).set("seconds", 0).set("milliseconds", 0));
+            } else {
+                $("#dt").data("DateTimePicker").date(moment().set("minutes", 0).set("seconds", 0).set("milliseconds", 0).add("hour", 1));
             }
             $("#stateInput").val(wd.notify);
             return Promise.resolve();ç
