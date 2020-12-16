@@ -22,7 +22,7 @@ module.exports = (document, elemRoot, ctx) => {
     const updateUI = () => {
         elemRoot.html("");
 
-        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,last_ping,last_restart,last_watchdog_reset,active,house{id,name}}}`).then(data => {
+        fetcher.graphql(`{house(id:"${houseId}"){id,name}devices(houseId:"${houseId}"){id,name,watchdog{notify},last_ping,last_restart,last_watchdog_reset,active,house{id,name}}}`).then(data => {
             const devices = data.devices.sort((a, b) => a.name.localeCompare(b.name));
             const houseName = data.house.name;
 
@@ -83,13 +83,26 @@ module.exports = (document, elemRoot, ctx) => {
                         }
                     }
                 ],
-                "headers": ["NAME", "STATUS", "ID"],
+                "headers": ["NAME", "WATCHDOG", "STATUS", "ID"],
                 "classes": [
                     "",
+                    "text-center",
                     "",
                     "d-none d-sm-table-cell"
                 ],
                 "rows": devices.filter(d => d.active).map(device => {
+                    const notify = (function(n) {
+                        let notify;
+
+                        if ("yes" === n) {
+                            notify = `<i class="fa fa-volume-up sensorcentral-size-2x"></i>`;
+                        } else if ("muted" === n) {
+                            notify = `<i class="fa fa-volume-down sensorcentral-size-2x"></i>`;
+                        } else {
+                            notify = `<i class="fa fa-volume-off sensorcentral-size-2x"></i>`
+                        }
+                        return notify;
+                    })(device.watchdog.notify);
 
                     const diff_options = {
                         "maxDiff": 12,
@@ -101,7 +114,7 @@ module.exports = (document, elemRoot, ctx) => {
                     return {
                         "id": device.id,
                         "data": device,
-                        "columns": [device.name, status, device.id],
+                        "columns": [device.name, notify, status, device.id],
                         "click": function() {
                             document.location.hash = `configuration/house/${device.house.id}/device/${this.id}`
                         }
