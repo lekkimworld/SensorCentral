@@ -7,7 +7,6 @@ import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
 import { LogService } from "./log-service";
 import { DatabaseService } from "./database-service";
-import Moment from 'moment';
 import moment = require("moment");
 import uuid from "uuid/v1";
 import { CreateSensorType, UpdateSensorType, DeleteSensorType } from "../resolvers/sensor";
@@ -973,13 +972,18 @@ export class StorageService extends BaseService {
         }
     }
 
-    async updateDeviceWatchdog(user : BackendIdentity, data : WatchdogNotificationInput, mutedUntil? : Moment.Moment) {
+    async updateDeviceWatchdog(user : BackendIdentity, data : WatchdogNotificationInput) {
         // get device to ensure user have access
         await this.getDevice(user, data.id);
 
         // get params
-        if (data.notify === WatchdogNotification.muted && !mutedUntil) {
-            mutedUntil = moment().add(7, "days");
+        let mutedUntil;
+        if (data.notify === WatchdogNotification.muted) {
+            if (!data.muted_until) {
+                mutedUntil = moment().add(7, "days");
+            } else {
+                mutedUntil = data.muted_until;
+            }
         }
         let str_muted_until = data.notify === WatchdogNotification.muted ? mutedUntil?.toISOString() : undefined;
         

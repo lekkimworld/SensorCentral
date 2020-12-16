@@ -1,4 +1,5 @@
 const { trim } = require("jquery");
+const { create } = require("ts-node");
 const fetcher = require("./fetch-util");
 const storage = require("./storage-utils");
 const ID_ELEM_FORM = "sensorcentral-form";
@@ -94,6 +95,20 @@ const buttonPerformAction = (text = "Save Changes", rel = "std") => {
 
 const button = (text, rel, classList) => {
     return `<button type="button" class="btn ${classList ? classList.join(" ") : "btn-primary"}" rel="${rel}">${text}</button>`;
+}
+
+const datetimepicker = (name, label, fieldExplanation, required = false, validationText) => {
+    return `<label for="${name}Input">${label}</label>
+        <div class='input-group date' id='${name}'>
+            <input type='text' class="form-control" />
+            <span class="input-group-addon">
+                <span class="fa fa-calendar"></span>
+            </span>
+        </div>
+        <small id="${name}Help" class="form-text text-muted">${fieldExplanation}</small>
+        ${required ? `<div class="invalid-feedback">
+        ${validationText}
+    </div>` : ""}`;
 }
 
 const DEVICE_JWT = {
@@ -541,6 +556,75 @@ const DELETE_ENTITY = {
     }
 }
 
+const DEVICE_EDIT_WATCHDOG = {
+    "name": "watchdog",
+    "html": (formname, ctx) => {
+        return {
+            "html": `<div class="modal fade" id="${formname}Modal" tabindex="-1" role="dialog" aria-labelledby="${formname}ModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="${formname}ModalLabel">Watchdog</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                    This dialog allows you to change the watchdog settings for the selected 
+                    device. You may indicate whether notifications about the device is on (i.e. sent), 
+                    off (i.e. NOT sent) or muted. If muted you have to specify a date/time the notifications 
+                    are muted until. After that date/time notifications are sent as if the watchdog was set to 
+                    "on".
+                    </p>
+                    <p>
+                    Remember that watchdogs are personal and these settings only applies to you.
+                    </p>
+                    ${dropdown("state", "State", "Select the state to set for the device watchdog", {
+                        "yes": "On",
+                        "no": "Off",
+                        "muted": "Muted"
+                    }, false, true, "You must specify a watchdog state")}
+                    ${datetimepicker("dt", "Muted until", "Specify the muted until date/time")}
+                </div>
+                <div class="modal-footer">
+                    ${button("Save", "save")}
+                    ${buttonClose("Cancel")}
+                </div>
+            </div>
+        </div>
+    </div>`,
+        "callback": () => {
+            createDateTimePicker("dt");
+        }};
+    },
+    device: undefined,
+    "fnInit": (formdata, device) => {
+        formdata.device = device;
+        return fetcher.graphql(`{device(id:"${device.id}"){id,name,watchdog{notify,muted_until}}}`).then(data => {
+            const wd = data.device.watchdog;
+            if (wd.muted_until) {
+                $("#dt").data("DateTimePicker").date(moment(wd.muted_until))
+            }
+            $("#stateInput").val(wd.notify);
+            return Promise.resolve();ç
+        })
+        
+    },
+    "fnClickHandler": (formdata, house, rel) => {
+        if (rel === "save") {
+            const state = $("#stateInput").val();
+            const mutedUntil = state === "muted" ? $("#dt").data("DateTimePicker").date() : undefined;
+            
+            // update
+            fetcher.graphql(`mutation{updateDeviceWatchdog(data:{id:"${formdata.device.id}",notify:"${state}", muted_until: ${mutedUntil ? `"${mutedUntil.toISOString()}"` : "undefined"}}){id,name}}`).then(() => {
+                // close form
+                removeForm();    
+            })
+        }
+    }
+}
+
 const HOUSE_ACCESS = {
     "name": "houseaccess",
     "html": (formname, ctx) => {
@@ -747,10 +831,19 @@ const SETTINGS = {
 
 const prepareForm = (formdata, ctx, onPerformAction) => {
     const elem = $(`#${ID_ELEM_FORM}`);
+    let htmlReturn;
     if (typeof formdata.html === "function") {
-        elem.html(formdata.html(formdata.name, ctx.form));
+        htmlReturn = formdata.html(formdata.name, ctx.form);
     } else {
-        elem.html(formdata.html);
+        htmlReturn = formdata.html;
+    }
+    if (typeof htmlReturn === "object") {
+        elem.html(htmlReturn.html);
+        if (htmlReturn.callback && typeof htmlReturn.callback === "function") {
+            htmlReturn.callback();
+        }
+    } else {
+        elem.html(htmlReturn);
     }
 
     new Promise((resolve, reject) => {
@@ -818,6 +911,9 @@ module.exports = {
     },
     appendDeviceCreateEditForm: (device, onPerformAction) => {
         prepareForm(DEVICE_CREATE_EDIT, {"device": device}, onPerformAction);
+    },
+    appendWatchdogEditForm: (device, onPerformAction) => {
+        prepareForm(DEVICE_EDIT_WATCHDOG, device, onPerformAction);
     },
     appendSensorCreateEditForm: (sensor, onPerformAction) => {
         prepareForm(SENSOR_CREATE_EDIT, {"sensor": sensor}, onPerformAction);

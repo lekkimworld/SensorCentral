@@ -6,7 +6,7 @@ import {createClient as createRedisClient} from "redis";
 const CONNECTION_TIMEOUT = 
     process.env.REDIS_CONNECTION_TIMEOUT ? 
     Number.parseInt(process.env.REDIS_CONNECTION_TIMEOUT) : 
-    5000;
+    20000;
 
 const client = (function() {
     const redis_uri = process.env.REDIS_URL ? url.parse(process.env.REDIS_URL as string) : undefined;

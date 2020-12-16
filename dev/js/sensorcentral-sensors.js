@@ -49,6 +49,13 @@ module.exports = (document, elemRoot, ctx) => {
                         "click": () => {
                             updateUI(elemRoot, ctx);
                         }
+                    },
+                    {
+                        "rel": "watchdog",
+                        "icon": "bullhorn",
+                        "click": () => {
+                            formsutil.appendWatchdogEditForm(device);
+                        }
                     }
                 ]
             );

@@ -36,6 +36,9 @@ export class WatchdogNotificationInput {
     @Field({description: "One of \"yes\", \"no\", \"muted\""})
     @IsEnum(types.WatchdogNotification)
     notify: types.WatchdogNotification;
+
+    @Field({nullable: true})
+    muted_until: Date;
 }
 
 @Resolver(() => Device)

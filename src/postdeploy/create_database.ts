@@ -177,6 +177,11 @@ const updateSchemaVersion_7to8 = () : Promise<void> => {
     return executeSQLFile("version_7_to_8.sql");
 }
 
+const updateSchemaVersion_8to9 = () : Promise<void> => {
+    console.log("Updating database schema from version 8 to 9...");
+    return executeSQLFile("version_8_to_9.sql");
+}
+
 pool.query("BEGIN").then(() => {
     // query for database_version table
     return pool.query(`select * from information_schema.tables where table_name='database_version'`);
@@ -211,6 +216,8 @@ pool.query("BEGIN").then(() => {
                     return updateSchemaVersion_6to7();
                 } else if (version === 7) {
                     return updateSchemaVersion_7to8();
+                } else if (version === 8) {
+                    return updateSchemaVersion_8to9();
                 } else if (version === TARGET_DATABASE_VERSION) {
                     console.log("We are at the newest version...");
                     return Promise.resolve();
