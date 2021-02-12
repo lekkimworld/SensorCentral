@@ -26,21 +26,21 @@ export class DatabaseService extends BaseService {
         this.dependencies = [LogService.NAME];
     }
 
-    init(callback: (err?: Error) => {}, services: BaseService[]) {
+    async init(callback: (err?: Error) => {}, services: BaseService[]) {
         const log = services[0] as LogService;
         try {
             log.debug(`Creating database pool with config <${JSON.stringify(config)}>`);
             this._pool = new Pool(config);
-            log.debug("Created database pool - performing query");
-            this._pool.query("select count(*) from user").then(_result => {
-                log.debug("Performed query with success - calling back");
-                callback();
-            }).catch(err => {
-                log.error("Error performing query in init", err);
-                callback(err);
-            })
+            log.debug("Created database pool - getting client");
+            const client = await this._pool.connect();
+            log.debug("Querying via client");
+            await client.query("select count(*) from user");
+            await client.release();
+            log.debug("Released client");
+            callback();
 
         } catch (err) {
+            log.error("Error performing query in init", err);
             callback(err);
         }
     }
