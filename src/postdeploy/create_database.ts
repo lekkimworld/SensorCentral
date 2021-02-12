@@ -5,7 +5,7 @@ import {join} from "path";
 import * as readline from "readline";
 import moment from "moment-timezone";
 
-const TARGET_DATABASE_VERSION = 8;
+const TARGET_DATABASE_VERSION = 9;
 
 const config : PoolConfig = {
     'connectionString': process.env.DATABASE_URL

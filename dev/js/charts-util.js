@@ -34,6 +34,9 @@ const colorMap = {
     orange: "rgba(255, 159, 64, 0.5)",
     purple: "rgba(153, 102, 255, 0.5)",
     yellow: "rgba(255, 205, 86, 0.5)",
+    pink: "rgba(245, 66, 212)",
+    black: "rgba(0, 0, 0, 1)",
+    darkgreen: "rgba(53, 71, 64)"
 };
 const backgroundColors = Object.values(colorMap);
 

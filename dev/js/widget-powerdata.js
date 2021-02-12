@@ -9,7 +9,7 @@ let visibleDates = [];
 
 module.exports = (elem) => {
     const chartCtx = addChartContainer(elem, {
-        title: "Power Prices",
+        title: "Power Prices (kr/kWh)",
         actions: [{
                 "id": "save",
                 "icon": "fa-save",
