@@ -1,20 +1,26 @@
 import { Pool, QueryResult, PoolConfig } from "pg";
 import { BaseService } from "../types";
 import { LogService } from "./log-service";
+import { URL } from "url";
 
+const url = new URL(process.env.DATABASE_URL as string);
 const config: PoolConfig = {
-    'connectionString': process.env.DATABASE_URL
+    "database": url.pathname.substring(1),
+    "host": url.hostname,
+    "port": Number.parseInt(url.port),
+    "user": url.username,
+    "password": url.password
 };
 if (process.env.NODE_ENV === "production") {
     config.ssl = true;
 } else if (process.env.NODE_ENV === "development") {
     if (process.env.DATABASE_SSL) {
         config.ssl = {
-            checkServerIdentity: false,
             rejectUnauthorized: false
         } as any;
     }
 }
+console.log(config);
 
 export class DatabaseService extends BaseService {
     public static NAME = "db";
@@ -31,12 +37,9 @@ export class DatabaseService extends BaseService {
         try {
             log.debug(`Creating database pool with config <${JSON.stringify(config)}>`);
             this._pool = new Pool(config);
-            log.debug("Created database pool - getting client");
-            const client = await this._pool.connect();
-            log.debug("Querying via client");
-            await client.query("select count(*) from user");
-            await client.release();
-            log.debug("Released client");
+            log.debug("Querying via pool");
+            await this._pool.query("select count(*) from user", []);
+            log.debug("Completed query");
             callback();
 
         } catch (err) {
