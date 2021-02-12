@@ -23,10 +23,10 @@ export default {
     },
     'DEFAULTS': {
         'SERVICE': {
-            'LOOKUP_TIMEOUT': 2000
+            'LOOKUP_TIMEOUT': process.env.SERVICE_LOOKUP_TIMEOUT ? Number.parseInt(process.env.SERVICE_LOOKUP_TIMEOUT) : 2000
         },
         'WATCHDOG': {
-            'DEFAULT_TIMEOUT': (process.env.WATCHDOG_INTERVAL ? Number.parseInt(process.env.WATCHDOG_INTERVAL) : 10*60*1000) as number
+            'DEFAULT_TIMEOUT': (process.env.WATCHDOG_INTERVAL ? Number.parseInt(process.env.WATCHDOG_INTERVAL) : 10 * 60 * 1000) as number
         },
         'REDIS': {
             'DEVICE_EXPIRATION_SECS': (process.env.REDIS_DEVICE_EXPIRATION_SECS ? Number.parseInt(process.env.REDIS_DEVICE_EXPIRATION_SECS) : 20 * 60) as number,
@@ -42,18 +42,18 @@ export default {
                 },
                 "RESTART": {
                     "TITLE": process.env.DEVICE_RESTART_TITLE || "{{appname}} - Device restart",
-                    "MESSAGE" : process.env.DEVICE_RESTART_MESSAGE || "{{appname}} - Device restart ({{device.id}} / {{device.name}}) - maybe it didn't pat the watchdog?"
+                    "MESSAGE": process.env.DEVICE_RESTART_MESSAGE || "{{appname}} - Device restart ({{device.id}} / {{device.name}}) - maybe it didn't pat the watchdog?"
                 },
                 "NOSENSORS": {
                     "TITLE": process.env.DEVICE_NOSENSORS_TITLE || "{{appname}} - Device pinged without any sensors",
-                    "MESSAGE" : process.env.DEVICE_NOSENSORS_MESSAGE || "{{appname}} - Device ({{device.id}} / {{device.name}}) pinged without any sensors in the data - maybe the sensor is not plugged in?"
+                    "MESSAGE": process.env.DEVICE_NOSENSORS_MESSAGE || "{{appname}} - Device ({{device.id}} / {{device.name}}) pinged without any sensors in the data - maybe the sensor is not plugged in?"
                 }
             }
         },
         'TIMEZONE': process.env.TIMEZONE || 'Europe/Copenhagen',
         'DATETIME_FORMAT': process.env.DATETIME_FORMAT || "D-M-YYYY [kl.] k:mm",
         "GRAPHQL_ENABLE_PLAYGROUND": graphqlEnablePlayground,
-        "SESSION_TIMEOUT_SECONDS": process.env.SESSION_TIMEOUT_SECONDS ? Number.parseInt(process.env.SESSION_TIMEOUT_SECONDS) : (graphqlEnablePlayground ? (1*60*60) : 300), // 1 hour in development, 300 seconds in prod
+        "SESSION_TIMEOUT_SECONDS": process.env.SESSION_TIMEOUT_SECONDS ? Number.parseInt(process.env.SESSION_TIMEOUT_SECONDS) : (graphqlEnablePlayground ? (1 * 60 * 60) : 300), // 1 hour in development, 300 seconds in prod
         "JWT": {
             "USER_SCOPES": [JWT.SCOPE_ADMIN, JWT.SCOPE_API, JWT.SCOPE_ADMIN_JWT, JWT.SCOPE_SENSORDATA],
             "DEVICE_SCOPES": [JWT.SCOPE_API, JWT.SCOPE_SENSORDATA]
