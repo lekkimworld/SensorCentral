@@ -44,10 +44,10 @@ const promisifiedClient = {
 
 export class RedisService extends BaseService {
     public static NAME = "redis";
-    dependencies = [LogService.NAME];
 
     constructor() {
         super(RedisService.NAME);
+        this.dependencies = [LogService.NAME];
     }
 
     init(callback: (err?: Error) => {}, services: BaseService[]) {

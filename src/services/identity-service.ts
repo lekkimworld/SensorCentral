@@ -258,15 +258,18 @@ export class IdentityService extends BaseService {
 
         } else {
             // we need to add the user
+            this.log.debug("We need to add the user");
             const id = uuid();
             switch (source) {
                 case LoginSource.google:
                     await this.db!.query("insert into login_user (id, email, fn, ln, google_sub) values ($1, $2, $3, $4, $5)", id, email, fn, ln, oidc_sub);
                     break;
             }
+            this.log.debug(`Inserted user with UUID <${uuid}>`);
 
             // return
-            return {
+            const jwt = await this.generateUserJWT(this.getImpersonationIdentity(this.authUser, id), undefined);
+            const result_payload = {
                 "userinfo": {
                     "id": id,
                     "fn": fn,
@@ -275,8 +278,10 @@ export class IdentityService extends BaseService {
                     "houseId": undefined,
                     "houses": []
                 } as BrowserUser,
-                "jwt": await this.generateUserJWT(this.getImpersonationIdentity(this.authUser, id), undefined)
+                "jwt": jwt
             } as BrowserLoginResponse;
+            this.log.debug(`Generated result payload`);
+            return result_payload;
         }
     }
 
