@@ -9,13 +9,13 @@ import uuid from "uuid/v1";
 import { RedisService } from "./redis-service";
 
 export interface CreateLoginUserInput {
-    source : LoginSource;
-    oidc_sub : string;
-    email : string;
-    fn : string;
-    ln : string;
+    source: LoginSource;
+    oidc_sub: string;
+    email: string;
+    fn: string;
+    ln: string;
 }
-const generateJWT = async (userId : string | undefined, deviceId : string | undefined, houseId : string | undefined, scopes : string[]) => {
+const generateJWT = async (userId: string | undefined, deviceId: string | undefined, houseId: string | undefined, scopes: string[]) => {
     const payload = {
         "scopes": scopes.join(" "),
         "houseid": houseId
@@ -45,18 +45,18 @@ const LOGIN_KEY_PREFIX = 'login:';
  */
 export class IdentityService extends BaseService {
     public static NAME = "identity";
-    private log : LogService;
-    private db : DatabaseService;
-    private storage : StorageService;
-    private redis : RedisService;
-    private authUser : BackendIdentity;
+    private log: LogService;
+    private db: DatabaseService;
+    private storage: StorageService;
+    private redis: RedisService;
+    private authUser: BackendIdentity;
 
     constructor() {
         super(IdentityService.NAME);
         this.dependencies = [LogService.NAME, DatabaseService.NAME, StorageService.NAME, RedisService.NAME];
     }
 
-    async init(callback : (err?:Error) => {}, services : BaseService[]) {
+    async init(callback: (err?: Error) => {}, services: BaseService[]) {
         this.log = services[0] as LogService;
         this.db = services[1] as DatabaseService;
         this.storage = services[2] as StorageService;
@@ -65,13 +65,13 @@ export class IdentityService extends BaseService {
         callback();
     }
 
-    private getRedisKey(userId : string, impId : string) : string {
+    private getRedisKey(userId: string, impId: string): string {
         return `${LOGIN_KEY_PREFIX}${userId}_${impId ? impId : userId}`;
     }
 
-    async verifyJWT(token : string) : Promise<BackendIdentity> {
+    async verifyJWT(token: string): Promise<BackendIdentity> {
         const secret = process.env.API_JWT_SECRET as string;
-        let decoded : any;
+        let decoded: any;
         try {
             // verify token
             decoded = await jwt.verify(token, secret, {
@@ -99,7 +99,7 @@ export class IdentityService extends BaseService {
         }
 
         // backend identity not found - create
-        let ident : BackendIdentity;
+        let ident: BackendIdentity;
         if (decoded.imp) {
             // there is an impersonation id in the token so it's for a non-user
             const device = await this.storage.getDevice(this.authUser, decoded.sub);
@@ -112,7 +112,7 @@ export class IdentityService extends BaseService {
                 "principal": new DevicePrincipal(device.name),
                 "scopes": decoded.scopes.split(" ")
             } as BackendIdentity;
-            
+
         } else if (decoded.sub === "*") {
             ident = {
                 "identity": {
@@ -139,8 +139,8 @@ export class IdentityService extends BaseService {
 
         // cache
         this.redis.setex(
-            redis_key, 
-            constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS, 
+            redis_key,
+            constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS,
             JSON.stringify(ident));
 
         // return
@@ -151,7 +151,7 @@ export class IdentityService extends BaseService {
         return generateJWT("*", undefined, "*", constants.DEFAULTS.JWT.USER_SCOPES);
     }
 
-    async generateUserJWT(user : BackendIdentity, houseId : string | undefined) {
+    async generateUserJWT(user: BackendIdentity, houseId: string | undefined) {
         this.log.info(`Issuing JWT for user <${user}> for house <${houseId}>`);
 
         // get house
@@ -162,8 +162,8 @@ export class IdentityService extends BaseService {
             return generateJWT(user.identity.callerId, undefined, undefined, constants.DEFAULTS.JWT.USER_SCOPES);
         }
     }
-    
-    async generateDeviceJWT(user : BackendIdentity, deviceId : string) {
+
+    async generateDeviceJWT(user: BackendIdentity, deviceId: string) {
         this.log.info(`Issuing JWT for device <${deviceId}> on behalf of user <${user}>`);
 
         // get device
@@ -171,7 +171,7 @@ export class IdentityService extends BaseService {
         return generateJWT(user.identity.callerId, device.id, device.house.id, constants.DEFAULTS.JWT.DEVICE_SCOPES);
     }
 
-    getImpersonationIdentity(user : BackendIdentity, userId : string) : BackendIdentity {
+    getImpersonationIdentity(user: BackendIdentity, userId: string): BackendIdentity {
         if (userId === "*") throw Error(`Cannot issue impersonation user for userId=*`);
         if (user && user.identity.callerId === "*") {
             return {
@@ -188,7 +188,7 @@ export class IdentityService extends BaseService {
         throw Error(`Calling user not allowed to get impersonation users`);
     }
 
-    getServiceBackendIdentity(serviceName : string) : BackendIdentity {
+    getServiceBackendIdentity(serviceName: string): BackendIdentity {
         this.log.info(`Creating Service Backend Identity for <${serviceName}>`);
         const ident = {
             "identity": {
@@ -208,9 +208,10 @@ export class IdentityService extends BaseService {
      * 
      * @param param0 
      */
-    async getOrCreateBrowserLoginResponse({source, oidc_sub, email, fn, ln} : CreateLoginUserInput) : Promise<BrowserLoginResponse> {
+    async getOrCreateBrowserLoginResponse({ source, oidc_sub, email, fn, ln }: CreateLoginUserInput): Promise<BrowserLoginResponse> {
         // see if we can find the user by sub based on source
-        let result : QueryResult | undefined;
+        let result: QueryResult | undefined;
+        this.log.debug(`Querying database for user - sub <${oidc_sub}> email <${email}>`)
         switch (source) {
             case LoginSource.google:
                 result = await this.db!.query("select id, email, fn, ln, google_sub from login_user where google_sub=$1 OR email=$2", oidc_sub, email);
@@ -218,10 +219,12 @@ export class IdentityService extends BaseService {
             default:
                 throw Error(`Unhandled LoginSource <${source}>`);
         }
+        this.log.debug(`Database result - rows <${result ? result.rowCount : undefined}> (${result})`);
 
         if (result && result.rowCount === 1) {
             // found user - ensure it contains the sub for the oidc
             const row = result.rows[0];
+            this.log.debug(`Found user in database (${row})`);
             switch (source) {
                 case LoginSource.google:
                     if (row.google_sub !== oidc_sub) {
@@ -235,9 +238,11 @@ export class IdentityService extends BaseService {
             result = await this.db!.query("select houseId from user_house_access where userId=$1 and is_default=true", row.id);
 
             // return
+            this.log.debug(`Getting ready to return data`);
             const houses = await this.storage.getHousesForUser(this.authUser, row.id);
             const houseId = result.rowCount === 1 ? result.rows[0].houseid : undefined;
-            return {
+            const jwt = await this.generateUserJWT(this.getImpersonationIdentity(this.authUser, row.id), houseId);
+            const result_payload = {
                 "userinfo": {
                     "id": row.id,
                     "fn": row.fn,
@@ -246,8 +251,10 @@ export class IdentityService extends BaseService {
                     "houses": houses,
                     "houseId": houseId
                 } as BrowserUser,
-                "jwt": await this.generateUserJWT(this.getImpersonationIdentity(this.authUser, row.id), houseId)
+                "jwt": jwt
             } as BrowserLoginResponse;
+            this.log.debug(`Generated result payload`);
+            return result_payload;
 
         } else {
             // we need to add the user
@@ -273,7 +280,7 @@ export class IdentityService extends BaseService {
         }
     }
 
-    async getLoginUserIdentity(userId : string, houseId : string | undefined) : Promise<BackendIdentity> {
+    async getLoginUserIdentity(userId: string, houseId: string | undefined): Promise<BackendIdentity> {
         // lookup user
         const user = await this.storage.getUser(this.authUser, userId);
         const ident = {
@@ -289,8 +296,8 @@ export class IdentityService extends BaseService {
         // cache
         const redis_key = this.getRedisKey(user.id, user.id);
         this.redis.setex(
-            redis_key, 
-            constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS, 
+            redis_key,
+            constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS,
             JSON.stringify(ident));
 
         // return
@@ -302,10 +309,10 @@ export class IdentityService extends BaseService {
      * 
      * @param user 
      */
-    removeCachedIdentity(user : BackendIdentity) {
+    removeCachedIdentity(user: BackendIdentity) {
         const redis_key = this.getRedisKey(user.identity.callerId, user.identity.callerId);
         this.redis.del(redis_key);
         this.log.debug(`Deleted cached identity in Redis using key <${redis_key}>`);
     }
-    
+
 }
