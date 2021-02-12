@@ -1,13 +1,13 @@
-import {Pool, PoolConfig} from "pg";
+import { Pool, PoolConfig } from "pg";
 require('dotenv').config()
 import * as fs from "fs";
-import {join} from "path";
+import { join } from "path";
 import * as readline from "readline";
 import moment from "moment-timezone";
 
 const TARGET_DATABASE_VERSION = 9;
 
-const config : PoolConfig = {
+const config: PoolConfig = {
     'connectionString': process.env.DATABASE_URL
 };
 if (process.env.NODE_ENV === "production") {
@@ -23,9 +23,9 @@ if (process.env.NODE_ENV === "production") {
 
 const pool = new Pool(config);
 
-const executeSQLFile = (filename : string) : Promise<void> => {
+const executeSQLFile = (filename: string): Promise<void> => {
     return new Promise((resolve, reject) => {
-        const lines : Array<string> = [];
+        const lines: Array<string> = [];
         readline.createInterface({
             "input": fs.createReadStream(join(__dirname, "..", "..", "schema", filename))
         }).on("line", line => {
@@ -44,7 +44,7 @@ const executeSQLFile = (filename : string) : Promise<void> => {
                 })
             }
             executeNext();
-        })  
+        })
     })
 }
 
@@ -53,41 +53,49 @@ const TEST_SENSOR_ID_DELTA1 = "mysensor_3-1"; // scalefactor 1/1000 = 0.001
 const TEST_SENSOR_ID_DELTA2 = "mysensor_3-2"; // scalefactor 1/1000 = 0.001
 const TEST_SENSOR_ID_COUNTER = "94f7a0f4-d85b-4815-9c77-833be7c28779"; // scalefactor 1/500 = 0.002
 
-const addProgrammaticTestData = async () : Promise<void> => {
+const addProgrammaticTestData = async (): Promise<void> => {
     // add for delta sensor
+    console.log("addProgrammaticTestData_Gauge()");
     await addProgrammaticTestData_Gauge();
 
     // add for delta sensor
+    console.log("addProgrammaticTestData_Delta");
     await addProgrammaticTestData_Delta(TEST_SENSOR_ID_DELTA1);
     await addProgrammaticTestData_Delta(TEST_SENSOR_ID_DELTA2);
 
     // add for counter sensor
+    console.log("addProgrammaticTestData_Counter");
     await addProgrammaticTestData_Counter();
 }
 
-const addProgrammaticTestData_Gauge = async () : Promise<void> => {
+const addProgrammaticTestData_Gauge = async (): Promise<void> => {
     const mDt = moment().tz("Europe/Copenhagen").set("hours", 12).set("minute", 0).set("second", 0);
     const mEnd = moment(mDt).subtract(48, "hour");
 
+    console.log("Get client");
+    const client = await pool.connect();
+    console.log("Got client");
     const baseValue = 20;
     while (mDt.isAfter(mEnd)) {
         const value = Math.random() * 10;
 
         const str_dt = mDt.toISOString();
         mDt.subtract(2, "minute");
-
-        await pool.query(
-            "insert into sensor_data (id, value, dt) values ($1, $2, $3)", 
+        await client.query(
+            "insert into sensor_data (id, value, dt) values ($1, $2, $3)",
             [
-                TEST_SENSOR_ID_GAUGE, 
+                TEST_SENSOR_ID_GAUGE,
                 baseValue + value,
                 str_dt
             ]
         );
+        console.log(`Did INSERT of sensor (${TEST_SENSOR_ID_GAUGE})`);
     }
+    client.release();
+    console.log("Released client");
 }
 
-const addProgrammaticTestData_Delta = async (sensorId : string) : Promise<void> => {
+const addProgrammaticTestData_Delta = async (sensorId: string): Promise<void> => {
     const mDt = moment().tz("Europe/Copenhagen").set("hours", 12).set("minute", 0).set("second", 0);
     const mEnd = moment(mDt).subtract(48, "hour");
 
@@ -99,18 +107,19 @@ const addProgrammaticTestData_Delta = async (sensorId : string) : Promise<void> 
         const str_from_dt = mDt.toISOString();
 
         await pool.query(
-            "insert into sensor_data (id, value, from_dt, dt) values ($1, $2, $3, $4)", 
+            "insert into sensor_data (id, value, from_dt, dt) values ($1, $2, $3, $4)",
             [
-                sensorId, 
+                sensorId,
                 value,
                 str_from_dt,
                 str_dt
             ]
         );
+        console.log(`Did INSERT of sensor (${sensorId})`);
     }
 }
 
-const addProgrammaticTestData_Counter = async () : Promise<void> => {
+const addProgrammaticTestData_Counter = async (): Promise<void> => {
     const mDt = moment().tz("Europe/Copenhagen").set("hours", 12).set("minute", 0).set("second", 0);
     const mEnd = moment(mDt).subtract(48, "hour");
 
@@ -123,17 +132,18 @@ const addProgrammaticTestData_Counter = async () : Promise<void> => {
         mDt.subtract(2, "minute");
 
         await pool.query(
-            "insert into sensor_data (id, value, dt) values ($1, $2, $3)", 
+            "insert into sensor_data (id, value, dt) values ($1, $2, $3)",
             [
-                TEST_SENSOR_ID_COUNTER, 
+                TEST_SENSOR_ID_COUNTER,
                 value,
                 str_dt
             ]
         );
+        console.log(`Did INSERT of sensor (${TEST_SENSOR_ID_COUNTER})`);
     }
 }
 
-const buildEntireSchema = async () : Promise<void> => {
+const buildEntireSchema = async (): Promise<void> => {
     console.log("Creating entire database schema...");
     await executeSQLFile(`complete_v${TARGET_DATABASE_VERSION}.sql`)
     if (process.env.NODE_ENV === "development") {
@@ -143,41 +153,41 @@ const buildEntireSchema = async () : Promise<void> => {
     }
 }
 
-const updateSchemaVersion_1to2 = () : Promise<void> => {
+const updateSchemaVersion_1to2 = (): Promise<void> => {
     return Promise.resolve();
 }
 
-const updateSchemaVersion_2to3 = () : Promise<void> => {
+const updateSchemaVersion_2to3 = (): Promise<void> => {
     console.log("Updating database schema from version 2 to 3...");
     return executeSQLFile("version_2_to_3.sql");
 }
 
-const updateSchemaVersion_3to4 = () : Promise<void> => {
+const updateSchemaVersion_3to4 = (): Promise<void> => {
     console.log("Updating database schema from version 3 to 4...");
     return executeSQLFile("version_3_to_4.sql");
 }
 
-const updateSchemaVersion_4to5 = () : Promise<void> => {
+const updateSchemaVersion_4to5 = (): Promise<void> => {
     console.log("Updating database schema from version 4 to 5...");
     return executeSQLFile("version_4_to_5.sql");
 }
 
-const updateSchemaVersion_5to6 = () : Promise<void> => {
+const updateSchemaVersion_5to6 = (): Promise<void> => {
     console.log("Updating database schema from version 5 to 6...");
     return executeSQLFile("version_5_to_6.sql");
 }
 
-const updateSchemaVersion_6to7 = () : Promise<void> => {
+const updateSchemaVersion_6to7 = (): Promise<void> => {
     console.log("Updating database schema from version 6 to 7...");
     return executeSQLFile("version_6_to_7.sql");
 }
 
-const updateSchemaVersion_7to8 = () : Promise<void> => {
+const updateSchemaVersion_7to8 = (): Promise<void> => {
     console.log("Updating database schema from version 7 to 8...");
     return executeSQLFile("version_7_to_8.sql");
 }
 
-const updateSchemaVersion_8to9 = () : Promise<void> => {
+const updateSchemaVersion_8to9 = (): Promise<void> => {
     console.log("Updating database schema from version 8 to 9...");
     return executeSQLFile("version_8_to_9.sql");
 }

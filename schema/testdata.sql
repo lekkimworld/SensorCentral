@@ -2,7 +2,7 @@ insert into LOGIN_USER (id, google_sub, email,fn,ln) values ('mikkel_user_id', '
 insert into house (id, name) values ('mikkel_house_1', 'My House');
 insert into device (id, name, houseid) values ('mydevice_1', 'My Device 1', 'mikkel_house_1');
 insert into device (id, name, houseid) values ('mydevice_2', 'My Device 2', 'mikkel_house_1');
-insert into device (id, name, houseid, active) values ('mydevice_3', 'My Device 3', 'mikkel_myhouse', false);
+insert into device (id, name, houseid, active) values ('mydevice_3', 'My Device 3', 'mikkel_house_1', false);
 insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_1-1', 'My Sensor 1-1', 'mysensor_1-1', 'gauge', 'thermometer-empty', 'mydevice_1');
 insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_1-2', 'My Sensor 1-2', 'mysensor_1-2', 'gauge', 'tint', 'mydevice_1');
 insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_2-1', 'My Sensor 2-1', 'mysensor_2-1', 'gauge', 'thermometer-empty', 'mydevice_2');
@@ -25,7 +25,7 @@ insert into sensor (id,name,label,type,icon,scalefactor,deviceid) values ('94f7a
 insert into USER_HOUSE_ACCESS (userId, houseId, is_default, owner) values ('mikkel_user_id', 'mikkel_house_2', false, true);
 
 
-insert into LOGIN_USER (id, email,fn,ln) values ('john_user_id', 'john@example.com','John','Doe');
+insert into LOGIN_USER (id, email,fn,ln) values ('jane_user_id', 'jane@example.com','Jane','Doe');
 insert into house (id, name) values ('jane_house_1', 'Jane''s House 1');
 insert into device (id, name, houseid) values ('jane_device_1', 'Jane Device 1', 'jane_house_1');
 insert into device (id, name, houseid) values ('jane_device_2', 'Jane Device 2', 'jane_house_1');
@@ -33,16 +33,16 @@ insert into sensor (id,name,label,type,icon,deviceid) values ('jane_sensor_1-1',
 insert into sensor (id,name,label,type,icon,deviceid) values ('jane_sensor_1-2', 'Jane Sensor 1-2', 'jane_sensor_1-2', 'gauge', 'thermometer-empty', 'jane_device_1');
 insert into sensor (id,name,label,type,icon,deviceid) values ('jane_sensor_2-1', 'Jane Sensor 2-1', 'jane_sensor_2-1', 'gauge', 'thermometer-empty', 'jane_device_2');
 insert into sensor (id,name,label,type,icon,deviceid) values ('jane_sensor_2-2', 'Jane Sensor 2-2', 'jane_sensor_2-2', 'gauge', 'thermometer-empty', 'jane_device_2');
-insert into USER_HOUSE_ACCESS (userId, houseId, is_default, owner) values ('jane_user_id', 'jane_house_id', true, true);
+insert into USER_HOUSE_ACCESS (userId, houseId, is_default, owner) values ('jane_user_id', 'jane_house_1', true, true);
 insert into USER_HOUSE_ACCESS (userId, houseId) values ('mikkel_user_id', 'jane_house_1');
 
-insert into LOGIN_USER (id, email,fn,ln) values ('jane_user_id', 'jane@example.com','Jane','Doe');
+insert into LOGIN_USER (id, email,fn,ln) values ('john_user_id', 'john@example.com','John','Doe');
 insert into house (id, name) values ('john_house_1', 'John''s House 1');
 insert into device (id, name, houseid) values ('john_device_1', 'John Device 1', 'john_house_1');
 insert into device (id, name, houseid) values ('john_device_2', 'John Device 2', 'john_house_1');
-insert into sensor (id,name,label,type,icon,deviceid) values ('john_sensor_1-1', 'John Sensor 1-1', 'john_sensor_1-1', 'gauge', 'thermometer-empty', 'johm_device_1');
+insert into sensor (id,name,label,type,icon,deviceid) values ('john_sensor_1-1', 'John Sensor 1-1', 'john_sensor_1-1', 'gauge', 'thermometer-empty', 'john_device_1');
 insert into sensor (id,name,label,type,icon,deviceid) values ('john_sensor_1-2', 'John Sensor 1-2', 'john_sensor_1-2', 'gauge', 'thermometer-empty', 'john_device_1');
 insert into sensor (id,name,label,type,icon,deviceid) values ('john_sensor_2-1', 'John Sensor 2-1', 'john_sensor_2-1', 'gauge', 'thermometer-empty', 'john_device_2');
 insert into sensor (id,name,label,type,icon,deviceid) values ('john_sensor_2-2', 'John Sensor 2-2', 'john_sensor_2-2', 'gauge', 'thermometer-empty', 'john_device_2');
-insert into USER_HOUSE_ACCESS (userId, houseId, is_default, owner) values ('john_user_id', 'john_house_id', true, true);
+insert into USER_HOUSE_ACCESS (userId, houseId, is_default, owner) values ('john_user_id', 'john_house_1', true, true);
 insert into USER_HOUSE_ACCESS (userId, houseId) values ('mikkel_user_id', 'john_house_1');
