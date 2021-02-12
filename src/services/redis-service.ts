@@ -1,6 +1,6 @@
 import { promisify } from "util";
 import { BaseService } from "../types";
-import url from "url";
+import { URL } from "url";
 import { createClient as createRedisClient } from "redis";
 import { LogService } from "./log-service";
 
@@ -10,12 +10,12 @@ const CONNECTION_TIMEOUT =
         20000;
 
 const client = (function () {
-    const redis_uri = process.env.REDIS_URL ? url.parse(process.env.REDIS_URL as string) : undefined;
+    const redis_uri = process.env.REDIS_URL ? new URL(process.env.REDIS_URL as string) : undefined;
     if (process.env.REDIS_URL && redis_uri && redis_uri.protocol!.indexOf("rediss") === 0) {
         return createRedisClient({
             port: Number.parseInt(redis_uri.port!),
             host: redis_uri.hostname!,
-            password: redis_uri.auth!.split(':')[1],
+            password: redis_uri.password,
             db: 0,
             tls: {
                 rejectUnauthorized: false,

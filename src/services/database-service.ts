@@ -7,20 +7,15 @@ const url = new URL(process.env.DATABASE_URL as string);
 const config: PoolConfig = {
     "database": url.pathname.substring(1),
     "host": url.hostname,
-    "port": Number.parseInt(url.port),
+    "port": url.port ? Number.parseInt(url.port) : 5432,
     "user": url.username,
     "password": url.password
 };
-if (process.env.NODE_ENV === "production") {
-    config.ssl = true;
-} else if (process.env.NODE_ENV === "development") {
-    if (process.env.DATABASE_SSL) {
-        config.ssl = {
-            rejectUnauthorized: false
-        } as any;
-    }
+if (process.env.DATABASE_SSL || process.env.NODE_ENV === "production") {
+    config.ssl = {
+        rejectUnauthorized: false
+    } as any;
 }
-console.log(config);
 
 export class DatabaseService extends BaseService {
     public static NAME = "db";
