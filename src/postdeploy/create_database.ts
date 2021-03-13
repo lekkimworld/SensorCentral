@@ -1,24 +1,27 @@
 import { Pool, PoolConfig } from "pg";
-require('dotenv').config()
+import { config as dotenv_config} from "dotenv";
 import * as fs from "fs";
 import { join } from "path";
 import * as readline from "readline";
 import moment from "moment-timezone";
 
+// read config
+dotenv_config();
+
 const TARGET_DATABASE_VERSION = 9;
 
+const url = new URL(process.env.DATABASE_URL as string);
 const config: PoolConfig = {
-    'connectionString': process.env.DATABASE_URL
+    "database": url.pathname.substring(1),
+    "host": url.hostname,
+    "port": url.port ? Number.parseInt(url.port) : 5432,
+    "user": url.username,
+    "password": url.password
 };
-if (process.env.NODE_ENV === "production") {
-    config.ssl = true;
-} else if (process.env.NODE_ENV === "development") {
-    if (process.env.DATABASE_SSL) {
-        config.ssl = {
-            checkServerIdentity: false,
-            rejectUnauthorized: false
-        } as any;
-    }
+if (process.env.DATABASE_SSL || process.env.NODE_ENV === "production") {
+    config.ssl = {
+        rejectUnauthorized: false
+    } as any;
 }
 
 const pool = new Pool(config);
