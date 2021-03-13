@@ -48,7 +48,8 @@
                 "OIDC_REDIRECT_URI": "https://sensorcentral-pr-20.herokuapp.com/openid/callback",
                 "OIDC_PROVIDER_URL": "https://cryptic-dawn-16980.herokuapp.com",
                 "OIDC_POST_CLIENT_SECRET": "true",
-                "APP_DOMAIN": "sensorcentral-pr-19.herokuapp.com"
+                "APP_DOMAIN": "sensorcentral-pr-20.herokuapp.com",
+                "DATABASE_SSL": true
             },
             "scripts": {
                 "postdeploy": "node server-dist/postdeploy/create_database.js"
