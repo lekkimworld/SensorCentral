@@ -5,7 +5,7 @@ const fetcher = require("./fetch-util");
 const $ = require("jquery");
 const dateutils = require("./date-utils");
 const formutils = require("./forms-util");
-const uuid = require("uuid/v1");
+const uuid = require("uuid").v1;
 
 const ID_CHART_BASE = "sensorChart";
 const ID_CHART_CONTAINER = `${ID_CHART_BASE}_container`;

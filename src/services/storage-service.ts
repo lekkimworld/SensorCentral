@@ -8,7 +8,7 @@ import { RedisService } from "./redis-service";
 import { LogService } from "./log-service";
 import { DatabaseService } from "./database-service";
 import moment = require("moment");
-import uuid from "uuid/v1";
+import {v1 as uuid} from "uuid";
 import { CreateSensorType, UpdateSensorType, DeleteSensorType } from "../resolvers/sensor";
 import { DeleteDeviceInput, UpdateDeviceInput, CreateDeviceInput } from "../resolvers/device";
 import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput, FavoriteHouseInput, House } from "../resolvers/house";

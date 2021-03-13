@@ -345,8 +345,8 @@ export class CounterQueryResolver {
                 "date": m.format("YYYY-MM-DD")
             }
             const prices = new nordpool.Prices();
-            prices.hourly(opts, (err : Error | undefined, results : any[] | undefined) => {
-                if (err) return reject(err);
+            prices.hourly(opts, (err : Error | undefined, results : any[]) => {
+                if (err || undefined) return reject(err);
                 resolve(results);
             });
         })
