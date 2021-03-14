@@ -8,7 +8,7 @@ module.exports = (elem) => {
         elem.html("");
 
         // load favorite sensors
-        fetcher.graphql(`{favoriteSensors{id,name,icon,scaleFactor,last_reading{value,dt},icon,device{id, house{id}}}}`).then(data => {
+        fetcher.graphql(`{favoriteSensors{id,name,icon,scaleFactor,last_reading{value,dt},icon,device{id, house{id}}}}`, {"noSpinner": true}).then(data => {
             const sensors = data.favoriteSensors;
             if (!sensors.length) return;
 

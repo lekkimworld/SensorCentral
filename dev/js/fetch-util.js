@@ -16,10 +16,11 @@ const buildContext = (options = {}) => {
     return ctx;
 }
 const doFetch = (url, ctx) => {
-    $("#sensorcentral-spinner").removeClass("d-none");
+    const noSpinner = Object.prototype.hasOwnProperty.call(ctx, "noSpinner");
+    if (!noSpinner) $("#sensorcentral-spinner").removeClass("d-none");
 
     return fetch(url, ctx).then(resp => {
-        $("#sensorcentral-spinner").addClass("d-none");
+        if (!noSpinner) $("#sensorcentral-spinner").addClass("d-none");
         const headers = resp.headers || {};
         if (headers.get("content-type").indexOf("application/octet-stream") === 0) return resp.blob();
         if (headers.get("content-disposition") && headers.get("content-disposition").indexOf("attachment") === 0) return resp.blob();
@@ -57,10 +58,10 @@ const getSamples = (sensorId, samplesCount) => {
         }))
     })
 }
-const doGraphQL = query => {
+const doGraphQL = (query, ctx = {}) => {
     return doPost(`/graphql`, {
         "query": query
-    }).then(payload => {
+    }, ctx).then(payload => {
         if (payload.hasOwnProperty("error")) return Promise.reject(Error(payload.error.errors[0].message));
         if (payload.hasOwnProperty("errors")) return Promise.reject(Error(payload.errors[0].message));
         return Promise.resolve(payload.data);

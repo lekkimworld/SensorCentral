@@ -45,7 +45,7 @@ module.exports = (elem) => {
         powerquery += "}";
 
         // get data
-        fetcher.graphql(powerquery).then(result => {
+        fetcher.graphql(powerquery, {"noSpinner": true}).then(result => {
             // build labels and datasets
             const labels = result[Object.keys(result)[0]].data.map(v => v.x);
             const datasets = Object.keys(result).reduce((prev, key) => {
