@@ -348,7 +348,7 @@ export class CounterQueryResolver {
 
             // map data
             ds.data = results.map((v : any) => {
-                let date = v.date;
+                let date = moment.utc(v.date);
                 let price = Number.parseFloat((v.value / 1000).toFixed(2)); // unit i MWh
                 let time = date.tz(constants.DEFAULTS.TIMEZONE).format("H:mm");
                 return new DataElement(time, price);
