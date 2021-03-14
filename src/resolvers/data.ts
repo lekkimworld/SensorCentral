@@ -338,31 +338,31 @@ export class CounterQueryResolver {
         }
 
         // get data
-        const results : any[] = await new Promise((resolve, reject) => {
+        try {
             const opts = {
                 "currency": constants.DEFAULTS.NORDPOOL.CURRENCY,
                 "area": constants.DEFAULTS.NORDPOOL.AREA,
                 "date": m.format("YYYY-MM-DD")
             }
-            const prices = new nordpool.Prices();
-            prices.hourly(opts, (err : Error | undefined, results : any[]) => {
-                if (err || undefined) return reject(err);
-                resolve(results);
-            });
-        })
+            const results = await new nordpool.Prices().hourly(opts);
+
+            // map data
+            ds.data = results.map((v : any) => {
+                let date = v.date;
+                let price = Number.parseFloat((v.value / 1000).toFixed(2)); // unit i MWh
+                let time = date.tz(constants.DEFAULTS.TIMEZONE).format("H:mm");
+                return new DataElement(time, price);
+            })
+
+            // cache
+            ctx.storage.setPowerData(m.format("YYYY-MM-DD"), ds.data);
+
+            // return
+            return ds;
+
+        } catch (err) {
+            throw Error(`Unable to load powerquery data for date (${m.format("YYYY-MM-DD")}, ${err.message})`);
+        }
         
-        // map data
-        ds.data = results.map((v : any) => {
-            let date = v.date;
-            let price = Number.parseFloat((v.value / 1000).toFixed(2)); // unit i MWh
-            let time = date.tz(constants.DEFAULTS.TIMEZONE).format("H:mm");
-            return new DataElement(time, price);
-        })
-
-        // cache
-        ctx.storage.setPowerData(m.format("YYYY-MM-DD"), ds.data);
-
-        // return
-        return ds;
     }
 }
