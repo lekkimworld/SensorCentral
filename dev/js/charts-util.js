@@ -313,7 +313,7 @@ module.exports = {
         const containerId = `${ID_CHART_CONTAINER}_${uid}`;
         const actionsId = `${ID_CHART_ACTIONS}_${uid}`
         const bodyId = `${ID_CHART_BODY}_${uid}`
-        const bodyhtml = `<div id="${containerId}">
+        const bodyhtml = `<div id="${containerId}" class="widget-placeholder-item widget-skeleton-loader">
             ${uiutils.htmlSectionTitle(options.title || "", "float-left")}
             <span id="${actionsId}"></span>
             <div id="${bodyId}"></div>
@@ -326,14 +326,28 @@ module.exports = {
             elemRoot.html(bodyhtml);
         }
 
+        // remove skeleton method
+        const removeSkeleton = () => {
+            const e = document.querySelector(`#${containerId}`);
+            e.classList.remove("widget-skeleton-loader");
+            e.classList.remove("widget-placeholder-item");
+        }
+        const addSkeleton = () => {
+            const e = document.querySelector(`#${containerId}`);
+            e.classList.add("widget-skeleton-loader");
+            e.classList.add("widget-placeholder-item");
+        }
+
         // create context
         let chartOptions;
         let chartFn;
         const state = {};
         const ctx = {
             "_state": state,
+            removeSkeleton,
             "reload": (ctx) => {
                 if (!chartFn) return Promise.reject(Error("Not called before"));
+                addSkeleton();
                 const options = Object.assign({}, chartOptions);
                 options.start = ctx.start_dt;
                 options.end = ctx.end_dt;
@@ -348,17 +362,20 @@ module.exports = {
                 chartFn = buildGaugeChart;
                 return buildGaugeChart(bodyId, options).then(data => {
                     state.data = data;
+                    removeSkeleton();
                     return Promise.resolve(data);
                 })
             },
             "timeChart": (datasets, options) => {
                 chartOptions = options;
                 chartFn = timeChart;
+                removeSkeleton();
                 return timeChart(bodyId, datasets, options);
             },
             "barChart": (labels, options) => {
                 chartOptions = options;
                 chartFn = barChart;
+                removeSkeleton();
                 return barChart(bodyId, labels, options);
             }
         };

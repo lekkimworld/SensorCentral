@@ -179,3 +179,33 @@ input:checked+.sensorcentral-slider:before {
     padding: 5px;
     font-weight: bold;
 }
+
+.widget-placeholder-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.widget-skeleton-loader {
+    min-height: 100px;
+}
+
+.widget-skeleton-loader::before {
+    content: '';
+    display: block;
+    position: absolute;
+    left: -150px;
+    top: 0;
+    height: 100%;
+    width: 150px;
+    background: linear-gradient(to right, transparent 0%, #E8E8E8 50%, transparent 100%);
+    animation: load 1s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+}
+
+@keyframes load {
+    from {
+        left: -150px;
+    }
+    to   {
+        left: 100%;
+    }
+}
