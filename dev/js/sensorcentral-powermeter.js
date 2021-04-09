@@ -1,7 +1,7 @@
 const uiutils = require("./ui-utils");
 const forms = require("./forms-util");
 const fetcher = require("./fetch-util");
-const uuid = require("uuid/v4");
+const uuid = require("uuid").v4;
 
 module.exports = (document, elemRoot, ctx) => {
     const updateUI = () => {

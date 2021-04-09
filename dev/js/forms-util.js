@@ -1,5 +1,4 @@
 const { trim } = require("jquery");
-const { create } = require("ts-node");
 const fetcher = require("./fetch-util");
 const storage = require("./storage-utils");
 const ID_ELEM_FORM = "sensorcentral-form";

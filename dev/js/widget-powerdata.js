@@ -11,26 +11,26 @@ module.exports = (elem) => {
     const chartCtx = addChartContainer(elem, {
         title: "Power Prices (kr/kWh)",
         actions: [{
-                "id": "save",
-                "icon": "fa-save",
-                "callback": () => {
-                    fetcher.post(`/api/v1/data/power`, {
-                        "dates": visibleDates,
-                        "type": "csv"
-                    }).then(obj => {
-                        window.open(`/download/power/${obj.downloadKey}/attachment`, "_new");
-                    })
-                }
-            },
-            {
-                "id": "calendar",
-                "icon": "fa-calendar",
-                "callback": () => {
-                    formutils.appendDateSelectForm(undefined, (data) => {
-                        loadAndShowPowerdata(data.date);
-                    })
-                }
+            "id": "save",
+            "icon": "fa-save",
+            "callback": () => {
+                fetcher.post(`/api/v1/data/power`, {
+                    "dates": visibleDates,
+                    "type": "csv"
+                }).then(obj => {
+                    window.open(`/download/power/${obj.downloadKey}/attachment`, "_new");
+                })
             }
+        },
+        {
+            "id": "calendar",
+            "icon": "fa-calendar",
+            "callback": () => {
+                formutils.appendDateSelectForm(undefined, (data) => {
+                    loadAndShowPowerdata(data.date);
+                })
+            }
+        }
         ]
     })
 
@@ -44,8 +44,13 @@ module.exports = (elem) => {
         })
         powerquery += "}";
 
+        // clear chart
+        chartCtx.addSkeleton({
+            "clearContainer": true
+        });
+
         // get data
-        fetcher.graphql(powerquery).then(result => {
+        fetcher.graphql(powerquery, { "noSpinner": true }).then(result => {
             // build labels and datasets
             const labels = result[Object.keys(result)[0]].data.map(v => v.x);
             const datasets = Object.keys(result).reduce((prev, key) => {
@@ -60,8 +65,8 @@ module.exports = (elem) => {
             // do chart
             chartCtx.barChart(
                 labels, {
-                    datasets
-                }
+                datasets
+            }
             )
 
             // store dates

@@ -9,7 +9,7 @@ import constants from "../../../constants";
 import {formatDate} from "../../../utils";
 import moment from 'moment';
 import { ensureScopeFactory, hasScope } from '../../../middleware/ensureScope';
-import uuid from 'uuid';
+import {v4 as uuid} from 'uuid';
 import { Sensor } from 'src/resolvers/sensor';
 
 const router = express.Router();

@@ -1,5 +1,6 @@
 // load environment variables for localhost
-require('dotenv').config()
+import { config as dotenv_config } from "dotenv";
+dotenv_config();
 
 // require
 import terminateListener from '../terminate-listener';

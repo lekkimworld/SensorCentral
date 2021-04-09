@@ -5,7 +5,7 @@ import { BackendIdentity, BaseService, BrowserLoginResponse, BrowserUser, Device
 import { DatabaseService } from "./database-service";
 import { StorageService } from "./storage-service";
 import { QueryResult } from "pg";
-import uuid from "uuid/v1";
+import {v1 as uuid} from "uuid";
 import { RedisService } from "./redis-service";
 
 export interface CreateLoginUserInput {

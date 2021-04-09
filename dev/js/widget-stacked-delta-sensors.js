@@ -10,7 +10,7 @@ module.exports = (elem) => {
     fetcher.graphql(`query {
         sensors(data: {type: delta, houseId: "${user.houseId}"}){id,name}
     }
-    `).then(data => {
+    `, {"noSpinner": true}).then(data => {
         if (data.sensors.length === 0) {
             // no delta sensors
         } else {
@@ -18,7 +18,7 @@ module.exports = (elem) => {
             const chartCtx = addChartContainer(elem, { title: "Stacked Delta Sensors (this week)" });
             return fetcher.graphql(`query {
                 groupedQuery(data: {sensorIds: ["${data.sensors.map(s => s.id).join("\",\"")}"], groupBy: day, adjustBy: week, start: 0, end: -1, addMissingTimeSeries: true}){id, name, data{x,y}}
-            }`).then(data => {
+            }`, {"noSpinner": true}).then(data => {
                 const datasets = data.groupedQuery.map(q => {
                     return {
                         "label": q.name,

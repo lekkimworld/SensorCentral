@@ -1,5 +1,5 @@
 import express from 'express';
-import bodyparser from 'body-parser';
+import {json as bp_json, raw as bp_raw} from 'body-parser';
 import path from 'path';
 import attachApplicationRoutes from './configure-express-routes';
 import configureSessionWithRedis from "./configure-express-session";
@@ -16,8 +16,8 @@ export default async () => {
 
     // configure app
     app.use(express.static(path.join(__dirname, '..', 'public')));
-    app.use(bodyparser.json());
-    app.use(bodyparser.raw()); // for smart.me protobuf
+    app.use(bp_json());
+    app.use(bp_raw()); // for smart.me protobuf
     configureHandlebars(app);
 
     // sessions

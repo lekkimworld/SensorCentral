@@ -2,7 +2,7 @@ import session from 'express-session';
 import RedisStore from 'connect-redis';
 import constants from "./constants";
 import { RedisClient } from "redis";
-import uuid from "uuid/v4";
+import {v4 as uuid} from "uuid";
 
 const secret = (function() {
     if (process.env.SESSION_SECRET) {
