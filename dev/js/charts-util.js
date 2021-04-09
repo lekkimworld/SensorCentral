@@ -157,7 +157,7 @@ const timeChart = (id, datasets, options = {}) => {
                         maxRotation: 0,
                         sampleSize: 100
                     },
-                    afterBuildTicks: function(scale, ticks) {
+                    afterBuildTicks: function (scale, ticks) {
                         var majorUnit = scale._majorUnit;
                         var firstTick = ticks[0];
                         var i, ilen, val, tick, currMajor, lastMajor;
@@ -255,17 +255,17 @@ const barChart = (id, labels, inputOptions = {}) => {
 };
 
 const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount = 50, start, end }) => {
-        return new Promise((resolve, reject) => {
-                    if (!deviceId && !sensors && !sensorIds) return Promise.reject(Error("Must supply deviceId, sensors or sensorIds"));
-                    if (sensors) {
-                        // use the sensors we received
-                        resolve(sensors);
-                    } else if (deviceId) {
-                        fetcher.graphql(`{sensors(data: {deviceId:"${deviceId}"}){id,name, type}}`).then(data => {
-                            resolve(data.sensors.filter(s => s.type === "gauge"));
-                        })
-                    } else {
-                        fetcher.graphql(`query {sensors(data: {sensorIds: [${sensorIds.map(s => `"${s}"`).join()}]}){id,name}}`).then(data => {
+    return new Promise((resolve, reject) => {
+        if (!deviceId && !sensors && !sensorIds) return Promise.reject(Error("Must supply deviceId, sensors or sensorIds"));
+        if (sensors) {
+            // use the sensors we received
+            resolve(sensors);
+        } else if (deviceId) {
+            fetcher.graphql(`{sensors(data: {deviceId:"${deviceId}"}){id,name, type}}`).then(data => {
+                resolve(data.sensors.filter(s => s.type === "gauge"));
+            })
+        } else {
+            fetcher.graphql(`query {sensors(data: {sensorIds: [${sensorIds.map(s => `"${s}"`).join()}]}){id,name}}`).then(data => {
                 resolve(data.sensors);
             })
         }
@@ -288,11 +288,11 @@ const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount
         // build chart
         const canvasId = createCanvasForContainer(elementId);
         timeChart(
-            canvasId, 
+            canvasId,
             samples
         );
         return Promise.resolve(samples);
-        
+
     }).catch(err => {
         $(`#${elementId}`).html(err.message);
     })
@@ -332,10 +332,15 @@ module.exports = {
             e.classList.remove("widget-skeleton-loader");
             e.classList.remove("widget-placeholder-item");
         }
-        const addSkeleton = () => {
+        const addSkeleton = (args = {}) => {
             const e = document.querySelector(`#${containerId}`);
+            if (args && Object.prototype.hasOwnProperty.call(args, "clearContainer") && typeof args.clearContainer === "boolean" && args.clearContainer === true) {
+                document.querySelector(`#${bodyId}`).innerHTML = "";
+            }
             e.classList.add("widget-skeleton-loader");
             e.classList.add("widget-placeholder-item");
+            const height = window.innerHeight < 400 ? 200 : 400;
+            e.style.setProperty("--widget-skeleton-min-height", `${height}px`);
         }
 
         // create context
@@ -344,6 +349,7 @@ module.exports = {
         const state = {};
         const ctx = {
             "_state": state,
+            addSkeleton,
             removeSkeleton,
             "reload": (ctx) => {
                 if (!chartFn) return Promise.reject(Error("Not called before"));
@@ -437,7 +443,7 @@ module.exports = {
                 action.callback(ctx);
             })
         })
-        
+
         // return context
         return ctx;
     }

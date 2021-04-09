@@ -1,3 +1,7 @@
+:root {
+    --widget-skeleton-min-height: 100px;
+}
+
 .sensorReading {
     font-family: Arial, Helvetica, sans-serif;
     height: auto;
@@ -186,7 +190,7 @@ input:checked+.sensorcentral-slider:before {
 }
 
 .widget-skeleton-loader {
-    min-height: 100px;
+    min-height: var(--widget-skeleton-min-height);
 }
 
 .widget-skeleton-loader::before {
