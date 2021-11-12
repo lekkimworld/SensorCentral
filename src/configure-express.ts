@@ -16,14 +16,15 @@ export default async () => {
     app.disable("x-powered-by");
 
     if (process.env.NODE_ENV !== "development") {
+        app.enable("trust proxy");
         app.get("*", async (req, res, next) => {
-            if (req.protocol !== "https") {
+            if (req.secure) {
+                next();
+            } else {
                 const logService = (await lookupService(LogService.NAME)) as LogService;
                 const redirectUrl = `https://${req.headers.host}${req.originalUrl}`;
                 logService.info(`User is not using TLS - redirecting user to ${redirectUrl}`);
                 res.redirect(redirectUrl);
-            } else {
-                next();
             }
         });
     }
