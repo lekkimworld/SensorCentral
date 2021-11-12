@@ -33,9 +33,8 @@ export default (redisClient: RedisClient) => {
     if (process.env.NODE_ENV !== "development") {
         console.log("NODE_ENV not set to 'development' - enforcing cookie settings");
         sessionOptions.cookie = {
-            sameSite: "strict",
-            secure: true,
             httpOnly: true,
+            secure: true,
         };
     }
 
