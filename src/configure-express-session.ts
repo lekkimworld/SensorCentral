@@ -34,7 +34,9 @@ export default (redisClient: RedisClient) => {
         console.log("NODE_ENV not set to 'development' - enforcing cookie settings");
         sessionOptions.cookie = {
             sameSite: true,
+            secure: true,
         };
+        sessionOptions.proxy = true;
     }
 
     // create sessions
