@@ -977,15 +977,16 @@ export class StorageService extends BaseService {
         await this.getDevice(user, data.id);
 
         // get params
-        let mutedUntil;
+        let str_muted_until;
         if (data.notify === WatchdogNotification.muted) {
+            let mutedUntil;
             if (!data.muted_until) {
                 mutedUntil = moment().add(7, "days");
             } else {
                 mutedUntil = data.muted_until;
             }
+            str_muted_until = mutedUntil?.toISOString();
         }
-        let str_muted_until = data.notify === WatchdogNotification.muted ? mutedUntil?.toISOString() : undefined;
         
         let result = await this.dbService!.query("select userId, deviceId from device_watchdog where userId=$1 AND deviceId=$2", this.getUserIdFromUser(user), data.id);
         if (!result || result.rowCount === 0) {

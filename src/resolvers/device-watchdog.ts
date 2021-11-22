@@ -38,7 +38,7 @@ export class WatchdogNotificationInput {
     notify: types.WatchdogNotification;
 
     @Field({nullable: true})
-    muted_until: Date;
+    muted_until?: Date;
 }
 
 @Resolver(() => Device)

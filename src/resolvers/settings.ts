@@ -22,7 +22,7 @@ class Settings {
 
 @InputType()
 export class UpdateSettingsInput {
-    @Field()
+    @Field({nullable: true})
     @IsEnum(types.NotifyUsing)
     notify_using : types.NotifyUsing
 

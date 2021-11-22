@@ -34,7 +34,7 @@ module.exports = (elem) => {
         ]
     })
 
-    // load power data - build query 2 days back, today and tomorrow
+    // load power data
     const loadAndShowPowerdata = input => {
         // construct query
         const dates = (Array.isArray(input) ? input : [input]);
@@ -73,9 +73,11 @@ module.exports = (elem) => {
             visibleDates = dates.map(d => d.format("YYYY-MM-DD"));
         })
     }
-    const m = moment().subtract(2, "days");
+
+    // build query from today and tomorrow (if available)
+    const m = moment().subtract(0, "days");
     let dates = [];
-    Array(4).fill().forEach(d => {
+    Array(2).fill().forEach(d => {
         dates.push(moment(m));
         m.add(1, "day");
     })
