@@ -4,20 +4,20 @@ import { Length, IsEnum } from "class-validator";
 
 @ObjectType()
 class Settings {
-    constructor(s : types.NotificationSettings) {
+    constructor(s: types.NotificationSettings) {
         this.notify_using = s.notifyUsing;
         this.pushover_apptoken = s.pushover ? s.pushover.apptoken : undefined;
         this.pushover_userkey = s.pushover ? s.pushover.userkey : undefined;
     }
 
-    @Field({nullable: true})
-    notify_using? : types.NotifyUsing;
+    @Field({ nullable: true })
+    notify_using?: types.NotifyUsing;
 
-    @Field({nullable: true})
-    pushover_userkey? : string;
+    @Field({ nullable: true })
+    pushover_userkey?: string;
 
-    @Field({nullable: true})
-    pushover_apptoken? : string;
+    @Field({ nullable: true })
+    pushover_apptoken?: string;
 }
 
 @InputType()

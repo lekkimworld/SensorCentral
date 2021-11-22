@@ -1042,7 +1042,7 @@ export class StorageService extends BaseService {
             // must supply pushover tokens if using pushover
             throw Error("Must supply pushover tokens if notifying via pushover");
         }
-        await this.dbService!.query("update login_user set default_notify_using=$1, pushover_apptoken=$2, pushover_userkey=$3 where id=$4", data.notify_using, data.pushover_apptoken, data.pushover_userkey, this.getUserIdFromUser(user));
+        await this.dbService!.query("update login_user set default_notify_using=$1, pushover_apptoken=$2, pushover_userkey=$3 where id=$4", data.notify_using === NotifyUsing.none ? undefined : data.notify_using, data.pushover_apptoken, data.pushover_userkey, this.getUserIdFromUser(user));
     }
     
     /**

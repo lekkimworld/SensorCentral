@@ -188,7 +188,7 @@ export interface PushoverMessage {
  * The ways we can notify users.
  */
 export enum NotifyUsing {
-    empty = "",
+    none = "",
     email = "email",
     pushover = "pushover"
 }
