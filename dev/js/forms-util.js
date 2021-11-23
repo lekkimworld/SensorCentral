@@ -605,10 +605,10 @@ const DEVICE_EDIT_WATCHDOG = {
             if (wd.muted_until) {
                 $("#dt").data("DateTimePicker").date(moment(wd.muted_until).set("seconds", 0).set("milliseconds", 0));
             } else {
-                $("#dt").data("DateTimePicker").date(moment().set("minutes", 0).set("seconds", 0).set("milliseconds", 0).add("hour", 1));
+                $("#dt").data("DateTimePicker").date(moment().set("minutes", 0).set("seconds", 0).set("milliseconds", 0).add(1, "hour"));
             }
             $("#stateInput").val(wd.notify);
-            return Promise.resolve();ç
+            return Promise.resolve();
         })
         
     },
@@ -618,7 +618,7 @@ const DEVICE_EDIT_WATCHDOG = {
             const mutedUntil = state === "muted" ? $("#dt").data("DateTimePicker").date() : undefined;
             
             // update
-            fetcher.graphql(`mutation{updateDeviceWatchdog(data:{id:"${formdata.device.id}",notify:"${state}", muted_until: ${mutedUntil ? `"${mutedUntil.toISOString()}"` : "undefined"}}){id,name}}`).then(() => {
+            fetcher.graphql(`mutation{updateDeviceWatchdog(data:{id:"${formdata.device.id}",notify:"${state}", muted_until: ${mutedUntil ? `"${mutedUntil.toISOString()}"` : "\"\""}}){id,name}}`).then(() => {
                 // close form
                 removeForm();    
             })
