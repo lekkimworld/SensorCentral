@@ -38,15 +38,15 @@ export default {
             "DEVICE": {
                 "RESET": {
                     "TITLE": process.env.DEVICE_RESET_TITLE || "{{appname}} - Device watchdog",
-                    "MESSAGE": process.env.DEVICE_RESET_MESSAGE || "{{appname}} - Watchdog for device ({{device.id}} / {{device.name}}) reset meaning we received no communication from it in {{timeout.ms}} ms ({{timeout.minutes}} minutes)"
+                    "MESSAGE": process.env.DEVICE_RESET_MESSAGE || "{{appname}} - Watchdog for device ({{device.id}} / {{device.name}}) reset meaning we received no communication from it in {{timeout.ms}} ms ({{timeout.minutes}} minutes) {{appurl}}/#configuration/house/{{device.house.id}}/device/{{device.id}}"
                 },
                 "RESTART": {
                     "TITLE": process.env.DEVICE_RESTART_TITLE || "{{appname}} - Device restart",
-                    "MESSAGE": process.env.DEVICE_RESTART_MESSAGE || "{{appname}} - Device restart ({{device.id}} / {{device.name}}) - maybe it didn't pat the watchdog?"
+                    "MESSAGE": process.env.DEVICE_RESTART_MESSAGE || "{{appname}} - Device restart ({{device.id}} / {{device.name}}) - maybe it didn't pat the watchdog? {{appurl}}/#configuration/house/{{device.house.id}}/device/{{device.id}}"
                 },
                 "NOSENSORS": {
                     "TITLE": process.env.DEVICE_NOSENSORS_TITLE || "{{appname}} - Device pinged without any sensors",
-                    "MESSAGE": process.env.DEVICE_NOSENSORS_MESSAGE || "{{appname}} - Device ({{device.id}} / {{device.name}}) pinged without any sensors in the data - maybe the sensor is not plugged in?"
+                    "MESSAGE": process.env.DEVICE_NOSENSORS_MESSAGE || "{{appname}} - Device ({{device.id}} / {{device.name}}) pinged without any sensors in the data - maybe the sensor is not plugged in? {{appurl}}/#configuration/house/{{device.house.id}}/device/{{device.id}}"
                 }
             }
         },

@@ -38,7 +38,7 @@ module.exports = (elem) => {
                             sensor.last_reading ? `${sensor.last_reading.value} (${dateutils.formatDMYTime(sensor.last_reading.dt)})` : "None found"
                         ],
                         "click": function() {
-                            document.location.hash = `configuration/house/${sensor.device.houseid}/device/${sensor.device.id}/sensor/${sensor.id}`
+                            document.location.hash = `configuration/house/${sensor.device.house.id}/device/${sensor.device.id}/sensor/${sensor.id}`
                         }
                     }
                 })

@@ -46,21 +46,18 @@ export class NotifyService extends BaseService {
         this.templates.set("device.reset.message", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.RESET.MESSAGE));
         this.templates.set("device.noSensors.title", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.NOSENSORS.TITLE));
         this.templates.set("device.noSensors.message", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.NOSENSORS.MESSAGE));
-        
-        /* this.eventService.subscribeTopic(constants.TOPICS.SENSOR, "known.#", (result : ISubscriptionResult) => {
-            this.logService!.debug(`Notify service received message on exchange <${result.exchangeName}> and routingKey ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
-            const payload = result.data as TopicSensorMessage;
-            // @ts-ignore
-            if (payload.sensorId === '28FF46C76017059A' && payload.value < 0 && (!this.pushoverLastSent || moment().diff(this.pushoverLastSent, 'minutes') > 60)) {
-                // @ts-ignore
-                this.pushoverLastSent = moment();
-                this.pushoverService!.notify('Frostvejr', `Det er frostvejr... (${payload.value})`)
-            }
-
-        }); */
 
         // callback
         callback();
+    }
+
+    private getDefaultData(msg : TopicControlMessage) : any {
+        const data = {
+            appurl: `${constants.APP.PROTOCOL}://${constants.APP.DOMAIN}`,
+            appname: constants.APP.NAME,
+            device: msg.device,
+        };
+        return data;
     }
 
     private async listenForceDeviceRestarts(result : ISubscriptionResult) {
@@ -71,10 +68,7 @@ export class NotifyService extends BaseService {
             return;
         }
 
-        const data = {
-            "appname": constants.APP.NAME,
-            "device": msg.device,
-        }
+        const data = this.getDefaultData(msg);
         this.notifyNotifiers(
             msg.device, 
             this.templates.get("device.restart.title")(data),
@@ -90,14 +84,12 @@ export class NotifyService extends BaseService {
             return;
         }
 
-        const data = {
-            "appname": constants.APP.NAME,
-            "device": msg.device,
-            "timeout": {
-                "ms": constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT,
-                "minutes": constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000
-            }
-        }
+        const data = Object.assign({
+            timeout: {
+                ms: constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT,
+                minutes: constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000,
+            },
+        }, this.getDefaultData(msg));
         this.notifyNotifiers(
             msg.device, 
             this.templates.get("device.reset.title")(data),
@@ -113,10 +105,7 @@ export class NotifyService extends BaseService {
             return;
         }
 
-        const data = {
-            "appname": constants.APP.NAME,
-            "device": msg.device
-        }
+        const data = this.getDefaultData(msg);
         this.notifyNotifiers(
             msg.device, 
             this.templates.get("device.noSensors.title")(data),
