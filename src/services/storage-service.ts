@@ -156,7 +156,7 @@ export class StorageService extends BaseService {
      * 
      * @param key 
      */
-    async getTemporaryData(key : string) : Promise<string> {
+    async getTemporaryData(key : string) : Promise<string|null> {
         return this.redisService!.get(key);
     }
 

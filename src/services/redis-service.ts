@@ -1,7 +1,6 @@
-import { promisify } from "util";
 import { BaseService } from "../types";
 import { URL } from "url";
-import { createClient as createRedisClient } from "redis";
+import { createClient as createRedisClient, RedisClientType } from "redis";
 import { LogService } from "./log-service";
 
 const CONNECTION_TIMEOUT =
@@ -11,36 +10,28 @@ const CONNECTION_TIMEOUT =
 
 const client = (function () {
     const redis_uri = process.env.REDIS_TLS_URL ? new URL(process.env.REDIS_TLS_URL as string) : process.env.REDIS_URL ? new URL(process.env.REDIS_URL as string) : undefined;
+    console.log(`Redis URI: ${redis_uri}`);
     if (process.env.REDIS_URL && redis_uri && redis_uri.protocol!.indexOf("rediss") === 0) {
         return createRedisClient({
-            port: Number.parseInt(redis_uri.port!),
-            host: redis_uri.hostname!,
-            password: redis_uri.password,
-            db: 0,
-            tls: {
+            socket: {
+                port: Number.parseInt(redis_uri.port!),
+                host: redis_uri.hostname!,
+                tls: true, 
                 rejectUnauthorized: false,
                 requestCert: true,
-                agent: false
+                connectTimeout: CONNECTION_TIMEOUT
             },
-            connect_timeout: CONNECTION_TIMEOUT
+            password: redis_uri.password
         })
     } else {
         return createRedisClient({
-            "url": process.env.REDIS_URL as string,
-            "connect_timeout": CONNECTION_TIMEOUT
+            url: redis_uri?.toString(),
+            socket: {
+                connectTimeout: CONNECTION_TIMEOUT
+            }
         });
     }
-})();
-
-const promisifiedClient = {
-    'get': promisify(client.get).bind(client),
-    'set': promisify(client.set).bind(client),
-    'setex': promisify(client.setex).bind(client),
-    'keys': promisify(client.keys).bind(client),
-    'mget': promisify(client.mget).bind(client),
-    'expire': promisify(client.expire).bind(client),
-    'del': promisify(client.del).bind(client)
-}
+})() as RedisClientType;
 
 export class RedisService extends BaseService {
     public static NAME = "redis";
@@ -53,50 +44,44 @@ export class RedisService extends BaseService {
     init(callback: (err?: Error) => {}, services: BaseService[]) {
         const log = services[0] as LogService;
         log.info("Querying redis for dummy key...");
-        client.get("foo", (err, data) => {
-            log.info("Queried redis for dummy key - result: " + data + ", err: " + err);
-            callback(err || undefined);
+        client.connect().then(() => {
+            return client.get("foo");
+        }).then(data => {
+            log.info("Queried redis for dummy key - result: " + data);
+            callback();
+        }).catch(err => {
+            log.info("Queried redis for dummy key - err: " + err);
+            callback(err);
         })
     }
 
     terminate() {
-        return new Promise<void>((resolve) => {
-            client.end();
-            resolve();
-        });
+        return client.quit();
     }
 
-    del(key: string): Promise<string> {
-        return promisifiedClient.del(key);
+    del(key: string): Promise<number> {
+        return client.del(key);
     }
-    get(key: string): Promise<string> {
-        return promisifiedClient.get(key);
+    get(key: string): Promise<string|null> {
+        return client.get(key);
     }
-    set(key: string, value: string): Promise<void> {
-        return promisifiedClient.set(key, value) as Promise<void>;
+    set(key: string, value: string): Promise<string|null> {
+        return client.set(key, value);
     }
-    setex(key: string, expire: number, value: string): Promise<string> {
-        return promisifiedClient.setex(key, expire, value);
+    setex(key: string, expire: number, value: string): Promise<string|null> {
+        return client.setEx(key, expire, value);
     }
     keys(pattern: string): Promise<string[]> {
-        return promisifiedClient.keys(pattern);
+        return client.keys(pattern);
     }
-    mget(...keys: string[]): Promise<string[]> {
-        return new Promise((resolve, reject) => {
-            client.mget(keys, (err: Error | null, values: string[]) => {
-                if (err) return reject(err);
-                resolve(values);
-            });
-        });
+    mget(...keys: string[]): Promise<(string | null)[]> {
+        return client.mGet(keys);
     }
-    expire(key: string, expire: number): Promise<number> {
-        return promisifiedClient.expire(key, expire);
+    expire(key: string, expire: number): Promise<boolean> {
+        return client.expire(key, expire);
     }
 
     getClient() {
         return client;
-    }
-    getPromisifiedClient() {
-        return promisifiedClient;
     }
 }
