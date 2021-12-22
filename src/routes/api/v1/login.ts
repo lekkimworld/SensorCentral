@@ -10,6 +10,12 @@ import { IdentityService } from "../../../services/identity-service";
 import { LogService } from "../../../services/log-service";
 import constants from "../../../constants";
 
+declare module "express-session" {
+    export interface SessionData {
+        nonce: string;
+    }
+}
+
 const router = express.Router();
 
 /**
@@ -21,7 +27,7 @@ router.get("/", async (req, res, next) => {
     const result = await getAuthenticationUrl();
 
     // save nonce, save session
-    const session = req.session as any;
+    const session = req.session;
     session!.nonce = result.nonce;
     session!.save((err : Error) => {
         // abort if errror

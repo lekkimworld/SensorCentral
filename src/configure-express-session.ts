@@ -1,7 +1,7 @@
 import session, { SessionOptions } from "express-session";
 import RedisStore from "connect-redis";
 import constants from "./constants";
-import { RedisClientType } from "redis";
+import { RedisClient } from "redis";
 import { v4 as uuid } from "uuid";
 
 const secret = (function () {
@@ -16,7 +16,7 @@ const secret = (function () {
 console.log(`Read session timeout in sesconds as <${constants.DEFAULTS.SESSION_TIMEOUT_SECONDS}>`);
 const redisStoreInstance = RedisStore(session);
 
-export default (redisClient: RedisClientType) => {
+export default (redisClient: RedisClient) => {
     // create session options
     const sessionOptions: SessionOptions = {
         saveUninitialized: false,
