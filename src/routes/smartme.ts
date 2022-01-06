@@ -43,6 +43,7 @@ router.post('/:clientId([a-zA-Z0-9+/=.]+)', async (req, res, next) => {
         samples.forEach(sample => {
             // ignore if not from the known sensor (powermeter)
             log.debug(`Received sample from powermeter deviceId <${sample.deviceId}>`);
+            log.debug(`Received powermeter sample: ${JSON.stringify(sample)}`);
             if (sample.deviceId !== signatureData.sensorId) {
                 log.warn(`Ignoring powermeter sample as deviceId <${sample.deviceId}> does NOT match expected sensorId <${signatureData.sensorId}>`);
                 return;
