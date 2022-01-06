@@ -1101,6 +1101,25 @@ export class StorageService extends BaseService {
      * @param sample 
      */
     async persistPowermeterReading(sample : Smartme.DeviceSample) {
+        this.logService!.debug(
+            `Persisting powermeter sample - id <${sample.deviceId}> dt <${sample.dt.toISOString()}> ActiveEnergyTotalExport <${sample.getValue(
+                Smartme.Obis.ActiveEnergyTotalExport
+            )}> ActiveEnergyTotalImport <${sample.getValue(
+                Smartme.Obis.ActiveEnergyTotalImport
+            )}> ActivePowerPhaseL1 <${sample.getValue(
+                Smartme.Obis.ActivePowerPhaseL1
+            )}> ActivePowerPhaseL2 <${sample.getValue(
+                Smartme.Obis.ActivePowerPhaseL2
+            )}> ActivePowerPhaseL3 <${sample.getValue(
+                Smartme.Obis.ActivePowerPhaseL3
+            )}> ActivePowerTotal <${sample.getValue(Smartme.Obis.ActivePowerTotal)}> CurrentPhaseL1 <${sample.getValue(
+                Smartme.Obis.CurrentPhaseL1
+            )}> CurrentPhaseL2 <${sample.getValue(Smartme.Obis.CurrentPhaseL2)}> CurrentPhaseL3 <${sample.getValue(
+                Smartme.Obis.CurrentPhaseL3
+            )}> VoltagePhaseL1 <${sample.getValue(Smartme.Obis.VoltagePhaseL1)}> VoltagePhaseL2 <${sample.getValue(
+                Smartme.Obis.VoltagePhaseL2
+            )}> VoltagePhaseL3 <${sample.getValue(Smartme.Obis.VoltagePhaseL3)}>`
+        );
         this.dbService!.query(`insert into powermeter_data (
             id, 
             dt, 
