@@ -65,7 +65,7 @@ router.post("/samples", (req, res, next) => {
 		if (!id) return next(new HttpException(417, "Missing id"));
 		if (!deviceId) return next(new HttpException(417, "Missing device id"));
 		if (!value || Number.isNaN(value)) return next(new HttpException(417, "Missing value or value is not a number"));
-		if (!str_dt || !str_dt.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)) return  res.status(417).send({"error": true, "message": "Missing sample date/time or date/time is not in ISO8601 format"});
+		if (!str_dt || !str_dt.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)) return  res.status(417).send({"error": true, "message": "Missing sample date/time or date/time is not in ISO8601 (HH-MM-DDTHH:mm:ss.SSSZ) format"});
 		
 		// ensure we know the device still (device may have an JWT for a deleted device)
 		storageService.getDevice(user, deviceId).then(() => {

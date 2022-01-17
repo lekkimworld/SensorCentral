@@ -185,6 +185,11 @@ module.exports = {
     BaseService, 
     registerService, 
     lookupService,
+    'getService': (name) => {
+        const s = _services[name];
+        if (!s) return undefined;
+        return s.service;
+    },
     'isReadyService': (name) => _services[name] && _services[name].ready ? true : false, 
     'terminate': () => {
         Object.values(_services).forEach(wrapper => {

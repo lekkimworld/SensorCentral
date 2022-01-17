@@ -39,14 +39,22 @@ registerEnumType(CounterQueryAdjustBy, {
     "description": "How we adjust the time period queried for"
 })
 
+export interface Dataset {
+    id: string;
+    name: string | undefined;
+    fromCache: boolean;
+    data: DataElement[];
+}
+
 @ObjectType()
-class Dataset {
+class GraphQLDataset implements Dataset{
     constructor(id : string, name : string | undefined) {
-        this.id=id;
-        this.name=name;
+        this.id = id;
+        this.name = name;
         this.data = [];
         this.fromCache = false;
     }
+
     @Field(() => ID)
     id : string;
 
@@ -56,12 +64,17 @@ class Dataset {
     @Field(() => Boolean, {nullable: false})
     fromCache : boolean;
 
-    @Field(() => [DataElement])
+    @Field(() => [GraphQLDataElement])
     data : DataElement[]
 }
 
+export interface DataElement {
+    x: string;
+    y: number;
+}
+
 @ObjectType()
-class DataElement {
+class GraphQLDataElement implements DataElement{
     constructor(x : string, y : number) {
         this.x = x;
         this.y = y;
@@ -237,10 +250,10 @@ const doGroupedQuery = async (data : GroupedQueryInput, ctx : types.GraphQLResol
         let ds;
         if (!sensor) {
             // unknown sensor
-            ds = new Dataset(data.sensorIds[i], undefined);
+            ds = new GraphQLDataset(data.sensorIds[i], undefined);
         } else {
             const scaleFactor = sensor.scaleFactor;
-            ds = new Dataset(sensor.id, sensor.name);
+            ds = new GraphQLDataset(sensor.id, sensor.name);
             ds.data = result.rows.map((r : any) => {
                 return {
                     "x": r.period,
@@ -257,55 +270,78 @@ const doGroupedQuery = async (data : GroupedQueryInput, ctx : types.GraphQLResol
 
 @Resolver()
 export class CounterQueryResolver {
-    @Query(() => [Dataset], { description: "Returns data for requested sensors grouped as requested", nullable: false })
-    async groupedQuery(@Arg("data") data : GroupedQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
+    @Query(() => [GraphQLDataset], {
+        description: "Returns data for requested sensors grouped as requested",
+        nullable: false,
+    })
+    async groupedQuery(@Arg("data") data: GroupedQueryInput, @Ctx() ctx: types.GraphQLResolverContext) {
         return doGroupedQuery(data, ctx);
     }
 
-    @Query(() => [Dataset], { description: "Returns data for requested sensors", nullable: false })
-    async ungroupedQuery(@Arg("data") data : GaugeQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
-        const sensors = await Promise.all(data.sensorIds.map(sensorId => {
-            return ctx.storage.getSensorOrUndefined(ctx.user, sensorId);
-        }))
-        const dbdata = await Promise.all(data.sensorIds.map(sensorId => {
-            if (data.start && data.end) {
-                return ctx.storage.getSamplesForSensor(ctx.user, sensorId, data.start, data.end, 1, data.applyScaleFactor);
-            } else {
-                return ctx.storage.getLastNSamplesForSensor(ctx.user, sensorId, data.sampleCount, data.applyScaleFactor);
-            }
-        }))
-        
+    @Query(() => [GraphQLDataset], { description: "Returns data for requested sensors", nullable: false })
+    async ungroupedQuery(@Arg("data") data: GaugeQueryInput, @Ctx() ctx: types.GraphQLResolverContext) {
+        const sensors = await Promise.all(
+            data.sensorIds.map((sensorId) => {
+                return ctx.storage.getSensorOrUndefined(ctx.user, sensorId);
+            })
+        );
+        const dbdata = await Promise.all(
+            data.sensorIds.map((sensorId) => {
+                if (data.start && data.end) {
+                    return ctx.storage.getSamplesForSensor(
+                        ctx.user,
+                        sensorId,
+                        data.start,
+                        data.end,
+                        1,
+                        data.applyScaleFactor
+                    );
+                } else {
+                    return ctx.storage.getLastNSamplesForSensor(
+                        ctx.user,
+                        sensorId,
+                        data.sampleCount,
+                        data.applyScaleFactor
+                    );
+                }
+            })
+        );
+
         // build dataset(s);
-        const dss : Array<Dataset> = [];
-        for (let i=0; i<data.sensorIds.length; i++) {
+        const dss: Array<Dataset> = [];
+        for (let i = 0; i < data.sensorIds.length; i++) {
             const result = dbdata[i] as types.SensorSample[];
             const sensor = sensors[i] as Sensor;
             let ds;
             if (!sensor) {
                 // unknown sensor
-                ds = new Dataset(data.sensorIds[i], undefined);
+                ds = new GraphQLDataset(data.sensorIds[i], undefined);
             } else {
-                ds = new Dataset(sensor.id, sensor.name);
-                ds.data = result.map(r => {
-                    return {
-                        "x": r.dt.toISOString(),
-                        "y": Math.floor((r.value || 0) * Math.pow(10, data.decimals)) / Math.pow(10, data.decimals)
-                    }
-                }).reverse();
+                ds = new GraphQLDataset(sensor.id, sensor.name);
+                ds.data = result
+                    .map((r) => {
+                        return {
+                            x: r.dt.toISOString(),
+                            y: Math.floor((r.value || 0) * Math.pow(10, data.decimals)) / Math.pow(10, data.decimals),
+                        };
+                    })
+                    .reverse();
             }
             dss.push(ds);
         }
-        
+
         return dss;
     }
 
-    @Query(() => Dataset, {description: "Returns hourly prices for the supplied date or today if no date supplied"})
-    async powerQuery(@Arg("data") data : PowerQueryInput, @Ctx() ctx : types.GraphQLResolverContext) {
+    @Query(() => GraphQLDataset, {
+        description: "Returns hourly prices for the supplied date or today if no date supplied",
+    })
+    async powerQuery(@Arg("data") data: PowerQueryInput, @Ctx() ctx: types.GraphQLResolverContext) {
         // calc date to ask for
         const m = data.date ? moment(data.date, "YYYY-MM-DD") : moment();
 
         // create dataset
-        const ds = new Dataset("power", m.format("DD-MM-YYYY"));
+        const ds = new GraphQLDataset("power", m.format("DD-MM-YYYY"));
 
         // see if we could potentially have the data
         const midnight = moment().hour(0).minute(0).second(0).millisecond(0).add(1, "day");
@@ -314,7 +350,7 @@ export class CounterQueryResolver {
             const tomorrowMidnight = moment().hour(0).minute(0).second(0).millisecond(0).add(2, "day");
             const today2pm = moment().hour(14).minute(0).second(0).millisecond(0);
             if (tomorrowMidnight.diff(m) <= 0) {
-                // supplied date is after tomorrow midnight - we never have 
+                // supplied date is after tomorrow midnight - we never have
                 // that data
                 return ds;
             } else {
@@ -340,29 +376,27 @@ export class CounterQueryResolver {
         // get data
         try {
             const opts = {
-                "currency": constants.DEFAULTS.NORDPOOL.CURRENCY,
-                "area": constants.DEFAULTS.NORDPOOL.AREA,
-                "date": m.format("YYYY-MM-DD")
-            }
+                currency: constants.DEFAULTS.NORDPOOL.CURRENCY,
+                area: constants.DEFAULTS.NORDPOOL.AREA,
+                date: m.format("YYYY-MM-DD"),
+            };
             const results = await new nordpool.Prices().hourly(opts);
 
             // map data
-            ds.data = results.map((v : any) => {
+            ds.data = results.map((v: any) => {
                 let date = moment.utc(v.date);
                 let price = Number.parseFloat((v.value / 1000).toFixed(2)); // unit i MWh
                 let time = date.tz(constants.DEFAULTS.TIMEZONE).format("H:mm");
-                return new DataElement(time, price);
-            })
+                return new GraphQLDataElement(time, price);
+            });
 
             // cache
             ctx.storage.setPowerData(m.format("YYYY-MM-DD"), ds.data);
 
             // return
             return ds;
-
         } catch (err) {
             throw Error(`Unable to load powerquery data for date (${m.format("YYYY-MM-DD")}, ${err.message})`);
         }
-        
     }
 }
