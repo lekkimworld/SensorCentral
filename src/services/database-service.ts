@@ -30,7 +30,15 @@ export class DatabaseService extends BaseService {
     async init(callback: (err?: Error) => {}, services: BaseService[]) {
         const log = services[0] as LogService;
         try {
-            log.debug(`Creating database pool with config <${JSON.stringify(config)}>`);
+            const config_clone = Object.assign({}, config);
+            if (Object.hasOwnProperty.call(config_clone, "password")) {
+                if (config_clone.password) {
+                    config_clone.password = `${(config_clone.password! as string).substring(0, 5)}...`;
+                } else {
+                    config_clone.password = "<empty>";
+                }
+            }
+            log.debug(`Creating database pool with config <${JSON.stringify(config_clone)}>`);
             this._pool = new Pool(config);
             log.debug("Querying via pool");
             await this._pool.query("select count(*) from user", []);
