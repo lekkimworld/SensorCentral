@@ -31,16 +31,35 @@ export default async (req : Request, res : Response, next : NextFunction) => {
         return next();
     }
     
-    log.debug("Looking for authorization header and bearer token");
-    if (req.headers && req.headers.authorization && req.headers.authorization.indexOf("Bearer ") === 0) {
-        // get token
-        const token = req.headers.authorization.substring(7);
-        log.debug(`Found bearer token <${token.substring(0,7)}...>`);
+    log.debug("Looking for token in authorization header");
+    if (req.headers && req.headers.authorization) {
+        const authheader = req.headers.authorization;
+        let token;
+
+        if (authheader.indexOf("Bearer ") === 0) {
+            // get token
+            token = req.headers.authorization.substring(7);
+            log.debug(`Found token as Bearer token <${token.substring(0,7)}...>`);
+        } else if (authheader.indexOf("Basic ") === 0) {
+            // get token
+            try {
+                const basicauth = Buffer.from(req.headers.authorization.substring(6), "base64").toString();
+                const parts = basicauth.split(":");
+                token = parts[0];
+                log.debug(`Found token from Basic Auth <${token.substring(0,7)}...>`);
+
+            } catch (err) {
+                return next(new HttpException(401, 'Unable to extract JWT from Basic auth header'));
+            }
+            
+        } else {
+            return next(new HttpException(401, "Unsupported Authorization header"));
+        }
 
         try {
             // verify token
             const ident = await identity.verifyJWT(token);
-            log.debug(`Verified identity from bearer token: ${backendIdentityToString(ident)}`);
+            log.debug(`Verified identity from token: ${backendIdentityToString(ident)}`);
             
             // verify scope contains api
             if (!ident.scopes.includes(constants.JWT.SCOPE_API)) {

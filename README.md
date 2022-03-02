@@ -46,6 +46,10 @@ sensorId = 94f7a0f4-d85b-4815-9c77-833be7c28779
 - "Widget" to graph multiple (gauge) sensors (the user selects) together
 - Implement average graphs for gauge sensors (select avg(value), to_timestamp((floor(extract('epoch' from dt) / 86400)) \* 86400) at time zone 'utc' as interval_alias from sensor_data where id='28FF46C76017059A' and dt > to_date('20200101', 'YYYYMMDD') and dt < to_date('20200201', 'YYYYMMDD') group by interval_alias order by interval_alias)
 
+### 1.7.23
+
+- Allow supplying JWT token as username in Basic auth username
+
 ### 1.7.19
 
 - Update npm dependencies
