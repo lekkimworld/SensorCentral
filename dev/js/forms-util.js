@@ -468,7 +468,8 @@ const SENSOR_CREATE_EDIT = {
                     ${dropdown("scalefactor", "Scale Factor", "Specify the scale factor for the sensor.", {
                         "1": "1",
                         "0.001": "1/1000",
-                        "0.002": "1/500"
+                        "0.002": "1/500",
+                        "0.01": "1/100"
                     }, false, true, "You must specify the scale factor for the sensor.")}
                 </form>
             </div>
