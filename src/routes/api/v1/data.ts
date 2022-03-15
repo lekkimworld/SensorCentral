@@ -226,7 +226,7 @@ router.post("/power", async (req, res) => {
 	const obj = req.body;
 
 	const storage = await lookupService(StorageService.NAME) as StorageService;
-	const data : Array<any> = await Promise.all(obj.dates.map((d : string) => storage.getPowerData(d)));
+	const data : Array<any> = await Promise.all(obj.dates.map((d : string) => storage.getPowerPriceData(d)));
 
 	let str = "";
 	if (obj.type === "csv") {

@@ -19,7 +19,7 @@ registerEnumType(CounterQueryTimezone, {
 enum CounterQueryGroupBy {
     year = "YYYY",
     month = "YYYY-MM",
-    week = "YYYY IW",
+    week = "YYYY W",
     day = "YYYY-MM-DD",
     hour = "YYYY-MM-DD HH24"
 }
@@ -38,6 +38,51 @@ registerEnumType(CounterQueryAdjustBy, {
     "name": "CounterQueryAdjustBy",
     "description": "How we adjust the time period queried for"
 })
+
+// ************************************************
+// power data
+registerEnumType(types.PowerPhase, {
+    "name": "PowerPhase",
+    "description": "The power phase queried for"
+})
+
+
+registerEnumType(types.PowerType, {
+    name: "PowerType",
+    description: "The type of power data queried for",
+});
+
+@InputType()
+class PowerDataQueryInput {
+    @Field()
+    id: string;
+
+    @Field(() => types.PowerPhase, { nullable: false })
+    @IsEnum(types.PowerPhase)
+    phase: types.PowerPhase;
+
+    @Field(() => types.PowerType, { nullable: false })
+    @IsEnum(types.PowerType)
+    type: types.PowerType;
+
+    @Field({ nullable: false })
+    start: Date;
+
+    @Field({ nullable: false })
+    end: Date;
+
+    @Field({ nullable: true })
+    format: string;
+
+    @Field({ nullable: true, defaultValue: constants.DEFAULTS.TIMEZONE} )
+    timezone: string;
+
+    @Field({ nullable: true, defaultValue: true })
+    sortAscending: true;
+}
+
+
+
 
 export interface Dataset {
     id: string;
@@ -88,7 +133,7 @@ class GraphQLDataElement implements DataElement{
 }
 
 @InputType()
-class PowerQueryInput {
+class PowerPriceQueryInput {
     @Field({nullable: true})
     @Matches(/\d{4}-\d{2}-\d{2}/)
     date : string;
@@ -334,9 +379,50 @@ export class CounterQueryResolver {
     }
 
     @Query(() => GraphQLDataset, {
+        description: "Returns power data from a Power Meter"
+    })
+    async powerPhaseDataQuery(@Arg("data") data : PowerDataQueryInput, @Ctx() ctx : types.GraphQLResolverContext) : Promise<Dataset> {
+        // get sensor to ensure access
+        const sensor = await ctx.storage.getSensor(ctx.user, data.id);
+
+        // get data
+        const samples = await ctx.storage.getPowerPhaseData(
+            ctx.user,
+            data.id,
+            data.start,
+            data.end,
+            data.type,
+            data.phase
+        );
+
+        // sort
+        samples.sort((a, b) => {
+            const delta = b.dt.getTime() - a.dt.getTime();
+            return (data.sortAscending ? -1 : 1) * delta;
+        });
+
+        // convert to dataset
+        const dataset = samples.reduce((set, sample) => {
+            set.data.push(
+                new GraphQLDataElement(
+                    moment
+                        .utc(sample.dt)
+                        .tz(data.timezone)
+                        .format(data.format || constants.DEFAULTS.DATETIME_FORMAT),
+                    sample.value
+                )
+            );
+            return set;
+        }, new GraphQLDataset(sensor.id, sensor.name));
+
+        // return
+        return dataset;
+    }
+
+    @Query(() => GraphQLDataset, {
         description: "Returns hourly prices for the supplied date or today if no date supplied",
     })
-    async powerQuery(@Arg("data") data: PowerQueryInput, @Ctx() ctx: types.GraphQLResolverContext) {
+    async powerPriceQuery(@Arg("data") data: PowerPriceQueryInput, @Ctx() ctx: types.GraphQLResolverContext) {
         // calc date to ask for
         const m = data.date ? moment(data.date, "YYYY-MM-DD") : moment();
 
@@ -364,7 +450,7 @@ export class CounterQueryResolver {
 
         // look in cache if allowed
         if (!data.ignoreCache) {
-            const data = await ctx.storage.getPowerData(m.format("YYYY-MM-DD"));
+            const data = await ctx.storage.getPowerPriceData(m.format("YYYY-MM-DD"));
             if (data) {
                 // found in cache
                 ds.data = data as any as DataElement[];
@@ -391,7 +477,7 @@ export class CounterQueryResolver {
             });
 
             // cache
-            ctx.storage.setPowerData(m.format("YYYY-MM-DD"), ds.data);
+            ctx.storage.setPowerPriceData(m.format("YYYY-MM-DD"), ds.data);
 
             // return
             return ds;

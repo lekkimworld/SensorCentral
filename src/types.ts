@@ -441,3 +441,12 @@ export class HttpException extends Error {
     }
   }
   
+  export enum PowerType {
+      voltage = "voltage",
+      current = "current",
+  }
+  export enum PowerPhase {
+      l1 = "phase1",
+      l2 = "phase2",
+      l3 = "phase3",
+  }
