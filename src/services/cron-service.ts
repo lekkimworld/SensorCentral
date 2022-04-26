@@ -32,8 +32,12 @@ export class CronService extends BaseService {
     }
 
     remove(name:string) {
+        this.logService!.debug(`Looking up cron job with name <${name}>`);
         const job = this.jobs[name];
-        if (job) job.stop();
-        delete this.jobs[name];
+        if (job) {
+            job.stop();
+            delete this.jobs[name];
+            this.logService!.debug(`Stopped and deleted cron job with name <${name}>`);
+        }
     }
 }

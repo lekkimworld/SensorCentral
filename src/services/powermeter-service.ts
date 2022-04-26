@@ -69,11 +69,16 @@ export class PowermeterService extends BaseService {
         return msg;
     }
 
+    private getJobName(houseId:string):string {
+        const jobName = `powermeter_subscription_${houseId}>`;
+        return jobName;
+    }
+
     private addCronJob(houseId : string, sensorId : string, frequency : number, cipherText : string) {
         this.logService!.debug(
             `Creating powermeter subscription for house <${houseId}> frequency <${frequency}>`
         );
-        const jobName = `powermeter_subscription_${houseId}>`;
+        const jobName = this.getJobName(houseId);
         this.cron.add(jobName, `*/${frequency} * * * *`, async () => {
             const creds = verifyPayload(cipherText);
             const deviceData = await getSmartmeDevices(creds.username, creds.password, sensorId);
@@ -89,7 +94,7 @@ export class PowermeterService extends BaseService {
 
     private async listenForPowermeterSubscriptionRemove(result: ISubscriptionResult) {
         const msg = this.logAndGetMessage(result);
-        this.cron.remove(`powermeter_subscription_${msg.old.id}`)
+        this.cron.remove(this.getJobName(msg.old.id));
     }
 
     private async listenForPowermeterSubscriptionCreate(result: ISubscriptionResult) {
