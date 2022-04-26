@@ -450,3 +450,10 @@ export class HttpException extends Error {
       l2 = "phase2",
       l3 = "phase3",
   }
+
+  export interface SmartmeSubscription {
+    house : House;
+    sensor : Sensor;
+    frequency : number;
+    encryptedCredentials : string;
+  }

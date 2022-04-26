@@ -19,7 +19,9 @@ export default {
     },
     "SMARTME": {
         "CUTOFF_YEAR": process.env.SMARTME_CUTOFF_YEAR || 2015,
-        "ENCRYPTION_KEY": process.env.SMARTME_KEY as string
+        "ENCRYPTION_KEY": process.env.SMARTME_KEY as string,
+        "PROTOCOL": process.env.SMARTME_PROTOCOL || "https",
+        "DOMAIN": process.env.SMARTME_DOMAIN || "api.smart-me.com"
     },
     'DEFAULTS': {
         'SERVICE': {

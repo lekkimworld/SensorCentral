@@ -18,6 +18,8 @@ import { WatchdogService } from  "../services/watchdog-service";
 import { EmailService } from '../services/email-service';
 import constants from '../constants';
 import { IdentityService } from '../services/identity-service';
+import { PowermeterService } from "../services/powermeter-service";
+import { CronService } from "../services/cron-service";
 
 // number of workers we should create
 const WORKERS = process.env.WEB_CONCURRENCY || 1;
@@ -46,6 +48,8 @@ services.registerService(new DatabaseService());
 services.registerService(new NotifyService());
 services.registerService(new WatchdogService());
 services.registerService(new EmailService());
+services.registerService(new PowermeterService());
+services.registerService(new CronService());
 
 // setup termination listener
 terminateListener(() => {

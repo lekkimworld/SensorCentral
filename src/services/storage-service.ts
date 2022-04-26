@@ -2,7 +2,7 @@ import constants from "../constants";
 import {BaseService, Device, Sensor, 
     WatchdogNotification, 
     SensorSample, NotifyUsing, PushoverSettings, DeviceWatchdogNotifier, 
-    NotificationSettings, BackendIdentity, DeviceWatchdog, SensorType, UserPrincipal, PowerPhase, PowerType } from "../types";
+    NotificationSettings, BackendIdentity, DeviceWatchdog, SensorType, UserPrincipal, PowerPhase, PowerType, SmartmeSubscription } from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
 import { LogService } from "./log-service";
@@ -22,6 +22,7 @@ import {lookupService} from "../configure-services";
 import { Smartme } from "smartme-protobuf-parser";
 import { IdentityService } from "./identity-service";
 import { FavoriteSensorsInput } from "src/resolvers/favorite-sensor";
+import { SmartmeDeviceWithDataType } from "src/resolvers/smartme";
 
 /**
  * serial executes Promises sequentially.
@@ -116,19 +117,25 @@ export class StorageService extends BaseService {
         return obj;
     }
 
-
     /**
      * Loads data from the powermeter_data table.
-     * 
-     * @param user 
-     * @param id 
-     * @param start 
-     * @param end 
-     * @param type 
-     * @param phase 
-     * @returns 
+     *
+     * @param user
+     * @param id
+     * @param start
+     * @param end
+     * @param type
+     * @param phase
+     * @returns
      */
-    async getPowerPhaseData(user : BackendIdentity, id : string, start : Date, end : Date, type : PowerType, phase : PowerPhase) : Promise<SensorSample[]> {
+    async getPowerPhaseData(
+        user: BackendIdentity,
+        id: string,
+        start: Date,
+        end: Date,
+        type: PowerType,
+        phase: PowerPhase
+    ): Promise<SensorSample[]> {
         // get the sensor to ensure access
         const sensor = await this.getSensor(user, id);
         this.logService!.debug(`Retrieved sensor with id <${sensor.id}> and name <${sensor.name}>`);
@@ -141,17 +148,19 @@ export class StorageService extends BaseService {
         const column = `${columnBase}l${phaseNo}`;
         const result = await this.dbService!.query(
             `select dt, ${column} value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not ${columnNullTest} is null order by dt desc;`,
-            id, start, end
+            id,
+            start,
+            end
         );
 
         // create samples
         const samples = result.rows.map((row) => {
             return {
-                "dt": row.dt,
-                "value": row.value,
-                "id": id
+                dt: row.dt,
+                value: row.value,
+                id: id,
             } as SensorSample;
-        })
+        });
         return samples;
     }
 
@@ -845,7 +854,7 @@ export class StorageService extends BaseService {
             if (queryData.deviceId) sensors = sensors.filter((s) => s.device?.id === queryData.deviceId);
             if (queryData.type) sensors = sensors.filter((s) => s.type === queryData.type);
             if (queryData.label) sensors = sensors.filter((s) => s.label === queryData.label);
-            if (queryData.sensorIds) sensors = sensors.filter((s) => queryData.sensorIds?.includes(s.id));
+            if (queryData.sensorIds) sensors = sensors.filter((s) => queryData.sensorIds!.includes(s.id));
         }
 
         // return
@@ -916,6 +925,11 @@ export class StorageService extends BaseService {
         const use_id = id.trim();
         const use_name = name.trim();
         const use_label = label.trim();
+
+        // ensure sensor id doesn't contain __
+        if (use_id.indexOf("__") >= 0) {
+            throw new Error("Sensor ID may not contain double underscore (__)");
+        }
 
         // get device to ensure it exists and user have accesss
         await this.getDevice(user, deviceId);
@@ -1343,26 +1357,52 @@ export class StorageService extends BaseService {
      * @param sample
      */
     async persistPowermeterReading(sample: Smartme.DeviceSample) {
+        this.persistPowermeterReadingFromDeviceRequest({
+            id: sample.deviceId,
+            valueDate: sample.dt,
+            counterReadingExport: sample.getValue(Smartme.Obis.ActiveEnergyTotalExport),
+            counterReadingImport: sample.getValue(Smartme.Obis.ActiveEnergyTotalImport),
+            activePower: sample.getValue(Smartme.Obis.ActivePowerTotal),
+            currentL1: sample.getValue(Smartme.Obis.CurrentPhaseL1),
+            currentL2: sample.getValue(Smartme.Obis.CurrentPhaseL2),
+            currentL3: sample.getValue(Smartme.Obis.CurrentPhaseL3),
+            voltageL1: sample.getValue(Smartme.Obis.VoltagePhaseL1),
+            voltageL2: sample.getValue(Smartme.Obis.VoltagePhaseL2),
+            voltageL3: sample.getValue(Smartme.Obis.VoltagePhaseL3)
+        } as SmartmeDeviceWithDataType);
+    }
+
+    async persistPowermeterReadingFromDeviceRequest(sample: SmartmeDeviceWithDataType) {
         this.logService!.debug(
             `Persisting powermeter sample - id <${
-                sample.deviceId
-            }> dt <${sample.dt.toISOString()}> ActiveEnergyTotalExport <${sample.getValue(
-                Smartme.Obis.ActiveEnergyTotalExport
-            )}> ActiveEnergyTotalImport <${sample.getValue(
-                Smartme.Obis.ActiveEnergyTotalImport
-            )}> ActivePowerPhaseL1 <${sample.getValue(
-                Smartme.Obis.ActivePowerPhaseL1
-            )}> ActivePowerPhaseL2 <${sample.getValue(
-                Smartme.Obis.ActivePowerPhaseL2
-            )}> ActivePowerPhaseL3 <${sample.getValue(
-                Smartme.Obis.ActivePowerPhaseL3
-            )}> ActivePowerTotal <${sample.getValue(Smartme.Obis.ActivePowerTotal)}> CurrentPhaseL1 <${sample.getValue(
-                Smartme.Obis.CurrentPhaseL1
-            )}> CurrentPhaseL2 <${sample.getValue(Smartme.Obis.CurrentPhaseL2)}> CurrentPhaseL3 <${sample.getValue(
-                Smartme.Obis.CurrentPhaseL3
-            )}> VoltagePhaseL1 <${sample.getValue(Smartme.Obis.VoltagePhaseL1)}> VoltagePhaseL2 <${sample.getValue(
-                Smartme.Obis.VoltagePhaseL2
-            )}> VoltagePhaseL3 <${sample.getValue(Smartme.Obis.VoltagePhaseL3)}>`
+                sample.id
+            }> dt <${
+                sample.valueDate.toISOString()
+            }> ActiveEnergyTotalExport <${
+                sample.counterReadingExport
+            }> ActiveEnergyTotalImport <${
+                sample.counterReadingImport
+            }> ActivePowerPhaseL1 <${
+                undefined
+            }> ActivePowerPhaseL2 <${
+                undefined
+            }> ActivePowerPhaseL3 <${
+                undefined
+            }> ActivePowerTotal <${
+                sample.activePower
+            }> CurrentPhaseL1 <${
+                sample.currentL1
+            }> CurrentPhaseL2 <${
+                sample.currentL2
+            }> CurrentPhaseL3 <${
+                sample.currentL3
+            }> VoltagePhaseL1 <${
+                sample.voltageL1
+            }> VoltagePhaseL2 <${
+                sample.voltageL2
+            }> VoltagePhaseL3 <${
+                sample.voltageL3
+            }>`
         );
         this.dbService!.query(
             `insert into powermeter_data (
@@ -1380,21 +1420,130 @@ export class StorageService extends BaseService {
             VoltagePhaseL1, 
             VoltagePhaseL2, 
             VoltagePhaseL3) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-            sample.deviceId,
-            sample.dt.toISOString(),
-            sample.getValue(Smartme.Obis.ActiveEnergyTotalExport),
-            sample.getValue(Smartme.Obis.ActiveEnergyTotalImport),
-            sample.getValue(Smartme.Obis.ActivePowerPhaseL1),
-            sample.getValue(Smartme.Obis.ActivePowerPhaseL2),
-            sample.getValue(Smartme.Obis.ActivePowerPhaseL3),
-            sample.getValue(Smartme.Obis.ActivePowerTotal),
-            sample.getValue(Smartme.Obis.CurrentPhaseL1),
-            sample.getValue(Smartme.Obis.CurrentPhaseL2),
-            sample.getValue(Smartme.Obis.CurrentPhaseL3),
-            sample.getValue(Smartme.Obis.VoltagePhaseL1),
-            sample.getValue(Smartme.Obis.VoltagePhaseL2),
-            sample.getValue(Smartme.Obis.VoltagePhaseL3)
+            sample.id,
+            sample.valueDate.toISOString(),
+            sample.counterReadingExport,
+            sample.counterReadingImport,
+            undefined,
+            undefined,
+            undefined,
+            sample.activePower,
+            sample.currentL1,
+            sample.currentL2,
+            sample.currentL3,
+            sample.voltageL1,
+            sample.voltageL2,
+            sample.voltageL3
         );
+    }
+
+    /**
+     * Ensures the calling user has access to the house with the supplied ID and then
+     * removes all powerdata subscriptions for that house from the database. If also publishes
+     * an event on the control topic under "powermeter_subscription.delete".
+     *
+     * @param user
+     * @param houseId
+     */
+    async removePowermeterSubscriptions(user: BackendIdentity, houseId: string) {
+        // get house to ensure access
+        this.logService!.debug(
+            `Asked to remove all powermeter subscriptions for house with ID <${houseId}> - ensuring access`
+        );
+        const house = await this.getHouse(user, houseId);
+
+        // publish on control topic
+        this.logService!.debug(`User <${user}> has access to house <${house}> - publish on topic`);
+        this.eventService!.publishTopic(constants.TOPICS.CONTROL, "powermeter_subscription.delete", {
+            old: {
+                id: house.id,
+            },
+            user: user,
+        });
+
+        // delete subscriptions from db
+        this.dbService!.query("delete from powermeter_subscription where houseid=$1", houseId);
+    }
+
+    /**
+     * Verifies that the calling user has access the house with the supplied house ID and that a
+     * sensor with the supplied id exists for that house. Then persists the data to the database
+     * and publishes an event to the "control" topic under "powermeter_subscription.create".
+     *
+     * @param user
+     * @param houseId
+     * @param sensorId
+     * @param frequency
+     * @param cipherPayload
+     */
+    async createPowermeterSubscription(
+        user: BackendIdentity,
+        houseId: string,
+        sensorId: string,
+        frequency: number,
+        cipherText: string
+    ) {
+        // get house to ensure access
+        this.logService!.debug(
+            `Asked to create powermeter subscriptions for house with ID <${houseId}> - ensuring access to house and that sensor with ID <${sensorId}> exists}`
+        );
+        const house = await this.getHouse(user, houseId);
+        const sensor = await this.getSensor(user, sensorId);
+
+        // publish on control topic
+        this.logService!.debug(
+            `User <${user}> has access to house <${house}> and sensor <${sensor}> exists - publish on topic`
+        );
+        this.eventService!.publishTopic(constants.TOPICS.CONTROL, "powermeter_subscription.create", {
+            new: {
+                houseId: house.id,
+                sensorId: sensor.id,
+                frequency: frequency,
+                cipherText,
+            },
+            user: user,
+        });
+
+        // delete subscriptions from db
+        this.dbService!.query(
+            "insert into powermeter_subscription (houseid, sensorid, frequency, ciphertext) values ($1, $2, $3, $4)",
+            houseId,
+            sensorId,
+            frequency,
+            cipherText
+        );
+    }
+
+    /**
+     * Returns the powermeter subscriptions we have in the database. Calling user must have access
+     * to all data.
+     *
+     * @param user
+     * @returns
+     */
+    async getPowermeterSubscriptions(user: BackendIdentity): Promise<SmartmeSubscription[]> {
+        if (!this.isAllDataAccessUser(user))
+            throw Error("You must have all data access to get all powermeter subscriptions");
+        const result = await this.dbService!.query(
+            "select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, s.label sensor_label, frequency, ciphertext from powermeter_subscription p, house h, sensor s where p.houseid=h.id and p.sensorid=s.id;"
+        );
+        const subscription_results = result.rows.map((r) => {
+            return {
+                house: {
+                    id: r.house_id,
+                    name: r.house_name,
+                },
+                sensor: {
+                    id: r.sensor_id,
+                    name: r.sensor_name,
+                    label: r.sensor_label,
+                    deviceId: r.device_id,
+                },
+                frequency: r.frequency,
+                encryptedCredentials: r.ciphertext,
+            } as SmartmeSubscription;
+        });
+        return subscription_results;
     }
 
     private isAllDataAccessUser(user: BackendIdentity) {

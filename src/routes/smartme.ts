@@ -6,9 +6,10 @@ import { EventService } from '../services/event-service';
 import constants from '../constants';
 import { LogService } from '../services/log-service';
 const {lookupService} = require('../configure-services');
-import { verifyPayload } from "../smartme-signature";
+import { SmartmeRealtimeSubscriptionSignatureData, verifyPayload } from "../smartme-signature";
 
 const router = express.Router();
+
 
 router.post('/:clientId([a-zA-Z0-9+/=.]+)', async (req, res, next) => {
     // get storage service
@@ -20,7 +21,7 @@ router.post('/:clientId([a-zA-Z0-9+/=.]+)', async (req, res, next) => {
     // get the client ID from the URL and verify
     const clientId = req.params.clientId;
     try {
-        var signatureData = verifyPayload(clientId);
+        var signatureData = verifyPayload(clientId) as SmartmeRealtimeSubscriptionSignatureData;
     } catch (err) {
         return next(new HttpException(417, err.message));
     }
