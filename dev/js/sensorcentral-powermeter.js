@@ -97,6 +97,15 @@ module.exports = (document, elemRoot, ctx) => {
                         <div id="create-subscription-results" class="mt-3 hidden"></div>
                     </div>
                 </div>
+                <div class="sensorcentral-section mt-3">
+                    <div class="header">5. Remove subscription</div>
+                    <div class="p-2">
+                        <p class="text-center">
+                            ${forms.utils.buttonPerformAction("Remove realtime subscription!", "remove-subscription")}
+                        </p>
+                        <div id="remove-subscription-results" class="mt-3 hidden"></div>
+                    </div>
+                </div>
 
                 `);
         })
@@ -131,114 +140,126 @@ module.exports = (document, elemRoot, ctx) => {
         if (rel === "verify") {
             const resultsId = "discover-results";
 
-            errorClear(resultsId).then(() => {
-                const creds = getSmartmeCredentials();
-                return fetcher.graphql(
-                    `{getSmartmeDevices(data: {username: "${creds.username}", password: "${creds.password}"}){id, name, counterReading, counterReadingUnit}}`
-                );
-            }).then(validationResult => {
-                const items = validationResult.getSmartmeDevices.reduce((prev, device) => {
-                    prev += `<li id="${device.id}">ID: ${device.id}, name: ${device.name}, current reading: ${device.counterReading}${device.counterReadingUnit}</li>`;
-                    return prev;
-                }, "");
-                const holder = $("#discover-results");
-                holder.html(`Discovered powermeters: <ol>${items}</ol>`);
-                holder.removeClass("hidden");
-
-            }).catch(err => {
-                errorShow(resultsId, err.message);
-            })
-
+            errorClear(resultsId)
+                .then(() => {
+                    const creds = getSmartmeCredentials();
+                    return fetcher.graphql(
+                        `{getSmartmeDevices(data: {username: "${creds.username}", password: "${creds.password}"}){id, name, counterReading, counterReadingUnit}}`
+                    );
+                })
+                .then((validationResult) => {
+                    const items = validationResult.getSmartmeDevices.reduce((prev, device) => {
+                        prev += `<li id="${device.id}">ID: ${device.id}, name: ${device.name}, current reading: ${device.counterReading}${device.counterReadingUnit}</li>`;
+                        return prev;
+                    }, "");
+                    const holder = $("#discover-results");
+                    holder.html(`Discovered powermeters: <ol>${items}</ol>`);
+                    holder.removeClass("hidden");
+                })
+                .catch((err) => {
+                    errorShow(resultsId, err.message);
+                });
         } else if (rel === "check") {
             const resultsId = "check-results";
-            
-            errorClear(resultsId).then(() => {
-                if (!$("#houseInput").val()) {
-                    throw Error("Please select a house.");
-                }
 
-                // get specified id (if any) and ensure it's valid
-                const specifiedId = $("#powermeter4CreateSensorInput").val();
-                if (!specifiedId) throw Error("Please specify the ID of the Powermeter to check for");
-                
-                // look for sensor
-                return fetcher.graphql(`{sensor(id:"${specifiedId}"){id, type, name}}`).then(sensor => {
-                    // found sensor
-                    messageShow(resultsId, "Found SensorCentral sensor - you are all good!", "green");
-
-                }).catch(err => {
-                    // we do not have the sensor
-                    if (!$("#createIfMissingInput").prop("checked")) {
-                        // we should not create
-                        throw Error("Required sensor not found and you told us not to create it.");
+            errorClear(resultsId)
+                .then(() => {
+                    if (!$("#houseInput").val()) {
+                        throw Error("Please select a house.");
                     }
-                    return Promise.resolve(specifiedId);
-                })
 
-            }).then(sensorId => {
-                if (!sensorId) return;
-
-                // create device and then sensor
-                const houseId = $("#houseInput").val();
-                const deviceId = uuid();
-                return fetcher.graphql(`mutation {createDevice(data: {houseId: "${houseId}", id: "${deviceId}", name: "Kamstrup Powermeter", active: true}){id}}`).then(() => {
-                    return fetcher.graphql(`mutation {createSensor(data: {deviceId: "${deviceId}", id: "${sensorId}", name: "Powermeter", label: "powermeter-${houseId}", type: "counter", icon: "battery-4"}){id}}`);
-                }).then(() => {
-                    messageShow(resultsId, "Created device and sensor.", "green");
-                })
-
-            }).catch(err => {
-                errorShow(resultsId, err.message);
-            })
-
-        } else if (rel === "create-subscription") {
-            const resultsId = "create-subscription-results";
-
-            errorClear(resultsId).then(() => {
-                // get specified id (if any) and ensure it's valid
-                const specifiedId = $("#powermeter4CreateSensorInput").val();
-                if (!specifiedId) throw Error("Please specify the ID of the Powermeter to subscribe for");
-
-                // really sure
-                if (!confirm("Are you sure?")) throw Error("Aborted");
-                
-            }).then(() => {
                     // get specified id (if any) and ensure it's valid
-                    const specifiedId = $("#powermeter4CreateSubscriptionInput").val();
-                    return ensurePowermeterIdMatchesSpecified(specifiedId);
-                })
-                .then((powermeterId) => {
-                    // generate username and password for smart.me
-                    const username = uuid();
-                    const password = uuid();
+                    const specifiedId = $("#powermeter4CreateSensorInput").val();
+                    if (!specifiedId) throw Error("Please specify the ID of the Powermeter to check for");
 
-                    // ensure sensor exists in sensorcentral
+                    // look for sensor
                     return fetcher
-                        .graphql(`{sensor(id: "${powermeterId}"){id,name,device{id}}}`)
-                        .then((data) => {
-                            // coming here means we have the sensor so all's good - now
-                            // store subscription in sensorcentral
-                            const deviceId = data.sensor.device.id;
+                        .graphql(`{sensor(id:"${specifiedId}"){id, type, name}}`)
+                        .then((sensor) => {
+                            // found sensor
+                            messageShow(resultsId, "Found SensorCentral sensor - you are all good!", "green");
+                        })
+                        .catch((err) => {
+                            // we do not have the sensor
+                            if (!$("#createIfMissingInput").prop("checked")) {
+                                // we should not create
+                                throw Error("Required sensor not found and you told us not to create it.");
+                            }
+                            return Promise.resolve(specifiedId);
+                        });
+                })
+                .then((sensorId) => {
+                    if (!sensorId) return;
 
+                    // create device and then sensor
+                    const houseId = $("#houseInput").val();
+                    const deviceId = uuid();
+                    return fetcher
+                        .graphql(
+                            `mutation {createDevice(data: {houseId: "${houseId}", id: "${deviceId}", name: "Kamstrup Powermeter", active: true}){id}}`
+                        )
+                        .then(() => {
                             return fetcher.graphql(
-                                `mutation {createSmartmeSubscription(data: {sensorId: "${powermeterId}", deviceId: "${deviceId}", username: "${username}", password: "${password}"}){url}}`
+                                `mutation {createSensor(data: {deviceId: "${deviceId}", id: "${sensorId}", name: "Powermeter", label: "powermeter-${houseId}", type: "counter", icon: "battery-4"}){id}}`
                             );
                         })
-                        .then((data) => {
-                            // get callback url
-                            const url = data.createSmartmeSubscription.url;
-
-                            // create subscription in smart.me
-                            return smartmeOperation("/RegisterForRealtimeApi", {
-                                ApiUrl: url,
-                                BasicAuthUsername: username,
-                                BasicAuthPassword: password,
-                                MeterId: powermeterId,
-                                RegistrationType: "SingleMeterRegistration",
-                            });
-                        })
                         .then(() => {
+                            messageShow(resultsId, "Created device and sensor.", "green");
+                        });
+                })
+                .catch((err) => {
+                    errorShow(resultsId, err.message);
+                });
+        } else if (rel === "create-subscription") {
+            const resultsId = "create-subscription-results";
+            const sensorId = $("#powermeter4CreateSensorInput").val();
+            const houseId = $("#houseInput").val();
+            const creds = getSmartmeCredentials();
+
+            errorClear(resultsId)
+                .then(() => {
+                    // get specified id (if any) and ensure it's valid
+                    if (!creds || !creds.username || !creds.password)
+                        throw Error("Please ensure the credentials are specified");
+                    if (!houseId) throw Error("Please select the house for the Powermeter to subscribe for");
+                    if (!sensorId) throw Error("Please specify the ID of the Powermeter to subscribe for");
+
+                    // really sure
+                    if (!confirm("Are you sure?")) throw Error("Aborted");
+                })
+                .then(() => {
+                    return fetcher
+                        .graphql(
+                            `mutation{ensureSmartmeSubscription(credentials: {username: "${creds.username}", password: "${creds.password}"} subscription: {frequency: 1, houseId: "${houseId}", sensorId: "${sensorId}"}){house{id,name},sensor{id,name},frequency}}`
+                        )
+                        .then((data) => {
+                            // coming here means we could create the subscription
                             messageShow(resultsId, "Subscription created!", "green");
+                        });
+                })
+                .catch((err) => {
+                    errorShow(resultsId, err.message);
+                });
+        } else if (rel === "remove-subscription") {
+            const resultsId = "remove-subscription-results";
+            const houseId = $("#houseInput").val();
+
+            errorClear(resultsId)
+                .then(() => {
+                    // get specified id (if any) and ensure it's valid
+                    if (!houseId) throw Error("Please select the house for the Powermeter to subscribe for");
+                    
+                    // really sure
+                    if (!confirm("Are you sure?")) throw Error("Aborted");
+                })
+                .then(() => {
+                    return fetcher
+                        .graphql(
+                            `mutation{removeSmartmeSubscription(houseId: "${houseId}")}`
+                        )
+                        .then((data) => {
+                            // coming here means we could remove the subscription
+                            messageShow(resultsId, "Subscription removed!", "green");
                         });
                 })
                 .catch((err) => {

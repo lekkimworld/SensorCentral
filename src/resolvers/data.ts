@@ -379,7 +379,7 @@ export class CounterQueryResolver {
     }
 
     @Query(() => GraphQLDataset, {
-        description: "Returns power data from a Power Meter"
+        description: "Returns power data from a Powermeter"
     })
     async powerPhaseDataQuery(@Arg("data") data : PowerDataQueryInput, @Ctx() ctx : types.GraphQLResolverContext) : Promise<Dataset> {
         // get sensor to ensure access

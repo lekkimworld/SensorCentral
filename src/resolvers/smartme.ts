@@ -153,7 +153,10 @@ export class SmartmeResolver {
         return getSmartmeDevices(data.username, data.password);
     }
 
-    @Mutation(() => SmartmeSubscriptionType, { description: "Given a house ID will verify the caller has access to the house, then delete all subscriptions for that house, verify that a sensor with the specified ID exists and then create a subscription for the sensor ID with the specified credentials" })
+    @Mutation(() => SmartmeSubscriptionType, {
+        description:
+            "Given a house ID will verify the caller has access to the house, then delete all subscriptions for that house, verify that a sensor with the specified ID exists and then create a subscription for the sensor ID with the specified credentials",
+    })
     async ensureSmartmeSubscription(
         @Arg("credentials") creds: SmartmeCredentialsType,
         @Arg("subscription") subscription: EnsureSmartmeSubscriptionType,
@@ -170,10 +173,23 @@ export class SmartmeResolver {
         const payload = generatePayload(creds.username, creds.password);
         await ctx.storage.createPowermeterSubscription(ctx.user, house.id, sensor.id, subscription.frequency, payload);
         return {
-            house: new House(house), 
+            house: new House(house),
             sensor: new Sensor(sensor),
             frequency: subscription.frequency,
-            encryptedCredentials: payload
+            encryptedCredentials: payload,
         } as SmartmeSubscriptionType;
+    }
+
+    @Mutation(() => Boolean, {
+        description:
+            "Given a house ID will remove all powermeter subscriptions for that house",
+    })
+    async removeSmartmeSubscription(
+        @Arg("houseId") houseId: string,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ) {
+        // remove existing subscriptions if any (will also check access)
+        await ctx.storage.removePowermeterSubscriptions(ctx.user, houseId);
+        return true;
     }
 }
