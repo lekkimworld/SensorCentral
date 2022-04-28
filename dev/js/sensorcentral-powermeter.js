@@ -200,7 +200,7 @@ module.exports = (document, elemRoot, ctx) => {
                         )
                         .then(() => {
                             return fetcher.graphql(
-                                `mutation {createSensor(data: {deviceId: "${deviceId}", id: "${sensorId}", name: "Powermeter", label: "powermeter-${houseId}", type: "counter", icon: "battery-4"}){id}}`
+                                `mutation {createSensor(data: {deviceId: "${deviceId}", id: "${sensorId}", name: "Powermeter", label: "powermeter-${houseId}", type: "counter", icon: "battery-4", scaleFactor: 0.001}){id}}`
                             );
                         })
                         .then(() => {
