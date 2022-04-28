@@ -91,6 +91,22 @@ module.exports = (document, elemRoot, ctx) => {
                 <div class="sensorcentral-section mt-3">
                     <div class="header">4. Create subscription</div>
                     <div class="p-2">
+                        ${forms.utils.dropdown(
+                            "frequency",
+                            "Frequency",
+                            "Select the frequency in minutes to request powermeter data",
+                            {
+                                1: "Every 1 minute",
+                                2: "Every 2 minutes",
+                                5: "Every 5 minutes",
+                                10: "Every 10 minutes",
+                                15: "Every 15 minutes",
+                                30: "Every 30 minutes",
+                                60: "Every 60 minutes",
+                            },
+                            true,
+                            true
+                        )}
                         <p class="text-center">
                             ${forms.utils.buttonPerformAction("Create realtime subscription!", "create-subscription")}
                         </p>
@@ -211,6 +227,7 @@ module.exports = (document, elemRoot, ctx) => {
                     errorShow(resultsId, err.message);
                 });
         } else if (rel === "create-subscription") {
+            const frequency = $("#frequencyInput").val();
             const resultsId = "create-subscription-results";
             const sensorId = $("#powermeter4CreateSensorInput").val();
             const houseId = $("#houseInput").val();
@@ -223,6 +240,7 @@ module.exports = (document, elemRoot, ctx) => {
                         throw Error("Please ensure the credentials are specified");
                     if (!houseId) throw Error("Please select the house for the Powermeter to subscribe for");
                     if (!sensorId) throw Error("Please specify the ID of the Powermeter to subscribe for");
+                    if (!frequency) throw Error("Please specify the frequency for the powermeter query");
 
                     // really sure
                     if (!confirm("Are you sure?")) throw Error("Aborted");
@@ -230,7 +248,7 @@ module.exports = (document, elemRoot, ctx) => {
                 .then(() => {
                     return fetcher
                         .graphql(
-                            `mutation{ensureSmartmeSubscription(credentials: {username: "${creds.username}", password: "${creds.password}"} subscription: {frequency: 1, houseId: "${houseId}", sensorId: "${sensorId}"}){house{id,name},sensor{id,name},frequency}}`
+                            `mutation{ensureSmartmeSubscription(credentials: {username: "${creds.username}", password: "${creds.password}"} subscription: {frequency: ${frequency}, houseId: "${houseId}", sensorId: "${sensorId}"}){house{id,name},sensor{id,name},frequency}}`
                         )
                         .then((data) => {
                             // coming here means we could create the subscription

@@ -2,6 +2,8 @@ import constants from "../constants";
 import {
     BackendIdentity,
     BaseService,
+    IngestedDeviceMessage,
+    IngestedSensorMessage,
 
 } from "../types";
 import {getSmartmeDevices} from "../resolvers/smartme";
@@ -52,7 +54,7 @@ export class PowermeterService extends BaseService {
         // get all subscriptions
         const subs = await this.storageService!.getPowermeterSubscriptions(this.authUser);
         subs.forEach(sub => {
-            this.addCronJob(sub.house.id, sub.sensor.id, sub.frequency, sub.encryptedCredentials);
+            this.addCronJob(sub.house.id, sub.sensor.deviceId, sub.sensor.id, sub.frequency, sub.encryptedCredentials);
         })
 
         // callback
@@ -74,7 +76,7 @@ export class PowermeterService extends BaseService {
         return jobName;
     }
 
-    private addCronJob(houseId : string, sensorId : string, frequency : number, cipherText : string) {
+    private addCronJob(houseId : string, deviceId : string, sensorId : string, frequency : number, cipherText : string) {
         this.logService!.debug(
             `Creating powermeter subscription for house <${houseId}> frequency <${frequency}>`
         );
@@ -87,6 +89,23 @@ export class PowermeterService extends BaseService {
             } else if (Array.isArray(deviceData)) {
                 this.logService!.warn(`Received an array of Smartme device data instances - expected a single instance`);
             } else {
+                // publish a device event to feed watchdog
+                const payload : IngestedDeviceMessage = {
+                    "id": deviceId
+                }
+
+                // publish event to store as regular sensor
+                this.eventService!.publishQueue(constants.QUEUES.DEVICE, payload).then(() => {
+                    // send event to persist as sensor_data
+                    this.eventService!.publishQueue(constants.QUEUES.SENSOR, {
+                        "deviceId": deviceId,
+                        "id": deviceData.id,
+                        "dt": deviceData.valueDate.toISOString(),
+                        "value": deviceData.counterReadingImport
+                    } as IngestedSensorMessage);
+                });
+                
+                // persist full powermeter reading
                 this.storageService?.persistPowermeterReadingFromDeviceRequest(deviceData);
             }
         });
@@ -99,6 +118,6 @@ export class PowermeterService extends BaseService {
 
     private async listenForPowermeterSubscriptionCreate(result: ISubscriptionResult) {
         const msg = this.logAndGetMessage(result);
-        this.addCronJob(msg.new.houseId, msg.new.sensorId, msg.new.frequency, msg.new.cipherText);
+        this.addCronJob(msg.new.houseId, msg.new.deviceId, msg.new.sensorId, msg.new.frequency, msg.new.cipherText);
     }
 }

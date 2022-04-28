@@ -30,7 +30,7 @@ export class SmartmeRealtimeSubscriptionSignatureData extends SmartmeCredentials
     }
 }
 
-export const generatePayload = (username: string, password: string, deviceId? : string, sensorId? : string) => {
+export const generatePayload = (username: string, password: string, deviceId : string, sensorId : string) => {
     let payload = `${username}${PAYLOAD_SEPARATOR}${password}`;
     if (deviceId) {
         payload = `${payload}${PAYLOAD_SEPARATOR}${deviceId}`;

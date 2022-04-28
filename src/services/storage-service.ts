@@ -1487,16 +1487,16 @@ export class StorageService extends BaseService {
         this.logService!.debug(
             `Asked to create powermeter subscriptions for house with ID <${houseId}> - ensuring access to house and that sensor with ID <${sensorId}> exists}`
         );
-        const house = await this.getHouse(user, houseId);
         const sensor = await this.getSensor(user, sensorId);
 
         // publish on control topic
         this.logService!.debug(
-            `User <${user}> has access to house <${house}> and sensor <${sensor}> exists - publish on topic`
+            `User <${user}> has access to house <${sensor.device!.house}> and sensor <${sensor}> exists - publish on topic`
         );
         this.eventService!.publishTopic(constants.TOPICS.CONTROL, "powermeter_subscription.create", {
             new: {
-                houseId: house.id,
+                houseId: sensor.device!.house.id,
+                deviceId: sensor.device!.id,
                 sensorId: sensor.id,
                 frequency: frequency,
                 cipherText,
@@ -1504,11 +1504,11 @@ export class StorageService extends BaseService {
             user: user,
         });
 
-        // delete subscriptions from db
+        // insert subscriptions into db
         this.dbService!.query(
             "insert into powermeter_subscription (houseid, sensorid, frequency, ciphertext) values ($1, $2, $3, $4)",
-            houseId,
-            sensorId,
+            sensor.device!.house.id,
+            sensor.id,
             frequency,
             cipherText
         );
@@ -1525,7 +1525,7 @@ export class StorageService extends BaseService {
         if (!this.isAllDataAccessUser(user))
             throw Error("You must have all data access to get all powermeter subscriptions");
         const result = await this.dbService!.query(
-            "select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, s.label sensor_label, frequency, ciphertext from powermeter_subscription p, house h, sensor s where p.houseid=h.id and p.sensorid=s.id;"
+            "select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, d.name device_name, d.active device_active, s.label sensor_label, frequency, ciphertext from powermeter_subscription p, house h, sensor s, device d where p.houseid=h.id and p.sensorid=s.id and s.deviceid=d.id;"
         );
         const subscription_results = result.rows.map((r) => {
             return {
@@ -1538,6 +1538,11 @@ export class StorageService extends BaseService {
                     name: r.sensor_name,
                     label: r.sensor_label,
                     deviceId: r.device_id,
+                    device: {
+                        id: r.device_id,
+                        name: r.device_name,
+                        active: r.device_active
+                    }
                 },
                 frequency: r.frequency,
                 encryptedCredentials: r.ciphertext,

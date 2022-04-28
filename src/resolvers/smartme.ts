@@ -162,19 +162,18 @@ export class SmartmeResolver {
         @Arg("subscription") subscription: EnsureSmartmeSubscriptionType,
         @Ctx() ctx: types.GraphQLResolverContext
     ) {
-        // get house and sensor to ensure access
-        const house = await ctx.storage.getHouse(ctx.user, subscription.houseId);
+        // get house and sensor (throws error if sensor cannot be found) to ensure access
         const sensor = await ctx.storage.getSensor(ctx.user, subscription.sensorId);
 
         // remove existing subscriptions if any
-        await ctx.storage.removePowermeterSubscriptions(ctx.user, house.id);
+        await ctx.storage.removePowermeterSubscriptions(ctx.user, sensor.device!.house.id);
 
         // encrypt credentials
-        const payload = generatePayload(creds.username, creds.password);
-        await ctx.storage.createPowermeterSubscription(ctx.user, house.id, sensor.id, subscription.frequency, payload);
+        const payload = generatePayload(creds.username, creds.password, sensor.device!.id, sensor.id);
+        await ctx.storage.createPowermeterSubscription(ctx.user, sensor.device!.house.id, sensor.id, subscription.frequency, payload);
         return {
-            house: new House(house),
-            sensor: new Sensor(sensor),
+            house: sensor.device!.house,
+            sensor,
             frequency: subscription.frequency,
             encryptedCredentials: payload,
         } as SmartmeSubscriptionType;
