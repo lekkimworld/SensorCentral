@@ -20,6 +20,15 @@ export const ensureScopesWithMethodFactory = (scopes : string[], method? : strin
 }
 
 export const ensureScopeFactory = (scope : string) => ensureScopesWithMethodFactory([scope]);
+/**
+ * Requires the read scope on GET requests.
+ */
 export const ensureReadScopeWhenGetRequest = ensureScopesWithMethodFactory([constants.JWT.SCOPE_READ], "get");
+/**
+ * Requires the admin scope.
+ */
 export const ensureAdminScope = ensureScopesWithMethodFactory([constants.JWT.SCOPE_ADMIN]);
+/**
+ * Requires the jwt scope.
+ */
 export const ensureAdminJWTScope = ensureScopesWithMethodFactory([constants.JWT.SCOPE_ADMIN_JWT]);

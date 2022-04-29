@@ -10,6 +10,10 @@ const backendIdentityToString = (user : BackendIdentity) => {
     return `[BackendIdentity - identity.callerId <${user.identity.callerId}> identity.houseId <${user.identity.houseId}> identity.impersonationId <${user.identity.impersonationId}> principal <${user.principal.toString()}>]`;
 }
 
+/**
+ * Middleware used to ensure the request is authentic and that the caller has the api scope 
+ * included. If not a 401 is returned.
+ */
 export default async (req : Request, res : Response, next : NextFunction) => {
     // get services
     const svcs = await lookupService([IdentityService.NAME, LogService.NAME])

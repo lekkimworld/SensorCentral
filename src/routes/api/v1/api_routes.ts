@@ -27,34 +27,10 @@ import jwtRoutes from "./jwt";
 router.use('/jwt', jwtRoutes);
 
 // *****************************************
-// PROMETHEUS
-// *****************************************
-import scrapeRoutes from "./prometheus-scape-endpoint";
-router.use('/scrapedata', scrapeRoutes);
-
-// *****************************************
 // DATA
 // *****************************************
 import dataRoutes from "./data";
 router.use('/data', dataRoutes);
-
-// *****************************************
-// HOUSES
-// *****************************************
-import houseRoutes from "./houses";
-router.use("/houses", houseRoutes);
-
-// *****************************************
-// DEVICES
-// *****************************************
-import deviceRoutes from "./devices";
-router.use("/devices", deviceRoutes);
-
-// *****************************************
-// SENSORS
-// *****************************************
-import sensorRoutes from "./sensors";
-router.use("/sensors", sensorRoutes);
 
 // *****************************************
 // EXCEL
