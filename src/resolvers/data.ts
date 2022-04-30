@@ -323,7 +323,7 @@ export class CounterQueryResolver {
         return doGroupedQuery(data, ctx);
     }
 
-    @Query(() => [GraphQLDataset], { description: "Returns data for requested sensors", nullable: false })
+    @Query(() => [GraphQLDataset], { description: "Returns sample data for requested sensors. If start and end dates are supplied these take precedence. Alternatively we return the latest X number of samples as requested.", nullable: false })
     async ungroupedQuery(@Arg("data") data: GaugeQueryInput, @Ctx() ctx: types.GraphQLResolverContext) {
         const sensors = await Promise.all(
             data.sensorIds.map((sensorId) => {

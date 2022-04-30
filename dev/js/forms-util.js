@@ -51,11 +51,16 @@ const textField = (name, placeholder, fieldExplanation, required = false, valida
 </div>`
 }
 
-const disabledTextField = (name, placeholder) => {
+const disabledTextField = (name, placeholder, fieldExplanation) => {
     return `<div class="form-group">
     <label for="${name}Input">${placeholder}</label>
     <input type="text" required class="form-control" id="${name}Input" disabled="1">
-</div>`
+    ${
+        fieldExplanation
+            ? `<small id="${name}Help" class="form-text text-muted">${fieldExplanation}</small>`
+            : ""
+    }
+</div>`;
 }
 
 const dropdown = (name, label, fieldExplanation, options, addBlank, required = false, validationText) => {
@@ -780,8 +785,10 @@ const ERROR_FORM = {
 }
 
 const SETTINGS = {
-    "name": "settings",
-    "html": `<div class="modal fade" id="settingsModal" tabindex="-1" role="dialog" aria-labelledby="${this.name}ModalLabel" aria-hidden="true">
+    name: "settings",
+    html: `<div class="modal fade" id="settingsModal" tabindex="-1" role="dialog" aria-labelledby="${
+        this.name
+    }ModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -792,13 +799,23 @@ const SETTINGS = {
             </div>
             <div class="modal-body">
                 <form id="settingsForm" novalidate>
-                    ${dropdown("notify", "Notify Using", "Specify the way you'd like to get notified.", {
-                        "pushover": "Pushover",
-                        "email": "Email"
-                    }, true)}
+                    ${dropdown(
+                        "notify",
+                        "Notify Using",
+                        "Specify the way you'd like to get notified.",
+                        {
+                            pushover: "Pushover",
+                            email: "Email",
+                        },
+                        true
+                    )}
                     ${textField("pushoverApptoken", "Pushover App Token", "Specify the Pushover App Token")}
                     ${textField("pushoverUserkey", "Pushover User Key", "Specify the Pushover App Token")}
+                    ${disabledTextField("yourJWT", "Your JWT", "This is the JWT used to authorize your access. You may use this for API access if required.")}
                 </form>
+                <div class="mt-3">
+                    
+                </div>
             </div>
             <div class="modal-footer">
                 ${buttonClose()}
@@ -807,27 +824,30 @@ const SETTINGS = {
         </div>
     </div>
 </div>`,
-    "fnInit": (formdata, ctx) => {
+    fnInit: (formdata, ctx) => {
         const apptokenField = $("#pushoverApptokenInput");
         const userkeyField = $("#pushoverUserkeyInput");
         const notifyField = $("#notifyInput");
+        const jwtField = $("#yourJWTInput");
         apptokenField.val(ctx.pushover_apptoken);
         userkeyField.val(ctx.pushover_userkey);
         notifyField.val(ctx.notify_using);
 
+        jwtField.val(storage.getJWT());
+
         return Promise.resolve();
     },
-    "fnGetData": () => {
+    fnGetData: () => {
         const apptokenField = $("#pushoverApptokenInput");
         const userkeyField = $("#pushoverUserkeyInput");
         const notifyField = $("#notifyInput");
         return {
-            "notify_using": notifyField.val(),
-            "pushover_apptoken": apptokenField.val(),
-            "pushover_userkey": userkeyField.val(),
-        }
-    }
-}
+            notify_using: notifyField.val(),
+            pushover_apptoken: apptokenField.val(),
+            pushover_userkey: userkeyField.val(),
+        };
+    },
+};
 
 
 

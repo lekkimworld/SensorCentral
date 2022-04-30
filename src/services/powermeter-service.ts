@@ -6,7 +6,7 @@ import {
     IngestedSensorMessage,
 
 } from "../types";
-import {getSmartmeDevices} from "../resolvers/smartme";
+import {smartmeGetDevices} from "../resolvers/smartme";
 import { LogService } from "./log-service";
 import { EventService } from "./event-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
@@ -83,7 +83,7 @@ export class PowermeterService extends BaseService {
         const jobName = this.getJobName(houseId);
         this.cron.add(jobName, `*/${frequency} * * * *`, async () => {
             const creds = verifyPayload(cipherText);
-            const deviceData = await getSmartmeDevices(creds.username, creds.password, sensorId);
+            const deviceData = await smartmeGetDevices(creds.username, creds.password, sensorId);
             if (!deviceData) {
                 this.logService!.warn(`Unable to find device data for sensor we queried for - house <${houseId}> sensor <${sensorId}>`);
             } else if (Array.isArray(deviceData)) {

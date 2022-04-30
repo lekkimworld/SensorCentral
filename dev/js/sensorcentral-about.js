@@ -11,9 +11,8 @@ module.exports = (document, elemRoot) => {
                 <a href="https://github.com/lekkimworld/sensorcentral" target="_new">github.com/lekkimworld/sensorcentral</a>.
             </p>
             <p>
-                I host my application on <a href="https://www.heroku.com" target="_new">Heroku</a> and keep some 
-                information in Prometheus and chart it using Grafana. The latter two pieces are hosted on 
-                <a href="https://www.digitalocean.com" target="_new">Digital Ocean</a>.
+                I host my application on <a href="https://www.heroku.com" target="_new">Heroku</a> and keep  
+                data in Heroku Postgres, Heroku Redis and use RabbitMQ for messaging.
             </p>
         </div>
     </div>

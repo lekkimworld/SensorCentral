@@ -16,6 +16,7 @@ import { FavoriteSensorResolver } from "./resolvers/favorite-sensor";
 import { CounterQueryResolver } from "./resolvers/data";
 import { SmartmeResolver } from "./resolvers/smartme";
 import { StorageService } from "./services/storage-service";
+import { UsersResolver } from "./resolvers/user";
 
 const path = process.env.GRAPHQL_PATH || "/graphql";
 
@@ -37,7 +38,8 @@ export default async (app : Application) => {
             DeviceWatchdogResolver,
             FavoriteSensorResolver,
             CounterQueryResolver,
-            SmartmeResolver],
+            SmartmeResolver,
+            UsersResolver],
             "dateScalarMode": "isoDate"
     })
 

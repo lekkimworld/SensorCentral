@@ -253,11 +253,13 @@ export class StorageService extends BaseService {
         let result;
         if (this.isAllHousesAccessUser(user)) {
             result = await this.dbService!.query("select id, name from house h order by name asc");
-        } else {
+        } else if (this.ensureScope(user, constants.JWT.SCOPE_READ)) {
             result = await this.dbService!.query(
                 "select id, name from house h, user_house_access u where u.userId=$1 and h.id=u.houseId order by name asc",
                 this.getUserIdFromUser(user)
             );
+        } else {
+            throw Error("User does not have access to read data");
         }
 
         // map to houses
@@ -277,7 +279,7 @@ export class StorageService extends BaseService {
      */
     async getHousesForUser(user: BackendIdentity, userId: string): Promise<House[]> {
         // get impersonation user
-        const identity: IdentityService = await lookupService(IdentityService.NAME);
+        const identity = (await lookupService(IdentityService.NAME)) as IdentityService;
         const impUser = identity.getImpersonationIdentity(user, userId);
         return this.getHouses(impUser);
     }
@@ -1368,7 +1370,7 @@ export class StorageService extends BaseService {
             currentL3: sample.getValue(Smartme.Obis.CurrentPhaseL3),
             voltageL1: sample.getValue(Smartme.Obis.VoltagePhaseL1),
             voltageL2: sample.getValue(Smartme.Obis.VoltagePhaseL2),
-            voltageL3: sample.getValue(Smartme.Obis.VoltagePhaseL3)
+            voltageL3: sample.getValue(Smartme.Obis.VoltagePhaseL3),
         } as SmartmeDeviceWithDataType);
     }
 
@@ -1376,31 +1378,15 @@ export class StorageService extends BaseService {
         this.logService!.debug(
             `Persisting powermeter sample - id <${
                 sample.id
-            }> dt <${
-                sample.valueDate.toISOString()
-            }> ActiveEnergyTotalExport <${
+            }> dt <${sample.valueDate.toISOString()}> ActiveEnergyTotalExport <${
                 sample.counterReadingExport
             }> ActiveEnergyTotalImport <${
                 sample.counterReadingImport
-            }> ActivePowerPhaseL1 <${
-                undefined
-            }> ActivePowerPhaseL2 <${
-                undefined
-            }> ActivePowerPhaseL3 <${
-                undefined
-            }> ActivePowerTotal <${
+            }> ActivePowerPhaseL1 <${undefined}> ActivePowerPhaseL2 <${undefined}> ActivePowerPhaseL3 <${undefined}> ActivePowerTotal <${
                 sample.activePower
-            }> CurrentPhaseL1 <${
-                sample.currentL1
-            }> CurrentPhaseL2 <${
-                sample.currentL2
-            }> CurrentPhaseL3 <${
+            }> CurrentPhaseL1 <${sample.currentL1}> CurrentPhaseL2 <${sample.currentL2}> CurrentPhaseL3 <${
                 sample.currentL3
-            }> VoltagePhaseL1 <${
-                sample.voltageL1
-            }> VoltagePhaseL2 <${
-                sample.voltageL2
-            }> VoltagePhaseL3 <${
+            }> VoltagePhaseL1 <${sample.voltageL1}> VoltagePhaseL2 <${sample.voltageL2}> VoltagePhaseL3 <${
                 sample.voltageL3
             }>`
         );
@@ -1491,7 +1477,9 @@ export class StorageService extends BaseService {
 
         // publish on control topic
         this.logService!.debug(
-            `User <${user}> has access to house <${sensor.device!.house}> and sensor <${sensor}> exists - publish on topic`
+            `User <${user}> has access to house <${
+                sensor.device!.house
+            }> and sensor <${sensor}> exists - publish on topic`
         );
         this.eventService!.publishTopic(constants.TOPICS.CONTROL, "powermeter_subscription.create", {
             new: {
@@ -1541,8 +1529,8 @@ export class StorageService extends BaseService {
                     device: {
                         id: r.device_id,
                         name: r.device_name,
-                        active: r.device_active
-                    }
+                        active: r.device_active,
+                    },
                 },
                 frequency: r.frequency,
                 encryptedCredentials: r.ciphertext,
@@ -1563,6 +1551,14 @@ export class StorageService extends BaseService {
         if (!user) throw Error("Must supply a user object");
         if (user.identity.impersonationId) return user.identity.impersonationId;
         return user.identity.callerId;
+    }
+
+    private ensureScope(user: BackendIdentity, scope: string): boolean {
+        if (!scope || !constants.JWT.ALL_SCOPES.includes(scope)) throw Error(`Supplied scope <${scope}> is invalid`);
+        this.logService!.debug(`Ensure user <${user.identity.callerId}> with scopes <${user.scopes}> has scope ${scope}`);
+        if (!user.scopes.includes(scope)) throw Error(`Missing required scope <${scope}>`);
+        this.logService!.debug(`Found scope <${scope}> for user <${user.identity.callerId}>`);
+        return true;
     }
 }
 

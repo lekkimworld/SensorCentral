@@ -16,11 +16,11 @@ enum PowerUnit {
 const parsePowerUnit = (str : string) : PowerUnit => {
     return str === "kW" ? PowerUnit.kW : str === "kWh" ? PowerUnit.kWh : PowerUnit.Unknown
 }
-const getSmartmeApiUrl = (path:string) : string => {
+const smartmeGetApiUrl = (path:string) : string => {
     const url = `${constants.SMARTME.PROTOCOL}://${constants.SMARTME.DOMAIN}/api${path}`;
     return url;
 }
-const getSmartmeFetchAttributes = (data : SmartmeCredentialsType) : RequestInit => {
+const smartmeGetFetchAttributes = (data : SmartmeCredentialsType) : RequestInit => {
     // calc auth header
     const basic_auth = Buffer.from(`${data.username}:${data.password}`).toString("base64");
     const headers = {
@@ -33,26 +33,26 @@ const getSmartmeFetchAttributes = (data : SmartmeCredentialsType) : RequestInit 
     };
     return fetch_attrs;
 }
-export const verifySmartmeCredentials = async (username:string, password: string) : Promise<boolean> => {
+export const smartmeVerifyCredentials = async (username:string, password: string) : Promise<boolean> => {
     // get attributes
-    const fetch_attrs = getSmartmeFetchAttributes({
+    const fetch_attrs = smartmeGetFetchAttributes({
         username, password
     });
 
     // verify the username / password
-    let res = await fetch(getSmartmeApiUrl("/Account/login"), fetch_attrs);
+    let res = await fetch(smartmeGetApiUrl("/Account/login"), fetch_attrs);
     if (res.status !== 200) throw Error("Unable to verify smart-me credentials");
     return true;
 }
-export const getSmartmeDevices = async (username: string, password: string, sensorId? : string) : Promise<undefined | SmartmeDeviceWithDataType[] | SmartmeDeviceWithDataType> => {
+export const smartmeGetDevices = async (username: string, password: string, sensorId? : string) : Promise<undefined | SmartmeDeviceWithDataType[] | SmartmeDeviceWithDataType> => {
         // get attributes
-        const fetch_attrs = getSmartmeFetchAttributes({username, password});
+        const fetch_attrs = smartmeGetFetchAttributes({username, password});
 
         // verify
-        await verifySmartmeCredentials(username, password);
+        await smartmeVerifyCredentials(username, password);
 
         // get device info
-        const res = await fetch(getSmartmeApiUrl(sensorId ? `/Devices/${sensorId}` : "/Devices"), fetch_attrs);
+        const res = await fetch(smartmeGetApiUrl(sensorId ? `/Devices/${sensorId}` : "/Devices"), fetch_attrs);
         const resultData = await res.json();
         if (!resultData) {
             return undefined;
@@ -116,7 +116,7 @@ export class SmartmeDeviceWithDataType {
 }
 
 @InputType()
-export class EnsureSmartmeSubscriptionType {
+export class SmartmeEnsureSubscriptionType {
     @Field() houseId: string;
     @Field() sensorId: string;
     @Field({nullable: true, defaultValue: 1}) frequency: number;
@@ -144,22 +144,22 @@ export class SmartmeCredentialsType {
 @Resolver()
 export class SmartmeResolver {
     @Query(() => Boolean, {})
-    async verifySmartmeCredentials(@Arg("data") data: SmartmeCredentialsType): Promise<Boolean> {
-        return verifySmartmeCredentials(data.username, data.password);
+    async smartmeVerifyCredentials(@Arg("data") data: SmartmeCredentialsType): Promise<Boolean> {
+        return smartmeVerifyCredentials(data.username, data.password);
     }
 
     @Query(() => [SmartmeDeviceWithDataType], { nullable: false })
-    async getSmartmeDevices(@Arg("data") data: SmartmeCredentialsType) {
-        return getSmartmeDevices(data.username, data.password);
+    async smartmeGetDevices(@Arg("data") data: SmartmeCredentialsType) {
+        return smartmeGetDevices(data.username, data.password);
     }
 
     @Mutation(() => SmartmeSubscriptionType, {
         description:
             "Given a house ID will verify the caller has access to the house, then delete all subscriptions for that house, verify that a sensor with the specified ID exists and then create a subscription for the sensor ID with the specified credentials",
     })
-    async ensureSmartmeSubscription(
+    async smartmeEnsureSubscription(
         @Arg("credentials") creds: SmartmeCredentialsType,
-        @Arg("subscription") subscription: EnsureSmartmeSubscriptionType,
+        @Arg("subscription") subscription: SmartmeEnsureSubscriptionType,
         @Ctx() ctx: types.GraphQLResolverContext
     ) {
         // get house and sensor (throws error if sensor cannot be found) to ensure access
@@ -170,7 +170,13 @@ export class SmartmeResolver {
 
         // encrypt credentials
         const payload = generatePayload(creds.username, creds.password, sensor.device!.id, sensor.id);
-        await ctx.storage.createPowermeterSubscription(ctx.user, sensor.device!.house.id, sensor.id, subscription.frequency, payload);
+        await ctx.storage.createPowermeterSubscription(
+            ctx.user,
+            sensor.device!.house.id,
+            sensor.id,
+            subscription.frequency,
+            payload
+        );
         return {
             house: sensor.device!.house,
             sensor,
@@ -180,13 +186,9 @@ export class SmartmeResolver {
     }
 
     @Mutation(() => Boolean, {
-        description:
-            "Given a house ID will remove all powermeter subscriptions for that house",
+        description: "Given a house ID will remove all powermeter subscriptions for that house",
     })
-    async removeSmartmeSubscription(
-        @Arg("houseId") houseId: string,
-        @Ctx() ctx: types.GraphQLResolverContext
-    ) {
+    async smartmeRemoveSubscription(@Arg("houseId") houseId: string, @Ctx() ctx: types.GraphQLResolverContext) {
         // remove existing subscriptions if any (will also check access)
         await ctx.storage.removePowermeterSubscriptions(ctx.user, houseId);
         return true;

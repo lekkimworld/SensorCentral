@@ -160,11 +160,11 @@ module.exports = (document, elemRoot, ctx) => {
                 .then(() => {
                     const creds = getSmartmeCredentials();
                     return fetcher.graphql(
-                        `{getSmartmeDevices(data: {username: "${creds.username}", password: "${creds.password}"}){id, name, counterReading, counterReadingUnit}}`
+                        `{smartmeGetDevices(data: {username: "${creds.username}", password: "${creds.password}"}){id, name, counterReading, counterReadingUnit}}`
                     );
                 })
                 .then((validationResult) => {
-                    const items = validationResult.getSmartmeDevices.reduce((prev, device) => {
+                    const items = validationResult.smartmeGetDevices.reduce((prev, device) => {
                         prev += `<li id="${device.id}">ID: ${device.id}, name: ${device.name}, current reading: ${device.counterReading}${device.counterReadingUnit}</li>`;
                         return prev;
                     }, "");
@@ -248,7 +248,7 @@ module.exports = (document, elemRoot, ctx) => {
                 .then(() => {
                     return fetcher
                         .graphql(
-                            `mutation{ensureSmartmeSubscription(credentials: {username: "${creds.username}", password: "${creds.password}"} subscription: {frequency: ${frequency}, houseId: "${houseId}", sensorId: "${sensorId}"}){house{id,name},sensor{id,name},frequency}}`
+                            `mutation{smartmeEnsureSubscription(credentials: {username: "${creds.username}", password: "${creds.password}"} subscription: {frequency: ${frequency}, houseId: "${houseId}", sensorId: "${sensorId}"}){house{id,name},sensor{id,name},frequency}}`
                         )
                         .then((data) => {
                             // coming here means we could create the subscription
@@ -273,7 +273,7 @@ module.exports = (document, elemRoot, ctx) => {
                 .then(() => {
                     return fetcher
                         .graphql(
-                            `mutation{removeSmartmeSubscription(houseId: "${houseId}")}`
+                            `mutation{smartmeRemoveSubscription(houseId: "${houseId}")}`
                         )
                         .then((data) => {
                             // coming here means we could remove the subscription

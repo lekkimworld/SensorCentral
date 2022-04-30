@@ -62,7 +62,7 @@ export class FavoriteHouseInput {
     id : string
 }
 
-@InputType()
+@InputType({description: "Used when granting / revoking access to a House for a number of users"})
 export class HouseUsersInput {
     @Field(() => [String])
     ids : []
@@ -94,7 +94,7 @@ export class DeleteHouseInput {
 
 @Resolver()
 export class HouseResolver {
-    @Query(() => [House], { description: "Returns all Houses", nullable: false })
+    @Query(() => [House], { description: "Returns all Houses the user has access to", nullable: false })
     async houses(@Ctx() ctx : types.GraphQLResolverContext) {
         const houses = await ctx.storage.getHouses(ctx.user);
         return houses.map(h => new House(h));
@@ -106,25 +106,25 @@ export class HouseResolver {
         return house;
     }
 
-    @Mutation(() => House)
+    @Mutation(() => House, {description: "Creates a new House"})
     async createHouse(@Arg("data") data : CreateHouseInput, @Ctx() ctx : types.GraphQLResolverContext) {
         const house = await ctx.storage.createHouse(ctx.user, data);
         return house;
     }
 
-    @Mutation(() => House)
+    @Mutation(() => House, {description: "Updates the supplied House"})
     async updateHouse(@Arg("data") data : UpdateHouseInput, @Ctx() ctx : types.GraphQLResolverContext) {
         const house = await ctx.storage.updateHouse(ctx.user, data);
         return house;
     }
 
-    @Mutation(() => House)
+    @Mutation(() => House, {description: "Marks the supplied House as the default i.e.  the one shown on login"})
     async favoriteHouse(@Arg("data") data : FavoriteHouseInput, @Ctx() ctx : types.GraphQLResolverContext) {
         const house = await ctx.storage.setFavoriteHouse(ctx.user, data);
         return house;
     }
 
-    @Mutation(() => Boolean)
+    @Mutation(() => Boolean, {description: "Deletes the supplied House"})
     async deleteHouse(@Arg("data") data : DeleteHouseInput, @Ctx() ctx : types.GraphQLResolverContext) {
         await ctx.storage.deleteHouse(ctx.user, data);
         return true;
@@ -136,12 +136,12 @@ export class HouseResolver {
         return users.map(u => new HouseUser(u, false));
     }
 
-    @Mutation(() => Boolean)
+    @Mutation(() => Boolean, {description: "Grants a user from another House access to the supplied House"})
     async addHouseUsers(@Arg("data") data : HouseUsersInput, @Ctx() ctx : types.GraphQLResolverContext) {
         return ctx.storage.grantHouseAccess(ctx.user, data.houseId, data.ids);
     }
 
-    @Mutation(() => Boolean)
+    @Mutation(() => Boolean, {description: "Revokes access for the supplied user to the supplied House"})
     async removeHouseUsers(@Arg("data") data : HouseUsersInput, @Ctx() ctx : types.GraphQLResolverContext) {
         return ctx.storage.revokeHouseAccess(ctx.user, data.houseId, data.ids);
     }
