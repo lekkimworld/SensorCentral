@@ -4,6 +4,7 @@ import moment = require("moment");
 import * as prometheus from "../../../prometheus-export";
 import { HttpException } from "../../../types";
 import { ensureReadScopeWhenGetRequest } from "../../../middleware/ensureScope";
+import {ISO8601_DATETIME_FORMAT} from "../../../constants"
 
 const router = express.Router();
 
@@ -23,7 +24,7 @@ const exportPrometheusData = (
         })
         .then((dataset: Array<prometheus.ExportedSensorValue>) => {
             const buf = prometheus.createExcelWorkbook(dataset);
-            const timestamp = moment().utc().format(prometheus.ISO8601_DATETIME_FORMAT);
+            const timestamp = moment().utc().format(ISO8601_DATETIME_FORMAT);
             res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             res.set(
                 "Content-Disposition",

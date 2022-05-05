@@ -1,6 +1,6 @@
 const { createGaugeChart, createBuildUIFunctionWithQueryName } = require("./sensorcentral-sensordetails-base");
 
-const ungroupedChart = createBuildUIFunctionWithQueryName("groupedQuery");
+const ungroupedChart = createBuildUIFunctionWithQueryName("dataGroupedOffsetQuery");
 let chartType;
 const bar = (sensor) => {
     const e = $("#deltasensor-ui");

@@ -59,7 +59,7 @@ const doWork = async () => {
 
         // cache
         const storage = (await services.lookupService(StorageService.NAME)) as StorageService;
-        await storage.setPowerData(m.format("YYYY-MM-DD"), ds.data);
+        await storage.setPowerPriceData(m.format("YYYY-MM-DD"), ds.data);
 
         // tell we are done
         log.debug("Emitting finish-event to signal we are done loading powerdata");

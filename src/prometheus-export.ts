@@ -3,8 +3,8 @@ import fetch from "node-fetch";
 import excel from "node-excel-export";
 import moment = require("moment-timezone");
 import Moment from "moment-timezone";
+import {ISO8601_DATETIME_FORMAT} from "./constants";
 
-export const ISO8601_DATETIME_FORMAT = "YYYY-MM-DDTHH:mm:ss.SSS[Z]";
 const TIMEZONE = process.env.TIMEZONE || 'Europe/Copenhagen';
 const DEFAULT_STEP = process.env.STEP || '60m';
 

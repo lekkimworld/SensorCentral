@@ -128,7 +128,7 @@ const timeChart = (id, datasets, options = {}) => {
                 backgroundColor: backgroundColors[idx % backgroundColors.length],
                 borderColor: backgroundColors[idx % backgroundColors.length],
                 data: ds.data.map(s => ({
-                    x: moment(s.x),
+                    x: moment(s.x, "DD-MM-YYYY [kl.] HH:mm"),
                     y: s.y
                 })),
                 type: 'line',
@@ -273,12 +273,16 @@ const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount
         if (!sensors || !sensors.length) return Promise.reject(Error("No gauge sensors to chart."));
         const sensorIdsStr = sensors.map(s => `"${s.id}"`);
         if (start && end) {
-            return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: [${sensorIdsStr.join()}], decimals: 2, start: "${start.toISOString()}", end: "${end.toISOString()}", applyScaleFactor: false}){id, name, data{x,y}}}`);
+            return fetcher.graphql(
+                `{dataUngroupedDateQuery(filter: {sensorIds: [${sensorIdsStr.join()}]start: "${start.toISOString()}", end: "${end.toISOString()}"}, format: {decimals: 2, , applyScaleFactor: false}){id, name, data{x,y}}}`
+            );
         } else {
-            return fetcher.graphql(`{ungroupedQuery(data: {sensorIds: [${sensorIdsStr.join()}], decimals: 2, sampleCount: ${samplesCount}, applyScaleFactor: false}){id, name, data{x,y}}}`);
+            return fetcher.graphql(
+                `{dataUngroupedCountQuery(filter: {sensorIds: [${sensorIdsStr.join()}], count: ${samplesCount}}, format: {decimals: 2, applyScaleFactor: false}){id, name, data{x,y}}}`
+            );
         }
     }).then(result => {
-        const samples = result["ungroupedQuery"];
+        const samples = result["dataUngroupedDateQuery"] || result["dataUngroupedCountQuery"];
         return Promise.resolve(samples);
     }).then(samples => {
         if (!samples || !Array.isArray(samples)) return Promise.reject(Error("No data received or samples was not an array of data."));

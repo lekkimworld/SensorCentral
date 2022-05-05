@@ -48,6 +48,10 @@ router.get("/samples/:sensorId/:samples", (req, res) => {
 
 router.use(ensureScopeFactory(constants.JWT.SCOPE_SENSORDATA));
 
+/**
+ * REST API to post a sample to for a sensor on a device.
+ * 
+ */
 router.post("/samples", (req, res, next) => {
 	lookupService([LogService.NAME, EventService.NAME, StorageService.NAME]).then((services : BaseService[]) => {
 		const logService = services[0] as LogService;
@@ -226,7 +230,7 @@ router.post("/power", async (req, res) => {
 	const obj = req.body;
 
 	const storage = await lookupService(StorageService.NAME) as StorageService;
-	const data : Array<any> = await Promise.all(obj.dates.map((d : string) => storage.getPowerData(d)));
+	const data : Array<any> = await Promise.all(obj.dates.map((d : string) => storage.getPowerPriceData(d)));
 
 	let str = "";
 	if (obj.type === "csv") {

@@ -16,22 +16,31 @@ module.exports = (elem) => {
         } else {
 
             const chartCtx = addChartContainer(elem, { title: "Stacked Delta Sensors (this week)" });
-            return fetcher.graphql(`query {
-                groupedQuery(data: {sensorIds: ["${data.sensors.map(s => s.id).join("\",\"")}"], groupBy: day, adjustBy: week, start: 0, end: -1, addMissingTimeSeries: true}){id, name, data{x,y}}
-            }`, {"noSpinner": true}).then(data => {
-                const datasets = data.groupedQuery.map(q => {
-                    return {
-                        "label": q.name,
-                        "data": q.data.map(d => d.y)
-                    }
-                })
-                const labels = data.groupedQuery[0].data.map(d => d.x);
+            return fetcher
+                .graphql(
+                    `query {
+                dataGroupedOffsetQuery(filter: {sensorIds: ["${data.sensors
+                    .map((s) => s.id)
+                    .join(
+                        '","'
+                    )}"], adjustBy: week, start: 0, end: -1}, grouping: {groupBy: day}, format: {addMissingTimeSeries: true}){id, name, data{x,y}}
+            }`,
+                    { noSpinner: true }
+                )
+                .then((data) => {
+                    const datasets = data.dataGroupedOffsetQuery.map((q) => {
+                        return {
+                            label: q.name,
+                            data: q.data.map((d) => d.y),
+                        };
+                    });
+                    const labels = data.dataGroupedOffsetQuery[0].data.map((d) => d.x);
 
-                chartCtx.barChart(labels, {
-                    "datasets": datasets,
-                    "stacked": true
-                })
-            })
+                    chartCtx.barChart(labels, {
+                        datasets: datasets,
+                        stacked: true,
+                    });
+                });
         }
     })
 }

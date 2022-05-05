@@ -56,21 +56,26 @@ module.exports = {
     },
     "createBuildUIFunctionWithQueryName": (queryName) => (elemRoot, sensor) => {
         const doChart = () => {
-            fetcher.graphql(`{${queryName}(data: {sensorIds: ["${sensor.id}"], groupBy: ${queryData.groupBy}, adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}, addMissingTimeSeries: ${queryAddMissingTimeSeries}}){id, name, data{x,y}}}`).then(result => {
-                const querydata = result[queryName][0];
-                chartCtx.barChart(
-                    querydata.data.map(d => d.x), {
-                        "dataset": {
-                            "label": sensor.name,
-                            "data": querydata.data.map(d => d.y)
-                        }
-                    }
+            fetcher
+                .graphql(
+                    `{${queryName}(filter: {sensorIds: ["${sensor.id}"], adjustBy: ${queryData.adjustBy}, start: ${queryData.start}, end: ${queryData.end}}, grouping: {groupBy: ${queryData.groupBy}}, format: {addMissingTimeSeries: ${queryAddMissingTimeSeries}}){id, name, data{x,y}}}`
                 )
-                return Promise.resolve(querydata.data);
-
-            }).then(samples => {
-                samplesTable(sensor, samples)
-            })
+                .then((result) => {
+                    const querydata = result[queryName][0];
+                    chartCtx.barChart(
+                        querydata.data.map((d) => d.x),
+                        {
+                            dataset: {
+                                label: sensor.name,
+                                data: querydata.data.map((d) => d.y),
+                            },
+                        }
+                    );
+                    return Promise.resolve(querydata.data);
+                })
+                .then((samples) => {
+                    samplesTable(sensor, samples);
+                });
         }
 
         // create div for graph

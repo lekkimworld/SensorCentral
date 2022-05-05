@@ -8,7 +8,7 @@ import moment from "moment-timezone";
 // read config
 dotenv_config();
 
-const TARGET_DATABASE_VERSION = 10;
+const TARGET_DATABASE_VERSION = 11;
 
 const url = new URL(process.env.DATABASE_URL as string);
 const config: PoolConfig = {
@@ -200,6 +200,11 @@ const updateSchemaVersion_9to10 = (): Promise<void> => {
     return executeSQLFile("version_9_to_10.sql");
 };
 
+const updateSchemaVersion_10to11 = (): Promise<void> => {
+    console.log("Updating database schema from version 10 to 11...");
+    return executeSQLFile("version_10_to_11.sql");
+};
+
 pool.query("BEGIN").then(() => {
     // query for database_version table
     return pool.query(`select * from information_schema.tables where table_name='database_version'`);
@@ -238,6 +243,8 @@ pool.query("BEGIN").then(() => {
                     return updateSchemaVersion_8to9();
                 } else if (version === 9) {
                     return updateSchemaVersion_9to10();
+                    } else if (version === 10) {
+                    return updateSchemaVersion_10to11();
                 } else if (version === TARGET_DATABASE_VERSION) {
                     console.log("We are at the newest version...");
                     return Promise.resolve();

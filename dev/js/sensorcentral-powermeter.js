@@ -37,12 +37,22 @@ module.exports = (document, elemRoot, ctx) => {
                         <li>Configure the smart.me module using the smartphone app including setting up a username and password</li>
                         <li>Note down the username, password</li>
                         </ol>
-                        ${forms.utils.dropdown("house", "House", "Select the house the powermeter belongs to.", houseOptions, true, true)}
+                        ${forms.utils.dropdown(
+                            "house",
+                            "House",
+                            "Select the house the powermeter belongs to.",
+                            houseOptions,
+                            true,
+                            true
+                        )}
                     </div>
                 </div>
                 <div class="sensorcentral-section mt-3">
                     <div class="header">2. Specify smart.me account details</div>
                     <div class="p-2">
+                        Specify your smart-me username and password below and click "Verify" to verify the 
+                        credentials. Upon click "Verify" we will fetch the registered devices from smart-me 
+                        together with the current reading in kWh. Pick the device to the house to continue.
                         <form>
                             ${forms.utils.textField("username", "smart.me username", "Specify the smart.me username")}
                             ${forms.utils.textField("password", "smart.me password", "Specify the smart.me password")}
@@ -61,8 +71,16 @@ module.exports = (document, elemRoot, ctx) => {
                         with smart.me. To make the creation easier click the button below to 
                         ensure a sensor has been created. 
                         <form class="mt-3">
-                            ${forms.utils.textField("powermeter4CreateSensor", "Powermeter ID", "Specify the ID of the powermeter to create sensor for. Only required if you have more than one powermeter on your smart.me account.")}
-                            ${forms.utils.toggleButton("createIfMissing", "Create", "Enable to create a sensor (and device) for the powermeter sensor not found.")}
+                            ${forms.utils.textField(
+                                "powermeter4CreateSensor",
+                                "Powermeter ID",
+                                "Specify the ID of the powermeter to create sensor for. Only required if you have more than one powermeter on your smart.me account."
+                            )}
+                            ${forms.utils.toggleButton(
+                                "createIfMissing",
+                                "Create",
+                                "Enable to create a sensor (and device) for the powermeter sensor not found."
+                            )}
                             <p class="text-center">
                                 ${forms.utils.buttonPerformAction("Check (and create)", "check")}
                             </p>
@@ -71,56 +89,50 @@ module.exports = (document, elemRoot, ctx) => {
                     </div>
                 </div>
                 <div class="sensorcentral-section mt-3">
-                    <div class="header">4. List subscriptions for realtime powermeter data</div>
+                    <div class="header">4. Create subscription</div>
                     <div class="p-2">
-                        <p>
-                            This will list the subscriptions that are active for powermeter data from 
-                            smart.me. If you see any subscriptions pointing towards SensorCentral 
-                            (https://sensorcentral.heisterberg.dk) please contact support and do 
-                            NOT proceed.
-                        </p>
-                        <p class="text-center">
-                            ${forms.utils.buttonPerformAction("List subscriptions", "list")}
-                        </p>
-                        <div id="list-results" class="mt-3 hidden"></div>
-                    </div>
-                </div>
-                <div class="sensorcentral-section mt-3">
-                    <div class="header">5. Create subscription for realtime powermeter data</div>
-                    <div class="p-2">
-                        ${forms.utils.textField("powermeter4CreateSubscription", "Powermeter ID", "Specify the ID of the powermeter for subscription creation. Only required if you have more than one powermeter on your smart.me account.")}
+                        ${forms.utils.dropdown(
+                            "frequency",
+                            "Frequency",
+                            "Select the frequency in minutes to request powermeter data",
+                            {
+                                1: "Every 1 minute",
+                                2: "Every 2 minutes",
+                                5: "Every 5 minutes",
+                                10: "Every 10 minutes",
+                                15: "Every 15 minutes",
+                                30: "Every 30 minutes",
+                                60: "Every 60 minutes",
+                            },
+                            true,
+                            true
+                        )}
                         <p class="text-center">
                             ${forms.utils.buttonPerformAction("Create realtime subscription!", "create-subscription")}
                         </p>
                         <div id="create-subscription-results" class="mt-3 hidden"></div>
                     </div>
                 </div>
+                <div class="sensorcentral-section mt-3">
+                    <div class="header">5. Remove subscription</div>
+                    <div class="p-2">
+                        <p class="text-center">
+                            ${forms.utils.buttonPerformAction("Remove realtime subscription!", "remove-subscription")}
+                        </p>
+                        <div id="remove-subscription-results" class="mt-3 hidden"></div>
+                    </div>
+                </div>
 
-                `)
+                `);
         })
     }
     updateUI();
 
-    const smartmeOperation = (endpoint, body) => {
+    const getSmartmeCredentials = () => {
         const username = $("#usernameInput").val();
         const password = $("#passwordInput").val();
-        const opts = {
-            "method": body ? "POST" : "GET",
-            "headers": {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "Authorization": `Basic ${btoa(`${username}:${password}`)}`
-            },
-            "body": body ? JSON.stringify(body) : undefined
-        }
-        return fetch(`https://api.smart-me.com/api${endpoint}`, opts).then(res => {
-            if (res.status === 401) return Promise.reject(Error("Unauthorized - please verify the specified credentials"));
-            if (res.status < 200 || res.status > 299) return Promise.reject(Error(`Received a HTTP code ${res.status} which we clearly did not expect...`));
-            if (res.status === 204) return Promise.resolve();
-            return res.json();
-        })
+        return {username, password};
     }
-
     const messageShow = (id, msg, color) => {
         const holder = $(`#${id}`);
         holder.html(`<span style="color: ${color}">${msg}</span>`);
@@ -135,21 +147,6 @@ module.exports = (document, elemRoot, ctx) => {
         holder.html("");
         return Promise.resolve();
     }
-    const ensurePowermeterIdMatchesSpecified = (specifiedId) => {
-        return smartmeOperation("/Devices").then(devices => {
-            if (!devices.length) {
-                return Promise.reject(Error("There are no devices associated with your smart.me account."));
-            } else if (devices.length !== 1 || specifiedId) {
-                // more than one powermeter or user specified - ensure 
-                // we know what powermeter to work with
-                const filtered = devices.filter(device => device.Id === specifiedId);
-                if (!filtered.length) return Promise.reject(new Error("Unable to find powermeter with specified ID or you had more than one powermeter and didn't specify a powermeter ID."));
-                return Promise.resolve(filtered[0].Id);
-            } else {
-                return Promise.resolve(devices[0].Id);
-            }
-        })
-    }
 
     elemRoot.on("click", ev => {
         if (ev.target.localName !== "button") return;
@@ -159,119 +156,133 @@ module.exports = (document, elemRoot, ctx) => {
         if (rel === "verify") {
             const resultsId = "discover-results";
 
-            errorClear(resultsId).then(() => {
-                return smartmeOperation("/Devices");
-            }).then(devices => {
-                const items = devices.reduce((prev, device) => {
-                    prev += `<li>ID: ${device.Id}, current reading: ${device.CounterReadingImport}</li>`
-                    return prev;
-                }, "")
-                const holder = $("#discover-results");
-                holder.html(`Discovered powermeters: <ol>${items}</ol>`);
-                holder.removeClass("hidden");
-
-            }).catch(err => {
-                errorShow(resultsId, err.message);
-            })
-
+            errorClear(resultsId)
+                .then(() => {
+                    const creds = getSmartmeCredentials();
+                    return fetcher.graphql(
+                        `{smartmeGetDevices(data: {username: "${creds.username}", password: "${creds.password}"}){id, name, counterReading, counterReadingUnit}}`
+                    );
+                })
+                .then((validationResult) => {
+                    const items = validationResult.smartmeGetDevices.reduce((prev, device) => {
+                        prev += `<li id="${device.id}">ID: ${device.id}, name: ${device.name}, current reading: ${device.counterReading}${device.counterReadingUnit}</li>`;
+                        return prev;
+                    }, "");
+                    const holder = $("#discover-results");
+                    holder.html(`Discovered powermeters: <ol>${items}</ol>`);
+                    holder.removeClass("hidden");
+                })
+                .catch((err) => {
+                    errorShow(resultsId, err.message);
+                });
         } else if (rel === "check") {
             const resultsId = "check-results";
-            
-            errorClear(resultsId).then(() => {
-                if (!$("#houseInput").val()) {
-                    throw Error("Please select a house.");
-                }
 
-                // get specified id (if any) and ensure it's valid
-                const specifiedId = $("#powermeter4CreateSensorInput").val();
-                return ensurePowermeterIdMatchesSpecified(specifiedId);
-                
-            }).then(sensorId => {
-                return fetcher.graphql(`{sensor(id:"${sensorId}"){id, type, name}}`).then(sensor => {
-                    // found sensor
-                    messageShow(resultsId, "Found SensorCentral sensor - you are all good!", "green");
-
-                }).catch(err => {
-                    // we do not have the sensor
-                    if (!$("#createIfMissingInput").prop("checked")) {
-                        // we should not create
-                        throw Error("Required sensor not found and you told us not to create it.");
+            errorClear(resultsId)
+                .then(() => {
+                    if (!$("#houseInput").val()) {
+                        throw Error("Please select a house.");
                     }
-                    return Promise.resolve(sensorId);
+
+                    // get specified id (if any) and ensure it's valid
+                    const specifiedId = $("#powermeter4CreateSensorInput").val();
+                    if (!specifiedId) throw Error("Please specify the ID of the Powermeter to check for");
+
+                    // look for sensor
+                    return fetcher
+                        .graphql(`{sensor(id:"${specifiedId}"){id, type, name}}`)
+                        .then((sensor) => {
+                            // found sensor
+                            messageShow(resultsId, "Found SensorCentral sensor - you are all good!", "green");
+                        })
+                        .catch((err) => {
+                            // we do not have the sensor
+                            if (!$("#createIfMissingInput").prop("checked")) {
+                                // we should not create
+                                throw Error("Required sensor not found and you told us not to create it.");
+                            }
+                            return Promise.resolve(specifiedId);
+                        });
                 })
+                .then((sensorId) => {
+                    if (!sensorId) return;
 
-            }).then(sensorId => {
-                if (!sensorId) return;
-
-                // create device and then sensor
-                const houseId = $("#houseInput").val();
-                const deviceId = uuid();
-                return fetcher.graphql(`mutation {createDevice(data: {houseId: "${houseId}", id: "${deviceId}", name: "Kamstrup Powermeter", active: true}){id}}`).then(() => {
-                    return fetcher.graphql(`mutation {createSensor(data: {deviceId: "${deviceId}", id: "${sensorId}", name: "Powermeter", label: "powermeter-${houseId}", type: "counter", icon: "battery-4"}){id}}`);
-                }).then(() => {
-                    messageShow(resultsId, "Created device and sensor.", "green");
+                    // create device and then sensor
+                    const houseId = $("#houseInput").val();
+                    const deviceId = uuid();
+                    return fetcher
+                        .graphql(
+                            `mutation {createDevice(data: {houseId: "${houseId}", id: "${deviceId}", name: "Kamstrup Powermeter", active: true}){id}}`
+                        )
+                        .then(() => {
+                            return fetcher.graphql(
+                                `mutation {createSensor(data: {deviceId: "${deviceId}", id: "${sensorId}", name: "Powermeter", label: "powermeter-${houseId}", type: "counter", icon: "battery-4", scaleFactor: 0.001}){id}}`
+                            );
+                        })
+                        .then(() => {
+                            messageShow(resultsId, "Created device and sensor.", "green");
+                        });
                 })
-
-            }).catch(err => {
-                errorShow(resultsId, err.message);
-            })
-
-        } else if (rel === "list") {
-            const resultsId = "list-results";
-            
-            errorClear(resultsId).then(() => {
-                return smartmeOperation("/RegisterForRealtimeApi");
-            }).then(realtimes => {
-                if (realtimes.length) {
-                    const items = realtimes.map(r => `<li>${JSON.stringify(r)}</li>`);
-                    errorShow(resultsId, `Discovered realtime subscriptions: <ol>${items}</ol>`);
-                } else {
-                    messageShow(resultsId, "Discovered NO realtime subscriptions.", "green");
-                }
-            })
+                .catch((err) => {
+                    errorShow(resultsId, err.message);
+                });
         } else if (rel === "create-subscription") {
+            const frequency = $("#frequencyInput").val();
             const resultsId = "create-subscription-results";
+            const sensorId = $("#powermeter4CreateSensorInput").val();
+            const houseId = $("#houseInput").val();
+            const creds = getSmartmeCredentials();
 
-            if (!confirm("Are you sure?")) return;
+            errorClear(resultsId)
+                .then(() => {
+                    // get specified id (if any) and ensure it's valid
+                    if (!creds || !creds.username || !creds.password)
+                        throw Error("Please ensure the credentials are specified");
+                    if (!houseId) throw Error("Please select the house for the Powermeter to subscribe for");
+                    if (!sensorId) throw Error("Please specify the ID of the Powermeter to subscribe for");
+                    if (!frequency) throw Error("Please specify the frequency for the powermeter query");
 
-            errorClear(resultsId).then(() => {
-                // get specified id (if any) and ensure it's valid
-                const specifiedId = $("#powermeter4CreateSubscriptionInput").val();
-                return ensurePowermeterIdMatchesSpecified(specifiedId);
-                
-            }).then(powermeterId => {
-                // generate username and password for smart.me
-                const username = uuid();
-                const password = uuid();    
-
-                // ensure sensor exists in sensorcentral
-                return fetcher.graphql(`{sensor(id: "${powermeterId}"){id,name,device{id}}}`).then(data => {
-                    // coming here means we have the sensor so all's good - now 
-                    // store subscription in sensorcentral
-                    const deviceId = data.sensor.device.id;
-                    
-                    return fetcher.graphql(`mutation {createSmartmeSubscription(data: {sensorId: "${powermeterId}", deviceId: "${deviceId}", username: "${username}", password: "${password}"}){url}}`);
-
-                }).then(data => {
-                    // get callback url
-                    const url = data.createSmartmeSubscription.url;
-                    
-                    // create subscription in smart.me
-                    return smartmeOperation("/RegisterForRealtimeApi", {
-                        "ApiUrl": url,
-                        "BasicAuthUsername": username,
-                        "BasicAuthPassword": password,
-                        "MeterId": powermeterId,
-                        "RegistrationType": "SingleMeterRegistration"
-                    })
-
-                }).then(() => {
-                    messageShow(resultsId, "Subscription created!", "green");
+                    // really sure
+                    if (!confirm("Are you sure?")) throw Error("Aborted");
                 })
+                .then(() => {
+                    return fetcher
+                        .graphql(
+                            `mutation{smartmeEnsureSubscription(credentials: {username: "${creds.username}", password: "${creds.password}"} subscription: {frequency: ${frequency}, houseId: "${houseId}", sensorId: "${sensorId}"}){house{id,name},sensor{id,name},frequency}}`
+                        )
+                        .then((data) => {
+                            // coming here means we could create the subscription
+                            messageShow(resultsId, "Subscription created!", "green");
+                        });
+                })
+                .catch((err) => {
+                    errorShow(resultsId, err.message);
+                });
+        } else if (rel === "remove-subscription") {
+            const resultsId = "remove-subscription-results";
+            const houseId = $("#houseInput").val();
 
-            }).catch(err => {
-                errorShow(resultsId, err.message);
-            })
+            errorClear(resultsId)
+                .then(() => {
+                    // get specified id (if any) and ensure it's valid
+                    if (!houseId) throw Error("Please select the house for the Powermeter to subscribe for");
+                    
+                    // really sure
+                    if (!confirm("Are you sure?")) throw Error("Aborted");
+                })
+                .then(() => {
+                    return fetcher
+                        .graphql(
+                            `mutation{smartmeRemoveSubscription(houseId: "${houseId}")}`
+                        )
+                        .then((data) => {
+                            // coming here means we could remove the subscription
+                            messageShow(resultsId, "Subscription removed!", "green");
+                        });
+                })
+                .catch((err) => {
+                    errorShow(resultsId, err.message);
+                });
         }
     })
 }

@@ -8,9 +8,13 @@ import oidcRouter from "./routes/oidc";
 import downloadRouter from "./routes/api/v1/download";
 
 export default async (app : Application) => {
-	// add anonymous routes
+	// add anonymous route for root data (access validated in other ways)
 	app.use("/", attachGetRoot);
+
+	// anonymous legacy route for sensors to post data
 	app.use('/', postSensorDataRouter);
+
+	// anonymous route used to request data already constructed for download
 	app.use('/download', downloadRouter);
 
 	// add login routes (anonymous)
