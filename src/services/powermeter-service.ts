@@ -98,11 +98,12 @@ export class PowermeterService extends BaseService {
                 if (deviceData.counterReadingUnit === PowerUnit.kWh) {
                     this.logService!.debug(`Powermeter counterReading is <${deviceData.counterReading}> but counterReadingUnit is kWh - multiplying by 1000`);
                     deviceData.counterReading = deviceData.counterReading*1000;
+                    deviceData.counterReadingImport = deviceData.counterReadingImport * 1000;
                     this.logService!.debug(
                         `Powermeter counterReading is now <${deviceData.counterReading}> Wh`
                     );
                 }
-
+                
                 // publish event to store as regular sensor
                 this.eventService!.publishQueue(constants.QUEUES.DEVICE, payload).then(() => {
                     // send event to persist as sensor_data
