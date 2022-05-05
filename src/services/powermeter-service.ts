@@ -6,7 +6,7 @@ import {
     IngestedSensorMessage,
 
 } from "../types";
-import {smartmeGetDevices} from "../resolvers/smartme";
+import {smartmeGetDevices, PowerUnit} from "../resolvers/smartme";
 import { LogService } from "./log-service";
 import { EventService } from "./event-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
@@ -94,14 +94,23 @@ export class PowermeterService extends BaseService {
                     "id": deviceId
                 }
 
+                // see if counter reading is in kwh - if yes convert to wh
+                if (deviceData.counterReadingUnit === PowerUnit.kWh) {
+                    this.logService!.debug(`Powermeter counterReading is <${deviceData.counterReading}> but counterReadingUnit is kWh - multiplying by 1000`);
+                    deviceData.counterReading = deviceData.counterReading*1000;
+                    this.logService!.debug(
+                        `Powermeter counterReading is now <${deviceData.counterReading}> Wh`
+                    );
+                }
+
                 // publish event to store as regular sensor
                 this.eventService!.publishQueue(constants.QUEUES.DEVICE, payload).then(() => {
                     // send event to persist as sensor_data
                     this.eventService!.publishQueue(constants.QUEUES.SENSOR, {
-                        "deviceId": deviceId,
-                        "id": deviceData.id,
-                        "dt": deviceData.valueDate.toISOString(),
-                        "value": deviceData.counterReadingImport
+                        deviceId: deviceId,
+                        id: deviceData.id,
+                        dt: deviceData.valueDate.toISOString(),
+                        value: deviceData.counterReadingImport,
                     } as IngestedSensorMessage);
                 });
                 

@@ -8,7 +8,7 @@ import {generatePayload} from "../smartme-signature";
 import { House } from "./house";
 import { Sensor } from "./sensor";
 
-enum PowerUnit {
+export enum PowerUnit {
     "kW",
     "kWh",
     "Unknown"
