@@ -13,7 +13,7 @@ import {DeviceWatchdogResolver} from "./resolvers/device-watchdog";
 import { lookupService } from "./configure-services";
 import { GraphQLResolverContext, BackendIdentity } from "./types";
 import { FavoriteSensorResolver } from "./resolvers/favorite-sensor";
-import { CounterQueryResolver } from "./resolvers/data";
+import { DataQueryResolver } from "./resolvers/data";
 import { SmartmeResolver } from "./resolvers/smartme";
 import { StorageService } from "./services/storage-service";
 import { UsersResolver } from "./resolvers/user";
@@ -37,7 +37,7 @@ export default async (app : Application) => {
             SettingsResolver, 
             DeviceWatchdogResolver,
             FavoriteSensorResolver,
-            CounterQueryResolver,
+            DataQueryResolver,
             SmartmeResolver,
             UsersResolver],
             "dateScalarMode": "isoDate"
