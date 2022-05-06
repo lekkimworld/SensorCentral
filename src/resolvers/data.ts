@@ -13,7 +13,7 @@ enum DataQueryGroupBy {
     month = "YYYY-MM",
     week = "YYYY W",
     day = "YYYY-MM-DD",
-    hour = "YYYY-MM-DD HH24 "
+    hour = "YYYY-MM-DD HH24"
 }
 registerEnumType(DataQueryGroupBy, {
     "name": "DataQueryGroupBy",
@@ -43,33 +43,62 @@ registerEnumType(types.PowerType, {
     description: "The type of power data queried for",
 });
 
+interface IEnsureDefaults {
+    ensureDefaults() : void;
+}
+
 @InputType()
-class PowerDataQueryInput {
-    @Field()
+class PowerDataQueryFilterInput {
+    @Field({ nullable: false, description: "The sensor ID of the power meter" })
     id: string;
 
-    @Field(() => types.PowerPhase, { nullable: false })
+    @Field(() => types.PowerPhase, { nullable: false, description: "The phase you are querying for" })
     @IsEnum(types.PowerPhase)
     phase: types.PowerPhase;
 
-    @Field(() => types.PowerType, { nullable: false })
+    @Field(() => types.PowerType, { nullable: false, description: "The type of data you are querying for" })
     @IsEnum(types.PowerType)
     type: types.PowerType;
 
-    @Field({ nullable: false })
+    @Field({ nullable: false, description: "Start date/time in ISO8601 format" })
     start: Date;
 
-    @Field({ nullable: false })
+    @Field({ nullable: false, description: "End date/time in ISO8601 format" })
     end: Date;
+}
 
-    @Field({ nullable: true })
+@InputType()
+class PowerDataQueryFormatInput implements IEnsureDefaults {
+    @Field({
+        nullable: true,
+        description:
+            "The format for date/time information in the x-field of the dataset (default: " +
+            ISO8601_DATETIME_FORMAT +
+            ")",
+    })
     format: string;
 
-    @Field({ nullable: true, defaultValue: constants.DEFAULTS.TIMEZONE} )
+    @Field({
+        nullable: true,
+        description: "The timezone for the date/time information in the x-field of the dataset",
+        defaultValue: constants.DEFAULTS.TIMEZONE,
+    })
     timezone: string;
 
-    @Field({ nullable: true, defaultValue: true })
+    @Field({ nullable: true, description: "Sort ascending (true) or descending (false)", defaultValue: true })
     sortAscending: true;
+
+    ensureDefaults() {
+        if (!Object.prototype.hasOwnProperty.call(this, "timezone")) {
+            this.timezone = constants.DEFAULTS.TIMEZONE;
+        }
+        if (!Object.prototype.hasOwnProperty.call(this, "format")) {
+            this.format = ISO8601_DATETIME_FORMAT;
+        }
+        if (!Object.prototype.hasOwnProperty.call(this, "sortAscending")) {
+            this.sortAscending = true;
+        }
+    }
 }
 
 /* --------- Dataset --------- */
@@ -123,12 +152,12 @@ class GraphQLDataElement implements DataElement{
 
 /* ------ Power Price query ------- */
 @InputType()
-class PowerPriceQueryInput {
-    @Field({nullable: true})
+class PowerPriceQueryFilterInput {
+    @Field({nullable: true, description: "The date for the power price formatted as YYYY-MM-DD. If not specified uses current date."})
     @Matches(/\d{4}-\d{2}-\d{2}/)
     date : string;
 
-    @Field({nullable: true, defaultValue: false})
+    @Field({nullable: true, defaultValue: false, description: "Cached data is returned if found. Set to true to always fetch a fresh copy of the data."})
     ignoreCache : boolean;
 }
 
@@ -155,18 +184,33 @@ class UngroupedQueryCountFilterInput extends BaseQueryFilterInput {
 }
 
 @InputType()
-class UngroupedQueryFormatInput {
+class UngroupedQueryFormatInput implements IEnsureDefaults {
     @Field({ nullable: true, defaultValue: true })
     applyScaleFactor: boolean;
 
     @Field({ nullable: true, defaultValue: constants.DEFAULTS.TIMEZONE })
     timezone: string;
 
-    @Field({nullable: true, defaultValue: constants.DEFAULTS.DATETIME_FORMAT})
+    @Field({ nullable: true, defaultValue: ISO8601_DATETIME_FORMAT })
     format: string;
 
     @Field({ nullable: true, defaultValue: 3 })
     decimals: number;
+
+    ensureDefaults() {
+        if (!Object.prototype.hasOwnProperty.call(this, "timezone")) {
+            this.timezone = constants.DEFAULTS.TIMEZONE;
+        }
+        if (!Object.prototype.hasOwnProperty.call(this, "format")) {
+            this.format = ISO8601_DATETIME_FORMAT;
+        }
+        if (!Object.prototype.hasOwnProperty.call(this, "decimals")) {
+            this.decimals = 3;
+        }
+        if (!Object.prototype.hasOwnProperty.call(this, "applyScaleFactor")) {
+            this.applyScaleFactor = true;
+        }
+    }
 }
 
 /* ---------- Grouped date query ----------- */
@@ -214,7 +258,7 @@ class GroupedQueryGroupByInput {
 }
 
 @InputType()
-class GroupedQueryFormatInput {
+class GroupedQueryFormatInput implements IEnsureDefaults {
     @Field({ nullable: true, defaultValue: 3 })
     decimals: number;
 
@@ -230,6 +274,21 @@ class GroupedQueryFormatInput {
         description: "Adds the missing time series into the result set to fill in the result in case of missing data",
     })
     addMissingTimeSeries: boolean;
+
+    ensureDefaults() {
+        if (!Object.prototype.hasOwnProperty.call(this, "decimals")) {
+            this.decimals = 3;
+        }
+        if (!Object.prototype.hasOwnProperty.call(this, "timezone")) {
+            this.timezone = constants.DEFAULTS.TIMEZONE;
+        }
+        if (!Object.prototype.hasOwnProperty.call(this, "applyScaleFactor")) {
+            this.applyScaleFactor = false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(this, "addMissingTimeSeries")) {
+            this.addMissingTimeSeries = false;
+        }
+    }
 }
 
 const getSensorsForSensorIDs = async (sensorIds : string[], ctx: types.GraphQLResolverContext) => {
@@ -288,15 +347,12 @@ const buildQueryForSensorType_Delta = (
     grouping: GroupedQueryGroupByInput,
     format: GroupedQueryFormatInput
 ) => {
-    // figure out timezone
-    const tz = format.timezone || "Europe/Copenhagen";
-
     // create query with adjusted days
-    const dataQuery = `select to_char(dt at time zone '${tz}', '${grouping.groupBy}') period, sum(value) as value
+    const dataQuery = `select to_char(dt at time zone '${format.timezone}', '${grouping.groupBy}') period, sum(value) as value
     from sensor_data inner join sensor on sensor_data.id=sensor.id 
     where 
-        dt >= date_trunc('${filter.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${filter.start} ${filter.adjustBy}' and 
-        dt < date_trunc('${filter.adjustBy}', current_timestamp at time zone '${tz}') at time zone '${tz}' - interval '${filter.end} ${filter.adjustBy}' and 
+        dt >= date_trunc('${filter.adjustBy}', current_timestamp at time zone '${format.timezone}') at time zone '${format.timezone}' - interval '${filter.start} ${filter.adjustBy}' and 
+        dt < date_trunc('${filter.adjustBy}', current_timestamp at time zone '${format.timezone}') at time zone '${format.timezone}' - interval '${filter.end} ${filter.adjustBy}' and 
         sensor.id=$1 
     group by period 
     order by period asc`;
@@ -310,8 +366,8 @@ const buildQueryForSensorType_Delta = (
                     to_char(dt, '${grouping.groupBy}') period, 0 as value 
                 from 
                     generate_series(
-                        date_trunc('${filter.adjustBy}', current_timestamp at time zone '${tz}') - interval '${filter.start} ${filter.adjustBy}', 
-                        date_trunc('${filter.adjustBy}', current_timestamp at time zone '${tz}') - interval '${filter.end} ${filter.adjustBy}' - interval '1 minute', 
+                        date_trunc('${filter.adjustBy}', current_timestamp at time zone '${format.timezone}') - interval '${filter.start} ${filter.adjustBy}', 
+                        date_trunc('${filter.adjustBy}', current_timestamp at time zone '${format.timezone}') - interval '${filter.end} ${filter.adjustBy}' - interval '1 minute', 
                         interval '1 hour'
                     ) dt group by period), 
             actuals as (${dataQuery}) 
@@ -331,7 +387,7 @@ const doGroupedQuery = async (
     const sensors = await getSensorsForSensorIDs(filter.sensorIds, ctx);
 
     // method for formatting results from database
-    const formatResult = (dbdata : (QueryResult<any>|undefined)[]) => {
+    const formatResult = (dbdata: (QueryResult<any> | undefined)[]) => {
         // create response
         const dss: Array<Dataset> = [];
         for (let i = 0; i < filter.sensorIds.length; i++) {
@@ -343,23 +399,21 @@ const doGroupedQuery = async (
                 // unknown sensor
                 ds = new GraphQLDataset(filter.sensorIds[i], undefined);
             } else {
-                const scaleFactor = Object.prototype.hasOwnProperty.call(format, "applyScaleFactor") && typeof format.applyScaleFactor === "boolean" && format.applyScaleFactor ? sensor.scaleFactor : 1;
+                const scaleFactor = format.applyScaleFactor ? sensor.scaleFactor : 1;
                 ds = new GraphQLDataset(sensor.id, sensor.name);
                 ds.data = result.rows.map((r: any) => {
                     return {
                         x: r.period,
-                        y:
-                            Math.floor((r.value || 0) * scaleFactor * Math.pow(10, format.decimals)) /
-                            Math.pow(10, format.decimals),
+                        y: Math.floor((r.value || 0) * scaleFactor * Math.pow(10, format.decimals)) / Math.pow(10, format.decimals),
                     } as DataElement;
                 });
             }
             dss.push(ds);
         }
         return dss;
-    }
+    };
 
-    let dbdata : (QueryResult<any>|undefined)[] = [];
+    let dbdata: (QueryResult<any> | undefined)[] = [];
     if (filter instanceof GroupedQueryDateFilterInput) {
         dbdata = await doDateGroupedQuery(sensors, filter, grouping, format, ctx);
     } else {
@@ -381,35 +435,49 @@ const doDateGroupedQuery = async (
     ctx : types.GraphQLResolverContext
 ) : Promise<(QueryResult<any>|undefined)[]> => {
 
-    const dbdata = await Promise.all(sensors.map((sensor) => {
-        if (!sensor) return Promise.resolve(undefined);
-        const sensorId = sensor.id;
-        const str_start = moment.utc(filter.start).format(ISO8601_DATETIME_FORMAT);
-        const str_end = moment.utc(filter.end).format(ISO8601_DATETIME_FORMAT);
+    const dbdata = await Promise.all(
+        sensors.map((sensor) => {
+            if (!sensor) return Promise.resolve(undefined);
+            const sensorId = sensor.id;
+            const str_start = moment.utc(filter.start).format(ISO8601_DATETIME_FORMAT);
+            const str_end = moment.utc(filter.end).format(ISO8601_DATETIME_FORMAT);
 
-        if (sensor.type === types.SensorType.counter) {
-            var query = `with actuals as (with temp2 as (with temp1 as
+            if (sensor.type === types.SensorType.counter) {
+                var query = `with actuals as (with temp2 as (with temp1 as
     (select dt, value from sensor_data where dt >= '${str_start}' and dt < '${str_end}' and id='${sensorId}' order by dt desc) 
     select dt, value, value-lead(value,1) over (order by dt desc) diff_value from temp1) select to_char(dt at time zone '${
-                format.timezone || constants.DEFAULTS.TIMEZONE
-            }', '${
-                grouping.groupBy
-            }') period, sum(diff_value) as value from temp2 group by period order by period) select period, sum(value) as value from actuals group by period order by period asc;`;
-        } else if (sensor.type === types.SensorType.delta) {
-            var query = `select 
-                    to_char(dt at time zone '${format.timezone || constants.DEFAULTS.TIMEZONE}', '${grouping.groupBy}') period, 
+        format.timezone
+    }', '${
+                    grouping.groupBy
+                }') period, sum(diff_value) as value from temp2 group by period order by period) select period, sum(value) as value from actuals group by period order by period asc;`;
+            } else if (sensor.type === types.SensorType.delta) {
+                var query = `select 
+                    to_char(dt at time zone '${format.timezone}', '${
+                    grouping.groupBy
+                }') period, 
                     sum(value) as value 
                 from sensor_data 
                 where dt >= '${str_start}' and dt < '${str_end}' and id='${sensorId}' 
                 group by period 
                 order by period asc;`;
-        } else {
-            return Promise.reject(Error(`Unsupported sensor type for grouped query <${sensor.type}>`));
-        }
+            } else if (sensor.type === types.SensorType.gauge) {
+                var query = `select 
+                    to_char(dt at time zone '${format.timezone}', '${
+                    grouping.groupBy
+                }') period, 
+                    avg(value) as value 
+                from sensor_data 
+                where dt >= '${str_start}' and dt < '${str_end}' and id='${sensorId}' 
+                group by period 
+                order by period asc;`;
+            } else {
+                return Promise.reject(Error(`Unsupported sensor type for grouped query <${sensor.type}>`));
+            }
 
-        // return
-        return ctx.storage.dbService!.query(query);
-    }))
+            // return
+            return ctx.storage.dbService!.query(query);
+        })
+    );
     return dbdata;
 }
 
@@ -486,7 +554,7 @@ const ungroupedQuery = async (
             ds.data = result
                 .map((r) => {
                     return {
-                        x: moment.utc(r.dt).tz(format.timezone).format(format.format || constants.DEFAULTS.DATETIME_FORMAT),
+                        x: moment.utc(r.dt).tz(format.timezone).format(format.format),
                         y: Math.floor((r.value || 0) * Math.pow(10, format.decimals)) / Math.pow(10, format.decimals),
                     };
                 })
@@ -510,11 +578,12 @@ export class DataQueryResolver {
         @Arg("format", { nullable: true, defaultValue: {} }) format: GroupedQueryFormatInput,
         @Ctx() ctx: types.GraphQLResolverContext
     ) {
+        format.ensureDefaults();
         return doGroupedQuery(filter, grouping, format, ctx);
     }
 
     @Query(() => [GraphQLDataset], {
-        description: "Returns data for requested sensors grouped as requested",
+        description: "Returns data for requested sensors with the data grouped as requested",
         nullable: false,
     })
     async dataGroupedDateQuery(
@@ -523,12 +592,12 @@ export class DataQueryResolver {
         @Arg("format", { nullable: true, defaultValue: {} }) format: GroupedQueryFormatInput,
         @Ctx() ctx: types.GraphQLResolverContext
     ) {
+        format.ensureDefaults();
         return doGroupedQuery(filter, grouping, format, ctx);
     }
 
     @Query(() => [GraphQLDataset], {
-        description:
-            "Returns sample data for requested sensors. If start and end dates are supplied these take precedence. Alternatively we return the latest X number of samples as requested.",
+        description: "Returns an array of datasets for the requested sensors with the latest X (based on the count provided) number of samples.",
         nullable: false,
     })
     async dataUngroupedCountQuery(
@@ -540,12 +609,12 @@ export class DataQueryResolver {
         format: UngroupedQueryFormatInput,
         @Ctx() ctx: types.GraphQLResolverContext
     ) {
+        format.ensureDefaults();
         return ungroupedQuery(filter, format, ctx);
     }
 
     @Query(() => [GraphQLDataset], {
-        description:
-            "Returns sample data for requested sensors. If start and end dates are supplied these take precedence. Alternatively we return the latest X number of samples as requested.",
+        description: "Returns an array of datasets for the requested sensors based on start and end date/time.",
         nullable: false,
     })
     async dataUngroupedDateQuery(
@@ -557,46 +626,46 @@ export class DataQueryResolver {
         format: UngroupedQueryFormatInput,
         @Ctx() ctx: types.GraphQLResolverContext
     ) {
+        format.ensureDefaults();
         return ungroupedQuery(filter, format, ctx);
     }
 
     @Query(() => GraphQLDataset, {
-        description: "Returns power data from a Powermeter",
+        description: "Returns power consumption data from a powermeter",
     })
     async powerPhaseDataQuery(
-        @Arg("data") data: PowerDataQueryInput,
+        @Arg("filter") filter: PowerDataQueryFilterInput,
+        @Arg("format", { nullable: true, defaultValue: {} }) format: PowerDataQueryFormatInput,
         @Ctx() ctx: types.GraphQLResolverContext
-    ): Promise<Dataset> {
+    ): Promise<GraphQLDataset> {
+        // defaults for formatting
+        const tz = format.timezone || constants.DEFAULTS.TIMEZONE;
+        const sortAscending =
+            Object.prototype.hasOwnProperty.call(format, "sortAscending") && format.sortAscending ? true : false;
+        const dtFormat = format.format || ISO8601_DATETIME_FORMAT;
+
         // get sensor to ensure access
-        const sensor = await ctx.storage.getSensor(ctx.user, data.id);
+        const sensor = await ctx.storage.getSensor(ctx.user, filter.id);
 
         // get data
         const samples = await ctx.storage.getPowerPhaseData(
             ctx.user,
-            data.id,
-            data.start,
-            data.end,
-            data.type,
-            data.phase
+            filter.id,
+            filter.start,
+            filter.end,
+            filter.type,
+            filter.phase
         );
 
         // sort
         samples.sort((a, b) => {
             const delta = b.dt.getTime() - a.dt.getTime();
-            return (data.sortAscending ? -1 : 1) * delta;
+            return (sortAscending ? -1 : 1) * delta;
         });
 
         // convert to dataset
         const dataset = samples.reduce((set, sample) => {
-            set.data.push(
-                new GraphQLDataElement(
-                    moment
-                        .utc(sample.dt)
-                        .tz(data.timezone)
-                        .format(data.format || constants.DEFAULTS.DATETIME_FORMAT),
-                    sample.value
-                )
-            );
+            set.data.push(new GraphQLDataElement(moment.utc(sample.dt).tz(tz).format(dtFormat), sample.value));
             return set;
         }, new GraphQLDataset(sensor.id, sensor.name));
 
@@ -607,9 +676,12 @@ export class DataQueryResolver {
     @Query(() => GraphQLDataset, {
         description: "Returns hourly prices for the supplied date or today if no date supplied",
     })
-    async powerPriceQuery(@Arg("data") data: PowerPriceQueryInput, @Ctx() ctx: types.GraphQLResolverContext) {
+    async powerPriceQuery(
+        @Arg("filter") filter: PowerPriceQueryFilterInput,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ): Promise<GraphQLDataset> {
         // calc date to ask for
-        const m = data.date ? moment(data.date, "YYYY-MM-DD") : moment();
+        const m = filter.date ? moment(filter.date, "YYYY-MM-DD") : moment();
 
         // create dataset
         const ds = new GraphQLDataset("power", m.format("DD-MM-YYYY"));
@@ -634,7 +706,7 @@ export class DataQueryResolver {
         }
 
         // look in cache if allowed
-        if (!data.ignoreCache) {
+        if (!filter.ignoreCache) {
             const data = await ctx.storage.getPowerPriceData(m.format("YYYY-MM-DD"));
             if (data) {
                 // found in cache

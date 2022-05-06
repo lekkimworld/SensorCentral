@@ -1,6 +1,8 @@
 const moment = require("moment-timezone");
 
 const TIMEZONE = "Europe/Copenhagen";
+const DATETIME_FORMAT = "D-M-YYYY [kl.] k:mm";
+
 const formatWithFormat = (date, format, defaultValue) => {
     let use_date;
     if (!date && defaultValue) {
@@ -21,7 +23,7 @@ const formatWithFormat = (date, format, defaultValue) => {
 }
 
 const formatDMYTime = (date, defaultValue) => {
-    return formatWithFormat(date, "D-M-YYYY [kl.] k:mm", defaultValue);
+    return formatWithFormat(date, DATETIME_FORMAT, defaultValue);
 }
 
 const timeDifference = (date, options = {}) => {

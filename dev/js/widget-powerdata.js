@@ -40,7 +40,7 @@ module.exports = (elem) => {
         const dates = (Array.isArray(input) ? input : [input]);
         let powerquery = "query {";
         (Array.isArray(dates) ? dates : [dates]).forEach((d, idx) => {
-            powerquery += `query${idx}: powerPriceQuery(data: {date: "${d.format("YYYY-MM-DD")}"}){id,name,fromCache,data{x,y}}\n`;
+            powerquery += `query${idx}: powerPriceQuery(filter: {date: "${d.format("YYYY-MM-DD")}"}){id,name,fromCache,data{x,y}}\n`;
         })
         powerquery += "}";
 
