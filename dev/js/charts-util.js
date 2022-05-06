@@ -128,7 +128,7 @@ const timeChart = (id, datasets, options = {}) => {
                 backgroundColor: backgroundColors[idx % backgroundColors.length],
                 borderColor: backgroundColors[idx % backgroundColors.length],
                 data: ds.data.map(s => ({
-                    x: moment(s.x, "DD-MM-YYYY [kl.] HH:mm"),
+                    x: moment(s.x, "D-M-YYYY [kl.] HH:mm"),
                     y: s.y
                 })),
                 type: 'line',
