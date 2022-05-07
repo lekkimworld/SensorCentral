@@ -24,6 +24,18 @@ export default async (app : Application) => {
     // storage service
     const storage = await lookupService(StorageService.NAME);
     
+    // add cors headers
+    app.options(path, (_req, res) => {
+        res
+            .status(203)
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Methods", "POST")
+            .header("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept")
+            .header("Access-Control-Max-Age", "86400")
+            .send("CORS Response")
+            .end();
+    })
+
     // attach a middleware to the graphql path to ensure user is authenticated 
     // either with a session or a JWT
     app.use(path, ensureAuthenticated);
