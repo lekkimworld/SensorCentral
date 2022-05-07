@@ -147,7 +147,7 @@ export class StorageService extends BaseService {
         const phaseNo = phase === PowerPhase.l1 ? 1 : phase === PowerPhase.l2 ? 2 : 3;
         const column = `${columnBase}l${phaseNo}`;
         const result = await this.dbService!.query(
-            `select dt, ${column} value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not ${columnNullTest} is null order by dt desc;`,
+            `select dt, ${column} as value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not ${columnNullTest} is null order by dt desc;`,
             id,
             start,
             end
