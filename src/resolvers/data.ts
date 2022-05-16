@@ -639,11 +639,11 @@ export class DataQueryResolver {
         @Ctx() ctx: types.GraphQLResolverContext
     ): Promise<GraphQLDataset> {
         // defaults for formatting
-        const tz = format.timezone || constants.DEFAULTS.TIMEZONE;
+        //const tz = format.timezone || constants.DEFAULTS.TIMEZONE;
         const sortAscending =
             Object.prototype.hasOwnProperty.call(format, "sortAscending") && format.sortAscending ? true : false;
         const dtFormat = format.format || ISO8601_DATETIME_FORMAT;
-
+        
         // get sensor to ensure access
         const sensor = await ctx.storage.getSensor(ctx.user, filter.id);
 
@@ -665,7 +665,7 @@ export class DataQueryResolver {
 
         // convert to dataset
         const dataset = samples.reduce((set, sample) => {
-            set.data.push(new GraphQLDataElement(moment.utc(sample.dt).tz(tz).format(dtFormat), sample.value));
+            set.data.push(new GraphQLDataElement(moment.utc(sample.dt).format(dtFormat), sample.value));
             return set;
         }, new GraphQLDataset(sensor.id, sensor.name));
 

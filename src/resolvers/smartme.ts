@@ -52,7 +52,9 @@ export const smartmeGetDevices = async (username: string, password: string, sens
         await smartmeVerifyCredentials(username, password);
 
         // get device info
-        const res = await fetch(smartmeGetApiUrl(sensorId ? `/Devices/${sensorId}` : "/Devices"), fetch_attrs);
+        const url = smartmeGetApiUrl(sensorId ? `/Devices/${sensorId}` : "/Devices");
+        const res = await fetch(url, fetch_attrs);
+        if (res.status != 200) throw Error(`Unexpected non-200 status code (${res.status})`);
         const resultData = await res.json();
         if (!resultData) {
             return undefined;
@@ -115,8 +117,15 @@ export class SmartmeDeviceWithDataType {
     }
 }
 
+@ObjectType()
+export class SmartmeEnsureSubscriptionOutputType {
+    @Field() houseId: string;
+    @Field() sensorId: string;
+    @Field({ nullable: true, defaultValue: 1 }) frequency: number;
+}
+
 @InputType()
-export class SmartmeEnsureSubscriptionType {
+export class SmartmeEnsureSubscriptionInputType {
     @Field() houseId: string;
     @Field() sensorId: string;
     @Field({nullable: true, defaultValue: 1}) frequency: number;
@@ -159,7 +168,7 @@ export class SmartmeResolver {
     })
     async smartmeEnsureSubscription(
         @Arg("credentials") creds: SmartmeCredentialsType,
-        @Arg("subscription") subscription: SmartmeEnsureSubscriptionType,
+        @Arg("subscription") subscription: SmartmeEnsureSubscriptionInputType,
         @Ctx() ctx: types.GraphQLResolverContext
     ) {
         // get house and sensor (throws error if sensor cannot be found) to ensure access
@@ -193,4 +202,18 @@ export class SmartmeResolver {
         await ctx.storage.removePowermeterSubscriptions(ctx.user, houseId);
         return true;
     }
+
+    @Query(() => [SmartmeEnsureSubscriptionOutputType], {
+        description: "Returns the current subscriptions we have for powermeter data for the houses the user has access to"
+    })
+    async smartmeGetSubscriptions(@Ctx() ctx : types.GraphQLResolverContext){
+        return (await ctx.storage.getPowermeterSubscriptions(ctx.user)).map((sub) => {
+            return {
+                sensorId: sub.sensor.id,
+                houseId: sub.house.id,
+                frequency: sub.frequency
+            } as SmartmeEnsureSubscriptionOutputType;
+        });
+    }
+
 }

@@ -1,5 +1,6 @@
 const storage = require("./storage-utils");
 const moment = require("moment");
+const $ = require("jquery");
 
 const buildContext = (options = {}) => {
     const ctx = Object.assign({}, options);

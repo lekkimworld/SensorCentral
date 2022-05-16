@@ -27,6 +27,8 @@ const navigationChange = () => {
     // get hash
     const hash = document.location.hash;
     const path = document.location.pathname;
+    //if (path.indexOf(".html")) return;
+    
     if ("/openid/loggedin" === path) {
         // user has been logged it - go ask for a JWT based on us having a session
         return fetch("/api/v1/login/jwt").then(resp => resp.json()).then(body => {
@@ -70,8 +72,13 @@ const navigationChange = () => {
         require("./sensorcentral-loggedout")(document, elemRoot);
     } else if ("#about" === hash) {
         require("./sensorcentral-about")(document, elemRoot);
-    } else if ("#powermeter" === hash) {
-        require("./sensorcentral-powermeter")(document, elemRoot);
+    } else if (hash.indexOf("#powermeter") === 0) {
+        const parts = hash.split("/");
+        if (parts[1] === "config") {
+            require("./sensorcentral-powermeter-config")(document, elemRoot);
+        } else if (parts[1] === "charts") {
+            require("./sensorcentral-powermeter-charts")(document, elemRoot);
+        }
     } else if (!user) {
         require("./sensorcentral-root")(document, elemRoot);
     } else if (hash.indexOf("#configuration") === 0) {

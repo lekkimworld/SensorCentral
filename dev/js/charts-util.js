@@ -364,6 +364,7 @@ module.exports = {
                 chartOptions = options;
                 return chartFn(bodyId, options).then(data => {
                     state.data = data;
+                    removeSkeleton();
                     return Promise.resolve(data);
                 })
             },

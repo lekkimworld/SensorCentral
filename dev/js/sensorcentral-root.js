@@ -1,5 +1,4 @@
 const storage = require("./storage-utils");
-const { timeChart } = require("./charts-util");
 const fetcher = require("./fetch-util");
 
 module.exports = (document, elemRoot) => {

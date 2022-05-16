@@ -27,11 +27,15 @@ const fillMenus = () => {
             </li>
             `;
         }
+        htmlMenu += `<li class="nav-item">
+            <a class="nav-link" href="/#powermeter/charts">Powermeter</a>
+            </li>
+            `;
         htmlUsername = `<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             Username: ${user.email}
             </a>
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
-                <a class="dropdown-item" href="/#powermeter">Powermeter Setup</a>
+                <a class="dropdown-item" href="/#powermeter/config">Powermeter Setup</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="settings">Settings</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>`;
         user.houses.forEach(house => {

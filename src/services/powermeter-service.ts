@@ -52,7 +52,7 @@ export class PowermeterService extends BaseService {
         );
 
         // get all subscriptions
-        const subs = await this.storageService!.getPowermeterSubscriptions(this.authUser);
+        const subs = await this.storageService!.getAllPowermeterSubscriptions(this.authUser);
         subs.forEach(sub => {
             this.addCronJob(sub.house.id, sub.sensor.deviceId, sub.sensor.id, sub.frequency, sub.encryptedCredentials);
         })
@@ -82,6 +82,12 @@ export class PowermeterService extends BaseService {
         );
         const jobName = this.getJobName(houseId);
         this.cron.add(jobName, `*/${frequency} * * * *`, async () => {
+            if (process.env.CRON_POWERMETER_SUBSCRIPTIONS_DISABLED) {
+                this.logService!.warn(
+                    `Ignoring powermeter subscription cron job due to CRON_POWERMETER_SUBSCRIPTIONS_DISABLED (${jobName})`
+                );
+                return;
+            }
             const creds = verifyPayload(cipherText);
             const deviceData = await smartmeGetDevices(creds.username, creds.password, sensorId);
             if (!deviceData) {

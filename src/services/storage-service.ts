@@ -1503,18 +1503,41 @@ export class StorageService extends BaseService {
     }
 
     /**
-     * Returns the powermeter subscriptions we have in the database. Calling user must have access
+     * Returns all the powermeter subscriptions we have in the database. Calling user must have access
      * to all data.
      *
      * @param user
      * @returns
      */
-    async getPowermeterSubscriptions(user: BackendIdentity): Promise<SmartmeSubscription[]> {
+    async getAllPowermeterSubscriptions(user: BackendIdentity): Promise<SmartmeSubscription[]> {
         if (!this.isAllDataAccessUser(user))
             throw Error("You must have all data access to get all powermeter subscriptions");
         const result = await this.dbService!.query(
             "select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, d.name device_name, d.active device_active, s.label sensor_label, frequency, ciphertext from powermeter_subscription p, house h, sensor s, device d where p.houseid=h.id and p.sensorid=s.id and s.deviceid=d.id;"
         );
+        const subscription_results = this.buildSmartmeSubscriptionsFromRows(result);
+        return subscription_results;
+    }
+
+     /**
+     * Returns the powermeter subscriptions the user has access to.
+     *
+     * @param user
+     * @returns
+     */
+    async getPowermeterSubscriptions(user: BackendIdentity): Promise<SmartmeSubscription[]> {
+        const houses = await this.getHouses(user);
+        const houseIds = houses.map((h) => h.id);
+        const result = await this.dbService!.query(
+            `select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, d.name device_name, d.active device_active, s.label sensor_label, frequency, ciphertext from powermeter_subscription p, house h, sensor s, device d where p.houseid=h.id and p.sensorid=s.id and s.deviceid=d.id and h.id IN ('${houseIds.join(
+                "','"
+            )}');`
+        );
+        const subscription_results = this.buildSmartmeSubscriptionsFromRows(result);
+        return subscription_results;
+    }
+
+    private buildSmartmeSubscriptionsFromRows(result : QueryResult<any>) : SmartmeSubscription[] {
         const subscription_results = result.rows.map((r) => {
             return {
                 house: {

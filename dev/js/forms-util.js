@@ -3,11 +3,11 @@ const fetcher = require("./fetch-util");
 const storage = require("./storage-utils");
 const ID_ELEM_FORM = "sensorcentral-form";
 
-const createDateTimePicker = id => {
+const createDateTimePicker = (id, options) => {
     $(`#${id}`).datetimepicker({
         locale: 'da_dk',
-        inline: true,
-        sideBySide: true,
+        inline: options && Object.prototype.hasOwnProperty.call(options, "inline") ? options.inline : true,
+        sideBySide: options && Object.prototype.hasOwnProperty.call(options, "sideBySide") ? options.sideBySide : true,
         icons: {
             time: "fa fa-clock-o",
             date: "fa fa-calendar",
@@ -71,7 +71,7 @@ const dropdown = (name, label, fieldExplanation, options, addBlank, required = f
         <select class="form-control" id="${name}Input" ${required ? "required": ""}>
             ${use_options}
         </select>
-        <small id="${name}Help" class="form-text text-muted">${fieldExplanation}</small>
+        ${fieldExplanation ? `<small id="${name}Help" class="form-text text-muted">${fieldExplanation}</small>` : ""}
         ${required ? `<div class="invalid-feedback">
         ${validationText}
     </div>` : ""}
@@ -109,7 +109,7 @@ const datetimepicker = (name, label, fieldExplanation, required = false, validat
                 <span class="fa fa-calendar"></span>
             </span>
         </div>
-        <small id="${name}Help" class="form-text text-muted">${fieldExplanation}</small>
+        ${fieldExplanation ? `<small id="${name}Help" class="form-text text-muted">${fieldExplanation}</small>` : ""}
         ${required ? `<div class="invalid-feedback">
         ${validationText}
     </div>` : ""}`;
@@ -954,6 +954,8 @@ module.exports = {
         textField,
         toggleButton,
         dropdown,
+        datetimepicker,
+        createDateTimePicker,
         disabledTextField,
         buttonClose,
         buttonPerformAction,
