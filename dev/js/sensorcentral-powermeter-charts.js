@@ -102,7 +102,7 @@ const loadChartData = async (elemRoot, subscription, house, type) => {
     chartConfig.data.datasets.push(
         ...Object.keys(result).map((key, idx) => {
             return {
-                label: `${key.substring(key.indexOf("_") + 1, key.indexOf("_") + 3)}`,
+                label: `${key.substring(key.indexOf("_") + 1, key.indexOf("_") + 3).toUpperCase()}`,
                 fill: true,
                 backgroundColor: colorMap[Object.keys(colorMap)[idx]],
                 borderColor: colorMap[Object.keys(colorMap)[idx]],
@@ -179,38 +179,50 @@ const buildBaseUI = (elemRoot, ctx, houses) => {
             },
         },
     ]);
-    elemRoot.append(`<div class="row">
-        <div class="col-lg-3 col-md-12 col-sm-12">${utils.dropdown("house", "House", undefined, options, false)}</div>
-        <div class="col-lg-3 col-md-12 col-sm-12">${utils.dropdown(
-            "filterCount",
-            "Sample Filtering",
-            undefined,
-            {
-                1: "Use all samples",
-                10: "Every 10 samples",
-                20: "Every 20 samples",
-                30: "Every 30 samples",
-                60: "Every 60 samples",
-            },
-            false
-        )}</div>
-        <div class="col-lg-3 col-md-12 col-sm-12">${utils.datetimepicker(
-            "startdt",
-            "Start date/time",
-            undefined,
-            true
-        )}</div>
-        <div class="col-lg-3 col-md-12 col-sm-12">${utils.datetimepicker(
-            "enddt",
-            "End date/time",
-            undefined,
-            true
-        )}</div>
-    </div>`);
+    elemRoot.append(`
+        <div class="row">
+            <div class="col-lg-3">
+                <div class="row"><div class="col-lg-12 col-md-12 col-sm-12">${utils.dropdown(
+                    "house",
+                    "House",
+                    undefined,
+                    options,
+                    false
+                )}</div></div>
+                <div class="row"><div class="col-lg-12 col-md-12 col-sm-12">${utils.dropdown(
+                    "filterCount",
+                    "Sample Filtering",
+                    undefined,
+                    {
+                        1: "Use all samples",
+                        10: "Every 10 samples",
+                        20: "Every 20 samples",
+                        30: "Every 30 samples",
+                        60: "Every 60 samples",
+                    },
+                    false
+                )}</div></div>
+                <div class="row"><div class="col-lg-12 col-md-12 col-sm-12">${utils.datetimepicker(
+                    "startdt",
+                    "Start date/time",
+                    undefined,
+                    true
+                )}</div></div>
+                <div class="row"><div class="col-lg-12 col-md-12 col-sm-12">${utils.datetimepicker(
+                    "enddt",
+                    "End date/time",
+                    undefined,
+                    true
+                )}</div></div>
+            </div>
+            <div class="col-lg-9">
+                <div id="chart-container"></div>
+            </div>
+        </div>
+        `);
     $("#filterCountInput").val("30");
     createDateTimePicker("startdt");
     createDateTimePicker("enddt", 1);
-    elemRoot.append('<div id="chart-container"></div>');
 
     // change handler
     $("#startdt").on("dp.change", rebuildChartHandler);
