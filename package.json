@@ -1,11 +1,11 @@
 {
     "name": "sensorcentral",
-    "version": "1.8.6",
+    "version": "1.8.7",
     "description": "",
     "main": "src/workers/worker_web.ts",
     "scripts": {
         "start": "npx ts-node src/workers/worker_web.ts",
-        "powerdata-loader": "node server-dist/workers/worker_powerdata.js",
+        "powerdata-loader": "npx ts-node src/workers/worker_powerdata.ts",
         "web-serve": "node server-dist/workers/worker_web.js",
         "test": "npx mocha tests/*.js tests/**/*.js --reporter spec --no-timeouts",
         "build": "npx grunt",
