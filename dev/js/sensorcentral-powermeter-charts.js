@@ -95,7 +95,7 @@ const loadChartData = async (elemRoot, subscription, house, type) => {
     const result = await fetcher.graphql(`{${queries.join("\n")}}`);
     const labelSource = result[Object.keys(result)[0]];
     const labels = filter(labelSource.data, filterCount).map((d) => {
-        return moment.utc(d.x).tz("Europe/Copenhagen").format("D/M k:mm");
+        return moment.utc(d.x).tz("Europe/Copenhagen").format("D/M HH:mm");
     });
 
     chartConfig.data.labels = labels;
@@ -132,8 +132,9 @@ const buildChartForHouse = async (elemRoot, house) => {
     subscriptions.forEach((sub) => {
         if (sub.houseId === house.id) {
             console.log("Found subscription for house: " + house.name);
-            loadChartData(elemRoot, sub, house, "voltage");
-            loadChartData(elemRoot, sub, house, "current");
+            loadChartData(elemRoot, sub, house, "current").then(() => {
+                loadChartData(elemRoot, sub, house, "voltage");
+            });
         }
     });
 };
@@ -154,7 +155,17 @@ const buildBaseUI = (elemRoot, ctx, houses) => {
         .forEach((h) => {
             options[h.id] = h.name;
         });
-    
+
+    // get chart-container and bind method to it
+    const rebuildChartHandler = () => {
+        const houseId = $("#houseInput").val();
+        const house = houses.filter((h) => h.id === houseId)[0];
+        const elem = $("#chart-container");
+        console.log(`Changing to house <${house.name}>`);
+        elem.html("");
+        buildChartForHouse(elem, house);
+    };
+
     // clear ui
     elemRoot.html(``);
 
@@ -164,7 +175,7 @@ const buildBaseUI = (elemRoot, ctx, houses) => {
             rel: "refresh",
             icon: "refresh",
             click: function () {
-                updateUI(elemRoot, ctx);
+                rebuildChartHandler();
             },
         },
     ]);
@@ -189,22 +200,17 @@ const buildBaseUI = (elemRoot, ctx, houses) => {
             undefined,
             true
         )}</div>
-        <div class="col-lg-3 col-md-12 col-sm-12">${utils.datetimepicker("enddt", "End date/time", undefined, true)}</div>
+        <div class="col-lg-3 col-md-12 col-sm-12">${utils.datetimepicker(
+            "enddt",
+            "End date/time",
+            undefined,
+            true
+        )}</div>
     </div>`);
     $("#filterCountInput").val("30");
     createDateTimePicker("startdt");
     createDateTimePicker("enddt", 1);
     elemRoot.append('<div id="chart-container"></div>');
-
-    // get chart-container and bind method to it
-    const rebuildChartHandler = () => {
-        const houseId = $("#houseInput").val();
-        const house = houses.filter((h) => h.id === houseId)[0];
-        const elem = $("#chart-container");
-        console.log(`Changing to house <${house.name}>`);
-        elem.html("");
-        buildChartForHouse(elem, house);
-    }
 
     // change handler
     $("#startdt").on("dp.change", rebuildChartHandler);
