@@ -26,7 +26,7 @@ const WORKERS = process.env.WEB_CONCURRENCY || 1;
 console.log(`WEB_CONCURRENCY set to ${WORKERS}`);
 
 // énsure required environment variables are set
-const APP_DOMAIN = process.env.APP_DOMAIN as string;
+const APP_DOMAIN = process.env.APP_DOMAIN;
 if (!APP_DOMAIN) {
 	console.log("APP_DOMAIN environment variable not set - cannot start!");
 	process.exit(1);

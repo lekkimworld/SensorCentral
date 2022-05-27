@@ -10,7 +10,7 @@ const CONNECTION_TIMEOUT =
         20000;
 
 const client = (function () {
-    const redis_uri = process.env.REDIS_TLS_URL ? new URL(process.env.REDIS_TLS_URL as string) : process.env.REDIS_URL ? new URL(process.env.REDIS_URL as string) : undefined;
+    const redis_uri = process.env.REDIS_TLS_URL ? new URL(process.env.REDIS_TLS_URL) : process.env.REDIS_URL ? new URL(process.env.REDIS_URL) : undefined;
     if (process.env.REDIS_URL && redis_uri && redis_uri.protocol!.indexOf("rediss") === 0) {
         return createRedisClient({
             port: Number.parseInt(redis_uri.port!),
@@ -26,7 +26,7 @@ const client = (function () {
         })
     } else {
         return createRedisClient({
-            "url": process.env.REDIS_URL as string,
+            "url": process.env.REDIS_URL,
             "connect_timeout": CONNECTION_TIMEOUT
         });
     }
@@ -52,8 +52,9 @@ export class RedisService extends BaseService {
 
     init(callback: (err?: Error) => {}, services: BaseService[]) {
         const log = services[0] as LogService;
-        log.info("Querying redis for dummy key...");
-        client.get("foo", (err, data) => {
+        const dummyKey = `foo_${Date.now()}`;
+        log.info(`Querying redis for dummy key (${dummyKey})`);
+        client.get(dummyKey, (err, data) => {
             log.info("Queried redis for dummy key - result: " + data + ", err: " + err);
             callback(err || undefined);
         })

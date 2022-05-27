@@ -3,15 +3,12 @@ import aes256 from "aes256";
 import crypto from "crypto";
 import constants from "./constants";
 
-const PAYLOAD_SEPARATOR = ":";
-const SIGNATURE_ALGORITHM = "sha256";
-
 export class SmartmeCredentialsSignatureData {
     readonly username: string;
     readonly password: string;
 
     constructor(cleartext_payload: string) {
-        const parts = cleartext_payload.split(PAYLOAD_SEPARATOR);
+        const parts = cleartext_payload.split(constants.SMARTME.PAYLOAD_SEPARATOR);
         this.username = parts[0];
         this.password = parts[1];
     }
@@ -22,7 +19,7 @@ export class SmartmeRealtimeSubscriptionSignatureData extends SmartmeCredentials
 
     constructor(cleartext_payload: string) {
         super(cleartext_payload);
-        const parts = cleartext_payload.split(PAYLOAD_SEPARATOR);
+        const parts = cleartext_payload.split(constants.SMARTME.PAYLOAD_SEPARATOR);
         if (parts.length >= 3) {
             this.deviceId = parts[3];
             this.sensorId = parts[4];
@@ -31,16 +28,16 @@ export class SmartmeRealtimeSubscriptionSignatureData extends SmartmeCredentials
 }
 
 export const generatePayload = (username: string, password: string, deviceId : string, sensorId : string) => {
-    let payload = `${username}${PAYLOAD_SEPARATOR}${password}`;
+    let payload = `${username}${constants.SMARTME.PAYLOAD_SEPARATOR}${password}`;
     if (deviceId) {
-        payload = `${payload}${PAYLOAD_SEPARATOR}${deviceId}`;
+        payload = `${payload}${constants.SMARTME.PAYLOAD_SEPARATOR}${deviceId}`;
     }
     if (sensorId) {
-        payload = `${payload}${PAYLOAD_SEPARATOR}${sensorId}`;
+        payload = `${payload}${constants.SMARTME.PAYLOAD_SEPARATOR}${sensorId}`;
     }
     const cipher_payload = aes256.encrypt(constants.SMARTME.ENCRYPTION_KEY, payload);
     const signature = crypto
-        .createHmac(SIGNATURE_ALGORITHM, constants.SMARTME.ENCRYPTION_KEY)
+        .createHmac(constants.SMARTME.SIGNATURE_ALGORITHM, constants.SMARTME.ENCRYPTION_KEY)
         .update(cipher_payload)
         .digest("base64");
     const result = `${cipher_payload}.${signature}`;
@@ -57,7 +54,7 @@ export const verifyPayload = (input: string): SmartmeCredentialsSignatureData =>
 
     // calculate signature over payload
     const calc_signature = crypto
-        .createHmac(SIGNATURE_ALGORITHM, constants.SMARTME.ENCRYPTION_KEY)
+        .createHmac(constants.SMARTME.SIGNATURE_ALGORITHM, constants.SMARTME.ENCRYPTION_KEY)
         .update(payload)
         .digest("base64");
     if (signature !== calc_signature) {

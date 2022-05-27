@@ -67,6 +67,12 @@ export class WatchdogService extends BaseService {
 
             // log
             this.logService!.info(`Device (<${deviceId}>) reset`);
+            if (!process.env.WATCHDOG_DISABLED) {
+                this.logService!.warn(
+                    `Ignoring watchdog reset for device ${deviceId} due to WATCHDOG_DISABLED being set`
+                );
+                return;
+            }
             
             // fetch device from db
             let device;
