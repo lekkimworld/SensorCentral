@@ -12,6 +12,7 @@ export const formatDate = function(date? : any, format? : string) : string {
 export const buildBaseHandlebarsContext = () : any => {
     return {
         "app_name": pckg.name,
-        "app_version": pckg.version
+        "app_version": pckg.version,
+        "app_current_year": new Date().getFullYear()
     }
 }
