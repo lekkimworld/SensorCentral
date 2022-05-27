@@ -6,6 +6,8 @@ const moment = require("moment-timezone");
 const Chart = require("chart.js");
 const {utils} = require("./forms-util");
 
+const ISO8601 = "YYYY-MM-DDTHH:mm:ss.SSS[Z]";
+
 const createDateTimePicker = (id, incrementDays) => {
     utils.createDateTimePicker(id, { inline: false });
     $(`#${id}`)
@@ -33,7 +35,28 @@ const colorMap = {
     darkgreen: "rgba(53, 71, 64)",
 };
 
-const loadChartData = async (elemRoot, subscription, house, type) => {
+const createChartElement = (elemRoot, title, id) => {
+    const elem = elemRoot;
+    const elemHeader = document.createElement("h4");
+    elemHeader.appendChild(document.createTextNode(title));
+    elem.append(elemHeader);
+    const elemChart = document.createElement("canvas");
+    elemChart.setAttribute("id", id);
+    elem.append(elemChart);
+    return elemChart;
+}
+
+const buildChartWithDataset = async (elemChart, datasets) => {
+    const filter = (data, every) => {
+        return data.filter((d, idx) => idx % every === 0);
+    };
+    const filterCount = $("#filterCountInput").val();
+
+    const labelSource = datasets[Object.keys(datasets)[0]];
+    const labels = filter(labelSource.data, filterCount).map((d) => {
+        return moment.utc(d.x).tz("Europe/Copenhagen").format("D/M HH:mm");
+    });
+
     const chartData = {
         labels: [],
         datasets: [],
@@ -50,8 +73,25 @@ const loadChartData = async (elemRoot, subscription, house, type) => {
         },
     };
 
-    const ISO8601 = "YYYY-MM-DDTHH:mm:ss.SSS[Z]";
-    
+    chartConfig.data.labels = labels;
+    chartConfig.data.datasets.push(
+        ...Object.keys(datasets).map((key, idx) => {
+            return {
+                label: `${key.substring(key.indexOf("_") + 1, key.indexOf("_") + 3).toUpperCase()}`,
+                fill: true,
+                backgroundColor: colorMap[Object.keys(colorMap)[idx]],
+                borderColor: colorMap[Object.keys(colorMap)[idx]],
+                data: filter(datasets[key].data, filterCount),
+            };
+        })
+    );
+
+    // build chart
+    const myChart = new Chart(elemChart, chartConfig);
+    return myChart;
+}
+
+const loadChartData = async (subscription, house, type) => {
     const moment_start = $("#startdt")
         .data("DateTimePicker")
         .date()
@@ -68,9 +108,7 @@ const loadChartData = async (elemRoot, subscription, house, type) => {
         new Array(3).fill(undefined).forEach((v, idx) => {
             const phase = `l${idx + 1}`;
             console.log(`Processing phase: ${phase}`);
-            queries.push(`${type}_${phase}_${Buffer.from(subscription.sensorId).toString(
-                "base64"
-            )}: powerPhaseDataQuery(
+            queries.push(`${type}_${phase}: powerPhaseDataQuery(
             filter: {
               id: "${subscription.sensorId}", 
               phase: ${phase},
@@ -86,39 +124,8 @@ const loadChartData = async (elemRoot, subscription, house, type) => {
           }`);
         });
     });
-
-    const filter = (data, every) => {
-        return data.filter((d, idx) => idx % every === 0);
-    };
-    const filterCount = $("#filterCountInput").val();
-
-    const result = await fetcher.graphql(`{${queries.join("\n")}}`);
-    const labelSource = result[Object.keys(result)[0]];
-    const labels = filter(labelSource.data, filterCount).map((d) => {
-        return moment.utc(d.x).tz("Europe/Copenhagen").format("D/M HH:mm");
-    });
-
-    chartConfig.data.labels = labels;
-    chartConfig.data.datasets.push(
-        ...Object.keys(result).map((key, idx) => {
-            return {
-                label: `${key.substring(key.indexOf("_") + 1, key.indexOf("_") + 3).toUpperCase()}`,
-                fill: true,
-                backgroundColor: colorMap[Object.keys(colorMap)[idx]],
-                borderColor: colorMap[Object.keys(colorMap)[idx]],
-                data: filter(result[key].data, filterCount),
-            };
-        })
-    );
-
-    const elem = elemRoot;
-    const elemHeader = document.createElement("h4");
-    elemHeader.appendChild(document.createTextNode(type === "voltage" ? "Spænding" : "Strøm"));
-    elem.append(elemHeader);
-    const elemChart = document.createElement("canvas");
-    elemChart.setAttribute("id", `chart_${type}`);
-    elem.append(elemChart);
-    const myChart = new Chart(elemChart, chartConfig);
+    const results = await fetcher.graphql(`{${queries.join("\n")}}`);
+    return results;
 };
 
 const buildChartForHouse = async (elemRoot, house) => {
@@ -129,14 +136,17 @@ const buildChartForHouse = async (elemRoot, house) => {
   }`);
     const subscriptions = data.subscriptions;
 
-    subscriptions.forEach((sub) => {
-        if (sub.houseId === house.id) {
-            console.log("Found subscription for house: " + house.name);
-            loadChartData(elemRoot, sub, house, "current").then(() => {
-                loadChartData(elemRoot, sub, house, "voltage");
-            });
-        }
-    });
+    const elemChartCurrent = createChartElement(elemRoot, "Strøm", "chart_current");
+    const elemChartVoltage = createChartElement(elemRoot, "Spænding", "chart_voltage");
+    const elemChartPower = createChartElement(elemRoot, "Effekt", "chart_power");
+    subscriptions.filter(sub => sub.houseId === house.id).forEach(sub => {
+        const datasetsCurrent = loadChartData(sub, house, "current");
+        const datasetsVoltage = loadChartData(sub, house, "voltage");
+        const datasetsPower = loadChartData(sub, house, "power");
+        datasetsCurrent.then((datasets) => buildChartWithDataset(elemChartCurrent, datasets));
+        datasetsVoltage.then((datasets) => buildChartWithDataset(elemChartVoltage, datasets));
+        datasetsPower.then((datasets) => buildChartWithDataset(elemChartPower, datasets));
+    })
 };
 
 const buildBaseUI = (elemRoot, ctx, houses) => {

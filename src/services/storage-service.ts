@@ -142,12 +142,24 @@ export class StorageService extends BaseService {
 
         // get data
         const columnNullTest = "currentphasel1";
-        const columnBase = type === "voltage" ? "voltagephase" : type === "current" ? "currentphase" : undefined;
-        if (!columnBase) throw new Error(`Unknown type supplied (${type})`);
-        const phaseNo = phase === PowerPhase.l1 ? 1 : phase === PowerPhase.l2 ? 2 : 3;
-        const column = `${columnBase}l${phaseNo}`;
+        const getColumn = (type : PowerType, phase  : PowerPhase) => {
+            const columnBase = type === "voltage" ? "voltagephase" : type === "current" ? "currentphase" : undefined;
+            if (!columnBase) throw new Error(`Unknown type supplied (${type})`);
+            const phaseNo = phase === PowerPhase.l1 ? 1 : phase === PowerPhase.l2 ? 2 : 3;
+            const column = `${columnBase}l${phaseNo}`;
+            return column;
+        }
+        const query = (() => {
+            if (type === PowerType.power) {
+                const columnCurrent = getColumn(PowerType.current, phase);
+                const columnVoltage = getColumn(PowerType.voltage, phase);
+                return `select dt, ${columnCurrent}*${columnVoltage} as value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not ${columnNullTest} is null order by dt desc;`;
+            } else {
+                return `select dt, ${getColumn(type, phase)} as value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not ${columnNullTest} is null order by dt desc;`;
+            }
+        })();
         const result = await this.dbService!.query(
-            `select dt, ${column} as value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not ${columnNullTest} is null order by dt desc;`,
+            query,
             id,
             start,
             end
