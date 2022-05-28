@@ -1,6 +1,7 @@
 const moment = require("moment-timezone");
 
 const TIMEZONE = "Europe/Copenhagen";
+const DATETIME_DATETIME_SHORT = "D/M HH:mm";
 const DATETIME_FORMAT = "D-M-YYYY [kl.] k:mm";
 
 const formatWithFormat = (date, format, defaultValue) => {
@@ -52,6 +53,8 @@ const timeDifference = (date, options = {}) => {
 }
 
 module.exports = {
+    TIMEZONE, DATETIME_DATETIME_SHORT, 
+
     formatWithFormat,
 
     formatDMYTime,

@@ -48,6 +48,34 @@ interface IEnsureDefaults {
 }
 
 @InputType()
+class PowerConsumptionQueryFilterInput {
+    @Field({ nullable: false, description: "The sensor ID of the power meter" })
+    id: string;
+
+    @Field({ nullable: false, description: "Start date/time in ISO8601 format" })
+    start: Date;
+
+    @Field({ nullable: false, description: "End date/time in ISO8601 format" })
+    end: Date;
+}
+
+@InputType()
+class PowerConsumptionQueryFormatInput implements IEnsureDefaults {
+    @Field({
+        nullable: true,
+        description: "The timezone for the date/time information in the x-field of the dataset",
+        defaultValue: constants.DEFAULTS.TIMEZONE,
+    })
+    timezone: string;
+
+    ensureDefaults() {
+        if (!Object.prototype.hasOwnProperty.call(this, "timezone")) {
+            this.timezone = constants.DEFAULTS.TIMEZONE;
+        }
+    }
+}
+
+@InputType()
 class PowerDataQueryFilterInput {
     @Field({ nullable: false, description: "The sensor ID of the power meter" })
     id: string;
@@ -597,7 +625,8 @@ export class DataQueryResolver {
     }
 
     @Query(() => [GraphQLDataset], {
-        description: "Returns an array of datasets for the requested sensors with the latest X (based on the count provided) number of samples.",
+        description:
+            "Returns an array of datasets for the requested sensors with the latest X (based on the count provided) number of samples.",
         nullable: false,
     })
     async dataUngroupedCountQuery(
@@ -631,7 +660,47 @@ export class DataQueryResolver {
     }
 
     @Query(() => GraphQLDataset, {
-        description: "Returns power consumption data from a powermeter",
+        description: "Returns kWh consumption data (grouped by hour) for a powermeter",
+    })
+    async powerConsumptionQuery(
+        @Arg("filter") filter: PowerConsumptionQueryFilterInput,
+        @Arg("format", { nullable: true, defaultValue: {} }) format: PowerConsumptionQueryFormatInput,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ): Promise<GraphQLDataset> {
+        // ensure defaults
+        format.ensureDefaults();
+
+        // get sensor to ensure access
+        const sensor = await ctx.storage.getSensor(ctx.user, filter.id);
+
+        // query
+        const results = await ctx.storage.dbService!.query(
+            `with data as (select dt, (voltagephasel1*currentphasel1)+(voltagephasel2*currentphasel2)+(voltagephasel3*currentphasel3) as value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not currentphasel1 is null order by dt desc)
+            select to_char(dt at time zone '${format.timezone}', 'YYYY-MM-DD HH24') as period, sum(value)/1000 as value from data group by period order by period asc;
+            `,
+            filter.id,
+            filter.start,
+            filter.end
+        );
+
+        // build dataset
+        const dataset = {
+            id: filter.id,
+            name: sensor.name,
+            data: results.rows.map((row) => {
+                return {
+                    x: row.period,
+                    y: row.value,
+                };
+            }),
+        } as GraphQLDataset;
+
+        // return
+        return dataset;
+    }
+
+    @Query(() => GraphQLDataset, {
+        description: "Returns power data from a powermeter",
     })
     async powerPhaseDataQuery(
         @Arg("filter") filter: PowerDataQueryFilterInput,
@@ -639,11 +708,10 @@ export class DataQueryResolver {
         @Ctx() ctx: types.GraphQLResolverContext
     ): Promise<GraphQLDataset> {
         // defaults for formatting
-        //const tz = format.timezone || constants.DEFAULTS.TIMEZONE;
         const sortAscending =
             Object.prototype.hasOwnProperty.call(format, "sortAscending") && format.sortAscending ? true : false;
         const dtFormat = format.format || ISO8601_DATETIME_FORMAT;
-        
+
         // get sensor to ensure access
         const sensor = await ctx.storage.getSensor(ctx.user, filter.id);
 
