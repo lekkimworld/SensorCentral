@@ -3,7 +3,6 @@ import "reflect-metadata";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
 import ensureAuthenticated from "./middleware/ensureAuthenticated";
-import constants from "./constants";
 import {HouseResolver} from "./resolvers/house";
 import {DeviceResolver} from "./resolvers/device";
 import {SensorResolver} from "./resolvers/sensor";
@@ -43,11 +42,7 @@ export default  async (app : Application) => {
             "dateScalarMode": "isoDate"
     })
 
-    // see if we should enable playground
-    const enablePlayground = constants.DEFAULTS.GRAPHQL_ENABLE_PLAYGROUND;
-    if (enablePlayground) {
-        console.log("Enabling GraphQL Playground");
-    }
+    // create server
     const apolloServer = new ApolloServer({
         schema,
         "context": ({ res }) : GraphQLResolverContext => {
@@ -57,9 +52,9 @@ export default  async (app : Application) => {
                 user
             } as GraphQLResolverContext
         },
-        "introspection": enablePlayground,
-        "playground": enablePlayground
+        "introspection": true
     });
+    await apolloServer.start();
 
     // attach the middleware to the app
     apolloServer.applyMiddleware({

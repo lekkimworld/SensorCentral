@@ -257,7 +257,7 @@ const buildBaseUI = (elemRoot, ctx, houses) => {
         const houseId = $("#houseInput").val();
         const house = houses.filter((h) => h.id === houseId)[0];
         const elem = $("#chart-container");
-        console.log(`Changing to house <${house.name}>`);
+        console.log(`Changing to house <${house.name}> (${house.id})`);
         elem.html("");
         buildChartForHouse(elem, house);
     };

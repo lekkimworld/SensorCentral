@@ -100,6 +100,11 @@ declare global {
             SESSION_SECRET: string;
 
             /**
+             * Session timeout  - default is 300 seconds
+             */
+            SESSION_TIMEOUT_SECONDS : string;
+
+            /**
              * Key used to encrypt smart-me data in the database.
              */
             SMARTME_KEY: !string;

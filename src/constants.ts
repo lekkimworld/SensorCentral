@@ -1,5 +1,3 @@
-const graphqlEnablePlayground = process.env.NODE_ENV === "development" || process.env.GRAPHQL_ENABLE_PLAYGROUND !== undefined;
-
 export const ISO8601_DATETIME_FORMAT = "YYYY-MM-DDTHH:mm:ss.SSS[Z]";
 
 const JWT = {
@@ -83,12 +81,9 @@ export default {
         },
         TIMEZONE: process.env.TIMEZONE || "Europe/Copenhagen",
         DATETIME_FORMAT: process.env.DATETIME_FORMAT || "D-M-YYYY [kl.] k:mm",
-        GRAPHQL_ENABLE_PLAYGROUND: graphqlEnablePlayground,
         SESSION_TIMEOUT_SECONDS: process.env.SESSION_TIMEOUT_SECONDS
             ? Number.parseInt(process.env.SESSION_TIMEOUT_SECONDS)
-            : graphqlEnablePlayground
-            ? 1 * 60 * 60
-            : 300, // 1 hour in development, 300 seconds in prod
+            : 300, //default 300 seconds in prod
         JWT: {
             USER_SCOPES: [JWT.SCOPE_API, JWT.SCOPE_READ, JWT.SCOPE_ADMIN, JWT.SCOPE_ADMIN_JWT, JWT.SCOPE_SENSORDATA],
             DEVICE_SCOPES: [JWT.SCOPE_API, JWT.SCOPE_SENSORDATA],
