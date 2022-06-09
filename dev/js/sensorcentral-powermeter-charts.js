@@ -49,15 +49,38 @@ const colorMap = {
     darkgreen: "rgba(53, 71, 64)",
 };
 
+const removeSkeleton = (containerId) => {
+    const e = document.querySelector(`#${containerId}`);
+    e.classList.remove("widget-skeleton-loader");
+    e.classList.remove("widget-placeholder-item");
+};
+const addSkeleton = (containerId) => {
+    const e = document.querySelector(`#${containerId}`);
+    e.classList.add("widget-skeleton-loader");
+    e.classList.add("widget-placeholder-item");
+    const height = window.innerHeight < 400 ? 200 : 400;
+    e.style.setProperty("--widget-skeleton-min-height", `${height}px`);
+};
+
 const createChartElement = (elemRoot, title, id) => {
-    const elem = elemRoot;
+    const elemContainer = document.createElement("div");
+    elemContainer.setAttribute("id", `container_${id}`);
+    elemContainer.setAttribute("class", "mb-4");
+
     const elemHeader = document.createElement("h4");
     elemHeader.appendChild(document.createTextNode(title));
-    elem.append(elemHeader);
+    elemContainer.append(elemHeader);
+
     const elemChart = document.createElement("canvas");
     elemChart.setAttribute("id", id);
-    elem.append(elemChart);
-    elemChart.setAttribute("class", "mb-4");
+    elemContainer.append(elemChart);
+    
+    elemRoot.append(elemContainer);
+
+    // add skeleton
+    addSkeleton(`container_${id}`)
+
+    //  return child
     return elemChart;
 }
 
@@ -103,6 +126,11 @@ const buildLineChartWithDataset = async (elemChart, datasets) => {
 
     // build chart
     const myChart = new Chart(elemChart, chartConfig);
+
+    // remove skeleton
+    removeSkeleton(`container_${elemChart.getAttribute("id")}`);
+
+    // return
     return myChart;
 }
 

@@ -9,8 +9,7 @@ import {BaseService, Device, Sensor, TopicSensorMessage, RedisSensorMessage,
     RedisDeviceMessage, 
     BackendIdentity} from "../types";
 import { ISubscriptionResult } from "../configure-queues-topics";
-import moment = require("moment");
-import Moment from 'moment';
+import moment, {Moment} from "moment";
 import { IdentityService } from "./identity-service";
 import { StorageService } from "./storage-service";
 
@@ -135,13 +134,13 @@ export class QueueListenerService extends BaseService {
             // see if we know the sensor
             this.storage.getSensor(this.authUser, msg.id).then(sensor => {
                 // known sensor - persist reading (with dt if supplied)
-                let dt : Moment.Moment | undefined;
+                let dt : Moment | undefined;
                 if (msg.dt) {
                     dt = moment.utc(msg.dt)
                 } else {
                     dt = moment.utc();
                 }
-                let from_dt : Moment.Moment | undefined;
+                let from_dt : Moment | undefined;
                 if (msg.duration) {
                     from_dt = moment(dt).subtract(msg.duration, "second");
                 }

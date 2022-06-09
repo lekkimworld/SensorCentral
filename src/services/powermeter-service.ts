@@ -6,13 +6,13 @@ import {
     IngestedSensorMessage,
 
 } from "../types";
-import {smartmeGetDevices, PowerUnit} from "../resolvers/smartme";
+import {smartmeGetDevices, PowerUnit, Cloudflare524Error} from "../resolvers/smartme";
 import { LogService } from "./log-service";
 import { EventService } from "./event-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
 import { StorageService } from "./storage-service";
 import { IdentityService } from "./identity-service";
-import { verifyPayload } from "../smartme-signature";
+import { InvalidInputError, InvalidSignatureError, verifyPayload } from "../smartme-signature";
 import { CronService } from "./cron-service";
 
 export class PowermeterService extends BaseService {
@@ -76,18 +76,8 @@ export class PowermeterService extends BaseService {
         return jobName;
     }
 
-    private addCronJob(houseId : string, deviceId : string, sensorId : string, frequency : number, cipherText : string) {
-        this.logService!.debug(
-            `Creating powermeter subscription for house <${houseId}> frequency <${frequency}>`
-        );
-        const jobName = this.getJobName(houseId);
-        this.cron.add(jobName, `*/${frequency} * * * *`, async () => {
-            if (process.env.CRON_POWERMETER_SUBSCRIPTIONS_DISABLED) {
-                this.logService!.warn(
-                    `Ignoring powermeter subscription cron job due to CRON_POWERMETER_SUBSCRIPTIONS_DISABLED (${jobName})`
-                );
-                return;
-            }
+    private async executeCronJob(houseId : string, deviceId : string, sensorId: string, cipherText : string) {
+        try {
             const creds = verifyPayload(cipherText);
             const deviceData = await smartmeGetDevices(creds.username, creds.password, sensorId);
             if (!deviceData) {
@@ -122,8 +112,34 @@ export class PowermeterService extends BaseService {
                 });
                 
                 // persist full powermeter reading
-                this.storageService?.persistPowermeterReadingFromDeviceRequest(deviceData);
+                this.storageService!.persistPowermeterReadingFromDeviceRequest(deviceData);
             }
+        } catch (err) {
+            if (err instanceof InvalidSignatureError) {
+                this.logService!.error(`Unable to execute cron job due to invalid signature on ciphertext (${err.message})`);
+            } else if (err instanceof InvalidInputError) {
+                this.logService!.error(`Unable to execute cron job due to invalid input (${err.message})`);
+            } else if (err instanceof Cloudflare524Error) {
+                this.logService!.warn(`Unable to get downsteam resource due to Cloudflare 524 (${err.message})`);
+            } else {
+                this.logService!.warn(`Unable to execute cron job due to unexpected error (${err.message})`);
+            }
+        }
+    }
+
+    private addCronJob(houseId : string, deviceId : string, sensorId : string, frequency : number, cipherText : string) {
+        this.logService!.debug(
+            `Creating powermeter subscription for house <${houseId}> frequency <${frequency}>`
+        );
+        const jobName = this.getJobName(houseId);
+        this.cron.add(jobName, `*/${frequency} * * * *`, async () => {
+            if (process.env.CRON_POWERMETER_SUBSCRIPTIONS_DISABLED) {
+                this.logService!.warn(
+                    `Ignoring powermeter subscription cron job due to CRON_POWERMETER_SUBSCRIPTIONS_DISABLED (${jobName})`
+                );
+                return;
+            }
+            this.executeCronJob(houseId, deviceId,  sensorId, cipherText);
         });
     }
 

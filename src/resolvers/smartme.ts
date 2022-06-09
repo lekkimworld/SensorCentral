@@ -8,6 +8,12 @@ import {generatePayload} from "../smartme-signature";
 import { House } from "./house";
 import { Sensor } from "./sensor";
 
+export class Cloudflare524Error extends Error {
+    constructor(msg : string) {
+        super(msg);
+    }
+}
+
 export enum PowerUnit {
     "kW",
     "kWh",
@@ -41,9 +47,18 @@ export const smartmeVerifyCredentials = async (username:string, password: string
 
     // verify the username / password
     let res = await fetch(smartmeGetApiUrl("/Account/login"), fetch_attrs);
-    if (res.status !== 200) throw Error("Unable to verify smart-me credentials");
+    if (res.status === 524) throw new Cloudflare524Error("Login to smart-me returned en 524 from Cloud Flare");
+    if (res.status !== 200) throw new Error("Unable to verify smart-me credentials");
     return true;
 }
+
+/**
+ * 
+ * @param username 
+ * @param password 
+ * @param sensorId 
+ * @returns 
+ */
 export const smartmeGetDevices = async (username: string, password: string, sensorId? : string) : Promise<undefined | SmartmeDeviceWithDataType[] | SmartmeDeviceWithDataType> => {
         // get attributes
         const fetch_attrs = smartmeGetFetchAttributes({username, password});
@@ -54,6 +69,7 @@ export const smartmeGetDevices = async (username: string, password: string, sens
         // get device info
         const url = smartmeGetApiUrl(sensorId ? `/Devices/${sensorId}` : "/Devices");
         const res = await fetch(url, fetch_attrs);
+        if (res.status === 524) throw new Cloudflare524Error("Getting information about a specific smart-me device returned en 524 from Cloud Flare");
         if (res.status != 200) throw Error(`Unexpected non-200 status code (${res.status})`);
         const resultData = await res.json();
         if (!resultData) {
@@ -206,7 +222,7 @@ export class SmartmeResolver {
     @Query(() => [SmartmeEnsureSubscriptionOutputType], {
         description: "Returns the current subscriptions we have for powermeter data for the houses the user has access to"
     })
-    async smartmeGetSubscriptions(@Ctx() ctx : types.GraphQLResolverContext){
+    async smartmeGetSubscriptions(@Ctx() ctx : types.GraphQLResolverContext) {
         return (await ctx.storage.getPowermeterSubscriptions(ctx.user)).map((sub) => {
             return {
                 sensorId: sub.sensor.id,

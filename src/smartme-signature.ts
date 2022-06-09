@@ -3,6 +3,20 @@ import aes256 from "aes256";
 import crypto from "crypto";
 import constants from "./constants";
 
+const ENCODING_BASE64 = "base64";
+
+export class InvalidSignatureError extends Error {
+    constructor(msg : string) {
+        super(msg);
+    }
+}
+
+export class InvalidInputError extends Error {
+    constructor(msg: string) {
+        super(msg);
+    }
+}
+
 export class SmartmeCredentialsSignatureData {
     readonly username: string;
     readonly password: string;
@@ -39,26 +53,35 @@ export const generatePayload = (username: string, password: string, deviceId : s
     const signature = crypto
         .createHmac(constants.SMARTME.SIGNATURE_ALGORITHM, constants.SMARTME.ENCRYPTION_KEY)
         .update(cipher_payload)
-        .digest("base64");
+        .digest(ENCODING_BASE64);
     const result = `${cipher_payload}.${signature}`;
     return result;
 };
 
+/**
+ * Verifies that the input has the correct format and returns a SmartmeCredentialsSignatureData 
+ * instance once the signature has been verified.
+ * 
+ * @param input 
+ * @returns 
+ * @throws InvalidInputError
+ * @throws InvalidSignatureError
+ */
 export const verifyPayload = (input: string): SmartmeCredentialsSignatureData => {
     // verify and decrypt
     if (!input) throw Error("No or invalid input supplied");
-    const idx = input.indexOf(".");
-    if (idx < 0) throw Error("Invalid input format - missing signature");
-    const payload = input.substring(0, idx);
-    const signature = input.substring(idx + 1);
+    const match_result = input.match(/^([=/,+a-z0-9]+)\.([=/,+a-z0-9]+)$/i);
+    if (!match_result) throw new InvalidInputError("Invalid input format - missing signature");
+    const payload = match_result[1];
+    const signature = match_result[2];
 
     // calculate signature over payload
     const calc_signature = crypto
         .createHmac(constants.SMARTME.SIGNATURE_ALGORITHM, constants.SMARTME.ENCRYPTION_KEY)
         .update(payload)
-        .digest("base64");
+        .digest(ENCODING_BASE64);
     if (signature !== calc_signature) {
-        throw Error("Signature doesn't match");
+        throw new InvalidSignatureError("Signature doesn't match");
     }
 
     // decrypt
