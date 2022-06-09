@@ -10,7 +10,7 @@ import { Sensor } from "./sensor";
 
 export class Cloudflare524Error extends Error {
     constructor(msg : string) {
-        super(msg);
+        super(`Cloud Flare specific status 524 error - ${msg}`);
     }
 }
 
@@ -47,7 +47,7 @@ export const smartmeVerifyCredentials = async (username:string, password: string
 
     // verify the username / password
     let res = await fetch(smartmeGetApiUrl("/Account/login"), fetch_attrs);
-    if (res.status === 524) throw new Cloudflare524Error("Login to smart-me returned en 524 from Cloud Flare");
+    if (res.status === 524) throw new Cloudflare524Error("Error logging in to smart-me");
     if (res.status !== 200) throw new Error("Unable to verify smart-me credentials");
     return true;
 }
@@ -69,7 +69,7 @@ export const smartmeGetDevices = async (username: string, password: string, sens
         // get device info
         const url = smartmeGetApiUrl(sensorId ? `/Devices/${sensorId}` : "/Devices");
         const res = await fetch(url, fetch_attrs);
-        if (res.status === 524) throw new Cloudflare524Error("Getting information about a specific smart-me device returned en 524 from Cloud Flare");
+        if (res.status === 524) throw new Cloudflare524Error("Error getting information about a specific smart-me device");
         if (res.status != 200) throw Error(`Unexpected non-200 status code (${res.status})`);
         const resultData = await res.json();
         if (!resultData) {
