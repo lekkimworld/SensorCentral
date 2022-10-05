@@ -114,6 +114,13 @@ export class NotifyService extends BaseService {
     }
 
     private async notifyNotifiers(device : Device, title : string, message: string) {
+        if (process.env.NOTIFICATIONS_DISABLED) {
+            this.logService!.warn(
+                `Ignoring sending "${title}"-notification for device ${device.id} due to NOTIFICATIONS_DISABLED`
+            );
+            return;
+        }
+        
         const notifiers = await this.storage!.getDeviceWatchdogNotifiers(device.id);
         this.logService?.debug(`Received <${notifiers.length}> notifiers for device with ID <${device.id}>`);
         notifiers.forEach(n => {

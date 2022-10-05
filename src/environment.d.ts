@@ -45,9 +45,19 @@ declare global {
             CRON_POWERMETER_SUBSCRIPTIONS_DISABLED: string;
 
             /**
+             * If set do not send notifications using email or Pushover no matter what
+             */
+            NOTIFICATIONS_DISABLED: string;
+
+            /**
              * Domain the app is running on
              */
             APP_DOMAIN: string;
+
+            /**
+             * If set we do not send the user to TLS if NODE_ENV is production
+             */
+            APP_NO_PROD_TLS: string;
 
             /**
              * Protocol the app is hosted on (defaults to https)
@@ -102,7 +112,7 @@ declare global {
             /**
              * Session timeout  - default is 300 seconds
              */
-            SESSION_TIMEOUT_SECONDS : string;
+            SESSION_TIMEOUT_SECONDS: string;
 
             /**
              * Key used to encrypt smart-me data in the database.

@@ -2,6 +2,7 @@ import { Pool, QueryResult, PoolConfig } from "pg";
 import { BaseService } from "../types";
 import { LogService } from "./log-service";
 import { URL } from "url";
+import initdb from "../postdeploy/database-init-utils";
 
 const url = new URL(process.env.DATABASE_URL as string);
 const config: PoolConfig = {
@@ -11,9 +12,9 @@ const config: PoolConfig = {
     "user": url.username,
     "password": url.password
 };
-if (process.env.DATABASE_SSL || process.env.NODE_ENV === "production") {
+if (process.env.NODE_ENV === "production" && process.env.DATABASE_SSL) {
     config.ssl = {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     } as any;
 }
 
@@ -43,6 +44,13 @@ export class DatabaseService extends BaseService {
             log.debug("Querying via pool");
             await this._pool.query("select count(*) from user", []);
             log.debug("Completed query");
+
+            // see if database is initialized
+            if (process.env.ALLOW_DB_INIT && process.env.ALLOW_DB_INIT.toLowerCase().substring(0, 1) === 't') {
+                log.info("Checking if database is initialized");
+                await initdb(false);
+            }
+
             callback();
 
         } catch (err) {

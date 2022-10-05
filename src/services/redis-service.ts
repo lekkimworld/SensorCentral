@@ -12,6 +12,7 @@ const CONNECTION_TIMEOUT =
 const client = (function () {
     const redis_uri = process.env.REDIS_TLS_URL ? new URL(process.env.REDIS_TLS_URL) : process.env.REDIS_URL ? new URL(process.env.REDIS_URL) : undefined;
     if (process.env.REDIS_URL && redis_uri && redis_uri.protocol!.indexOf("rediss") === 0) {
+        console.log(`Read REDIS url and will use TLS to connect <${redis_uri}>`);
         return createRedisClient({
             port: Number.parseInt(redis_uri.port!),
             host: redis_uri.hostname!,
@@ -25,6 +26,7 @@ const client = (function () {
             connect_timeout: CONNECTION_TIMEOUT
         })
     } else {
+        console.log(`Read REDIS url and will NOT use TLS to connect <${process.env.REDIS_URL}>`);
         return createRedisClient({
             "url": process.env.REDIS_URL,
             "connect_timeout": CONNECTION_TIMEOUT

@@ -29,9 +29,9 @@ export default (redisClient: RedisClient) => {
         }),
     };
 
-    // if not development ensure secure
-    if (process.env.NODE_ENV !== "development") {
-        console.log("NODE_ENV not set to 'development' - enforcing cookie settings");
+    // should we ensure secure cookies?
+    if (process.env.NODE_ENV === "production" && !constants.APP.NO_PROD_TLS) {
+        console.log("NODE_ENV set to 'production' - enforcing cookie settings");
         sessionOptions.cookie = {
             secure: true,
         };

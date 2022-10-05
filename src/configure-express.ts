@@ -9,6 +9,7 @@ import { RedisService } from "./services/redis-service";
 import configureHandlebars from "./configure-express-handlebars";
 import formatHttpException from "./middleware/formatHttpException";
 import { LogService } from "./services/log-service";
+import constants from "./constants";
 
 export default async () => {
     // create app
@@ -18,7 +19,7 @@ export default async () => {
     if (process.env.NODE_ENV !== "development") {
         app.enable("trust proxy");
         app.get("*", async (req, res, next) => {
-            if (req.secure) {
+            if (req.secure || constants.APP.NO_PROD_TLS) {
                 next();
             } else {
                 const logService = (await lookupService(LogService.NAME)) as LogService;

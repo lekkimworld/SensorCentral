@@ -1,8 +1,27 @@
 import { Connection, Channel } from "amqplib";
+import {connect} from "amqplib";
 
 const url:string|undefined = process.env.CLOUDAMQP_URL;
 if (!url) throw Error('Missing CLOUDAMQP_URL environtment variable');
-export const connection:Promise<Connection> = require('amqplib').connect(url);
+
+const connection:Promise<Connection> = new Promise(async (resolve, reject) => {
+    let retries = 5;
+
+    while (retries) {
+        try {
+            let conn = await connect(url);
+            console.log("Acquired AMQP connection");
+            resolve(conn);
+            break;
+
+        } catch (err) {
+            retries -= 1;
+            console.log(`AMQP retries left: ${retries}`);
+            await new Promise((res) => setTimeout(res, 5000));
+        }
+    }
+    reject(new Error("Unable to get AMQP connection within 5 retries"));
+});
 
 export interface IPublishResult {
     "exchangeName":string,
