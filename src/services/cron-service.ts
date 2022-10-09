@@ -1,23 +1,21 @@
 import {
     BaseService,
 } from "../types";
-import { LogService } from "./log-service";
+import { Logger } from "../logger";
 import {CronJob} from "cron";
 import constants from "../constants";
 
+const logger = new Logger("cron-service");
+
 export class CronService extends BaseService {
     public static NAME = "cron-subscription";
-    logService?: LogService;
     jobs: {[key:string]: CronJob} = {};
 
     constructor() {
         super(CronService.NAME);
-        this.dependencies = [LogService.NAME];
     }
 
-    async init(callback: (err?: Error) => {}, services: BaseService[]) {
-        this.logService = services[0] as unknown as LogService;
-        
+    async init(callback: (err?: Error) => {}) {
         // callback
         callback();
     }
@@ -32,12 +30,12 @@ export class CronService extends BaseService {
     }
 
     remove(name:string) {
-        this.logService!.debug(`Looking up cron job with name <${name}>`);
+        logger.debug(`Looking up cron job with name <${name}>`);
         const job = this.jobs[name];
         if (job) {
             job.stop();
             delete this.jobs[name];
-            this.logService!.debug(`Stopped and deleted cron job with name <${name}>`);
+            logger.debug(`Stopped and deleted cron job with name <${name}>`);
         }
     }
 }

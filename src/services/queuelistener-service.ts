@@ -1,7 +1,7 @@
 import constants from "../constants";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
-import { LogService } from "./log-service";
+import { Logger } from "../logger";
 import { DatabaseService } from "./database-service";
 import {BaseService, Device, Sensor, TopicSensorMessage, RedisSensorMessage, 
     TopicDeviceMessage, TopicControlMessage, ControlMessageTypes, 
@@ -16,6 +16,8 @@ import { StorageService } from "./storage-service";
 const SENSOR_KEY_PREFIX = 'sensor:';
 const DEVICE_KEY_PREFIX = 'device:';
 
+const logger = new Logger("queuelistener-service");
+
 /**
  * Service listening on queues to perform persistance etc.
  * 
@@ -24,7 +26,6 @@ export class QueueListenerService extends BaseService {
     public static NAME = "queuelistener";
 
     dbService? : DatabaseService;
-    logService? : LogService;
     eventService? : EventService;
     redisService? : RedisService;
     storage : StorageService;
@@ -35,17 +36,16 @@ export class QueueListenerService extends BaseService {
         super(QueueListenerService.NAME);
         this.dependencies = [
             DatabaseService.NAME, 
-            LogService.NAME, EventService.NAME, RedisService.NAME, 
+            EventService.NAME, RedisService.NAME, 
             StorageService.NAME, IdentityService.NAME];
     }
 
     async init(callback : (err?:Error) => {}, services : BaseService[]) {
         this.dbService = services[0] as unknown as DatabaseService;
-        this.logService = services[1] as unknown as LogService;
-        this.eventService = services[2] as unknown as EventService;
-        this.redisService = services[3] as unknown as RedisService;
-        this.storage = services[4] as StorageService;
-        this.security = services[5] as IdentityService;
+        this.eventService = services[1] as unknown as EventService;
+        this.redisService = services[2] as unknown as RedisService;
+        this.storage = services[3] as StorageService;
+        this.security = services[4] as IdentityService;
 
         // get auth user for service
         this.authUser = await this.security.getServiceBackendIdentity(QueueListenerService.NAME);
@@ -106,7 +106,9 @@ export class QueueListenerService extends BaseService {
     private addListenerToSensorTopic() {
         this.eventService!.subscribeTopic(constants.TOPICS.SENSOR, "#", (result : ISubscriptionResult) => {
             const data = result.data as TopicSensorMessage;
-            this.logService!.debug(`Storage service received message on ${result.exchangeName} / ${result.routingKey} for sensor id <${data.sensorId}> value <${data.value}>`);
+            logger.debug(
+                `Storage service received message on ${result.exchangeName} / ${result.routingKey} for sensor id <${data.sensorId}> value <${data.value}>`
+            );
             
             // set sensor in redis
             const redis_sensor = {
@@ -115,7 +117,9 @@ export class QueueListenerService extends BaseService {
                 "dt": new Date(),
                 "value": data.value
             } as RedisSensorMessage;
-            this.logService!.debug(`Setting sensor with key <${SENSOR_KEY_PREFIX}${data.sensorId}> (device <${data.deviceId}>) in Redis`);
+            logger.debug(
+                `Setting sensor with key <${SENSOR_KEY_PREFIX}${data.sensorId}> (device <${data.deviceId}>) in Redis`
+            );
             this.redisService!.setex(`${SENSOR_KEY_PREFIX}${data.sensorId}`, constants.DEFAULTS.REDIS.SENSOR_EXPIRATION_SECS, JSON.stringify(redis_sensor));
         });
     }
@@ -170,7 +174,7 @@ export class QueueListenerService extends BaseService {
 
                 // publish
                 this.eventService!.publishTopic(constants.TOPICS.SENSOR, sensor ? "known" : "unknown", payload).then(() => {
-                    this.logService!.debug(`Posted augmented sensor message to ${constants.TOPICS.SENSOR}`);
+                    logger.debug(`Posted augmented sensor message to ${constants.TOPICS.SENSOR}`);
                 });
 
             })
@@ -255,7 +259,7 @@ export class QueueListenerService extends BaseService {
             this.getOrCreateRedisDeviceMessage(data.deviceId, (redis_device) => {
                 // act on event
                 if (!result.routingKey) {
-                    this.logService?.debug("Ignoring control topic message as no routing key");
+                    logger.debug("Ignoring control topic message as no routing key");
                 } else if (result.routingKey?.indexOf(`.${ControlMessageTypes.restart}`) > 0) {
                     if (data.device) this.updateDeviceLastRestart(data.device.id);
                     redis_device.restarts++;
@@ -311,9 +315,12 @@ export class QueueListenerService extends BaseService {
      */
     private updateDeviceLastPing(deviceId : string) {
         this.dbService!.query("update device set last_ping=current_timestamp where id=$1", deviceId).then(() => {
-            this.logService!.debug(`Updated device last ping timestamp for device with ID <${deviceId}>`);
+            logger.debug(`Updated device last ping timestamp for device with ID <${deviceId}>`);
         }).catch(err => {
-            this.logService!.warn(`Caught error while trying to update device last ping timestamp for device with ID <${deviceId}>`, err);
+            logger.warn(
+                `Caught error while trying to update device last ping timestamp for device with ID <${deviceId}>`,
+                err
+            );
         })
     }
 
@@ -323,9 +330,12 @@ export class QueueListenerService extends BaseService {
      */
     private updateDeviceLastWatchdogReset(deviceId : string) {
         this.dbService!.query("update device set last_watchdog_reset=current_timestamp where id=$1", deviceId).then(() => {
-            this.logService!.debug(`Updated device last watchdog reset timestamp for device with ID <${deviceId}>`);
+            logger.debug(`Updated device last watchdog reset timestamp for device with ID <${deviceId}>`);
         }).catch(err => {
-            this.logService!.warn(`Caught error while trying to update device last watchdog reset timestamp for device with ID <${deviceId}>`, err);
+            logger.warn(
+                `Caught error while trying to update device last watchdog reset timestamp for device with ID <${deviceId}>`,
+                err
+            );
         })
     }
 
@@ -335,9 +345,12 @@ export class QueueListenerService extends BaseService {
      */
     private updateDeviceLastRestart(deviceId : string) {
         this.dbService!.query("update device set last_restart=current_timestamp where id=$1", deviceId).then(() => {
-            this.logService!.debug(`Updated device last restart timestamp for device with ID <${deviceId}>`);
+            logger.debug(`Updated device last restart timestamp for device with ID <${deviceId}>`);
         }).catch(err => {
-            this.logService!.warn(`Caught error while trying to update device last restart timestamp for device with ID <${deviceId}>`, err);
+            logger.warn(
+                `Caught error while trying to update device last restart timestamp for device with ID <${deviceId}>`,
+                err
+            );
         })
     }
 

@@ -1,8 +1,11 @@
 import { Issuer, generators, custom } from "openid-client";
+import { Logger } from "./logger";
+
+const logger = new Logger("oidc-authentication-utils");
 
 // extend timeout if running against dummy OIDC provider
 if (process.env.OIDC_POST_CLIENT_SECRET) {
-    console.log("Extending HTTP Timeout for OIDC Discovery");
+    logger.info("Extending HTTP Timeout for OIDC Discovery");
     custom.setHttpOptionsDefaults({
         "timeout": 150000
     });

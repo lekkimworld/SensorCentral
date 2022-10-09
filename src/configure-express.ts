@@ -8,8 +8,10 @@ import { lookupService } from "./configure-services";
 import { RedisService } from "./services/redis-service";
 import configureHandlebars from "./configure-express-handlebars";
 import formatHttpException from "./middleware/formatHttpException";
-import { LogService } from "./services/log-service";
+import { Logger } from "./logger";
 import constants from "./constants";
+// logger
+const logger = new Logger("configure-express");
 
 export default async () => {
     // create app
@@ -22,9 +24,8 @@ export default async () => {
             if (req.secure || constants.APP.NO_PROD_TLS) {
                 next();
             } else {
-                const logService = (await lookupService(LogService.NAME)) as LogService;
                 const redirectUrl = `https://${req.headers.host}${req.originalUrl}`;
-                logService.info(`User is not using TLS - redirecting user to ${redirectUrl}`);
+                logger.info(`User is not using TLS - redirecting user to ${redirectUrl}`);
                 res.redirect(redirectUrl);
             }
         });
@@ -47,7 +48,7 @@ export default async () => {
     app.use(formatHttpException);
 
     // log
-    console.log(`Done configuring Express...`);
+    logger.info(`Done configuring Express...`);
 
     // return the app
     return app;

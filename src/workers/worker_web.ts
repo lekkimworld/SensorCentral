@@ -9,7 +9,7 @@ import configureExpress from '../configure-express';
 import services from '../configure-services';
 import { DatabaseService } from "../services/database-service";
 import { EventService } from "../services/event-service";
-import { LogService } from "../services/log-service";
+import { Logger } from "../logger";
 import { NotifyService } from  "../services/notify-service";
 import { RedisService } from  "../services/redis-service";
 import { QueueListenerService } from  "../services/queuelistener-service";
@@ -22,23 +22,23 @@ import { PowermeterService } from "../services/powermeter-service";
 import { CronService } from "../services/cron-service";
 
 // number of workers we should create
+const logger = new Logger("worker_web");
 const WORKERS = process.env.WEB_CONCURRENCY || 1;
-console.log(`WEB_CONCURRENCY set to ${WORKERS}`);
+logger.info(`WEB_CONCURRENCY set to ${WORKERS}`);
 
 // énsure required environment variables are set
 const APP_DOMAIN = process.env.APP_DOMAIN;
 if (!APP_DOMAIN) {
-	console.log("APP_DOMAIN environment variable not set - cannot start!");
+	logger.info("APP_DOMAIN environment variable not set - cannot start!");
 	process.exit(1);
 }
-console.log(`APP_DOMAIN set to ${APP_DOMAIN}`);
+logger.info(`APP_DOMAIN set to ${APP_DOMAIN}`);
 if (!process.env.SMARTME_KEY) {
-	console.log("SMARTME_KEY environment variable not set - cannot start!");
+	logger.info("SMARTME_KEY environment variable not set - cannot start!");
 	process.exit(1);
 }
 
 // add services
-services.registerService(new LogService());
 services.registerService(new IdentityService());
 services.registerService(new EventService());
 services.registerService(new RedisService());
@@ -53,9 +53,9 @@ services.registerService(new CronService());
 
 // setup termination listener
 terminateListener(() => {
-	console.log("Terminating services");
+	logger.info("Terminating services");
 	services.terminate()
-	console.log("Terminated services");
+	logger.info("Terminated services");
 });
 
 // start app
@@ -64,7 +64,7 @@ const main = async () => {
 	const app = await configureExpress();
 
 	// start server
-	console.log(`${constants.APP.NAME} -- Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`);
+	logger.info(`${constants.APP.NAME} -- Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`);
 	app.listen(process.env.PORT || 8080);
 }
 main();

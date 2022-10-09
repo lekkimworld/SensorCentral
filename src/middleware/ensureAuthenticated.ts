@@ -4,11 +4,14 @@ import { BackendIdentity, BrowserLoginResponse, HttpException } from "../types";
 //@ts-ignore
 import { lookupService } from "../configure-services";
 import { IdentityService } from "../services/identity-service";
-import { LogService } from "../services/log-service";
+import { Logger } from "../logger";
 
 const backendIdentityToString = (user : BackendIdentity) => {
     return `[BackendIdentity - identity.callerId <${user.identity.callerId}> identity.houseId <${user.identity.houseId}> identity.impersonationId <${user.identity.impersonationId}> principal <${user.principal.toString()}>]`;
 }
+
+// logger
+const log = new Logger("ensure-authenticated");
 
 /**
  * Middleware used to ensure the request is authentic and that the caller has the api scope 
@@ -16,9 +19,8 @@ const backendIdentityToString = (user : BackendIdentity) => {
  */
 export default async (req : Request, res : Response, next : NextFunction) => {
     // get services
-    const svcs = await lookupService([IdentityService.NAME, LogService.NAME])
+    const svcs = await lookupService([IdentityService.NAME])
     const identity = svcs[0] as IdentityService;
-    const log = svcs[1] as LogService;
 
     // see if we have a session with a userId
     log.debug("Looking for session and browserResponse in session");

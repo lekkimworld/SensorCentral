@@ -2,18 +2,19 @@ import * as express from 'express';
 const services = require('../configure-services');
 import {EventService} from "../services/event-service";
 import constants from "../constants";
-import { LogService } from '../services/log-service';
+import { Logger } from '../logger';
 import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException } from '../types';
 import { StorageService } from 'src/services/storage-service';
 import { IdentityService } from 'src/services/identity-service';
 
+const logger = new Logger("post-sensor-data");
 const router = express.Router();
 
-const postControlEvent = (eventSvc : EventService, logSvc : LogService, payload : IngestedControlMessage) => {
+const postControlEvent = (eventSvc : EventService, payload : IngestedControlMessage) => {
 	eventSvc.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
-		logSvc.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
+		logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
 	}).catch(err => {
-		logSvc.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
+		logger.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
 	})
 }
 
@@ -55,12 +56,11 @@ router.post('/', (req, res, next) => {
 	}
 
 	// lookup services
-	services.lookupService(["log", "event", "storage", "identity"]).then((svcs : BaseService[]) => {
+	services.lookupService(["event", "storage", "identity"]).then((svcs : BaseService[]) => {
 		// get services
-		const logSvc = svcs[0] as LogService;
-		const eventSvc = svcs[1] as EventService;
-		const storage = svcs[2] as StorageService;
-		const identity = svcs[3] as IdentityService;
+		const eventSvc = svcs[0] as EventService;
+		const storage = svcs[1] as StorageService;
+		const identity = svcs[2] as IdentityService;
 
 		// get data obj if there
 		const dataObj = postObj.data || undefined;
@@ -78,12 +78,12 @@ router.post('/', (req, res, next) => {
 
 		// get impersonation user
 		const user = identity.getServiceBackendIdentity("legacydatapost");
-		logSvc.warn(`Getting service backend identity as device (<${deviceId}>) is using LEGACY data access`);
+		logger.warn(`Getting service backend identity as device (<${deviceId}>) is using LEGACY data access`);
 
 		storage.getDevice(user, deviceId).then(device => {
 			// we found the device- acknowledge post to caller
 			let j = JSON.stringify(postObj, undefined, 2);
-			logSvc.debug(`Received: ${j}`)
+			logger.debug(`Received: ${j}`)
 			res.set('Content-Type', 'text/plain').send(`Thank you - you posted: ${j}\n`).end()
 
 			// inspect message type
@@ -97,7 +97,7 @@ router.post('/', (req, res, next) => {
 				}
 
 				// create payload and publish to queue
-				postControlEvent(eventSvc, logSvc, {
+				postControlEvent(eventSvc, {
 					"type": type,
 					"id": device.id
 				} as IngestedControlMessage);
@@ -107,14 +107,14 @@ router.post('/', (req, res, next) => {
 				eventSvc.publishQueue(constants.QUEUES.DEVICE, {
 					"id": device.id
 				} as IngestedDeviceMessage).then(resp => {
-					logSvc.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
+					logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
 					const msg = resp.data as IngestedDeviceMessage;
 	
 					// see if there is sensor data
 					if (!postObj.data || !Array.isArray(postObj.data) || !postObj.data.length) {
 						// there is no data, it's not an array or no elements in it 
 						// publish event to indicate that
-						postControlEvent(eventSvc, logSvc, {
+						postControlEvent(eventSvc, {
 							"type": ControlMessageTypes.noSensorData,
 							"id": deviceId
 						} as IngestedControlMessage);
@@ -135,7 +135,7 @@ router.post('/', (req, res, next) => {
 
 		}).catch(err => {
 			// unknown device
-			logSvc.warn(`Unable to find device by ID <${deviceId}> in database - maybe unknown...`);
+			logger.warn(`Unable to find device by ID <${deviceId}> in database - maybe unknown...`);
 			next(new HttpException(500, `Unable to find device from payload or other error`, err));
 		})
 

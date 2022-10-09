@@ -6,7 +6,6 @@ dotenv_config();
 import terminateListener from "../terminate-listener";
 //@ts-ignore
 import services from "../configure-services";
-import { LogService } from "../services/log-service";
 import { RedisService } from "../services/redis-service";
 import { StorageService } from "../services/storage-service";
 import moment, {Moment} from "moment-timezone";
@@ -15,20 +14,20 @@ import { EventEmitter } from "stream";
 import constants from "../constants";
 import { DatabaseService } from "../services/database-service";
 import { EventService } from "../services/event-service";
+import { Logger } from "../logger";
 const nordpool = require("nordpool");
 
 // add event emitter for signalling
 const eventEmitter = new EventEmitter();
 
 // add services
-services.registerService(new LogService());
 services.registerService(new RedisService());
 services.registerService(new EventService());
 services.registerService(new StorageService());
 services.registerService(new DatabaseService());
 
-// get log service - we know it's ready
-const log = services.getService(LogService.NAME) as LogService;
+// get logger
+const log = new Logger("worker-powerdata");
 
 const fetchPowerdataForMoment = async (storage : StorageService, m : Moment) => {
     log.info(`Getting powerdata for: ${m.format("YYYY-MM-DD")}`);
@@ -109,7 +108,7 @@ wait();
 
 // setup termination listener
 terminateListener(() => {
-	console.log("Terminating services");
+	log.info("Terminating services");
 	services.terminate()
-	console.log("Terminated services");
+	log.info("Terminated services");
 });

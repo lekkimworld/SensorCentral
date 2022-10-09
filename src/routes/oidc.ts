@@ -6,7 +6,10 @@ import { CreateLoginUserInput } from "../services/identity-service";
 import { lookupService } from "../configure-services";
 import { buildBaseHandlebarsContext } from "../utils";
 import { IdentityService } from "../services/identity-service";
-import { LogService } from "../services/log-service";
+import { Logger } from "../logger";
+
+// logger
+const logger = new Logger("oidc");
 
 // create a router
 const router = express.Router();
@@ -21,14 +24,13 @@ router.get("/callback", async (req, res, next) => {
     if (!nonce) return next(new HttpException(417, `No nonce found (<${nonce}>)`));
 
     // get services
-    const svcs = await lookupService([IdentityService.NAME, LogService.NAME]);
+    const svcs = await lookupService([IdentityService.NAME]);
     const identService = svcs[0] as IdentityService;
-    const logService = svcs[1] as LogService;
 
     // get client
-    logService.debug("Retrieving OIDC client");
+    logger.debug("Retrieving OIDC client");
     const oidcClient = await getOidcClient();
-    logService.debug("Retrieve OIDC client");
+    logger.debug("Retrieve OIDC client");
 
     // get params
     const callbackParams = oidcClient.callbackParams(req);
@@ -41,14 +43,14 @@ router.get("/callback", async (req, res, next) => {
     try {
         // get tokenset
         const tokenSet = await oidcClient.callback(process.env.OIDC_REDIRECT_URI, callbackParams, { nonce }, callbackExtras);
-        logService.debug("Performed OIDC callback and retrieved tokenset");
+        logger.debug("Performed OIDC callback and retrieved tokenset");
 
         // get claims and validate hosted domain
         const claims = tokenSet.claims();
         if (process.env.GOOGLE_HOSTED_DOMAIN && (!claims.hd || claims.hd !== process.env.GOOGLE_HOSTED_DOMAIN)) {
             return next(new HttpException(417, "Unable to validate hosted domain claim"));
         }
-        logService.debug(`Retrieved OIDC claims (${JSON.stringify(claims)})`);
+        logger.debug(`Retrieved OIDC claims (${JSON.stringify(claims)})`);
 
         // ensure we have a row in LOGIN_USER for the user
         const output = await identService.getOrCreateBrowserLoginResponse({
@@ -58,7 +60,7 @@ router.get("/callback", async (req, res, next) => {
             ln: claims.family_name,
             fn: claims.given_name
         } as CreateLoginUserInput);
-        logService.debug(`Created BrowserLoginResponse`);
+        logger.debug(`Created BrowserLoginResponse`);
 
         // set the claims we received, set userId in session and redirect
         session!.browserResponse = output;

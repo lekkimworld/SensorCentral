@@ -1,5 +1,8 @@
 import { Connection, Channel } from "amqplib";
 import {connect} from "amqplib";
+import { Logger } from "./logger";
+
+const logger = new Logger("configure-queues-topics");
 
 const url:string|undefined = process.env.CLOUDAMQP_URL;
 if (!url) throw Error('Missing CLOUDAMQP_URL environtment variable');
@@ -10,13 +13,13 @@ const connection:Promise<Connection> = new Promise(async (resolve, reject) => {
     while (retries) {
         try {
             let conn = await connect(url);
-            console.log("Acquired AMQP connection");
+            logger.info("Acquired AMQP connection");
             resolve(conn);
             break;
 
         } catch (err) {
             retries -= 1;
-            console.log(`AMQP retries left: ${retries}`);
+            logger.warn(`AMQP retries left: ${retries}`);
             await new Promise((res) => setTimeout(res, 5000));
         }
     }
@@ -84,7 +87,7 @@ const subscribe = (exchangeName:string, routingKey?:string) => (callback:(result
             return ch.assertExchange(exchangeName, "topic", {"durable": false}).then(() => {
                 return ch.assertQueue("", {"exclusive": true})
             }).then(q => {
-                console.log(`subscribe - binding channel to topic - exchange <${exchangeName}>, key <${routingKey}>`)
+                logger.info(`subscribe - binding channel to topic - exchange <${exchangeName}>, key <${routingKey}>`)
                 ch.bindQueue(q.queue, exchangeName, routingKey);
                 ch.consume(q.queue, msg => {
                     if (msg === null) return;
@@ -100,14 +103,14 @@ const subscribe = (exchangeName:string, routingKey?:string) => (callback:(result
                             "callback": () => {}
                         })
                     } catch (err) {
-                        console.log(`subscribe - ERROR caught when calling back with message for exchange <${exchangeName}> and routing key <${routingKey}>: ${err.message}`)
+                        logger.error(`subscribe - ERROR caught when calling back with message for exchange <${exchangeName}> and routing key <${routingKey}>: ${err.message}`)
                     }
                 }, {"noAck": true});
             })
         } else {
             // assume queue
             return ch.assertQueue(exchangeName).then(q => {
-                console.log(`subscribe - binding channel to queue <${q.queue}>`)
+                logger.info(`subscribe - binding channel to queue <${q.queue}>`)
                 ch.consume(exchangeName, msg => {
                     if (msg === null) return;
                     let payload:any = msg.content;
@@ -124,7 +127,7 @@ const subscribe = (exchangeName:string, routingKey?:string) => (callback:(result
                                 "callback": () => ch.ack(msg)
                             });
                         } catch (err) {
-                            console.log(`subscribe - ERROR caught when calling back with message for queue <${exchangeName}>: ${err.message}`)
+                            logger.error(`subscribe - ERROR caught when calling back with message for queue <${exchangeName}>: ${err.message}`)
                         }
                     })
                 })

@@ -2,6 +2,9 @@ const {BaseService} = require("./types");
 const util = require('util');
 const constants = require('./constants').default;
 const terminateListener = require('./terminate-listener').default;
+const { Logger } = require("./logger");
+
+const logger = new Logger("configure-services");
 
 const STATE_REGISTERED = 0
 const STATE_STARTING_INIT = 1
@@ -14,41 +17,20 @@ const NUDGE_RETRY_SECONDS = process.env.SERVICES_NUDGE_RETRY_SECONDS || 2
 
 // storage for services
 const _services = {}
-const doLog = (level, msg) => {
-    if (Object.keys(_services).includes('log')) {
-        if (_services.log.service[level]) {
-            _services.log.service[level](msg)
-        }
-    } else {
-        console.log(`BOOTSTRAP (${level}) - ${msg}`)
-    }
-}
-const logDebug = (msg) => {
-    doLog('debug', msg)
-}
-const logInfo = (msg) => {
-    doLog('info', msg)
-}
-const logWarn = (msg) => {
-    doLog('warn', msg)
-}
-const logError = (msg) => {
-    doLog('error', msg)
-}
 
 const _serviceInit = (svc) => {
     let f = (err) => {
         // see if called back with error
         if (err) {
             // init failed due to dependent service error - retrying
-            logWarn(`init-method of ${svc.name}-service did callback to service broker with error - retrying init in ${INIT_RETRY_SECONDS} seconds`, err)
+            logger.warn(`init-method of ${svc.name}-service did callback to service broker with error - retrying init in ${INIT_RETRY_SECONDS} seconds`, err)
             _services[svc.name].state = STATE_RETRY_INIT
             _services[svc.name].retryAfter = Date.now() + (INIT_RETRY_SECONDS*1000)
         } else {
             // init completed (if there) - mark ready
-            logDebug(`init-method of ${svc.name}-service called back without error`)
+            logger.debug(`init-method of ${svc.name}-service called back without error`)
             if (!_services[svc.name]) {
-                logError(`Unable to find ${svc.name}-service - ABORTING!!`)
+                logger.error(`Unable to find ${svc.name}-service - ABORTING!!`)
                 return
             }
             _services[svc.name].ready = true
@@ -95,10 +77,10 @@ const _serviceNudge = () => {
             // waiting for retry - see if time has passed
             if (wrapper.hasOwnProperty('retryAfter') && wrapper.retryAfter < Date.now()) {
                 // ready for retry
-                logDebug(`Service '${wrapper.service.name}' is ready for retry`)
+                logger.debug(`Service '${wrapper.service.name}' is ready for retry`)
             } else {
                 // not enough time has passed
-                logDebug(`Service '${wrapper.service.name}' is NOT ready for retry`)
+                logger.debug(`Service '${wrapper.service.name}' is NOT ready for retry`)
                 wrapper = undefined
             }
         }
@@ -144,11 +126,11 @@ const registerService = (svc) => {
 }
 const lookupService = (name, timeoutService = constants.DEFAULTS.SERVICE.LOOKUP_TIMEOUT) => {
     let timeout;
-    logDebug(`lookupServices asked for following services <${name}> with timeout <${timeoutService}>`);
+    logger.debug(`lookupServices asked for following services <${name}> with timeout <${timeoutService}>`);
     return Promise.race([
         Promise.all((Array.isArray(name) ? name : [name]).map(name => {
                 if (_services[name]) {
-                    logDebug(`Found ${name} service right away so simply returning promise for it`);
+                    logger.debug(`Found ${name} service right away so simply returning promise for it`);
                     return _services[name].promise;
                 }
 
@@ -156,14 +138,14 @@ const lookupService = (name, timeoutService = constants.DEFAULTS.SERVICE.LOOKUP_
                 return new Promise((resolve, reject) => {
                     const seeIfServiceAdded = () => {
                         if (_services[name]) {
-                            logInfo(`${name} service NOW FOUND - returning promise for it`);
+                            logger.info(`${name} service NOW FOUND - returning promise for it`);
                             _services[name].promise.then(resolve);
                             return;
                         }
-                        logInfo(`${name} service STILL not found - waiting for it...`);
+                        logger.info(`${name} service STILL not found - waiting for it...`);
                         global.setTimeout(seeIfServiceAdded, 100);
                     }
-                    logInfo(`${name} service not found during initial lookup - waiting for it...`);
+                    logger.info(`${name} service not found during initial lookup - waiting for it...`);
                     global.setTimeout(seeIfServiceAdded, 100);
                 })
             })
@@ -198,7 +180,7 @@ module.exports = {
                 try {
                     svc.terminate()
                 } catch (err) {
-                    console.log(`Unable to correctly terminate service <${svc.name}>`, err)
+                    logger.error(`Unable to correctly terminate service <${svc.name}>`, err)
                 }
             }
             delete _services[wrapper.service.name]

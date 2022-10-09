@@ -1,18 +1,18 @@
 import {Watchdog, WatchdogFood} from "watchdog";
 import constants from "../constants";
 import { BaseService, Device, TopicControlMessage, ControlMessageTypes, BackendIdentity } from "../types";
-import { LogService } from "./log-service";
+import { Logger } from "../logger";
 import { EventService } from "./event-service";
 import { StorageService } from "./storage-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
 import { IdentityService } from "./identity-service";
 
+const logger = new Logger("watchdog-service");
 const _watchdogs : Map<String,Watchdog<string,string>> = new Map();
 
 export class WatchdogService extends BaseService {
     public static NAME = "watchdog";
 
-    logService? : LogService;
     eventService? : EventService;
     storageService? : StorageService;
     security : IdentityService;
@@ -20,13 +20,12 @@ export class WatchdogService extends BaseService {
 
     constructor() {
         super(WatchdogService.NAME);
-        this.dependencies = [LogService.NAME, EventService.NAME, StorageService.NAME, IdentityService.NAME];
+        this.dependencies = [EventService.NAME, StorageService.NAME, IdentityService.NAME];
     }
     async init(callback : (err? : Error) => {}, services : BaseService[]) {
-        this.logService = services[0] as unknown as LogService;
-        this.eventService = services[1] as unknown as EventService;
-        this.storageService = services[2] as unknown as StorageService;
-        this.security = services[3] as unknown as IdentityService;
+        this.eventService = services[0] as unknown as EventService;
+        this.storageService = services[1] as unknown as StorageService;
+        this.security = services[2] as unknown as IdentityService;
 
         // request auth token
         this.authUser = await this.security.getServiceBackendIdentity(WatchdogService.NAME);
@@ -49,9 +48,13 @@ export class WatchdogService extends BaseService {
         devices.forEach(device => {
             // create a watchdog per device if active
             if (!device.active) {
-                this.logService!.info(`NOT adding watchdog for device with ID <${device.id}> and name <${device.name}> as it's INACTIVE`);
+                logger.info(
+                    `NOT adding watchdog for device with ID <${device.id}> and name <${device.name}> as it's INACTIVE`
+                );
             } else {
-                this.logService!.info(`Adding watchdog for device with ID <${device.id}> and name <${device.name}> with timeout <${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT}>`)
+                logger.info(
+                    `Adding watchdog for device with ID <${device.id}> and name <${device.name}> with timeout <${constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT}>`
+                );
                 this.addWatchdog(device);
             }
         })
@@ -66,11 +69,9 @@ export class WatchdogService extends BaseService {
             const deviceId = food.data;
 
             // log
-            this.logService!.info(`Device (<${deviceId}>) reset`);
+            logger.info(`Device (<${deviceId}>) reset`);
             if (process.env.WATCHDOG_DISABLED) {
-                this.logService!.warn(
-                    `Ignoring watchdog reset for device ${deviceId} due to WATCHDOG_DISABLED being set`
-                );
+                logger.warn(`Ignoring watchdog reset for device ${deviceId} due to WATCHDOG_DISABLED being set`);
                 return;
             }
             
@@ -80,7 +81,7 @@ export class WatchdogService extends BaseService {
                 device = await this.storageService?.getDevice(this.authUser, deviceId);
             } catch (err) {
                 // device not found / no longer found
-                this.logService?.info(`Device for watchdog for ID <${deviceId}> not found in database removing`);
+                logger.info(`Device for watchdog for ID <${deviceId}> not found in database removing`);
                 return this.removeWatchdog(deviceId);
             }
             
@@ -126,7 +127,7 @@ export class WatchdogService extends BaseService {
                 "timeout": constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT as number,
                 "data": deviceId
             });
-            this.logService!.debug(`Fed watchdog for device with id <${deviceId}>`);
+            logger.debug(`Fed watchdog for device with id <${deviceId}>`);
         }
     }
 
@@ -136,10 +137,10 @@ export class WatchdogService extends BaseService {
             // new device was created
             const deviceId = result.data.new.id;
             if (result.data.new.active) {
-                this.logService!.info(`Device with ID <${deviceId}> was created - adding watchdog`);
+                logger.info(`Device with ID <${deviceId}> was created - adding watchdog`);
                 this.addWatchdog(result.data.new as Device);
             } else {
-                this.logService!.info(`Device with ID <${deviceId}> was created INACTIVE - NOT adding watchdog`);
+                logger.info(`Device with ID <${deviceId}> was created INACTIVE - NOT adding watchdog`);
             }
 
         } else if (parts[1] === "update") {
@@ -148,18 +149,18 @@ export class WatchdogService extends BaseService {
 
             if (result.data.new.active && !result.data.old.active) {
                 // device now active - add watchdog
-                this.logService!.info(`Device with ID <${deviceId}> was updated - was INACTIVE, now ACTIVE - adding watchdog`);
+                logger.info(`Device with ID <${deviceId}> was updated - was INACTIVE, now ACTIVE - adding watchdog`);
                 this.addWatchdog(result.data.new as Device);
 
             } else if (!result.data.new.active && result.data.old.active) {
-                this.logService!.info(`Device with ID <${deviceId}> was updated - was ACTIVE, now INACTIVE - removing watchdog`);
+                logger.info(`Device with ID <${deviceId}> was updated - was ACTIVE, now INACTIVE - removing watchdog`);
                 this.removeWatchdog(deviceId);
             }
 
         } else if (parts[1] === "delete") {
             // device was deleted
             const deviceId = result.data.old.id;
-            this.logService!.info(`Device with ID <${deviceId}> was deleted - removing watchdog`);
+            logger.info(`Device with ID <${deviceId}> was deleted - removing watchdog`);
             this.removeWatchdog(deviceId);
         }
     }

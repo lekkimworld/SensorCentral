@@ -16,7 +16,9 @@ import { DataQueryResolver } from "./resolvers/data";
 import { SmartmeResolver } from "./resolvers/smartme";
 import { StorageService } from "./services/storage-service";
 import { UsersResolver } from "./resolvers/user";
+import { Logger } from "./logger";
 
+const logger = new Logger("configure-express-graphql");
 const path = process.env.GRAPHQL_PATH || "/graphql";
 
 export default  async (app : Application) => {
@@ -61,5 +63,5 @@ export default  async (app : Application) => {
         "path": path,
         "app": app
     });
-    console.log(`Applied middleware from Apollo at path ${path}`);
+    logger.info(`Applied middleware from Apollo at path ${path}`);
 }

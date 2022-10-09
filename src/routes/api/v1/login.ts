@@ -7,7 +7,7 @@ import { ensureAdminJWTScope } from "../../../middleware/ensureScope";
 import {lookupService} from "../../../configure-services";
 import { StorageService } from "../../../services/storage-service";
 import { IdentityService } from "../../../services/identity-service";
-import { LogService } from "../../../services/log-service";
+import { Logger } from "../../../logger";
 
 declare module "express-session" {
     export interface SessionData {
@@ -15,6 +15,7 @@ declare module "express-session" {
     }
 }
 
+const logger = new Logger("login");
 const router = express.Router();
 
 /**
@@ -83,11 +84,10 @@ router.post("/jwt", ensureAuthenticated, ensureAdminJWTScope, async (req, res, n
 //@ts-ignore
 router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
     // get services
-    const svcs = await lookupService([StorageService.NAME, IdentityService.NAME, LogService.NAME]);
+    const svcs = await lookupService([StorageService.NAME, IdentityService.NAME]);
     const storage = svcs[0] as StorageService;
     const identitySvcs = svcs[1] as IdentityService;
-    const logSvcs = svcs[2] as LogService;
-    logSvcs.debug(`User asked for new JWT supplying houseId <${req.params.houseId}>`);
+    logger.debug(`User asked for new JWT supplying houseId <${req.params.houseId}>`);
 
     // get all houses for the user
     const user = res.locals.user as BackendIdentity;
@@ -95,16 +95,16 @@ router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
 
     // get houseid for jwt
     let houseId = req.params.houseId;
-    logSvcs.debug(`Extracted houseId from req.params <${houseId}>`);
+    logger.debug(`Extracted houseId from req.params <${houseId}>`);
     if (!houseId) {
-        logSvcs.debug("No houseId in req.params");
+        logger.debug("No houseId in req.params");
         if (user.identity.houseId) {
             houseId = user.identity.houseId;
-            logSvcs.debug(`Extracted houseId from user.identity <${houseId}>`);
+            logger.debug(`Extracted houseId from user.identity <${houseId}>`);
         } else if (houses && houses.length) {
             // pick first houseid
             houseId = houses[0].id;
-            logSvcs.debug(`Took houseId from first house <${houseId}>`);
+            logger.debug(`Took houseId from first house <${houseId}>`);
         }
     }
 
@@ -122,7 +122,7 @@ router.get("/jwt/:houseId?", ensureAuthenticated, async (req, res, next) => {
             },
             jwt
         } as BrowserLoginResponse;
-        logSvcs.debug(`Generated new BrowserLoginResponse <${JSON.stringify(payload)}>`);
+        logger.debug(`Generated new BrowserLoginResponse <${JSON.stringify(payload)}>`);
 
         // remove cached user (ensure also removed from session if there)
         identitySvcs.removeCachedIdentity(user);

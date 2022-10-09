@@ -37,7 +37,7 @@ export default {
         SERVICE: {
             LOOKUP_TIMEOUT: process.env.SERVICE_LOOKUP_TIMEOUT
                 ? Number.parseInt(process.env.SERVICE_LOOKUP_TIMEOUT)
-                : 2000,
+                : 20000,
         },
         WATCHDOG: {
             DEFAULT_TIMEOUT: (process.env.WATCHDOG_INTERVAL

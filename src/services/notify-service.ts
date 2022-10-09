@@ -1,7 +1,7 @@
 import {Moment} from "moment-timezone";
 import constants from "../constants";
 import { BaseService, TopicControlMessage, WatchdogNotification, NotifyUsing, Device, ControlMessageTypes } from "../types";
-import { LogService } from "./log-service";
+import { Logger } from "../logger";
 import { EventService } from "./event-service";
 import { StorageService } from "./storage-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
@@ -10,10 +10,11 @@ import moment from "moment";
 import { EmailService, EmailMessage, RFC822Address } from "./email-service";
 import Handlebars from "handlebars";
 
+const logger = new Logger("notify-service");
+
 export class NotifyService extends BaseService {
     public static NAME = "notify";
     pushoverLastSent? : Moment;
-    logService? : LogService;
     eventService? : EventService;
     storage? : StorageService;
     email? : EmailService;
@@ -21,14 +22,13 @@ export class NotifyService extends BaseService {
 
     constructor() {
         super(NotifyService.NAME);
-        this.dependencies = [LogService.NAME, EventService.NAME, StorageService.NAME, EmailService.NAME];
+        this.dependencies = [EventService.NAME, StorageService.NAME, EmailService.NAME];
     }
 
     init(callback : (err? : Error) => {}, services : BaseService[]) {
-        this.logService = services[0] as unknown as LogService;
-        this.eventService = services[1] as unknown as EventService;
-        this.storage = services[2] as unknown as StorageService;
-        this.email = services[3] as unknown as EmailService;
+        this.eventService = services[0] as unknown as EventService;
+        this.storage = services[1] as unknown as StorageService;
+        this.email = services[2] as unknown as EmailService;
 
         // listen for device watchdog resets
         this.eventService.subscribeTopic(constants.TOPICS.CONTROL, `known.${ControlMessageTypes.watchdogReset}`, this.listenForDeviceWatchdogResets.bind(this));
@@ -61,10 +61,12 @@ export class NotifyService extends BaseService {
     }
 
     private async listenForceDeviceRestarts(result : ISubscriptionResult) {
-        this.logService!.debug(`Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
+        logger.debug(
+            `Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`
+        );
         const msg = result.data as TopicControlMessage;
         if (!msg.device) {
-            this.logService?.warn(`Received device restart message without device attached <${msg.deviceId}> - ignoring`);
+            logger.warn(`Received device restart message without device attached <${msg.deviceId}> - ignoring`);
             return;
         }
 
@@ -77,10 +79,12 @@ export class NotifyService extends BaseService {
     }
 
     private async listenForDeviceWatchdogResets(result : ISubscriptionResult) {
-        this.logService!.debug(`Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
+        logger.debug(
+            `Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`
+        );
         const msg = result.data as TopicControlMessage;
         if (!msg.device) {
-            this.logService?.warn(`Received device watchdog reset message without device attached <${msg.deviceId}> - ignoring`);
+            logger.warn(`Received device watchdog reset message without device attached <${msg.deviceId}> - ignoring`);
             return;
         }
 
@@ -98,10 +102,12 @@ export class NotifyService extends BaseService {
     }
 
     private async listenForNoSensors(result : ISubscriptionResult) {
-        this.logService!.debug(`Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`);
+        logger.debug(
+            `Notify service received message on topic ${result.routingKey} with payload=${JSON.stringify(result.data)}`
+        );
         const msg = result.data as TopicControlMessage;
         if (!msg.device) {
-            this.logService?.warn(`Received noSensors message without device attached <${msg.deviceId}> - ignoring`);
+            logger.warn(`Received noSensors message without device attached <${msg.deviceId}> - ignoring`);
             return;
         }
 
@@ -115,14 +121,14 @@ export class NotifyService extends BaseService {
 
     private async notifyNotifiers(device : Device, title : string, message: string) {
         if (process.env.NOTIFICATIONS_DISABLED) {
-            this.logService!.warn(
+            logger.warn(
                 `Ignoring sending "${title}"-notification for device ${device.id} due to NOTIFICATIONS_DISABLED`
             );
             return;
         }
         
         const notifiers = await this.storage!.getDeviceWatchdogNotifiers(device.id);
-        this.logService?.debug(`Received <${notifiers.length}> notifiers for device with ID <${device.id}>`);
+        logger.debug(`Received <${notifiers.length}> notifiers for device with ID <${device.id}>`);
         notifiers.forEach(n => {
             if (n.notify === WatchdogNotification.no) return;
             if (n.notify === WatchdogNotification.muted && moment(n.mutedUntil).isAfter(moment.utc())) return;

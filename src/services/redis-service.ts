@@ -2,7 +2,9 @@ import { promisify } from "util";
 import { BaseService } from "../types";
 import { URL } from "url";
 import { createClient as createRedisClient } from "redis";
-import { LogService } from "./log-service";
+import { Logger } from "../logger";
+
+const logger = new Logger("redis-service");
 
 const CONNECTION_TIMEOUT =
     process.env.REDIS_CONNECTION_TIMEOUT ?
@@ -12,7 +14,7 @@ const CONNECTION_TIMEOUT =
 const client = (function () {
     const redis_uri = process.env.REDIS_TLS_URL ? new URL(process.env.REDIS_TLS_URL) : process.env.REDIS_URL ? new URL(process.env.REDIS_URL) : undefined;
     if (process.env.REDIS_URL && redis_uri && redis_uri.protocol!.indexOf("rediss") === 0) {
-        console.log(`Read REDIS url and will use TLS to connect <${redis_uri}>`);
+        logger.info(`Read REDIS url and will use TLS to connect <${redis_uri}>`);
         return createRedisClient({
             port: Number.parseInt(redis_uri.port!),
             host: redis_uri.hostname!,
@@ -26,7 +28,7 @@ const client = (function () {
             connect_timeout: CONNECTION_TIMEOUT
         })
     } else {
-        console.log(`Read REDIS url and will NOT use TLS to connect <${process.env.REDIS_URL}>`);
+        logger.info(`Read REDIS url and will NOT use TLS to connect <${process.env.REDIS_URL}>`);
         return createRedisClient({
             "url": process.env.REDIS_URL,
             "connect_timeout": CONNECTION_TIMEOUT
@@ -49,15 +51,13 @@ export class RedisService extends BaseService {
 
     constructor() {
         super(RedisService.NAME);
-        this.dependencies = [LogService.NAME];
     }
 
-    init(callback: (err?: Error) => {}, services: BaseService[]) {
-        const log = services[0] as LogService;
+    init(callback: (err?: Error) => {}) {
         const dummyKey = `foo_${Date.now()}`;
-        log.info(`Querying redis for dummy key (${dummyKey})`);
+        logger.info(`Querying redis for dummy key (${dummyKey})`);
         client.get(dummyKey, (err, data) => {
-            log.info("Queried redis for dummy key - result: " + data + ", err: " + err);
+            logger.info("Queried redis for dummy key - result: " + data + ", err: " + err);
             callback(err || undefined);
         })
     }

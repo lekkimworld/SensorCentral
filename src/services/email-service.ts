@@ -3,6 +3,9 @@ import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
 import moment from "moment";
 import constants from "../constants";
+import { Logger } from "../logger";
+
+const logger = new Logger("email-service");
 
 const GOOGLE_PRIVATE_KEY = constants.GOOGLE.PRIVATE_KEY;
 const GOOGLE_SCOPES = constants.GOOGLE.SCOPES.join(" ");
@@ -91,9 +94,9 @@ export class EmailService extends BaseService {
         });
         const send_body = await res.json();
         if (send_body.labelIds && send_body.labelIds[0] === "SENT") {
-            console.log(`Sent e-mail - id <${send_body.id}> thread <${send_body.threadId}>`);
+            logger.info(`Sent e-mail - id <${send_body.id}> thread <${send_body.threadId}>`);
         } else {
-            console.log(JSON.stringify(send_body));
+            logger.info(JSON.stringify(send_body));
         }
     }
 }

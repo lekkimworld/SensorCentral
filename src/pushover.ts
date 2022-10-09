@@ -1,12 +1,12 @@
 const Pushover = require("node-pushover");
 //@ts-ignore
 import { lookupService } from "./configure-services";
-import { LogService } from "./services/log-service";
+import { Logger } from "./logger";
 import { PushoverMessage } from "./types";
 
 
 export default async ({ title, message, settings } : PushoverMessage) => {
-    const log = await lookupService("log") as LogService;
+    const log = new Logger("pushover");
     const p = new Pushover({
         "token": settings.apptoken,
         "user": settings.userkey

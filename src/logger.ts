@@ -1,5 +1,3 @@
-import {BaseService} from "../types";
-
 export interface Level {
     readonly name : string;
     readonly num : number;
@@ -17,30 +15,30 @@ export const INFO : Level = new LevelImpl("INFO", 10);
 export const WARN : Level = new LevelImpl("WARN", 100);
 export const ERROR : Level = new LevelImpl("ERROR", 1000);
 
-const logit = (level : Level, msg : string, err? : Error) => {
+const logit = (level : Level, loggerName : string, msg : string, err? : Error) => {
     if (err) {
-        console.log(`${level.name} - ${msg} (${err.message})`, err)
+        console.log(`${loggerName} - ${level.name} - ${msg} (${err.message})`, err);
     } else {
-        console.log(`${level.name} - ${msg}`)
+        console.log(`${loggerName} - ${level.name} - ${msg}`);
     }
 }
 
-export class LogService extends BaseService {
-    public static NAME = "log";
-
-    constructor() {
-        super(LogService.NAME);
+export class Logger {
+    _name : string;
+    constructor(name:string) {
+        this._name = name;
+        
     }
     debug(msg:string) : void {
-        logit(DEBUG, msg);
+        logit(DEBUG, this._name, msg);
     }
     info(msg:string) : void {
-        logit(INFO, msg);
+        logit(INFO, this._name, msg);
     }
     warn(msg:string, err?:Error) : void {
-        logit(WARN, msg, err);
+        logit(WARN, this._name, msg, err);
     }
     error(msg:string, err?:Error) : void {
-        logit(ERROR, msg, err);
+        logit(ERROR, this._name, msg, err);
     }
 }

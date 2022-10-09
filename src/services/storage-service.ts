@@ -5,7 +5,7 @@ import {BaseService, Device, Sensor,
     NotificationSettings, BackendIdentity, DeviceWatchdog, SensorType, UserPrincipal, PowerPhase, PowerType, SmartmeSubscription } from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
-import { LogService } from "./log-service";
+import { Logger } from "../logger";
 import { DatabaseService } from "./database-service";
 import moment = require("moment");
 import {v1 as uuid} from "uuid";
@@ -23,6 +23,8 @@ import { Smartme } from "smartme-protobuf-parser";
 import { IdentityService } from "./identity-service";
 import { FavoriteSensorsInput } from "src/resolvers/favorite-sensor";
 import { SmartmeDeviceWithDataType } from "src/resolvers/smartme";
+
+const logger = new Logger("storage-service");
 
 /**
  * serial executes Promises sequentially.
@@ -78,20 +80,18 @@ export const LAST_N_SAMPLES = 100;
 export class StorageService extends BaseService {
     public static NAME = "storage";
     dbService?: DatabaseService;
-    logService?: LogService;
     eventService?: EventService;
     redisService?: RedisService;
 
     constructor() {
         super(StorageService.NAME);
-        this.dependencies = [DatabaseService.NAME, LogService.NAME, EventService.NAME, RedisService.NAME];
+        this.dependencies = [DatabaseService.NAME, EventService.NAME, RedisService.NAME];
     }
 
     init(callback: (err?: Error) => {}, services: BaseService[]) {
         this.dbService = services[0] as unknown as DatabaseService;
-        this.logService = services[1] as unknown as LogService;
-        this.eventService = services[2] as unknown as EventService;
-        this.redisService = services[3] as unknown as RedisService;
+        this.eventService = services[1] as unknown as EventService;
+        this.redisService = services[2] as unknown as RedisService;
 
         // did init
         callback();
@@ -138,7 +138,7 @@ export class StorageService extends BaseService {
     ): Promise<SensorSample[]> {
         // get the sensor to ensure access
         const sensor = await this.getSensor(user, id);
-        this.logService!.debug(`Retrieved sensor with id <${sensor.id}> and name <${sensor.name}>`);
+        logger.debug(`Retrieved sensor with id <${sensor.id}> and name <${sensor.name}>`);
 
         // get data
         const columnNullTest = "currentphasel1";
@@ -346,7 +346,7 @@ export class StorageService extends BaseService {
                 return this.getHouse(user, house_id);
             })
             .catch((err) => {
-                this.logService!.warn(`Unable to create house due to error: ${err.message}`);
+                logger.warn(`Unable to create house due to error: ${err.message}`);
                 return this.dbService!.query("ROLLBACK").then(() => {
                     return Promise.reject(Error(`Unable to create house due to error (${err.message})`));
                 });
@@ -1387,7 +1387,7 @@ export class StorageService extends BaseService {
     }
 
     async persistPowermeterReadingFromDeviceRequest(sample: SmartmeDeviceWithDataType) {
-        this.logService!.debug(
+        logger.debug(
             `Persisting powermeter sample - id <${
                 sample.id
             }> dt <${sample.valueDate.toISOString()}> ActiveEnergyTotalExport <${
@@ -1445,13 +1445,11 @@ export class StorageService extends BaseService {
      */
     async removePowermeterSubscriptions(user: BackendIdentity, houseId: string) {
         // get house to ensure access
-        this.logService!.debug(
-            `Asked to remove all powermeter subscriptions for house with ID <${houseId}> - ensuring access`
-        );
+        logger.debug(`Asked to remove all powermeter subscriptions for house with ID <${houseId}> - ensuring access`);
         const house = await this.getHouse(user, houseId);
 
         // publish on control topic
-        this.logService!.debug(`User <${user}> has access to house <${house}> - publish on topic`);
+        logger.debug(`User <${user}> has access to house <${house}> - publish on topic`);
         this.eventService!.publishTopic(constants.TOPICS.CONTROL, "powermeter_subscription.delete", {
             old: {
                 id: house.id,
@@ -1482,13 +1480,13 @@ export class StorageService extends BaseService {
         cipherText: string
     ) {
         // get house to ensure access
-        this.logService!.debug(
+        logger.debug(
             `Asked to create powermeter subscriptions for house with ID <${houseId}> - ensuring access to house and that sensor with ID <${sensorId}> exists}`
         );
         const sensor = await this.getSensor(user, sensorId);
 
         // publish on control topic
-        this.logService!.debug(
+        logger.debug(
             `User <${user}> has access to house <${
                 sensor.device!.house
             }> and sensor <${sensor}> exists - publish on topic`
@@ -1590,9 +1588,9 @@ export class StorageService extends BaseService {
 
     private ensureScope(user: BackendIdentity, scope: string): boolean {
         if (!scope || !constants.JWT.ALL_SCOPES.includes(scope)) throw Error(`Supplied scope <${scope}> is invalid`);
-        this.logService!.debug(`Ensure user <${user.identity.callerId}> with scopes <${user.scopes}> has scope ${scope}`);
+        logger.debug(`Ensure user <${user.identity.callerId}> with scopes <${user.scopes}> has scope ${scope}`);
         if (!user.scopes.includes(scope)) throw Error(`Missing required scope <${scope}>`);
-        this.logService!.debug(`Found scope <${scope}> for user <${user.identity.callerId}>`);
+        logger.debug(`Found scope <${scope}> for user <${user.identity.callerId}>`);
         return true;
     }
 }

@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { BaseService, ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage, 
 	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity } from '../../../types';
-import { LogService } from '../../../services/log-service';
+import { Logger } from '../../../logger';
 import { EventService } from '../../../services/event-service';
 import { LAST_N_SAMPLES, StorageService } from '../../../services/storage-service';
 const {lookupService} = require('../../../configure-services');
@@ -12,13 +12,14 @@ import { ensureScopeFactory, hasScope } from '../../../middleware/ensureScope';
 import {v4 as uuid} from 'uuid';
 import { Sensor } from 'src/resolvers/sensor';
 
+const logger = new Logger("data");
 const router = express.Router();
 
-const postControlEvent = (eventSvc : EventService, logSvc : LogService, payload : IngestedControlMessage) => {
+const postControlEvent = (eventSvc : EventService, payload : IngestedControlMessage) => {
 	eventSvc.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
-		logSvc.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
+		logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
 	}).catch(err => {
-		logSvc.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
+		logger.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
 	})
 }
 
@@ -53,10 +54,9 @@ router.use(ensureScopeFactory(constants.JWT.SCOPE_SENSORDATA));
  * 
  */
 router.post("/samples", (req, res, next) => {
-	lookupService([LogService.NAME, EventService.NAME, StorageService.NAME]).then((services : BaseService[]) => {
-		const logService = services[0] as LogService;
-		const eventService = services[1] as EventService;
-		const storageService = services[2] as StorageService;
+	lookupService([EventService.NAME, StorageService.NAME]).then((services : BaseService[]) => {
+		const eventService = services[0] as EventService;
+		const storageService = services[1] as StorageService;
 
 		const user = res.locals.user;
 		const body = req.body
@@ -82,7 +82,7 @@ router.post("/samples", (req, res, next) => {
 			return eventService.publishQueue(constants.QUEUES.SENSOR, queueObj);
 
 		}).then(resp => {
-			logService.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
+			logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
 			return res.status(201).send({
 				id, 
 				value, 
@@ -91,7 +91,7 @@ router.post("/samples", (req, res, next) => {
 			});
 
 		}).catch((err:Error) => {
-			logService.warn(`Unable to send sample for sensor with ID <${id}> to queue...`);
+			logger.warn(`Unable to send sample for sensor with ID <${id}> to queue...`);
 			return next(new HttpException(500, `Unable to add sample to database (${err.message})`, err));
 		})
 		
@@ -106,30 +106,29 @@ router.post("/samples", (req, res, next) => {
  * 
  */
 router.post("/", async (req, res, next) => {
-	const services = await lookupService([LogService.NAME, StorageService.NAME, EventService.NAME])
-	const logService = services[0] as LogService;
-	const storageService = services[1] as StorageService;
-	const eventService = services[2] as EventService;
+	const services = await lookupService([StorageService.NAME, EventService.NAME])
+	const storageService = services[0] as StorageService;
+	const eventService = services[1] as EventService;
 
 	const body = req.body
 	const user = res.locals.user as BackendIdentity;
 	
 	// basic validation and get device id
-	logService.debug("Starting basic validation of payload");
+	logger.debug("Starting basic validation of payload");
 	if (Array.isArray(body)) return next(new HttpException(417, "Excepted object"));
 	if (!body.hasOwnProperty("deviceId")) return next(new HttpException(417, "Missing deviceId-property"));
 	const deviceId : string = body.deviceId;
-	logService.debug(`Extracted deviceId from payload <${deviceId}>`);
+	logger.debug(`Extracted deviceId from payload <${deviceId}>`);
 	
 	// validate API user subject matches the payload device id and raise an error if 
 	// not or user does not have admin scope
 	if (deviceId !== user.identity.callerId && !hasScope(user, constants.JWT.SCOPE_ADMIN)) {
-		logService.warn(`Caller sent a payload subject <${deviceId}> which is different from JWT subject <${user.identity.callerId}>`);
+		logger.warn(`Caller sent a payload subject <${deviceId}> which is different from JWT subject <${user.identity.callerId}>`);
 		return next(new HttpException(401, "Attempt to post data for device blocked as api context is for another device"));
 	}
 	
 	// payload validate
-	logService.debug("Starting extended validation of payload");
+	logger.debug("Starting extended validation of payload");
 	if (!body.hasOwnProperty("msgtype")) return next(new HttpException(417, "Missing msgtype-property"));
 	if (!["data","control"].includes(body.msgtype)) return next(new HttpException(417, "msgtype-property must be data or control"));
 	if (!body.hasOwnProperty("data")) return next(new HttpException(417, "Missing data-property"));
@@ -162,15 +161,15 @@ router.post("/", async (req, res, next) => {
 		// ensure we know the device still (device may have an JWT for a deleted device)
 		device = await storageService.getDevice(user, deviceId);
 	} catch (err) {
-		logService.warn(`Unable to find device by ID <${deviceId}> in database - maybe unknown...`);
+		logger.warn(`Unable to find device by ID <${deviceId}> in database - maybe unknown...`);
 		return next(new HttpException(500, `Unable to find device from payload or other error (${err.message})`, err));
 	}
 	
 	// acknowledge post to caller
 	const str_body_received = JSON.stringify(body, undefined, 2)
 	res.set('Content-Type', 'text/plain').send(`Thank you - you posted: ${str_body_received}\n`).end()
-	logService.debug(`Completed validation of payload: ${str_body_received}`);
-	logService.debug(`Retrieved device with ID <${device.id}> from database`);
+	logger.debug(`Completed validation of payload: ${str_body_received}`);
+	logger.debug(`Retrieved device with ID <${device.id}> from database`);
 			
 	// inspect message type
 	if (msgtype === 'control') {
@@ -189,7 +188,7 @@ router.post("/", async (req, res, next) => {
 			"type": type,
 			"id": deviceId
 		}
-		postControlEvent(eventService, logService, payload);
+		postControlEvent(eventService, payload);
 
 	} else if (msgtype === 'data') {
 		const dataArray = body.data as SensorDataObject[];
@@ -199,11 +198,11 @@ router.post("/", async (req, res, next) => {
 			"id": deviceId
 		}
 		const resp = await eventService.publishQueue(constants.QUEUES.DEVICE, payload)
-		logService.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
+		logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
 			
 		// if there is no elements in the data array send a control event to signal 
 		if (dataArray.length === 0) {
-			postControlEvent(eventService, logService, {
+			postControlEvent(eventService, {
 				"type": ControlMessageTypes.noSensorData,
 				"id": deviceId
 			} as IngestedControlMessage);
@@ -217,9 +216,9 @@ router.post("/", async (req, res, next) => {
 				}
 				
 				eventService.publishQueue(constants.QUEUES.SENSOR, payload).then(() => {
-					logService.debug(`Published message to ${constants.QUEUES.SENSOR}`);
+					logger.debug(`Published message to ${constants.QUEUES.SENSOR}`);
 				}).catch(err => {
-					logService.error(`Unable to publish message to ${constants.QUEUES.SENSOR}`, err);
+					logger.error(`Unable to publish message to ${constants.QUEUES.SENSOR}`, err);
 				})
 			})
 		}
