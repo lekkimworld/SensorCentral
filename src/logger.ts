@@ -1,3 +1,6 @@
+import {get as getFromHttpContext} from "express-http-context";
+import constants from "./constants";
+
 export interface Level {
     readonly name : string;
     readonly num : number;
@@ -10,35 +13,51 @@ class LevelImpl implements Level {
         this.num = num;
     }
 }
-export const DEBUG : Level = new LevelImpl("DEBUG", 0);
-export const INFO : Level = new LevelImpl("INFO", 10);
-export const WARN : Level = new LevelImpl("WARN", 100);
-export const ERROR : Level = new LevelImpl("ERROR", 1000);
-
-const logit = (level : Level, loggerName : string, msg : string, err? : Error) => {
-    if (err) {
-        console.log(`${loggerName} - ${level.name} - ${msg} (${err.message})`, err);
-    } else {
-        console.log(`${loggerName} - ${level.name} - ${msg}`);
-    }
-}
+export const TRACE: Level = new LevelImpl("TRACE", 0);
+export const DEBUG : Level = new LevelImpl("DEBUG", 10);
+export const INFO : Level = new LevelImpl("INFO", 100);
+export const WARN : Level = new LevelImpl("WARN", 1000);
+export const ERROR : Level = new LevelImpl("ERROR", 10000);
 
 export class Logger {
-    _name : string;
-    constructor(name:string) {
+    _level: Level;
+    _name: string;
+    constructor(name: string) {
         this._name = name;
-        
+        this._level = DEBUG;
     }
-    debug(msg:string) : void {
-        logit(DEBUG, this._name, msg);
+    protected getLogMessage(level: Level, msg: string, err?: Error) {
+        const reqId = getFromHttpContext(constants.HTTP_CONTEXT.REQUEST_ID);
+        const prefix = `[${reqId || ""}] [${this._name}] [${level.name}]`;
+
+        if (err) {
+            return `${prefix} - ${msg} (${err.message})`;
+        } else {
+            return `${prefix} - ${msg}`;
+        }
     }
-    info(msg:string) : void {
-        logit(INFO, this._name, msg);
+    protected writeLogMessage(level: Level, msg: string, err?: Error) {
+        if (level.num < this._level.num) return;
+        const message = this.getLogMessage(level, msg, err);
+        if (err) {
+            console.log(message, err);
+        } else {
+            console.log(message);
+        }
     }
-    warn(msg:string, err?:Error) : void {
-        logit(WARN, this._name, msg, err);
+    trace(msg: string): void {
+        this.writeLogMessage(TRACE, msg);
     }
-    error(msg:string, err?:Error) : void {
-        logit(ERROR, this._name, msg, err);
+    debug(msg: string): void {
+        this.writeLogMessage(DEBUG, msg);
+    }
+    info(msg: string): void {
+        this.writeLogMessage(INFO, msg);
+    }
+    warn(msg: string, err?: Error): void {
+        this.writeLogMessage(WARN, msg, err);
+    }
+    error(msg: string, err?: Error): void {
+        this.writeLogMessage(ERROR, msg, err);
     }
 }

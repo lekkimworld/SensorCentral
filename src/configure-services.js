@@ -126,11 +126,11 @@ const registerService = (svc) => {
 }
 const lookupService = (name, timeoutService = constants.DEFAULTS.SERVICE.LOOKUP_TIMEOUT) => {
     let timeout;
-    logger.debug(`lookupServices asked for following services <${name}> with timeout <${timeoutService}>`);
+    logger.trace(`lookupServices asked for following services <${name}> with timeout <${timeoutService}>`);
     return Promise.race([
         Promise.all((Array.isArray(name) ? name : [name]).map(name => {
                 if (_services[name]) {
-                    logger.debug(`Found ${name} service right away so simply returning promise for it`);
+                    logger.trace(`Found ${name} service right away so simply returning promise for it`);
                     return _services[name].promise;
                 }
 

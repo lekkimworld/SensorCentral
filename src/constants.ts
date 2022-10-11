@@ -25,6 +25,9 @@ export default {
         DOMAIN: process.env.APP_DOMAIN,
         NO_PROD_TLS: process.env.APP_NO_PROD_TLS && process.env.APP_NO_PROD_TLS.substring(0, 1) === "t" ? true : false,
     },
+    HTTP_CONTEXT: {
+        REQUEST_ID: "requestId"
+    },
     SMARTME: {
         CUTOFF_YEAR: process.env.SMARTME_CUTOFF_YEAR || 2015,
         PAYLOAD_SEPARATOR: ":",

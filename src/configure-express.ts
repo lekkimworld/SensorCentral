@@ -1,3 +1,4 @@
+import { middleware as httpContextMiddleware, set as setToHttpContext } from "express-http-context";
 import express from "express";
 import { json as bp_json, raw as bp_raw } from "body-parser";
 import path from "path";
@@ -10,6 +11,8 @@ import configureHandlebars from "./configure-express-handlebars";
 import formatHttpException from "./middleware/formatHttpException";
 import { Logger } from "./logger";
 import constants from "./constants";
+import { v1 as uuid } from "uuid";
+
 // logger
 const logger = new Logger("configure-express");
 
@@ -40,6 +43,23 @@ export default async () => {
     // sessions
     const redisService = (await lookupService(RedisService.NAME)) as RedisService;
     app.use(configureSessionWithRedis(redisService.getClient()));
+
+    // use http context to attach request ids to all requests
+    app.use(httpContextMiddleware);
+    app.use((req, res, next) => {
+        // generate request id
+        const reqId = uuid();
+        setToHttpContext(constants.HTTP_CONTEXT.REQUEST_ID, reqId);
+
+        // set request ID header
+        res.set("X-Request-ID", reqId);
+
+        // log request
+        logger.info(`path <${req.path}> method <${req.method}> secure <${req.secure}> headers <${Object.keys(req.headers).map(h => `${h}=${h === "authorization" ? "EXCLUDED" : req.header(h)}`).join(",")}>`);
+
+        // next
+        next();
+    });
 
     // add routes to app
     await attachApplicationRoutes(app);
