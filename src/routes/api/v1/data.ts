@@ -216,7 +216,7 @@ router.post("/", async (req, res, next) => {
 					"deviceId": deviceId
 				}
 				if (element.sensorDuration) {
-					payload.duration = element.sensorDuration;
+					payload.duration = element.sensorDuration / 1000;
 				}
 				
 				eventService.publishQueue(constants.QUEUES.SENSOR, payload).then(() => {
