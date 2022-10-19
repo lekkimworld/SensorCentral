@@ -275,6 +275,9 @@ export interface IngestedDeviceMessage {
 export interface IngestedSensorMessage {
     id : string;
     value : number;
+    /**
+     * Duration in seconds the measurement was performed in
+     */
     duration? : number;
     deviceId : string;
     dt? : string;

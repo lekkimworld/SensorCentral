@@ -33,6 +33,9 @@ router.use((req, res, next) => {
 interface SensorDataObject {
 	readonly sensorId : string;
 	readonly sensorValue : number;
+	/**
+	 * Duration in milliseconds the measurement was performed in
+	 */
 	readonly sensorDuration? : number;
 }
 
@@ -216,6 +219,8 @@ router.post("/", async (req, res, next) => {
 					"deviceId": deviceId
 				}
 				if (element.sensorDuration) {
+					// set duration but devide by 1000 as S0 sends duration in milliseconds 
+					// but we track duration in seconds
 					payload.duration = element.sensorDuration / 1000;
 				}
 				
