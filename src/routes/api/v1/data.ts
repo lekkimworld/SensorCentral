@@ -33,6 +33,7 @@ router.use((req, res, next) => {
 interface SensorDataObject {
 	readonly sensorId : string;
 	readonly sensorValue : number;
+	readonly sensorDuration? : number;
 }
 
 router.get("/samples/:sensorId/:samples", (req, res) => {	
@@ -213,6 +214,9 @@ router.post("/", async (req, res, next) => {
 					'value': element.sensorValue,
 					'id': element.sensorId,
 					"deviceId": deviceId
+				}
+				if (element.sensorDuration) {
+					payload.duration = element.sensorDuration;
 				}
 				
 				eventService.publishQueue(constants.QUEUES.SENSOR, payload).then(() => {
