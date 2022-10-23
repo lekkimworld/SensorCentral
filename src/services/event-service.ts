@@ -7,6 +7,11 @@ export class EventService extends BaseService {
     constructor() {
         super(EventService.NAME);
     }
+    init(callback : (err?:Error) => {}) {
+        events.amqpReady.then(() => {
+            callback();
+        })
+    }
     terminate() {
         return events.close();
     }

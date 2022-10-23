@@ -26,6 +26,12 @@ const connection:Promise<Connection> = new Promise(async (resolve, reject) => {
     reject(new Error("Unable to get AMQP connection within 5 retries"));
 });
 
+export const amqpReady : Promise<void> = new Promise((resolve) => {
+    connection.then(() => {
+        resolve();
+    });
+})
+
 export interface IPublishResult {
     "exchangeName":string,
     "routingKey"?:string,
