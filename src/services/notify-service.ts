@@ -9,6 +9,7 @@ import pushover from "../pushover";
 import moment from "moment";
 import { EmailService, EmailMessage, RFC822Address } from "./email-service";
 import Handlebars from "handlebars";
+import {objectHasOwnProperty_Trueish} from "../utils";
 
 const logger = new Logger("notify-service");
 
@@ -120,7 +121,7 @@ export class NotifyService extends BaseService {
     }
 
     private async notifyNotifiers(device : Device, title : string, message: string) {
-        if (process.env.NOTIFICATIONS_DISABLED) {
+        if (objectHasOwnProperty_Trueish(process.env, "NOTIFICATIONS_DISABLED")) {
             logger.warn(
                 `Ignoring sending "${title}"-notification for device ${device.id} due to NOTIFICATIONS_DISABLED`
             );

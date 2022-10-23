@@ -14,6 +14,7 @@ import { StorageService } from "./storage-service";
 import { IdentityService } from "./identity-service";
 import { InvalidInputError, InvalidSignatureError, verifyPayload } from "../smartme-signature";
 import { CronService } from "./cron-service";
+import {objectHasOwnProperty_Trueish} from "../utils";
 
 const logger = new Logger("powermeter-service");
 
@@ -133,7 +134,7 @@ export class PowermeterService extends BaseService {
         logger.debug(`Creating powermeter subscription for house <${houseId}> frequency <${frequency}>`);
         const jobName = this.getJobName(houseId);
         this.cron.add(jobName, `*/${frequency} * * * *`, async () => {
-            if (process.env.CRON_POWERMETER_SUBSCRIPTIONS_DISABLED) {
+            if (objectHasOwnProperty_Trueish(process.env, "CRON_POWERMETER_SUBSCRIPTIONS_DISABLED")) {
                 logger.warn(
                     `Ignoring powermeter subscription cron job due to CRON_POWERMETER_SUBSCRIPTIONS_DISABLED (${jobName})`
                 );

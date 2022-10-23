@@ -21,6 +21,7 @@ export class CronService extends BaseService {
     }
 
     add(name : string, cronTime : string, callback : () => void) {
+        logger.debug(`Adding cronjob for <${name}> at <${cronTime}>`);
         if (Object.keys(this.jobs).includes(name)) {
             this.jobs[name].stop();
         }

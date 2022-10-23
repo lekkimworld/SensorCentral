@@ -20,6 +20,7 @@ import constants from '../constants';
 import { IdentityService } from '../services/identity-service';
 import { PowermeterService } from "../services/powermeter-service";
 import { CronService } from "../services/cron-service";
+import cronjobPowerdata  from "./cronjob_powerdata";
 
 // number of workers we should create
 const logger = new Logger("worker_web");
@@ -62,6 +63,12 @@ terminateListener(() => {
 const main = async () => {
 	// configure express
 	const app = await configureExpress();
+
+	// add cron jobs
+	logger.info("Start adding cron jobs");
+	const cron = services.getService(CronService.NAME) as CronService;
+	cron.add("load-powerdata-daily", "0 1 * * *", cronjobPowerdata);
+	logger.info("Done adding cron jobs");
 
 	// start server
 	logger.info(`${constants.APP.NAME} -- Worker starting to listen for HTTP traffic on port ${process.env.PORT || 8080}`);

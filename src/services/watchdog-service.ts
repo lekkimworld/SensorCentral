@@ -6,6 +6,7 @@ import { EventService } from "./event-service";
 import { StorageService } from "./storage-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
 import { IdentityService } from "./identity-service";
+import {objectHasOwnProperty_Trueish} from "../utils";
 
 const logger = new Logger("watchdog-service");
 const _watchdogs : Map<String,Watchdog<string,string>> = new Map();
@@ -70,7 +71,7 @@ export class WatchdogService extends BaseService {
 
             // log
             logger.info(`Device (<${deviceId}>) reset`);
-            if (process.env.WATCHDOG_DISABLED) {
+            if (objectHasOwnProperty_Trueish(process.env, "WATCHDOG_DISABLED")) {
                 logger.warn(`Ignoring watchdog reset for device ${deviceId} due to WATCHDOG_DISABLED being set`);
                 return;
             }
