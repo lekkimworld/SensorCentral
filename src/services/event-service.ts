@@ -10,6 +10,8 @@ export class EventService extends BaseService {
     init(callback : (err?:Error) => {}) {
         events.amqpReady.then(() => {
             callback();
+        }).catch(err => {
+            callback(err);
         })
     }
     terminate() {

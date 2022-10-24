@@ -27,7 +27,7 @@ const logger = new Logger("worker_web");
 const WORKERS = process.env.WEB_CONCURRENCY || 1;
 logger.info(`WEB_CONCURRENCY set to ${WORKERS}`);
 
-// énsure required environment variables are set
+// ensure required environment variables are set
 const APP_DOMAIN = process.env.APP_DOMAIN;
 if (!APP_DOMAIN) {
 	logger.info("APP_DOMAIN environment variable not set - cannot start!");
@@ -38,6 +38,8 @@ if (!process.env.SMARTME_KEY) {
 	logger.info("SMARTME_KEY environment variable not set - cannot start!");
 	process.exit(1);
 }
+logger.info(`WATCHDOG_INTERVAL set to ${process.env.WATCHDOG_INTERVAL}`);
+logger.info(`WATCHDOG_DISABLED set to ${process.env.WATCHDOG_DISABLED}`);
 
 // add services
 services.registerService(new IdentityService());

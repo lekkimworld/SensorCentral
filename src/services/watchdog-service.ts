@@ -9,7 +9,12 @@ import { IdentityService } from "./identity-service";
 import {objectHasOwnProperty_Trueish} from "../utils";
 
 const logger = new Logger("watchdog-service");
-const _watchdogs : Map<String,Watchdog<string,string>> = new Map();
+const _watchdogs : Map<string,Watchdog<string,string>> = new Map();
+
+export interface WatchdogInfo {
+    deviceId: string;
+    left: number;
+}
 
 export class WatchdogService extends BaseService {
     public static NAME = "watchdog";
@@ -34,14 +39,29 @@ export class WatchdogService extends BaseService {
         // callback
         callback();
         
-        // init device watchdog for devices we know
+        // init device watchdog for devices we know if allowed
+        if (objectHasOwnProperty_Trueish(process.env, "WATCHDOG_DISABLED")) {
+            logger.warn(`Ignoring watchdog setup due to WATCHDOG_DISABLED being set`);
+            return;
+        }
         this.initDeviceWatchdogs();
-
+        
         // listen for messages when devices post data
         this.eventService!.subscribeTopic(constants.TOPICS.DEVICE, "known.#", this.deviceTopicMessages.bind(this));
 
         // listen for messages about devices coming and going
         this.eventService!.subscribeTopic(constants.TOPICS.CONTROL, "device.#", this.deviceControlMessages.bind(this));
+    }
+    getAll() : Record<string,WatchdogInfo> {
+        const result : Record<string,WatchdogInfo> = {};
+        for (const deviceId of _watchdogs.keys()) {
+            const w = _watchdogs.get(deviceId)!;
+            result[deviceId] = {
+                deviceId,
+                "left": w.left()
+            } as WatchdogInfo;
+        }
+        return result;
     }
 
     private async initDeviceWatchdogs() {
@@ -71,10 +91,6 @@ export class WatchdogService extends BaseService {
 
             // log
             logger.info(`Device (<${deviceId}>) reset`);
-            if (objectHasOwnProperty_Trueish(process.env, "WATCHDOG_DISABLED")) {
-                logger.warn(`Ignoring watchdog reset for device ${deviceId} due to WATCHDOG_DISABLED being set`);
-                return;
-            }
             
             // fetch device from db
             let device;
@@ -123,6 +139,7 @@ export class WatchdogService extends BaseService {
     }
 
     private feedWatchdog(deviceId : string) {
+        logger.debug(`Feeding watchdog for deviceId <${deviceId}>`);
         if (_watchdogs.has(deviceId)) {
             _watchdogs.get(deviceId)!.feed({
                 "timeout": constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT as number,

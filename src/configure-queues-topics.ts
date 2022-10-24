@@ -26,9 +26,11 @@ const connection:Promise<Connection> = new Promise(async (resolve, reject) => {
     reject(new Error("Unable to get AMQP connection within 5 retries"));
 });
 
-export const amqpReady : Promise<void> = new Promise((resolve) => {
+export const amqpReady : Promise<void> = new Promise((resolve, reject) => {
     connection.then(() => {
         resolve();
+    }).catch(err => {
+        reject(err);
     });
 })
 

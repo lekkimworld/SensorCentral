@@ -38,4 +38,10 @@ router.use('/data', dataRoutes);
 import excelRoutes from "./excel";
 router.use("/excel", excelRoutes);
 
+// *****************************************
+// WATCHDOG
+// *****************************************
+import watchdogRoutes from "./watchdog";
+router.use("/watchdog", watchdogRoutes);
+
 export default router;
