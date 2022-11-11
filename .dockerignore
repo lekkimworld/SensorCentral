@@ -13,3 +13,4 @@ coverage
 .tscache
 .nyc_output
 .dockerignore
+public
