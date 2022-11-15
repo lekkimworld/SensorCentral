@@ -18,7 +18,7 @@ module.exports = (document, elemRoot, ctx) => {
 
         // build ui based on sensor type
         let module;
-        if (sensor.type === "gauge") {
+        if (["gauge", "binary"].includes(sensor.type)) {
             module = require("./sensorcentral-sensordetails-gauge");
         } else if (sensor.type === "counter") {
             module = require("./sensorcentral-sensordetails-counter");

@@ -65,6 +65,11 @@ declare global {
             APP_PROTOCOL: "http" | "https";
 
             /**
+             * The commit the build was made from if any
+             */
+            APP_GITCOMMIT: string;
+
+            /**
              * Secret used to sign / verify JWT's issued by the app
              */
             API_JWT_SECRET: string;
@@ -145,14 +150,19 @@ declare global {
             GRAPHQL_PATH?: string;
 
             /**
-             * Watchdog timeout in milliseconds (defauls to 10 minutes)
+             * Watchdog timeout in milliseconds (defauls to 10 minutes) for devices
              */
-            WATCHDOG_INTERVAL?: string;
+            WATCHDOG_INTERVAL_DEVICES?: string;
 
             /**
-             * If set we ignore watchdog resets.
+             * Watchdog timeout in milliseconds (defauls to 5 minutes) for sensors
              */
-            WATCHDOG_DISABLED: string | undefined;
+            WATCHDOG_INTERVAL_SENSORS?: string;
+
+            /**
+             * If set we ignore device watchdog resets.
+             */
+            WATCHDOG_DISABLED_DEVICES: string | undefined;
         }
     }
 }

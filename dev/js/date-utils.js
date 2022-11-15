@@ -1,6 +1,6 @@
 const moment = require("moment-timezone");
+const {TIMEZONE} = require("./constants");
 
-const TIMEZONE = "Europe/Copenhagen";
 const DATETIME_DATETIME_SHORT = "D/M HH:mm";
 const DATETIME_FORMAT = "D-M-YYYY [kl.] k:mm";
 

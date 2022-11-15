@@ -37,11 +37,29 @@ export class Device {
     active : boolean;
 }
 
+@ObjectType()
+class DeviceData {
+    @Field(() => ID)
+    id: string;
+    @Field({ nullable: true })
+    dt?: string;
+    @Field({ nullable: true })
+    ip?: string;
+
+    constructor(id: string, data?: types.DeviceData) {
+        this.id = id;
+        if (data) {
+            this.dt = data.str_dt;
+            this.ip = data.data.ip;
+        }
+    }
+}
+
 @InputType()
 export class DeleteDeviceInput {
     @Field(() => ID)
-    @Length(1,36)
-    id : string
+    @Length(1, 36)
+    id: string;
 }
 
 @InputType()
@@ -63,32 +81,38 @@ export class CreateDeviceInput extends UpdateDeviceInput{
 
 @Resolver()
 export class DeviceResolver {
-    @Query(() => [Device], {description: "Returns all devices for the house with the specified houseId"})
-    async devices(@Arg("houseId") houseId : string, @Ctx() ctx : types.GraphQLResolverContext) {
+    @Query(() => [Device], { description: "Returns all devices for the house with the specified houseId" })
+    async devices(@Arg("houseId") houseId: string, @Ctx() ctx: types.GraphQLResolverContext) {
         const devices = await ctx.storage.getDevices(ctx.user, houseId);
-        return devices.map(d => new Device(d));
+        return devices.map((d) => new Device(d));
     }
 
-    @Query(() => Device!, {description: "Returns the device with the specified id"})
-    async device(@Arg("id") id : string, @Ctx() ctx : types.GraphQLResolverContext) {
+    @Query(() => Device!, { description: "Returns the device with the specified id" })
+    async device(@Arg("id") id: string, @Ctx() ctx: types.GraphQLResolverContext) {
         const device = await ctx.storage.getDevice(ctx.user, id);
         return new Device(device);
     }
-    
+
+    @Query(() => DeviceData, { description: "Returns device data for the device with the specified id if any" })
+    async deviceData(@Arg("id") id: string, @Ctx() ctx: types.GraphQLResolverContext) {
+        const data = await ctx.storage.getDeviceData(id);
+        return new DeviceData(id, data);
+    }
+
     @Mutation(() => Device)
-    async createDevice(@Arg("data") data : CreateDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
+    async createDevice(@Arg("data") data: CreateDeviceInput, @Ctx() ctx: types.GraphQLResolverContext) {
         const device = await ctx.storage.createDevice(ctx.user, data);
         return new Device(device);
     }
 
     @Mutation(() => Device)
-    async updateDevice(@Arg("data") data : UpdateDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
+    async updateDevice(@Arg("data") data: UpdateDeviceInput, @Ctx() ctx: types.GraphQLResolverContext) {
         const device = await ctx.storage.updateDevice(ctx.user, data);
         return new Device(device);
     }
 
     @Mutation(() => Boolean)
-    async deleteDevice(@Arg("data") data : DeleteDeviceInput, @Ctx() ctx : types.GraphQLResolverContext) {
+    async deleteDevice(@Arg("data") data: DeleteDeviceInput, @Ctx() ctx: types.GraphQLResolverContext) {
         await ctx.storage.deleteDevice(ctx.user, data);
         return true;
     }

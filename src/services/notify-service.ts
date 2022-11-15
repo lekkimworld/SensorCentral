@@ -32,13 +32,13 @@ export class NotifyService extends BaseService {
         this.email = services[2] as unknown as EmailService;
 
         // listen for device watchdog resets
-        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, `known.${ControlMessageTypes.watchdogReset}`, this.listenForDeviceWatchdogResets.bind(this));
+        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, `known.device.${ControlMessageTypes.watchdogReset}`, this.listenForDeviceWatchdogResets.bind(this));
 
         // listen for device watchdog resets
-        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, `known.${ControlMessageTypes.restart}`, this.listenForceDeviceRestarts.bind(this));
+        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, `known.device.${ControlMessageTypes.restart}`, this.listenForceDeviceRestarts.bind(this));
 
         // listen for device pings without sensor data
-        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, `known.${ControlMessageTypes.noSensorData}`, this.listenForNoSensors.bind(this));
+        this.eventService.subscribeTopic(constants.TOPICS.CONTROL, `known.device.${ControlMessageTypes.noSensorData}`, this.listenForNoSensors.bind(this));
 
         // compile templates
         this.templates.set("device.restart.title", Handlebars.compile(constants.DEFAULTS.NOTIFY.DEVICE.RESTART.TITLE));
@@ -91,8 +91,8 @@ export class NotifyService extends BaseService {
 
         const data = Object.assign({
             timeout: {
-                ms: constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT,
-                minutes: constants.DEFAULTS.WATCHDOG.DEFAULT_TIMEOUT / 60000,
+                ms: constants.DEFAULTS.WATCHDOG.DEVICES.TIMEOUT,
+                minutes: constants.DEFAULTS.WATCHDOG.DEVICES.TIMEOUT / 60000,
             },
         }, this.getDefaultData(msg));
         this.notifyNotifiers(

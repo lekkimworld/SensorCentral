@@ -2,7 +2,7 @@ import constants from "../constants";
 import {BaseService, Device, Sensor, 
     WatchdogNotification, 
     SensorSample, NotifyUsing, PushoverSettings, DeviceWatchdogNotifier, 
-    NotificationSettings, BackendIdentity, DeviceWatchdog, SensorType, UserPrincipal, PowerPhase, PowerType, SmartmeSubscription } from "../types";
+    NotificationSettings, BackendIdentity, DeviceWatchdog, SensorType, UserPrincipal, PowerPhase, PowerType, SmartmeSubscription, DeviceData } from "../types";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
 import { Logger } from "../logger";
@@ -23,6 +23,9 @@ import { Smartme } from "smartme-protobuf-parser";
 import { IdentityService } from "./identity-service";
 import { FavoriteSensorsInput } from "src/resolvers/favorite-sensor";
 import { SmartmeDeviceWithDataType } from "src/resolvers/smartme";
+import {ISO8601_DATETIME_FORMAT} from "../constants";
+
+const DEVICE_DATA_KEY_PREFIX = "device_data:";
 
 const logger = new Logger("storage-service");
 
@@ -142,28 +145,26 @@ export class StorageService extends BaseService {
 
         // get data
         const columnNullTest = "currentphasel1";
-        const getColumn = (type : PowerType, phase  : PowerPhase) => {
+        const getColumn = (type: PowerType, phase: PowerPhase) => {
             const columnBase = type === "voltage" ? "voltagephase" : type === "current" ? "currentphase" : undefined;
             if (!columnBase) throw new Error(`Unknown type supplied (${type})`);
             const phaseNo = phase === PowerPhase.l1 ? 1 : phase === PowerPhase.l2 ? 2 : 3;
             const column = `${columnBase}l${phaseNo}`;
             return column;
-        }
+        };
         const query = (() => {
             if (type === PowerType.power) {
                 const columnCurrent = getColumn(PowerType.current, phase);
                 const columnVoltage = getColumn(PowerType.voltage, phase);
                 return `select dt, ${columnCurrent}*${columnVoltage} as value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not ${columnNullTest} is null order by dt desc;`;
             } else {
-                return `select dt, ${getColumn(type, phase)} as value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not ${columnNullTest} is null order by dt desc;`;
+                return `select dt, ${getColumn(
+                    type,
+                    phase
+                )} as value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not ${columnNullTest} is null order by dt desc;`;
             }
         })();
-        const result = await this.dbService!.query(
-            query,
-            id,
-            start,
-            end
-        );
+        const result = await this.dbService!.query(query, id, start, end);
 
         // create samples
         const samples = result.rows.map((row) => {
@@ -205,6 +206,36 @@ export class StorageService extends BaseService {
             constants.DEFAULTS.REDIS.POWERDATA_EXPIRATION_SECS,
             str
         );
+    }
+
+    /**
+     * Set/update device data from the device in cache.
+     *
+     * @param deviceId
+     * @param data
+     */
+    async setDeviceData(deviceId: string, data: any) {
+        const obj = {
+            dt: moment.utc().format(ISO8601_DATETIME_FORMAT),
+            data
+        };
+        this.redisService!.set(`${DEVICE_DATA_KEY_PREFIX}${deviceId}`, JSON.stringify(obj));
+    }
+
+    /**
+     * Returns any device data from the device in cache.
+     *
+     * @param deviceId
+     */
+    async getDeviceData(deviceId: string): Promise<DeviceData | undefined> {
+        const str_data = await this.redisService!.get(`${DEVICE_DATA_KEY_PREFIX}${deviceId}`);
+        if (str_data) {
+            const obj = JSON.parse(str_data);
+            obj.str_dt = obj.dt;
+            obj.dt = moment.utc(obj.dt, ISO8601_DATETIME_FORMAT);
+            return obj;
+        }
+        return undefined;
     }
 
     /**
@@ -1366,6 +1397,38 @@ export class StorageService extends BaseService {
     }
 
     /**
+     * Insert the supplied reading for the supplied sensor id.
+     *
+     * @param id
+     * @param value
+     * @param dt
+     */
+    async persistSensorSample(
+        sensor: Sensor,
+        value: number,
+        dt: moment.Moment,
+        from_dt?: moment.Moment
+    ): Promise<void> {
+        let str_sql;
+        let persistValue = value;
+        if (sensor.type === SensorType.binary) {
+            if (value === 0) {
+                persistValue = 0;
+            } else {
+                persistValue = 1;
+            }
+        }
+        let args = [sensor.id, persistValue, dt.toISOString()];
+        if (from_dt) {
+            args.push(from_dt.toISOString());
+            str_sql = "insert into sensor_data (id, value, dt, from_dt) values ($1, $2, $3, $4)";
+        } else {
+            str_sql = "insert into sensor_data (id, value, dt) values ($1, $2, $3)";
+        }
+        await this.dbService!.query(str_sql, ...args);
+    }
+
+    /**
      * Persist powermeter sample.
      *
      * @param sample
@@ -1529,7 +1592,7 @@ export class StorageService extends BaseService {
         return subscription_results;
     }
 
-     /**
+    /**
      * Returns the powermeter subscriptions the user has access to.
      *
      * @param user
@@ -1547,7 +1610,7 @@ export class StorageService extends BaseService {
         return subscription_results;
     }
 
-    private buildSmartmeSubscriptionsFromRows(result : QueryResult<any>) : SmartmeSubscription[] {
+    private buildSmartmeSubscriptionsFromRows(result: QueryResult<any>): SmartmeSubscription[] {
         const subscription_results = result.rows.map((r) => {
             return {
                 house: {

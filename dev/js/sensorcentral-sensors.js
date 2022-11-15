@@ -62,6 +62,13 @@ module.exports = (document, elemRoot, ctx) => {
                             formsutil.appendWatchdogEditForm(device);
                         },
                     },
+                    {
+                        rel: "davicedata",
+                        icon: "info",
+                        click: () => {
+                            formsutil.appendDeviceDataForm(device);
+                        },
+                    },
                 ]);
 
                 // create context for chart and create it

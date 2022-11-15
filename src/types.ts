@@ -1,3 +1,4 @@
+import { Moment } from "moment";
 import { StorageService } from "./services/storage-service";
 
 export interface GraphQLResolverContext {
@@ -252,12 +253,21 @@ export enum ControlMessageTypes {
 }
 
 /**
- * Control message ingested from a device.
+ * Target of the control message
+ */
+export enum ControlMessageTarget {
+    device = "device",
+    sensor = "sensor"
+}
+
+/**
+ * Type describing a control message.
  * 
  */
 export interface IngestedControlMessage {
     id : string;
     type : ControlMessageTypes;
+    target: ControlMessageTarget;
 }
 
 /**
@@ -265,7 +275,15 @@ export interface IngestedControlMessage {
  * 
  */
 export interface IngestedDeviceMessage {
+    /**
+     * ID of the device we ingested message from
+     */
     id : string;
+
+    /**
+     * Any additional data the device sent in the "deviceData" key
+     */
+    deviceData?: any;
 }
 
 /**
@@ -301,7 +319,12 @@ export enum SensorType {
     /**
      * A value that only represents a change since last value.
      */
-    delta = "delta"
+    delta = "delta",
+
+    /**
+     * Binary on/off sensor
+     */
+    binary = "binary"
 }
 
 /**
@@ -347,6 +370,16 @@ export interface Device {
 }
 
 /**
+ * Describes data about a device received when sensor data was ingested.
+ */
+export interface DeviceData {
+    readonly id : string;
+    readonly dt : Moment;
+    readonly str_dt : string;
+    readonly data? : any;
+}
+
+/**
  * Describes a sensor on a device.
  */
 export interface Sensor {
@@ -379,6 +412,8 @@ export interface TopicControlMessage {
     type : ControlMessageTypes;
     device? : Device;
     deviceId : string;
+    sensor? : Sensor;
+    sensorId?: string;
 }
 
 /**
