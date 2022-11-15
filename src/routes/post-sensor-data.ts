@@ -3,7 +3,7 @@ const services = require('../configure-services');
 import {EventService} from "../services/event-service";
 import constants from "../constants";
 import { Logger } from '../logger';
-import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException } from '../types';
+import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException, ControlMessageTarget } from '../types';
 import { StorageService } from 'src/services/storage-service';
 import { IdentityService } from 'src/services/identity-service';
 
@@ -99,7 +99,8 @@ router.post('/', (req, res, next) => {
 				// create payload and publish to queue
 				postControlEvent(eventSvc, {
 					"type": type,
-					"id": device.id
+					"id": device.id,
+					"target": ControlMessageTarget.device
 				} as IngestedControlMessage);
 
 			} else if (msgtype === 'data') {
@@ -116,7 +117,8 @@ router.post('/', (req, res, next) => {
 						// publish event to indicate that
 						postControlEvent(eventSvc, {
 							"type": ControlMessageTypes.noSensorData,
-							"id": deviceId
+							"id": deviceId,
+							"target": ControlMessageTarget.device
 						} as IngestedControlMessage);
 	
 					} else {

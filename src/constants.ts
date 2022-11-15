@@ -43,9 +43,16 @@ export default {
                 : 20000,
         },
         WATCHDOG: {
-            DEFAULT_TIMEOUT: (process.env.WATCHDOG_INTERVAL
-                ? Number.parseInt(process.env.WATCHDOG_INTERVAL)
-                : 10 * 60 * 1000) as number,
+            DEVICES: {
+                TIMEOUT: (process.env.WATCHDOG_INTERVAL_DEVICES
+                    ? Number.parseInt(process.env.WATCHDOG_INTERVAL_DEVICES)
+                    : 10 * 60 * 1000) as number,
+            },
+            SENSORS: {
+                TIMEOUT: (process.env.WATCHDOG_INTERVAL_SENSORS
+                    ? Number.parseInt(process.env.WATCHDOG_INTERVAL_SENSORS)
+                    : 5 * 60 * 1000) as number,
+            },
         },
         REDIS: {
             DEVICE_EXPIRATION_SECS: (process.env.REDIS_DEVICE_EXPIRATION_SECS

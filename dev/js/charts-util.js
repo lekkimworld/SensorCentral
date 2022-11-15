@@ -6,6 +6,7 @@ const $ = require("jquery");
 const dateutils = require("./date-utils");
 const formutils = require("./forms-util");
 const uuid = require("uuid").v1;
+const { TIMEZONE } = require("./constants");
 
 const ID_CHART_BASE = "sensorChart";
 const ID_CHART_CONTAINER = `${ID_CHART_BASE}_container`;
@@ -127,10 +128,13 @@ const timeChart = (id, datasets, options = {}) => {
                 label: ds.name,
                 backgroundColor: backgroundColors[idx % backgroundColors.length],
                 borderColor: backgroundColors[idx % backgroundColors.length],
-                data: ds.data.map(s => ({
-                    x: moment(s.x, "D-M-YYYY [kl.] HH:mm"),
-                    y: s.y
-                })),
+                data: ds.data.map(s => {
+                    let result = {
+                        x: moment.utc(s.x, "YYYY-MM-DD[T]HH:mm:ss.SSS[Z]").tz(TIMEZONE),
+                        y: s.y
+                    }
+                    return result;
+                }),
                 type: 'line',
                 pointRadius: 0,
                 fill: false,

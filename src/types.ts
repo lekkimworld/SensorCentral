@@ -252,12 +252,21 @@ export enum ControlMessageTypes {
 }
 
 /**
- * Control message ingested from a device.
+ * Target of the control message
+ */
+export enum ControlMessageTarget {
+    device = "device",
+    sensor = "sensor"
+}
+
+/**
+ * Type describing a control message.
  * 
  */
 export interface IngestedControlMessage {
     id : string;
     type : ControlMessageTypes;
+    target: ControlMessageTarget;
 }
 
 /**
@@ -301,7 +310,12 @@ export enum SensorType {
     /**
      * A value that only represents a change since last value.
      */
-    delta = "delta"
+    delta = "delta",
+
+    /**
+     * Binary on/off sensor
+     */
+    binary = "binary"
 }
 
 /**
@@ -379,6 +393,8 @@ export interface TopicControlMessage {
     type : ControlMessageTypes;
     device? : Device;
     deviceId : string;
+    sensor? : Sensor;
+    sensorId?: string;
 }
 
 /**

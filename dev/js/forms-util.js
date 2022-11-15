@@ -444,8 +444,8 @@ const DEVICE_CREATE_EDIT = {
 }
 
 const SENSOR_CREATE_EDIT = {
-    "name": "sensor",
-    "html": `<div class="modal fade" id="sensorModal" tabindex="-1" role="dialog" aria-labelledby="sensorModalLabel" aria-hidden="true">
+    name: "sensor",
+    html: `<div class="modal fade" id="sensorModal" tabindex="-1" role="dialog" aria-labelledby="sensorModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -456,26 +456,70 @@ const SENSOR_CREATE_EDIT = {
             </div>
             <div class="modal-body">
                 <form id="sensorForm" novalidate>
-                    ${textField("id", "ID", "Specify the ID of the sensor (maximum 36 characters).", true, "You must specify the ID for the sensor. Must be unique.")}
-                    ${textField("name", "Name", "Specify the name of the sensor (maximum 128 characters).", true, "You must specify the name for the sensor. Must be unique.")}
-                    ${textField("label", "Label", "Specify the label of the sensor (maximum 128 characters).", true, "You must specify the label for the sensor. Must be unique.")}
-                    ${dropdown("type", "Type", "Specify the type of the sensor.", {
-                        "gauge": "Gauge",
-                        "counter": "Counter",
-                        "delta": "Delta"
-                    }, false, true, "You must specify the type of the sensor.")}
-                    ${dropdown("icon", "Icon", "Specify the icon for the sensor.", {
-                        "battery-4": "Power",
-                        "thermometer-empty": "Temperature",
-                        "tint": "Humidity",
-                        "tachometer": "Tachometer"
-                    }, false, true, "You must specify the icon for the sensor.")}
-                    ${dropdown("scalefactor", "Scale Factor", "Specify the scale factor for the sensor.", {
-                        "1": "1",
-                        "0.001": "1/1000",
-                        "0.002": "1/500",
-                        "0.01": "1/100"
-                    }, false, true, "You must specify the scale factor for the sensor.")}
+                    ${textField(
+                        "id",
+                        "ID",
+                        "Specify the ID of the sensor (maximum 36 characters).",
+                        true,
+                        "You must specify the ID for the sensor. Must be unique."
+                    )}
+                    ${textField(
+                        "name",
+                        "Name",
+                        "Specify the name of the sensor (maximum 128 characters).",
+                        true,
+                        "You must specify the name for the sensor. Must be unique."
+                    )}
+                    ${textField(
+                        "label",
+                        "Label",
+                        "Specify the label of the sensor (maximum 128 characters).",
+                        true,
+                        "You must specify the label for the sensor. Must be unique."
+                    )}
+                    ${dropdown(
+                        "type",
+                        "Type",
+                        "Specify the type of the sensor.",
+                        {
+                            gauge: "Gauge",
+                            counter: "Counter",
+                            delta: "Delta",
+                            binary: "Binary",
+                        },
+                        false,
+                        true,
+                        "You must specify the type of the sensor."
+                    )}
+                    ${dropdown(
+                        "icon",
+                        "Icon",
+                        "Specify the icon for the sensor.",
+                        {
+                            "battery-4": "Power",
+                            "thermometer-empty": "Temperature",
+                            tint: "Humidity",
+                            tachometer: "Tachometer",
+                            "toggle-off": "On/off"
+                        },
+                        false,
+                        true,
+                        "You must specify the icon for the sensor."
+                    )}
+                    ${dropdown(
+                        "scalefactor",
+                        "Scale Factor",
+                        "Specify the scale factor for the sensor.",
+                        {
+                            1: "1",
+                            0.001: "1/1000",
+                            0.002: "1/500",
+                            0.01: "1/100",
+                        },
+                        false,
+                        true,
+                        "You must specify the scale factor for the sensor."
+                    )}
                 </form>
             </div>
             <div class="modal-footer">
@@ -485,7 +529,7 @@ const SENSOR_CREATE_EDIT = {
         </div>
     </div>
 </div>`,
-    "fnInit": (formdata, ctx) => {
+    fnInit: (formdata, ctx) => {
         if (ctx.sensor) {
             const idField = $("#idInput");
             const nameField = $("#nameInput");
@@ -503,7 +547,7 @@ const SENSOR_CREATE_EDIT = {
         }
         return Promise.resolve();
     },
-    "fnGetData": () => {
+    fnGetData: () => {
         const idField = $("#idInput");
         const nameField = $("#nameInput");
         const labelField = $("#labelInput");
@@ -511,15 +555,15 @@ const SENSOR_CREATE_EDIT = {
         const iconField = $("#iconInput");
         const scaleField = $("#scalefactorInput");
         return {
-            "id": idField.val(),
-            "name": nameField.val(),
-            "label": labelField.val(),
-            "type": typeField.val(),
-            "icon": iconField.val(),
-            "scaleFactor": scaleField.val()
-        }
-    }
-}
+            id: idField.val(),
+            name: nameField.val(),
+            label: labelField.val(),
+            type: typeField.val(),
+            icon: iconField.val(),
+            scaleFactor: scaleField.val(),
+        };
+    },
+};
 
 const DELETE_ENTITY = {
     "name": "trash",

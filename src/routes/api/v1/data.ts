@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { BaseService, ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage, 
-	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity } from '../../../types';
+	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity, ControlMessageTarget } from '../../../types';
 import { Logger } from '../../../logger';
 import { EventService } from '../../../services/event-service';
 import { LAST_N_SAMPLES, StorageService } from '../../../services/storage-service';
@@ -190,7 +190,8 @@ router.post("/", async (req, res, next) => {
 		// create payload and publish to queue
 		const payload : IngestedControlMessage = {
 			"type": type,
-			"id": deviceId
+			"id": deviceId,
+			"target": ControlMessageTarget.device
 		}
 		postControlEvent(eventService, payload);
 
@@ -208,7 +209,8 @@ router.post("/", async (req, res, next) => {
 		if (dataArray.length === 0) {
 			postControlEvent(eventService, {
 				"type": ControlMessageTypes.noSensorData,
-				"id": deviceId
+				"id": deviceId,
+				"target": ControlMessageTarget.device
 			} as IngestedControlMessage);
 		} else {
 			// send out a sensor reading message per reading

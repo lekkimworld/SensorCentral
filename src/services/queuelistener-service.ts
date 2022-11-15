@@ -148,7 +148,7 @@ export class QueueListenerService extends BaseService {
                 if (msg.duration) {
                     from_dt = moment(dt).subtract(msg.duration, "second");
                 }
-                return this.persistSensorReading(sensor.id, msg.value, dt, from_dt).then(() => {
+                return this.storage!.persistSensorSample(sensor, msg.value, dt, from_dt).then(() => {
                     // mark msg as consumed
                     result.callback();
 
@@ -202,7 +202,7 @@ export class QueueListenerService extends BaseService {
                 } as TopicControlMessage;
 
                 // publish
-                this.eventService!.publishTopic(constants.TOPICS.CONTROL, device ? `known.${msg.type}` : `unknown.${msg.type}`, payload);
+                this.eventService!.publishTopic(constants.TOPICS.CONTROL, device ? `known.${msg.target}.${msg.type}` : `unknown.${msg.target}.${msg.type}`, payload);
             })
         });
     }
@@ -354,24 +354,4 @@ export class QueueListenerService extends BaseService {
         })
     }
 
-    /**
-     * Insert the supplied reading for the supplied sensor id.
-     * 
-     * @param id 
-     * @param value 
-     * @param dt
-     */
-    private persistSensorReading(id : string, value : number, dt : moment.Moment, from_dt? : moment.Moment) : Promise<void> {
-        let str_sql;
-        let args = [id, value, dt.toISOString()];
-        if (from_dt) {
-            args.push(from_dt.toISOString());
-            str_sql = "insert into sensor_data (id, value, dt, from_dt) values ($1, $2, $3, $4)";
-        } else {
-            str_sql = "insert into sensor_data (id, value, dt) values ($1, $2, $3)";
-        }
-        return this.dbService!.query(str_sql, ...args).then(() => {
-            return Promise.resolve();
-        })
-    }
 }

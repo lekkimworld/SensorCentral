@@ -1366,6 +1366,33 @@ export class StorageService extends BaseService {
     }
 
     /**
+     * Insert the supplied reading for the supplied sensor id.
+     * 
+     * @param id 
+     * @param value 
+     * @param dt
+     */
+    async persistSensorSample(sensor: Sensor, value : number, dt : moment.Moment, from_dt? : moment.Moment) : Promise<void> {
+        let str_sql;
+        let persistValue = value;
+        if (sensor.type === SensorType.binary) {
+            if (value === 0) {
+                persistValue = 0;
+            } else {
+                persistValue = 1;
+            }
+        }
+        let args = [sensor.id, persistValue, dt.toISOString()];
+        if (from_dt) {
+            args.push(from_dt.toISOString());
+            str_sql = "insert into sensor_data (id, value, dt, from_dt) values ($1, $2, $3, $4)";
+        } else {
+            str_sql = "insert into sensor_data (id, value, dt) values ($1, $2, $3)";
+        }
+        await this.dbService!.query(str_sql, ...args);
+    }
+
+    /**
      * Persist powermeter sample.
      *
      * @param sample

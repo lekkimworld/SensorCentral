@@ -5,6 +5,7 @@ import { URL } from "url";
 //@ts-ignore
 import { getService } from "../configure-services";
 import initdb from "../postdeploy/database-init-utils";
+import {objectHasOwnProperty_Trueish} from "../utils";
 
 // get log
 const logger = new Logger("database-service");
@@ -68,7 +69,7 @@ export class DatabaseService extends BaseService {
             this._pool = await dbpool;
 
             // see if database is initialized
-            if (process.env.ALLOW_DB_INIT && process.env.ALLOW_DB_INIT.toLowerCase().substring(0, 1) === 't') {
+            if (objectHasOwnProperty_Trueish(process.env, "ALLOW_DB_INIT")) {
                 logger.info("Checking if database is initialized");
                 await initdb(false);
             }

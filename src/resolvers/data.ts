@@ -216,7 +216,7 @@ class UngroupedQueryFormatInput implements IEnsureDefaults {
     @Field({ nullable: true, defaultValue: true })
     applyScaleFactor: boolean;
 
-    @Field({ nullable: true, defaultValue: constants.DEFAULTS.TIMEZONE })
+    @Field({ nullable: true, defaultValue: "UTC" })
     timezone: string;
 
     @Field({ nullable: true, defaultValue: ISO8601_DATETIME_FORMAT })
@@ -227,7 +227,7 @@ class UngroupedQueryFormatInput implements IEnsureDefaults {
 
     ensureDefaults() {
         if (!Object.prototype.hasOwnProperty.call(this, "timezone")) {
-            this.timezone = constants.DEFAULTS.TIMEZONE;
+            this.timezone = "UTC";
         }
         if (!Object.prototype.hasOwnProperty.call(this, "format")) {
             this.format = ISO8601_DATETIME_FORMAT;
