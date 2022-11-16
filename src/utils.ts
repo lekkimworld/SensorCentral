@@ -35,7 +35,7 @@ export const objectHasOwnProperty_Falseish = (obj: any, prop: string): boolean =
 
 export const buildBaseHandlebarsContext = () : any => {
     return {
-        "app_name": pckg.name,
+        "app_name": constants.APP.NAME,
         "app_version": pckg.version,
         "app_current_year": new Date().getFullYear()
     }
