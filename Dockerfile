@@ -1,16 +1,5 @@
 FROM node:latest
 
-# Create app directory
-WORKDIR /usr/src/app
-
-# Install app dependencies
-COPY package*.json ./
-RUN npm install
-
-# Bundle app source
-COPY . .
-RUN npm run build
-
 EXPOSE 8080
 ARG DATABASE_URL
 ARG REDIS_URL
@@ -20,6 +9,7 @@ ARG NODE_ENV
 ARG APP_NO_PROD_TLS
 ARG APP_PROTOCOL
 ARG APP_DOMAIN
+ARG APP_GITCOMMIT=na
 ARG OIDC_PROVIDER_URL
 ARG OIDC_CLIENT_ID
 ARG OIDC_CLIENT_SECRET
@@ -48,6 +38,7 @@ ENV NODE_ENV="${NODE_ENV}"
 ENV APP_NO_PROD_TLS="${APP_NO_PROD_TLS}"
 ENV APP_PROTOCOL="${APP_PROTOCOL}"
 ENV APP_DOMAIN="${APP_DOMAIN}"
+ENV APP_GITCOMMIT="${APP_GITCOMMIT}"
 ENV OIDC_PROVIDER_URL="${OIDC_PROVIDER_URL}"
 ENV OIDC_CLIENT_ID="${OIDC_CLIENT_ID}"
 ENV OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET}"
@@ -67,6 +58,17 @@ ENV WATCHDOG_DISABLED_DEVICES="${WATCHDOG_DISABLED_DEVICES}"
 ENV WATCHDOG_INTERVAL_DEVICES="${WATCHDOG_INTERVAL_DEVICES}"
 ENV WATCHDOG_INTERVAL_SENSORS="${WATCHDOG_INTERVAL_SENSORS}"
 
+# Create app directory
+WORKDIR /usr/src/app
+
+# Install app dependencies
+COPY package*.json ./
+RUN npm install
+
+# Bundle app source
+COPY . .
+COPY scripts/write_dotenv.sh ./
+RUN /usr/src/app/write_dotenv.sh ${APP_GITCOMMIT}
+RUN npm run build
+
 CMD [ "npm", "run", "start" ]
-
-

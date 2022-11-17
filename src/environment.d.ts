@@ -65,6 +65,11 @@ declare global {
             APP_PROTOCOL: "http" | "https";
 
             /**
+             * The commit the build was made from if any
+             */
+            APP_GITCOMMIT: string;
+
+            /**
              * Secret used to sign / verify JWT's issued by the app
              */
             API_JWT_SECRET: string;
