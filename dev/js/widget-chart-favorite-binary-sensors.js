@@ -1,5 +1,6 @@
 const baseWidget = require("./widget-chart-favorite-sensors-base");
 
 module.exports = (elem) => {
-    baseWidget(elem, "Favorite Gauge Sensors", "gauge");
-}
+    console.log(baseWidget);
+    baseWidget(elem, "Favorite Binary Sensors", "binary");
+};
