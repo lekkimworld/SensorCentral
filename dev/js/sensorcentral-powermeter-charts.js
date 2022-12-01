@@ -162,12 +162,17 @@ const buildBarChartWithDataset = async (elemChart, dataset) => {
             fill: true,
             backgroundColor: colorMap.green,
             borderColor: colorMap.green,
-            data: dataset.data
-        }
+            data: dataset.data,
+        },
     ];
 
     // build chart
     const myChart = new Chart(elemChart, chartConfig);
+
+    // remove skeleton
+    removeSkeleton(`container_${elemChart.getAttribute("id")}`);
+
+    // return
     return myChart;
 };
 

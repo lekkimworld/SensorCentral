@@ -67,7 +67,7 @@ export default {
                 : 8 * 60 * 60) as number,
             POWERDATA_EXPIRATION_SECS: (process.env.REDIS_POWERDATA_EXPIRATION_SECS
                 ? Number.parseInt(process.env.REDIS_POWERDATA_EXPIRATION_SECS)
-                : 12 * 60 * 60) as number,
+                : 7 * 24 * 60 * 60) as number,
         },
         NOTIFY: {
             DEVICE: {

@@ -690,7 +690,7 @@ export class DataQueryResolver {
             data: results.rows.map((row) => {
                 return {
                     x: row.period,
-                    y: row.value,
+                    y: row.value / 1000,
                 };
             }),
         } as GraphQLDataset;
