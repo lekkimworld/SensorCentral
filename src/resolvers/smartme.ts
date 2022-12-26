@@ -2,7 +2,6 @@ import { Resolver, ObjectType, Field, Arg, InputType, Query, Mutation, Ctx } fro
 import { Length } from "class-validator";
 import * as types from "../types";
 import constants from "../constants";
-import fetch, { RequestInit } from "node-fetch";
 import moment from "moment-timezone";
 import {generatePayload} from "../smartme-signature";
 import { House } from "./house";

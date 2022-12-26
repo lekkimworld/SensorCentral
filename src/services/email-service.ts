@@ -1,6 +1,5 @@
 import { BaseService } from "../types";
 import jwt from "jsonwebtoken";
-import fetch from "node-fetch";
 import moment from "moment";
 import constants from "../constants";
 import { Logger } from "../logger";

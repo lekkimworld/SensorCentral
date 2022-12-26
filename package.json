@@ -1,6 +1,6 @@
 {
     "name": "sensorcentral",
-    "version": "1.9.2",
+    "version": "1.9.3",
     "description": "",
     "main": "src/workers/worker_web.ts",
     "scripts": {
@@ -41,7 +41,6 @@
         "@types/express-session": "^1.17.3",
         "@types/jsonwebtoken": "^8.5.8",
         "@types/node": "^14.14.34",
-        "@types/node-fetch": "^2.5.8",
         "@types/pg": "^7.14.11",
         "@types/uuid": "^8.3.4",
         "aes256": "^1.1.0",
@@ -65,7 +64,6 @@
         "moment-timezone": "^0.5.34",
         "node-excel": "^0.5.0",
         "node-excel-export": "^1.4.4",
-        "node-fetch": "^2.6.7",
         "node-pushover": "^1.0.0",
         "nordpool": "^3.0.0",
         "openid-client": "^4.9.1",

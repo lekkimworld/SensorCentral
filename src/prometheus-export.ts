@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 //@ts-ignore
 import excel from "node-excel-export";
 import moment = require("moment-timezone");
