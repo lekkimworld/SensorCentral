@@ -1,9 +1,5 @@
 import * as express from "express";
-import constants from "../../../constants";
-import {objectHasOwnProperty} from "../../../utils";
-const {lookupService} = require('../../../configure-services');
 import { ensureAdminJWTScope } from "../../../middleware/ensureScope";
-import { WatchdogService } from "../../../services/watchdog-service";
 
 const router = express.Router();
 
@@ -11,6 +7,8 @@ const router = express.Router();
 router.use(ensureAdminJWTScope);
 
 router.get("/devices", async (_req, res) => {
+    res.status(500).send("Device watchdog removed for now");
+    /*
     const watchdog = await lookupService(WatchdogService.NAME) as WatchdogService;
     res.send({
         "settings": {
@@ -23,8 +21,11 @@ router.get("/devices", async (_req, res) => {
         },
         "watchdogs": watchdog.getAllDevices()
     });
+    */
 });
 router.get("/sensors", async (_req, res) => {
+    res.status(500).send("Sensor watchdog removed for now");
+    /*
     const watchdog = (await lookupService(WatchdogService.NAME)) as WatchdogService;
     res.send({
         settings: {
@@ -37,6 +38,7 @@ router.get("/sensors", async (_req, res) => {
         },
         watchdogs: watchdog.getAllSensors(),
     });
+    */
 });
 
 export default router;

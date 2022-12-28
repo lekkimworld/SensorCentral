@@ -1,10 +1,12 @@
 import { Pool, PoolConfig } from "pg";
 import { config as dotenv_config} from "dotenv";
+import constants from "../constants";
 import * as fs from "fs";
 import { join } from "path";
 import * as readline from "readline";
 import moment from "moment-timezone";
 import { Logger } from "../logger";
+import {objectHasOwnProperty_Trueish} from "../utils";
 
 // read config
 dotenv_config();
@@ -12,7 +14,7 @@ dotenv_config();
 // get log
 const logger = new Logger("database-init-utils");
 
-const TARGET_DATABASE_VERSION = 12;
+const TARGET_DATABASE_VERSION = 13;
 
 const url = new URL(process.env.DATABASE_URL as string);
 const config: PoolConfig = {
@@ -32,25 +34,21 @@ const pool = new Pool(config);
 
 const executeSQLFile = (filename: string): Promise<void> => {
     return new Promise((resolve, reject) => {
-        const lines: Array<string> = [];
+        const lines: string[] = [];
+
         readline.createInterface({
             "input": fs.createReadStream(join(__dirname, "..", "..", "schema", filename))
         }).on("line", line => {
             if (!line || line.trim().length === 0) return;
+            logger.debug(`[SQL] Adding line: ${line}`);
             lines.push(line);
 
         }).on("close", () => {
-            const executeNext = () => {
-                const line = lines.shift();
-                if (!line) return resolve();
-                logger.info(`[SQL] Executing line: ${line}`);
-                pool.query(line).then(() => {
-                    executeNext();
-                }).catch(err => {
-                    reject(err);
-                })
-            }
-            executeNext();
+            const sqldata = lines.join("");
+            logger.info(`[SQL] Executing SQL commands`);
+            pool.query(sqldata).then(() => resolve()).catch(err => {
+                reject(err);
+            })
         })
     })
 }
@@ -76,7 +74,7 @@ const addProgrammaticTestData = async (): Promise<void> => {
 }
 
 const addProgrammaticTestData_Gauge = async (): Promise<void> => {
-    const mDt = moment().tz("Europe/Copenhagen").set("hours", 12).set("minute", 0).set("second", 0);
+    const mDt = moment().tz(constants.DEFAULTS.TIMEZONE).set("hours", 12).set("minute", 0).set("second", 0);
     const mEnd = moment(mDt).subtract(48, "hour");
 
     logger.info("Get client");
@@ -103,7 +101,7 @@ const addProgrammaticTestData_Gauge = async (): Promise<void> => {
 }
 
 const addProgrammaticTestData_Delta = async (sensorId: string): Promise<void> => {
-    const mDt = moment().tz("Europe/Copenhagen").set("hours", 12).set("minute", 0).set("second", 0);
+    const mDt = moment().tz(constants.DEFAULTS.TIMEZONE).set("hours", 12).set("minute", 0).set("second", 0);
     const mEnd = moment(mDt).subtract(48, "hour");
 
     while (mDt.isAfter(mEnd)) {
@@ -127,7 +125,7 @@ const addProgrammaticTestData_Delta = async (sensorId: string): Promise<void> =>
 }
 
 const addProgrammaticTestData_Counter = async (): Promise<void> => {
-    const mDt = moment().tz("Europe/Copenhagen").set("hours", 12).set("minute", 0).set("second", 0);
+    const mDt = moment().tz(constants.DEFAULTS.TIMEZONE).set("hours", 12).set("minute", 0).set("second", 0);
     const mEnd = moment(mDt).subtract(48, "hour");
 
     let value = 27112;
@@ -204,6 +202,12 @@ export default (processExit: boolean) : Promise<void> => {
             }
         })
         .then(() => {
+            if (objectHasOwnProperty_Trueish(process.env, "DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE")) {
+                logger.info(
+                    `DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE set - aborting schema upgrade- throwing exception...`
+                );
+                throw new Error(`DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE set - aborting schema upgrade`);
+            }
             logger.info("Committing...");
             return Promise.all([Promise.resolve(0), pool.query("COMMIT")]);
         })

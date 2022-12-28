@@ -1,4 +1,5 @@
 import { Moment } from "moment";
+import { AlertEventType } from "./services/alert/alert-types";
 import { StorageService } from "./services/storage-service";
 
 export interface GraphQLResolverContext {
@@ -117,7 +118,14 @@ export class SystemPrincipal implements NamedPrincipal {
         return `SYSTEM - ${this.name}`;
     }
 }
+export class HouseUser extends UserPrincipal {
+    readonly owner : boolean;
 
+    constructor(id : string, fn : string, ln : string, email : string, owner: boolean) {
+        super(id, fn, ln, email);
+        this.owner = owner;
+    }
+}
 
 export interface BrowserUser {
     readonly id : string;
@@ -185,37 +193,32 @@ export interface PushoverMessage {
     settings : PushoverSettings;
 }
 
+export enum NullableBoolean {
+    yes = "yes",
+    no = "no"
+}
+
 /**
- * The ways we can notify users.
+ * The ways we can notify.
  */
 export enum NotifyUsing {
     none = "",
     email = "email",
     pushover = "pushover"
 }
+export const stringToNotifyUsing = (v: string) => {
+    if (v === "email") return NotifyUsing.email;
+    if (v === "pushover") return NotifyUsing.pushover;
+    if (v === "") return NotifyUsing.none;
+    throw new Error(`${v} is not a valid NotifyUsing value`);
+}
 
 /**
  * Notification settings for a user.
  */
 export interface NotificationSettings {
-    notifyUsing? : NotifyUsing;
     pushover? : PushoverSettings;
-}
-
-/**
- * Device watchdog data.
- */
-export interface DeviceWatchdog {
-    notify : WatchdogNotification;
-    mutedUntil? : Date;
-}
-
-/**
- * A device watchdog notifier.
- */
-export interface DeviceWatchdogNotifier extends DeviceWatchdog{
-    user : UserPrincipal;
-    settings : NotificationSettings;
+    user: UserPrincipal;
 }
 
 export abstract class BaseService {
@@ -248,7 +251,7 @@ export abstract class BaseService {
 export enum ControlMessageTypes {
     unknown = "unknown",
     restart = "restart",
-    watchdogReset = "watchdogReset",
+    timeout = "timeout",
     noSensorData = "noSensorData"
 }
 
@@ -328,25 +331,6 @@ export enum SensorType {
 }
 
 /**
- * Types of watchdog notification and indicates if we should notify based 
- * on WatchdogService.
- */
-export enum WatchdogNotification {
-    /**
-     * Do NOT notify based on watchdog.
-     */
-    no = "no",
-    /**
-     * Do notify based on watchdog.
-     */
-    yes = "yes",
-    /**
-     * Do mute until date/time.
-     */
-    muted = "muted"
-}
-
-/**
  * Describes a house where sensors may be placed.
  */
 export interface House {
@@ -387,7 +371,7 @@ export interface Sensor {
     readonly device : Device | undefined;
     readonly id : string;
     readonly name : string;
-    readonly label : string;
+    readonly label? : string;
     readonly type : SensorType | undefined;
     readonly icon : string;
     readonly scaleFactor : number;
@@ -417,7 +401,7 @@ export interface TopicControlMessage {
 }
 
 /**
- * Type for messages publushed on the SENSOR topic.
+ * Type for messages published on the SENSOR topic.
  */
 export interface TopicSensorMessage {
     deviceId: string;
@@ -431,6 +415,18 @@ export interface TopicSensorMessage {
 export interface TopicDeviceMessage {
     deviceId : string;
     device : Device | null;
+}
+
+/**
+ * Type for messages published on the NOTIFY queue.
+ */
+export interface QueueNotifyMessage {
+    alertId: string;
+    eventType: AlertEventType;
+    notifyType: NotifyUsing;
+    userId: string;
+    target: string;
+    data: number | undefined;
 }
 
 /**
@@ -460,7 +456,7 @@ export interface RedisDeviceMessage {
     id : string;
     dt : Date;
     restarts : number;
-    watchdogResets : number;
+    timeouts : number;
 }
 
 export class HttpException extends Error {

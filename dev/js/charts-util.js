@@ -1,21 +1,17 @@
-const Chart = require("chart.js");
-const moment = require("moment");
-const uiutils = require("./ui-utils");
-const fetcher = require("./fetch-util");
-const $ = require("jquery");
-const dateutils = require("./date-utils");
-const formutils = require("./forms-util");
-const uuid = require("uuid").v1;
-const { TIMEZONE } = require("./constants");
+import {Chart} from "chart.js";
+import moment from "moment";
+import * as uiutils from "./ui-utils";
+import * as fetcher from "../ts/fetch-util";
+import {DateIntervalSelectForm} from "../ts/forms/date-interval-select";
+import {v1 as uuid} from "uuid";
+import constants from "./constants";
 
 const ID_CHART_BASE = "sensorChart";
 const ID_CHART_CONTAINER = `${ID_CHART_BASE}_container`;
 const ID_CHART_ACTIONS = `${ID_CHART_BASE}_actions`;
 const ID_CHART_BODY = `${ID_CHART_BASE}_body`;
 
-const MIN_Y_FACTOR = 0.1;
 const MAX_Y_FACTOR = 0.1;
-const MAX_Y_ADD = 5;
 
 const formatDate = d => {
     const m = d.getMonth();
@@ -65,7 +61,7 @@ const setResponsiveFlag = (options) => {
     }
 }
 
-const lineChart = (id, labels, inputOptions = {}) => {
+export const lineChart = (id, labels, inputOptions = {}) => {
     // build options
     const options = Object.assign({}, inputOptions);
     setResponsiveFlag(options);
@@ -117,7 +113,7 @@ const lineChart = (id, labels, inputOptions = {}) => {
     createOrUpdateChart(id, chartConfig);
 };
 
-const timeChart = (id, datasets, options = {}) => {
+export const timeChart = (id, datasets, options = {}) => {
     if (!options.hasOwnProperty("animation")) options.animation = {}
     if (!options.animation.hasOwnProperty("duration")) options.animation.duration = 500;
     setResponsiveFlag(options);
@@ -130,7 +126,7 @@ const timeChart = (id, datasets, options = {}) => {
                 borderColor: backgroundColors[idx % backgroundColors.length],
                 data: ds.data.map(s => {
                     let result = {
-                        x: moment.utc(s.x, "YYYY-MM-DD[T]HH:mm:ss.SSS[Z]").tz(TIMEZONE),
+                        x: moment.utc(s.x, "YYYY-MM-DD[T]HH:mm:ss.SSS[Z]").tz(constants.TIMEZONE),
                         y: s.y
                     }
                     return result;
@@ -199,7 +195,7 @@ const timeChart = (id, datasets, options = {}) => {
     createOrUpdateChart(id, cfg);
 }
 
-const barChart = (id, labels, inputOptions = {}) => {
+export const barChart = (id, labels, inputOptions = {}) => {
     // build options
     const options = Object.assign({}, inputOptions);
     setResponsiveFlag(options);
@@ -306,154 +302,146 @@ const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount
     })
 }
 
-module.exports = {
-    lineChart,
-    barChart,
-    timeChart,
-    addChartContainer: (elemRoot, options = {}) => {
-        if (!options.hasOwnProperty("actions")) options.actions = [];
-        if (!options.hasOwnProperty("title")) options.title = "Chart";
-        if (!options.hasOwnProperty("classList")) options.classList = [];
-        if (!options.hasOwnProperty("append")) options.append = false;
+export const addChartContainer = (elemRoot, options = {}) => {
+    if (!options.hasOwnProperty("actions")) options.actions = [];
+    if (!options.hasOwnProperty("title")) options.title = "Chart";
+    if (!options.hasOwnProperty("classList")) options.classList = [];
+    if (!options.hasOwnProperty("append")) options.append = false;
 
-        // create ids
-        const uid = uuid();
-        const containerId = `${ID_CHART_CONTAINER}_${uid}`;
-        const actionsId = `${ID_CHART_ACTIONS}_${uid}`
-        const bodyId = `${ID_CHART_BODY}_${uid}`
-        const bodyhtml = `<div id="${containerId}" class="widget-placeholder-item widget-skeleton-loader">
-            ${uiutils.htmlSectionTitle(options.title || "", "float-left")}
-            <span id="${actionsId}"></span>
-            <div id="${bodyId}"></div>
-        </div>`;
+    // create ids
+    const uid = uuid();
+    const containerId = `${ID_CHART_CONTAINER}_${uid}`;
+    const actionsId = `${ID_CHART_ACTIONS}_${uid}`
+    const bodyId = `${ID_CHART_BODY}_${uid}`
+    const bodyhtml = `<div id="${containerId}" class="widget-placeholder-item widget-skeleton-loader">
+        ${uiutils.htmlSectionTitle(options.title || "", "float-left")}
+        <span id="${actionsId}"></span>
+        <div id="${bodyId}"></div>
+    </div>`;
 
-        // set html
-        if (options.append) {
-            elemRoot.append(bodyhtml);
-        } else {
-            elemRoot.html(bodyhtml);
-        }
-
-        // remove skeleton method
-        const removeSkeleton = () => {
-            const e = document.querySelector(`#${containerId}`);
-            e.classList.remove("widget-skeleton-loader");
-            e.classList.remove("widget-placeholder-item");
-        }
-        const addSkeleton = (args = {}) => {
-            const e = document.querySelector(`#${containerId}`);
-            if (args && Object.prototype.hasOwnProperty.call(args, "clearContainer") && typeof args.clearContainer === "boolean" && args.clearContainer === true) {
-                document.querySelector(`#${bodyId}`).innerHTML = "";
-            }
-            e.classList.add("widget-skeleton-loader");
-            e.classList.add("widget-placeholder-item");
-            const height = window.innerHeight < 400 ? 200 : 400;
-            e.style.setProperty("--widget-skeleton-min-height", `${height}px`);
-        }
-
-        // create context
-        let chartOptions;
-        let chartFn;
-        const state = {};
-        const ctx = {
-            "_state": state,
-            addSkeleton,
-            removeSkeleton,
-            "reload": (ctx) => {
-                if (!chartFn) return Promise.reject(Error("Not called before"));
-                addSkeleton();
-                const options = Object.assign({}, chartOptions);
-                options.start = ctx.start_dt;
-                options.end = ctx.end_dt;
-                chartOptions = options;
-                return chartFn(bodyId, options).then(data => {
-                    state.data = data;
-                    removeSkeleton();
-                    return Promise.resolve(data);
-                })
-            },
-            "gaugeChart": (options) => {
-                chartOptions = options;
-                chartFn = buildGaugeChart;
-                return buildGaugeChart(bodyId, options).then(data => {
-                    state.data = data;
-                    removeSkeleton();
-                    return Promise.resolve(data);
-                })
-            },
-            "timeChart": (datasets, options) => {
-                chartOptions = options;
-                chartFn = timeChart;
-                removeSkeleton();
-                return timeChart(bodyId, datasets, options);
-            },
-            "barChart": (labels, options) => {
-                chartOptions = options;
-                chartFn = barChart;
-                removeSkeleton();
-                return barChart(bodyId, labels, options);
-            }
-        };
-
-        // filter non compliant actions
-        const stdActions = new Map();
-        stdActions.set("INTERVAL", {
-            "id": "calendar",
-            "icon": "fa-calendar",
-            "callback": (chartCtx) => {
-                formutils.appendIntervalSelectForm({}, (formCtx) => {
-                    const p = ctx.reload(formCtx);
-                    if (p) {
-                        p.then(data => {
-                            if (options.hasOwnProperty("callback") && typeof options.callback === "function") {
-                                options.callback("INTERVAL", data)
-                            }
-                        })
-                    }
-                })
-            }
-        })
-        stdActions.set("DOWNLOAD", {
-            "id": "save",
-            "icon": "fa-save",
-            "callback": (ctx) => {
-                if (chartFn === buildGaugeChart) {
-                    fetcher.post(`/api/v1/data/ungrouped`, {
-                        "options": chartOptions,
-                        "type": "csv"
-                    }).then(obj => {
-                        window.open(`/download/ungrouped/${obj.downloadKey}/attachment`, "_new");
-                    })
-                } else {
-                    formutils.appendError(Error("Can only create download for ungrouped query."));
-                }
-            }
-        })
-        const availableStdActions = Array.from(stdActions.keys());
-
-        // remove non-available standard actions or actions mission id, icon or callback
-        options.actions = options.actions.filter(action => {
-            if (typeof action === "string" && availableStdActions.includes(action)) return true;
-            if (typeof action === "object" && action.id && action.icon && typeof action.callback === "function") return true;
-            return false;
-        }).map(action => {
-            if (typeof action === "object") return action;
-            return stdActions.get(action);
-        })
-
-        // build actions
-        const htmlActions = options.actions.reduce((buffer, action) => {
-            buffer += `<i id="${uid}_${action.id}" class="btn fa ${action.icon} float-left p-0 ml-2" aria-hidden="true"></i>`;
-            return buffer;
-        }, "")
-        $(`#${actionsId}`).html(htmlActions);
-        options.actions.forEach(action => {
-            $(`#${uid}_${action.id}`).on("click", () => {
-                action.callback(ctx);
-            })
-        })
-
-        // return context
-        return ctx;
+    // set html
+    if (options.append) {
+        elemRoot.append(bodyhtml);
+    } else {
+        elemRoot.html(bodyhtml);
     }
+
+    // remove skeleton method
+    const removeSkeleton = () => {
+        const e = document.querySelector(`#${containerId}`);
+        e.classList.remove("widget-skeleton-loader");
+        e.classList.remove("widget-placeholder-item");
+    }
+    const addSkeleton = (args = {}) => {
+        const e = document.querySelector(`#${containerId}`);
+        if (args && Object.prototype.hasOwnProperty.call(args, "clearContainer") && typeof args.clearContainer === "boolean" && args.clearContainer === true) {
+            document.querySelector(`#${bodyId}`).innerHTML = "";
+        }
+        e.classList.add("widget-skeleton-loader");
+        e.classList.add("widget-placeholder-item");
+        const height = window.innerHeight < 400 ? 200 : 400;
+        e.style.setProperty("--widget-skeleton-min-height", `${height}px`);
+    }
+
+    // create context
+    let chartOptions;
+    let chartFn;
+    const state = {};
+    const ctx = {
+        "_state": state,
+        addSkeleton,
+        removeSkeleton,
+        "reload": (ctx) => {
+            if (!chartFn) return Promise.reject(Error("Not called before"));
+            addSkeleton();
+            const options = Object.assign({}, chartOptions);
+            options.start = ctx.start_dt;
+            options.end = ctx.end_dt;
+            chartOptions = options;
+            return chartFn(bodyId, options).then(data => {
+                state.data = data;
+                removeSkeleton();
+                return Promise.resolve(data);
+            })
+        },
+        "gaugeChart": (options) => {
+            chartOptions = options;
+            chartFn = buildGaugeChart;
+            return buildGaugeChart(bodyId, options).then(data => {
+                state.data = data;
+                removeSkeleton();
+                return Promise.resolve(data);
+            })
+        },
+        "timeChart": (datasets, options) => {
+            chartOptions = options;
+            chartFn = timeChart;
+            removeSkeleton();
+            return timeChart(bodyId, datasets, options);
+        },
+        "barChart": (labels, options) => {
+            chartOptions = options;
+            chartFn = barChart;
+            removeSkeleton();
+            return barChart(bodyId, labels, options);
+        }
+    };
+
+    // filter non compliant actions
+    const stdActions = new Map();
+    stdActions.set("INTERVAL", {
+        "id": "calendar",
+        "icon": "fa-calendar",
+        "callback": (chartCtx) => {
+            new DateIntervalSelectForm().addEventListener("data", async e => {
+                const data = e.data;
+                await ctx.reload(data);
+                if (options.hasOwnProperty("callback") && typeof options.callback === "function") {
+                    options.callback("INTERVAL", data);
+                }
+            }).show();
+        }
+    })
+    stdActions.set("DOWNLOAD", {
+        "id": "save",
+        "icon": "fa-save",
+        "callback": (ctx) => {
+            if (chartFn === buildGaugeChart) {
+                fetcher.post(`/api/v1/data/ungrouped`, {
+                    "options": chartOptions,
+                    "type": "csv"
+                }).then(obj => {
+                    window.open(`/download/ungrouped/${obj.downloadKey}/attachment`, "_new");
+                })
+            } else {
+                formutils.appendError(Error("Can only create download for ungrouped query."));
+            }
+        }
+    })
+    const availableStdActions = Array.from(stdActions.keys());
+
+    // remove non-available standard actions or actions mission id, icon or callback
+    options.actions = options.actions.filter(action => {
+        if (typeof action === "string" && availableStdActions.includes(action)) return true;
+        if (typeof action === "object" && action.id && action.icon && typeof action.callback === "function") return true;
+        return false;
+    }).map(action => {
+        if (typeof action === "object") return action;
+        return stdActions.get(action);
+    })
+
+    // build actions
+    const htmlActions = options.actions.reduce((buffer, action) => {
+        buffer += `<i id="${uid}_${action.id}" class="btn fa ${action.icon} float-left p-0 ml-2" aria-hidden="true"></i>`;
+        return buffer;
+    }, "")
+    $(`#${actionsId}`).html(htmlActions);
+    options.actions.forEach(action => {
+        $(`#${uid}_${action.id}`).on("click", () => {
+            action.callback(ctx);
+        })
+    })
+
+    // return context
+    return ctx;
 }

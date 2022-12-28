@@ -4,8 +4,8 @@ import {EventService} from "../services/event-service";
 import constants from "../constants";
 import { Logger } from '../logger';
 import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException, ControlMessageTarget } from '../types';
-import { StorageService } from 'src/services/storage-service';
-import { IdentityService } from 'src/services/identity-service';
+import { StorageService } from '../services/storage-service';
+import { IdentityService } from '../services/identity-service';
 
 const logger = new Logger("post-sensor-data");
 const router = express.Router();
@@ -92,8 +92,8 @@ router.post('/', (req, res, next) => {
 				let type = ControlMessageTypes.unknown;
 				if (dataObj.hasOwnProperty("restart")) {
 					type = ControlMessageTypes.restart;
-				}  else if (dataObj.hasOwnProperty("watchdogReset")) {
-					type = ControlMessageTypes.watchdogReset;
+				}  else if (dataObj.hasOwnProperty("timeout")) {
+					type = ControlMessageTypes.timeout;
 				}
 
 				// create payload and publish to queue
@@ -135,7 +135,7 @@ router.post('/', (req, res, next) => {
 				})
 			}
 
-		}).catch(err => {
+		}).catch((err: any) => {
 			// unknown device
 			logger.warn(`Unable to find device by ID <${deviceId}> in database - maybe unknown...`);
 			next(new HttpException(500, `Unable to find device from payload or other error`, err));

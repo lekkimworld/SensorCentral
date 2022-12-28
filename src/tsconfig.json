@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": "../server-dist",
+    "declaration": false,
+    "composite": false,
+    "removeComments": true,
+    "allowSyntheticDefaultImports": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "rootDir": ".",
+    "esModuleInterop": true,
+    "lib": ["ES2020.Promise"]
+  },
+  "exclude": ["../node_modules"],
+  "include": ["./**/*.ts"]
+}

@@ -5,12 +5,12 @@ import moment, {Moment} from "moment-timezone";
 import { DataElement, Dataset } from "../services/dataquery-service";
 import constants from "../constants";
 import { Logger } from "../logger";
-const nordpool = require("nordpool");
+import {Prices} from "nordpool";
 
 // get logger
 const log = new Logger("cronjob-powerdata");
 
-const fetchPowerdataForMoment = async (storage : StorageService, m : Moment) => {
+const fetchPowerdataForMoment = async (storage : StorageService, m : Moment) : Promise<void> => {
     log.info(`Getting powerdata for: ${m.format("YYYY-MM-DD")}`);
     const ds = {} as Dataset;
     ds.id = "power";
@@ -23,7 +23,11 @@ const fetchPowerdataForMoment = async (storage : StorageService, m : Moment) => 
     };
 
     // fetch data
-    const results = await new nordpool.Prices().hourly(opts);
+    const results = await new Prices().hourly(opts);
+    if (!results) {
+        log.warn(`Unable to get powerdata for ${m.format("YYYY-MM-DD")}`);
+        throw new Error(`Unable to get powerdata for ${m.format("YYYY-MM-DD")}`);
+    }
 
     // map data
     ds.data = results.map((v: any) => {
@@ -59,7 +63,7 @@ export default async () => {
     // create dataset and fetch data for each moment
     try {
         log.info("Starting to load powerdata");
-        await Promise.all(
+        await Promise.allSettled(
             moments.map((m) => {
                 return fetchPowerdataForMoment(storage, m);
             })

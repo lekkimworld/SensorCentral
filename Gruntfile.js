@@ -1,6 +1,12 @@
-module.exports = function(grunt) {
+const webpackConfig = require("./webpack.config.js");
+const path = require("path");
+
+module.exports = function (grunt) {
     grunt.initConfig({
-        clean: ["public/", "server-dist", "build-temp"],
+        clean: {
+            all: ["public", "server-dist", "tscommand-*.tmp.txt"],
+            public: ["public"]
+        },
         copy: {
             main: {
                 files: [
@@ -19,10 +25,22 @@ module.exports = function(grunt) {
                         dest: "public/manifest.json",
                     },
                     {
+                        src: "dev/sw/sensorcentral-sw.js",
+                        dest: "public/sw.js",
+                    },
+                    {
                         expand: true,
                         cwd: "src",
                         src: "**/*.js",
                         dest: "server-dist",
+                    },
+
+                    // client side dependencies
+                    {
+                        expand: true,
+                        cwd: "node_modules/bootstrap/dist/js",
+                        src: "bootstrap.bundle.min.js",
+                        dest: "public/js",
                     },
                     {
                         expand: true,
@@ -37,20 +55,6 @@ module.exports = function(grunt) {
                         dest: "public/js",
                     },
 
-                    // client side dependencies
-                    {
-                        expand: true,
-                        cwd: "node_modules/bootstrap/dist/js",
-                        src: "bootstrap.bundle.min.js",
-                        dest: "public/js",
-                    },
-                    {
-                        expand: true,
-                        cwd: "node_modules/jquery/dist",
-                        src: "jquery.min.js",
-                        dest: "public/js",
-                    },
-
                     // fonts
                     {
                         expand: true,
@@ -61,10 +65,6 @@ module.exports = function(grunt) {
                 ],
             },
         },
-        browserify: {
-            "public/js/index.js": ["dev/js/*.js"],
-            "public/sw.js": ["dev/js/sw/*.js"],
-        },
         concat: {
             "public/css/styles.css": [
                 "dev/css/**.css",
@@ -74,30 +74,49 @@ module.exports = function(grunt) {
                 "node_modules/eonasdan-bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css",
             ],
         },
-
-        ts: {
-            default: {
-                tsconfig: true,
-                src: ["**/*.ts", "!node_modules/**/*.ts"],
-                options: {
-                    rootDir: "src",
+        webpack: [
+            webpackConfig,
+            {
+                entry: ["./dev/sw/sensorcentral-sw.js"],
+                resolve: {
+                    extensions: [".js"],
                 },
+                output: {
+                    filename: "sw.js",
+                    path: path.resolve(__dirname, "public"),
+                },
+            },
+        ],
+        ts: {
+            serverside: {
+                tsconfig: "./src/tsconfig.json",
             },
         },
         watch: {
             scripts: {
-                files: ["dev/js/*.js", "dev/css/*.css", "dev/sw/*.js", "dev/*.html"],
-                tasks: ["browserify"],
+                files: ["dev/js/*.js", "dev/ts/*.ts", "dev/css/*.css", "dev/sw/*.js", "dev/*.html"],
             },
         },
     });
 
-    grunt.loadNpmTasks('grunt-contrib-clean');
-    grunt.loadNpmTasks('grunt-contrib-copy');
-    grunt.loadNpmTasks('grunt-contrib-concat');
-    grunt.loadNpmTasks('grunt-browserify');
-    grunt.loadNpmTasks('grunt-contrib-watch');
+    grunt.loadNpmTasks("grunt-contrib-clean");
+    grunt.loadNpmTasks("grunt-contrib-copy");
+    grunt.loadNpmTasks("grunt-contrib-concat");
+    grunt.loadNpmTasks("grunt-webpack");
+    grunt.loadNpmTasks("grunt-contrib-watch");
     grunt.loadNpmTasks("grunt-ts");
 
-    grunt.registerTask('default', ['clean', 'copy', 'browserify', "concat", 'ts']);
+    grunt.registerTask("default", [
+        "clean:all",
+        "ts:serverside",
+        "copy:main",
+        "webpack",
+        "concat",
+    ]);
+    grunt.registerTask("clientside", [
+        "clean:public",
+        "copy:main",
+        "webpack",
+        "concat",
+    ]);
 };

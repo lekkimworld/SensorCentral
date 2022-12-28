@@ -1,40 +1,53 @@
-import { Resolver, Query, ObjectType, Field, ID, Arg, Mutation, InputType, Ctx } from "type-graphql";
-import * as types from "../types";
 import { Length } from "class-validator";
+import { Arg, Ctx, Field, FieldResolver, ID, InputType, Mutation, ObjectType, Query, registerEnumType, Resolver, Root } from "type-graphql";
+import * as types from "../types";
+import { Alert } from "./alert";
 import { House } from "./house";
+import { Sensor } from "./sensor";
+import * as alert_types from "../services/alert/alert-types";
+
+registerEnumType(types.NullableBoolean, {
+    name: "NullableBoolean",
+    description: "Boolean that may be null",
+});
 
 @ObjectType()
 export class Device {
-    constructor(d : types.Device) {
+    storageDevice: types.Device;
+    houseId: string;
+    constructor(d: types.Device) {
+        this.storageDevice = d;
+        this.houseId = d.house.id;
         this.id = d.id;
         this.name = d.name;
-        this.house = d.house;
         this.active = d.active;
         this.last_ping = d.lastPing;
         this.last_restart = d.lastRestart;
-        this.last_watchdog_reset = d.lastWatchdogReset;
     }
 
     @Field(() => ID)
-    id : string;
+    id: string;
 
     @Field()
-    name : string;
+    name: string;
 
-    @Field({nullable: true})
-    last_ping : Date;
+    @Field({ nullable: true })
+    last_ping: Date;
 
-    @Field({nullable: true})
-    last_restart : Date;
-
-    @Field({nullable: true})
-    last_watchdog_reset : Date;
+    @Field({ nullable: true })
+    last_restart: Date;
 
     @Field()
-    house : House;
+    active: boolean;
 
-    @Field()
-    active : boolean;
+    @Field(() => [Sensor])
+    sensors: types.Sensor[];
+
+    @Field(() => House)
+    house: types.House;
+
+    @Field(() => [Alert])
+    alerts: alert_types.Alert[];
 }
 
 @ObjectType()
@@ -79,7 +92,7 @@ export class CreateDeviceInput extends UpdateDeviceInput{
     houseId : string
 }
 
-@Resolver()
+@Resolver((_of) => Device)
 export class DeviceResolver {
     @Query(() => [Device], { description: "Returns all devices for the house with the specified houseId" })
     async devices(@Arg("houseId") houseId: string, @Ctx() ctx: types.GraphQLResolverContext) {
@@ -91,6 +104,27 @@ export class DeviceResolver {
     async device(@Arg("id") id: string, @Ctx() ctx: types.GraphQLResolverContext) {
         const device = await ctx.storage.getDevice(ctx.user, id);
         return new Device(device);
+    }
+
+    @FieldResolver()
+    async house(@Root() device: Device, @Ctx() ctx: types.GraphQLResolverContext): Promise<House> {
+        const house = await ctx.storage.getHouse(ctx.user, device.houseId);
+        return new House(house);
+    }
+
+    @FieldResolver()
+    async sensors(@Root() device: Device, @Ctx() ctx: types.GraphQLResolverContext) {
+        const sensors = await ctx.storage.getSensors(ctx.user, { deviceId: device.id });
+        return sensors.map((s) => new Sensor(s));
+    }
+
+    @FieldResolver()
+    async alerts(
+        @Arg("active", () => types.NullableBoolean, { nullable: true }) active: types.NullableBoolean,
+        @Root() device: Device,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ): Promise<Alert[]> {
+        return (await ctx.storage.getAlerts(ctx.user, device.storageDevice, active)).map((a) => new Alert(a));
     }
 
     @Query(() => DeviceData, { description: "Returns device data for the device with the specified id if any" })

@@ -12,7 +12,9 @@
             "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
             "sourceMaps": true,
             "cwd": "${workspaceRoot}",
-            "protocol": "inspector",
+            "env": {
+                "TS_NODE_PROJECT": "src/tsconfig.json"
+            }
         },
         {
             "name": "Run postdeploy/create_database.ts (Typescript)",

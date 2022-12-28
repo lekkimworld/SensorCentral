@@ -12,3 +12,6 @@ src/foo.ts
 src/postdeploy/import.ts
 src/postdeploy/test_smartme_signature.ts
 *.dump*
+buildtemp
+tscommand-*.tmp.txt
+stats.json

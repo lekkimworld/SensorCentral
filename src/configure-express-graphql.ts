@@ -6,16 +6,15 @@ import {HouseResolver} from "./resolvers/house";
 import {DeviceResolver} from "./resolvers/device";
 import {SensorResolver} from "./resolvers/sensor";
 import {SettingsResolver} from "./resolvers/settings";
-import {DeviceWatchdogResolver} from "./resolvers/device-watchdog";
 //@ts-ignore
 import { lookupService } from "./configure-services";
 import { GraphQLResolverContext, BackendIdentity } from "./types";
-import { FavoriteSensorResolver } from "./resolvers/favorite-sensor";
 import { DataQueryResolver } from "./resolvers/data";
 import { SmartmeResolver } from "./resolvers/smartme";
 import { StorageService } from "./services/storage-service";
 import { UsersResolver } from "./resolvers/user";
 import { Logger } from "./logger";
+import { AlertResolver } from "./resolvers/alert";
 
 const logger = new Logger("configure-express-graphql");
 const path = process.env.GRAPHQL_PATH || "/graphql";
@@ -35,11 +34,10 @@ export default  async (app : Application) => {
             DeviceResolver, 
             SensorResolver, 
             SettingsResolver, 
-            DeviceWatchdogResolver,
-            FavoriteSensorResolver,
             DataQueryResolver,
             SmartmeResolver,
-            UsersResolver],
+            UsersResolver,
+            AlertResolver],
             "dateScalarMode": "isoDate"
     })
 

@@ -1,10 +1,12 @@
-const moment = require("moment-timezone");
-const {TIMEZONE} = require("./constants");
+import * as moment from "moment";
+import "moment-timezone";
+import constants from "./constants";
 
-const DATETIME_DATETIME_SHORT = "D/M HH:mm";
+export const TIMEZONE = constants.TIMEZONE;
+export const DATETIME_DATETIME_SHORT = "D/M HH:mm";
 const DATETIME_FORMAT = "D-M-YYYY [kl.] k:mm";
 
-const formatWithFormat = (date, format, defaultValue) => {
+export const formatWithFormat = (date, format, defaultValue) => {
     let use_date;
     if (!date && defaultValue) {
         return defaultValue;
@@ -19,15 +21,14 @@ const formatWithFormat = (date, format, defaultValue) => {
     } else {
         throw Error('Unknown date argument type')
     }
-    
-    return use_date.tz(TIMEZONE).format(format || "DD-MM-YYYY kk:mm");
+    return use_date.tz(constants.TIMEZONE).format(format || "DD-MM-YYYY kk:mm");
 }
 
-const formatDMYTime = (date, defaultValue) => {
+export const formatDMYTime = (date, defaultValue) => {
     return formatWithFormat(date, DATETIME_FORMAT, defaultValue);
 }
 
-const timeDifference = (date, options = {}) => {
+export const timeDifference = (date, options = {}) => {
     if (!date) return undefined;
     let use_date = typeof date === "string" ? moment.utc(date) : moment(date);
     const moment_diff = moment.duration(moment().diff(use_date));
@@ -52,30 +53,20 @@ const timeDifference = (date, options = {}) => {
 
 }
 
-module.exports = {
-    TIMEZONE, DATETIME_DATETIME_SHORT, 
-
-    formatWithFormat,
-
-    formatDMYTime,
+export const timeDifferenceAsString = (date, options = {}) => {
+    const diff = timeDifference(date, options);
+    if (undefined === diff) return options.defaultValue || "N/A";
     
-    timeDifference,
-
-    "timeDifferenceAsString": (date, options = {}) => {
-        const diff = timeDifference(date, options);
-        if (undefined === diff) return options.defaultValue || "N/A";
-        
-        if (options.hasOwnProperty("maxDiff") && diff > options.maxDiff) {
-            return formatDMYTime(date, options.format);
-        }
-        if (options.hasOwnProperty("scale")) {
-            switch (options.scale) {
-                case "seconds": 
-                    return `${diff} sek.`;
-                case "hours":
-                    return `${diff} time(r)`;
-            }
-        }
-        return `${diff} min(s).`;
+    if (options.hasOwnProperty("maxDiff") && diff > options.maxDiff) {
+        return formatDMYTime(date, options.format);
     }
+    if (options.hasOwnProperty("scale")) {
+        switch (options.scale) {
+            case "seconds": 
+                return `${diff} sek.`;
+            case "hours":
+                return `${diff} time(r)`;
+        }
+    }
+    return `${diff} min(s).`;
 }

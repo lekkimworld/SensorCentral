@@ -1,35 +1,20 @@
-import { Resolver, Query, ObjectType, Field, ID, Arg, InputType, Mutation, Ctx, MiddlewareFn, UseMiddleware, registerEnumType } from "type-graphql";
+import { IsEnum, Length } from "class-validator";
+import { Arg, Ctx, Field, FieldResolver, ID, InputType, Mutation, ObjectType, Query, registerEnumType, Resolver, Root } from "type-graphql";
+import * as alert_types from "../services/alert/alert-types";
+import { SensorQueryData } from "../services/storage-service";
 import * as types from "../types";
+import { Alert } from "./alert";
 import { Device } from "./device";
-import { Length, IsEnum } from "class-validator";
-import { SensorQueryData, StorageService } from "../services/storage-service";
 
 registerEnumType(types.SensorType, {
     "name": "SensorType",
     "description": "Types of sensors"
 })
 
-const FavoriteFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context }, next) => {
-    const v = await next();
-    if (info.fieldName === "favorite") {
-        const sensors = await context.storage.getFavoriteSensors(context.user);
-        const filtered = sensors.filter((s : types.Sensor) => s.id === root.id);
-        return filtered.length !== 0;
-    } else {
-        return v;
-    }
-};
-
-const LastReadingFetchOnDemand: MiddlewareFn<any> = async ({ root, info, context }, next) => {
-    const v = await next();
-    if (info.fieldName === "last_reading") {
-        const storage = context.storage as StorageService;
-        const samples = await storage.getLastNSamplesForSensor(context.user, root.id, 1);
-        return !samples || samples.length === 0 ? undefined : new SensorSample(samples[0]);
-    } else {
-        return v;
-    }
-};
+registerEnumType(types.NullableBoolean, {
+    name: "NullableBoolean",
+    description: "Boolean that may be null",
+});
 
 @ObjectType()
 class SensorSample {
@@ -46,50 +31,51 @@ class SensorSample {
 }
 
 @ObjectType()
-export class Sensor implements types.Sensor {
-    constructor(s : types.Sensor) {
+export class Sensor {
+    storageSensor: types.Sensor;
+    deviceId: string;
+    constructor(s: types.Sensor) {
+        this.storageSensor = s;
+        this.deviceId = s.device?.id || s.deviceId;
+
         this.id = s.id;
         this.name = s.name;
         this.label = s.label;
         this.type = s.type;
         this.icon = s.icon;
-        this.deviceId = s.deviceId;
-        this.device = s.device;
         this.scaleFactor = s.scaleFactor;
     }
 
     @Field(() => ID)
-    id : string;
+    id: string;
 
     @Field()
-    name : string;
+    name: string;
+
+    @Field({ nullable: true })
+    label?: string;
 
     @Field()
-    label : string;
-
-    @Field()
-    icon : string;
+    icon: string;
 
     @Field(() => types.SensorType)
     @IsEnum(types.SensorType)
-    type : types.SensorType | undefined;
-
-    @Field(() => ID)
-    deviceId : string;
+    type: types.SensorType | undefined;
 
     @Field()
-    scaleFactor : number;
+    scaleFactor: number;
 
     @Field(() => Device)
-    device : types.Device | undefined;
+    device: types.Device;
 
     @Field()
-    @UseMiddleware(FavoriteFetchOnDemand)
-    favorite : Boolean;
+    favorite: Boolean;
 
-    @Field({nullable: true})
-    @UseMiddleware(LastReadingFetchOnDemand)
-    last_reading : SensorSample;
+    @Field({ nullable: true })
+    last_reading: SensorSample;
+
+    @Field(() => [Alert])
+    alerts: alert_types.Alert[];
 }
 
 @InputType()
@@ -101,8 +87,8 @@ export class DeleteSensorType {
 
 @InputType()
 export class UpdateSensorType extends DeleteSensorType {
-    @Field()
-    @Length(2, 128)
+    @Field({nullable: true})
+    @Length(0, 128)
     label : string;
 
     @Field()
@@ -143,64 +129,31 @@ class SensorsQuery {
 
     @Field(() => [String], {nullable: true})
     sensorIds : string[]
+
+    @Field(() => types.NullableBoolean, {nullable: true})
+    @IsEnum(types.NullableBoolean)
+    favorite: types.NullableBoolean
 }
 
-@Resolver()
+@InputType()
+export class FavoriteSensorsInput {
+    @Field()
+    @IsEnum(types.SensorType)
+    type: types.SensorType;
+}
+
+@Resolver((_of) => Sensor)
 export class SensorResolver {
     @Query(() => [Sensor], {})
-    async sensors(@Arg("data") data: SensorsQuery, @Ctx() ctx: types.GraphQLResolverContext) {
+    async sensors(@Arg("data", {nullable: true, defaultValue: {}}) data: SensorsQuery, @Ctx() ctx: types.GraphQLResolverContext) {
         let sensors = await ctx.storage.getSensors(ctx.user, {
             sensorIds: data.sensorIds,
             deviceId: data.deviceId,
             type: data.type,
             houseId: data.houseId,
+            favorite: data.favorite,
         } as SensorQueryData);
-        return sensors;
-    }
-
-    @Query(() => [Sensor], {})
-    async sensorsForDevice(@Arg("deviceId") deviceId: string, @Ctx() ctx: types.GraphQLResolverContext) {
-        // get device
-        const device = await ctx.storage.getDevice(ctx.user, deviceId);
-
-        // get sensors
-        const sensors = await ctx.storage.getSensors(ctx.user, {
-            "deviceId": device.id
-        } as SensorQueryData);
-
-        /*
-        // see if this is a powermeter
-        if (device.id.match(/[a-z\d]{8}-[a-z\d]{4}-[a-z\d]{4}-[a-z\d]{4}-[a-z\d]{12}/)) {
-            // it is - add virtual sensors
-            new Array(3).fill(undefined).forEach((_v, idx) => {
-                sensors.push({
-                    device: device,
-                    deviceId: deviceId,
-                    id: `${deviceId}__voltagel${idx + 1}`,
-                    name: `Voltage - phase ${idx + 1}`,
-                    label: `voltage_phase${idx + 1}`,
-                    type: types.SensorType.gauge,
-                    icon: "battery-4",
-                    scaleFactor: 1
-                } as types.Sensor);
-            });
-            new Array(3).fill(undefined).forEach((_v, idx) => {
-                sensors.push({
-                    device: device,
-                    deviceId: deviceId,
-                    id: `${deviceId}__currentl${idx + 1}`,
-                    name: `Current - phase ${idx + 1}`,
-                    label: `current_phase${idx + 1}`,
-                    type: types.SensorType.gauge,
-                    icon: "battery-4",
-                    scaleFactor: 1
-                } as types.Sensor);
-            });
-        }
-        */
-
-        // return
-        return sensors;
+        return sensors.map((s) => new Sensor(s));
     }
 
     @Query(() => Sensor, {})
@@ -227,16 +180,30 @@ export class SensorResolver {
         }
     }
 
-    @Query(() => Sensor, { nullable: true })
-    async querySensor(@Arg("label") label: string, @Ctx() ctx: types.GraphQLResolverContext) {
-        const sensors = await ctx.storage.getSensors(ctx.user, {
-            label,
-        } as SensorQueryData);
-        if (sensors && Array.isArray(sensors) && sensors.length) {
-            return sensors[0];
-        } else {
-            return undefined;
-        }
+    @FieldResolver()
+    async favorite(@Root() sensor: Sensor, @Ctx() ctx: types.GraphQLResolverContext): Promise<boolean> {
+        const sensors = await ctx.storage.getFavoriteSensors(ctx.user);
+        const filtered = sensors.filter((s: types.Sensor) => s.id === sensor.id);
+        return filtered.length !== 0;
+    }
+
+    @FieldResolver()
+    async last_reading(
+        @Root() sensor: Sensor,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ): Promise<SensorSample | undefined> {
+        const samples = await ctx.storage.getLastNSamplesForSensor(ctx.user, sensor.id, 1);
+        return !samples || samples.length === 0 ? undefined : new SensorSample(samples[0]);
+    }
+
+    @FieldResolver()
+    async alerts(@Arg("active", () => types.NullableBoolean, {nullable: true}) active: types.NullableBoolean, @Root() sensor: Sensor, @Ctx() ctx: types.GraphQLResolverContext): Promise<Alert[]> {
+        return (await ctx.storage.getAlerts(ctx.user, sensor.storageSensor, active)).map((a) => new Alert(a));
+    }
+
+    @FieldResolver()
+    async device(@Root() sensor: Sensor, @Ctx() ctx: types.GraphQLResolverContext): Promise<Device> {
+        return new Device(await ctx.storage.getDevice(ctx.user, sensor.deviceId));
     }
 
     @Mutation(() => Sensor)
@@ -254,6 +221,18 @@ export class SensorResolver {
     @Mutation(() => Boolean)
     async deleteSensor(@Arg("data") data: DeleteSensorType, @Ctx() ctx: types.GraphQLResolverContext) {
         await ctx.storage.deleteSensor(ctx.user, data);
+        return true;
+    }
+
+    @Mutation(() => Boolean)
+    async addFavoriteSensor(@Arg("id") id: string, @Ctx() ctx: types.GraphQLResolverContext) {
+        await ctx.storage.addFavoriteSensor(ctx.user, id);
+        return true;
+    }
+
+    @Mutation(() => Boolean)
+    async removeFavoriteSensor(@Arg("id") id: string, @Ctx() ctx: types.GraphQLResolverContext) {
+        await ctx.storage.removeFavoriteSensor(ctx.user, id);
         return true;
     }
 }

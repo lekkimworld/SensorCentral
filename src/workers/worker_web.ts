@@ -16,13 +16,13 @@ import { RedisService } from  "../services/redis-service";
 import { QueueListenerService } from  "../services/queuelistener-service";
 import { StorageService } from '../services/storage-service';
 import { DataQueryService } from "../services/dataquery-service";
-import { WatchdogService } from  "../services/watchdog-service";
 import { EmailService } from '../services/email-service';
 import constants from '../constants';
 import { IdentityService } from '../services/identity-service';
 import { PowermeterService } from "../services/powermeter-service";
 import { CronService } from "../services/cron-service";
 import cronjobPowerdata  from "./cronjob_powerdata";
+import { AlertService } from "../services/alert/alert-service";
 
 // number of workers we should create
 const logger = new Logger("worker_web");
@@ -51,11 +51,11 @@ services.registerService(new QueueListenerService());
 services.registerService(new StorageService());
 services.registerService(new DatabaseService());
 services.registerService(new NotifyService());
-services.registerService(new WatchdogService());
 services.registerService(new EmailService());
 services.registerService(new PowermeterService());
 services.registerService(new CronService());
 services.registerService(new DataQueryService());
+services.registerService(new AlertService());
 
 // setup termination listener
 terminateListener(() => {

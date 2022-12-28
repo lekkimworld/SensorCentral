@@ -69,7 +69,7 @@ export class DatabaseService extends BaseService {
             this._pool = await dbpool;
 
             // see if database is initialized
-            if (objectHasOwnProperty_Trueish(process.env, "ALLOW_DB_INIT")) {
+            if (objectHasOwnProperty_Trueish(process.env, "DATABASE_ALLOW_SCHEMA_UPGRADE")) {
                 logger.info("Checking if database is initialized");
                 await initdb(false);
             }

@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+      "module": "es2015",
+      "lib": ["es2016", "dom"],
+      "allowSyntheticDefaultImports": true,
+      "resolveJsonModule": true,
+      "noImplicitAny": false,
+      "noUnusedLocals": false,
+      "noUnusedParameters": false,
+      "types": ["jquery"]
+  },
+  "exclude": ["../node_modules"],
+  "include": ["./ts/**/*.ts", "./js/**/*.js"]
+}

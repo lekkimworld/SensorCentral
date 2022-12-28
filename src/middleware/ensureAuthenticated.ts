@@ -30,7 +30,7 @@ export default async (req : Request, res : Response, next : NextFunction) => {
         log.trace("Found session and browserResponse in session - getting identity");
         const resp = session.browserResponse as BrowserLoginResponse;
         const user = await identity.getLoginUserIdentity(resp.userinfo.id, resp.userinfo.houseId);
-        log.debug(`Found identity from session: ${backendIdentityToString(user)}`)
+        log.trace(`Found identity from session: ${backendIdentityToString(user)}`)
         res.locals.user = user;
         
         // continue
@@ -45,14 +45,14 @@ export default async (req : Request, res : Response, next : NextFunction) => {
         if (authheader.indexOf("Bearer ") === 0) {
             // get token
             token = req.headers.authorization.substring(7);
-            log.debug(`Found token as Bearer token <${token.substring(0,7)}...>`);
+            log.trace(`Found token as Bearer token <${token.substring(0,7)}...>`);
         } else if (authheader.indexOf("Basic ") === 0) {
             // get token
             try {
                 const basicauth = Buffer.from(req.headers.authorization.substring(6), "base64").toString();
                 const parts = basicauth.split(":");
                 token = parts[0];
-                log.debug(`Found token from Basic Auth <${token.substring(0,7)}...>`);
+                log.trace(`Found token from Basic Auth <${token.substring(0,7)}...>`);
 
             } catch (err) {
                 return next(new HttpException(401, 'Unable to extract JWT from Basic auth header'));
@@ -65,7 +65,7 @@ export default async (req : Request, res : Response, next : NextFunction) => {
         try {
             // verify token
             const ident = await identity.verifyJWT(token);
-            log.debug(`Verified identity from token: ${backendIdentityToString(ident)}`);
+            log.trace(`Verified identity from token: ${backendIdentityToString(ident)}`);
             
             // verify scope contains api
             if (!ident.scopes.includes(constants.JWT.SCOPE_API)) {

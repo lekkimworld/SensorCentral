@@ -2,6 +2,16 @@
     --widget-skeleton-min-height: 100px;
 }
 
+.active {
+    color: black;
+}
+.inactive {
+    color: #EFEFEF;
+}
+.inactive:hover {
+    color: black;
+}
+
 .sensorReading {
     font-family: Arial, Helvetica, sans-serif;
     height: auto;
@@ -203,6 +213,16 @@ input:checked+.sensorcentral-slider:before {
     width: 150px;
     background: linear-gradient(to right, transparent 0%, #E8E8E8 50%, transparent 100%);
     animation: load 1s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+}
+
+.hidden {
+    visibility: hidden;
+    display: none;
+}
+
+.shown {
+    visibility: visible;
+    display: block;
 }
 
 @keyframes load {

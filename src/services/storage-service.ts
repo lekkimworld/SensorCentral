@@ -1,32 +1,34 @@
+import { QueryResult } from "pg";
+import { v1 as uuid } from "uuid";
 import constants from "../constants";
-import {BaseService, Device, Sensor, 
-    WatchdogNotification, 
-    SensorSample, NotifyUsing, PushoverSettings, DeviceWatchdogNotifier, 
-    NotificationSettings, BackendIdentity, DeviceWatchdog, SensorType, UserPrincipal, PowerPhase, PowerType, SmartmeSubscription, DeviceData } from "../types";
+import { Logger } from "../logger";
+import { CreateDeviceInput, DeleteDeviceInput, UpdateDeviceInput } from "../resolvers/device";
+import { CreateHouseInput, DeleteHouseInput, FavoriteHouseInput, House, UpdateHouseInput } from "../resolvers/house";
+import { CreateSensorType, DeleteSensorType, FavoriteSensorsInput, UpdateSensorType } from "../resolvers/sensor";
+import { UpdatePushoverSettingsInput } from "../resolvers/settings";
+import {
+    BackendIdentity, BaseService, Device, DeviceData, HouseUser, NotificationSettings, NullableBoolean, PowerPhase, PowerType, PushoverSettings, Sensor,
+    SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, UserPrincipal
+} from "../types";
+import { DatabaseService } from "./database-service";
 import { EventService } from "./event-service";
 import { RedisService } from "./redis-service";
-import { Logger } from "../logger";
-import { DatabaseService } from "./database-service";
 import moment = require("moment");
-import {v1 as uuid} from "uuid";
-import { CreateSensorType, UpdateSensorType, DeleteSensorType } from "../resolvers/sensor";
-import { DeleteDeviceInput, UpdateDeviceInput, CreateDeviceInput } from "../resolvers/device";
-import { CreateHouseInput, UpdateHouseInput, DeleteHouseInput, FavoriteHouseInput, House } from "../resolvers/house";
-import { WatchdogNotificationInput } from "../resolvers/device-watchdog";
-import { QueryResult } from "pg";
-import { UpdateSettingsInput } from "../resolvers/settings";
 //@ts-ignore
-import aes256 from "aes256";
-//@ts-ignore
-import {lookupService} from "../configure-services";
 import { Smartme } from "smartme-protobuf-parser";
+import { SmartmeDeviceWithDataType } from "../resolvers/smartme";
+//@ts-ignore
+import { lookupService } from "../configure-services";
+import { ISO8601_DATETIME_FORMAT } from "../constants";
+import { Alert, DeviceTimeoutAlert, SensorTimeoutAlert, SensorValueAlert, SensorValueEventData, stringToAlertValueTest, TimeoutAlertEventData } from "./alert/alert-types";
 import { IdentityService } from "./identity-service";
-import { FavoriteSensorsInput } from "src/resolvers/favorite-sensor";
-import { SmartmeDeviceWithDataType } from "src/resolvers/smartme";
-import {ISO8601_DATETIME_FORMAT} from "../constants";
+import { CreateAlertInput, DeleteAlertInput } from "../resolvers/alert";
 
 const DEVICE_DATA_KEY_PREFIX = "device_data:";
-
+const HOUSE_COLUMNS = "h.id houseid, h.name housename";
+const DEVICE_COLUMNS = "d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping";
+const SENSOR_COLUMNS =
+    "s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor";
 const logger = new Logger("storage-service");
 
 /**
@@ -68,6 +70,21 @@ const convertRowsToSensors = (result : QueryResult) => {
         } as Sensor;
     });
 }
+const convertRowsToDevices = (result : QueryResult) => {
+    return result.rows.map((row) => {
+        return {
+            id: row.deviceid,
+            name: row.devicename,
+            lastPing: row.last_ping,
+            lastRestart: row.last_restart,
+            active: row.deviceactive,
+            house: {
+                id: row.houseid,
+                name: row.housename,
+            },
+        } as Device;
+    });
+}
 
 export interface SensorQueryData {
     deviceId? : string;
@@ -75,6 +92,7 @@ export interface SensorQueryData {
     type? : SensorType;
     label? : string;
     houseId? : string;
+    favorite?: NullableBoolean;
 }
 
 const POWERDATA_REDIS_KEY = "powerdata:";
@@ -82,9 +100,9 @@ export const LAST_N_SAMPLES = 100;
 
 export class StorageService extends BaseService {
     public static NAME = "storage";
-    dbService?: DatabaseService;
-    eventService?: EventService;
-    redisService?: RedisService;
+    dbService!: DatabaseService;
+    eventService!: EventService;
+    redisService!: RedisService;
 
     constructor() {
         super(StorageService.NAME);
@@ -217,7 +235,7 @@ export class StorageService extends BaseService {
     async setDeviceData(deviceId: string, data: any) {
         const obj = {
             dt: moment.utc().format(ISO8601_DATETIME_FORMAT),
-            data
+            data,
         };
         this.redisService!.set(`${DEVICE_DATA_KEY_PREFIX}${deviceId}`, JSON.stringify(obj));
     }
@@ -466,15 +484,15 @@ export class StorageService extends BaseService {
      * @param user
      * @param houseId
      */
-    async getHouseUsers(user: BackendIdentity, houseId: string): Promise<UserPrincipal[]> {
+    async getHouseUsers(user: BackendIdentity, houseId: string): Promise<HouseUser[]> {
         // ensure access to house
         const house = await this.getHouse(user, houseId);
         const result = await this.dbService?.query(
-            "select id, fn, ln, email from login_user l, user_house_access u where l.id=u.userId and u.houseId=$1",
+            "select id, fn, ln, email, u.owner owner from login_user l, user_house_access u where l.id=u.userId and u.houseId=$1",
             house.id
         );
         if (!result || result.rowCount === 0) return [];
-        return result?.rows.map((r) => new UserPrincipal(r.id, r.fn, r.ln, r.email));
+        return result?.rows.map((r) => new HouseUser(r.id, r.fn, r.ln, r.email, r.owner));
     }
 
     /**
@@ -638,30 +656,17 @@ export class StorageService extends BaseService {
         let result;
         if (this.isAllDataAccessUser(user)) {
             result = await this.dbService?.query(
-                "select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d join house h on d.houseid=h.id order by d.name asc"
+                `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d join house h on d.houseid=h.id order by d.name asc`
             );
         } else {
             result = await this.dbService?.query(
-                "select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d, house h, user_house_access u where d.houseid=h.id and h.id=u.houseid and u.userId=$1 order by d.name asc",
+                `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d, house h, user_house_access u where d.houseid=h.id and h.id=u.houseid and u.userId=$1 order by d.name asc`,
                 this.getUserIdFromUser(user)
             );
         }
 
-        // return house
-        const devices = result!.rows.map((row) => {
-            return {
-                id: row.deviceid,
-                name: row.devicename,
-                lastPing: row.last_ping,
-                lastRestart: row.last_restart,
-                lastWatchdogReset: row.last_watchdog_reset,
-                active: row.deviceactive,
-                house: {
-                    id: row.houseid,
-                    name: row.housename,
-                },
-            } as Device;
-        });
+        // return devices
+        const devices = convertRowsToDevices(result);
         return devices;
     }
 
@@ -674,35 +679,25 @@ export class StorageService extends BaseService {
      */
     async getDevices(user: BackendIdentity, houseId: string): Promise<Device[]> {
         // lookup house to ensure it exists and user have access
-        const house = await this.getHouse(user, houseId);
+        await this.getHouse(user, houseId);
 
         // query to devices
         let result;
         if (this.isAllDataAccessUser(user)) {
             result = await this.dbService?.query(
-                "select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where h.id=$1 order by d.name asc",
+                `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d left outer join house h on d.houseid=h.id where h.id=$1 order by d.name asc`,
                 houseId
             );
         } else {
             result = await this.dbService?.query(
-                "select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d, house h, user_house_access u where d.houseid=h.id and h.id=u.houseId and h.id=$1 and u.userId=$2 order by d.name asc",
+                `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d, house h, user_house_access u where d.houseid=h.id and h.id=u.houseId and h.id=$1 and u.userId=$2 order by d.name asc`,
                 houseId,
                 this.getUserIdFromUser(user)
             );
         }
 
         // return house
-        const devices = result!.rows.map((row) => {
-            return {
-                id: row.deviceid,
-                name: row.devicename,
-                lastPing: row.last_ping,
-                lastRestart: row.last_restart,
-                lastWatchdogReset: row.last_watchdog_reset,
-                active: row.deviceactive,
-                house: house,
-            } as Device;
-        });
+        const devices = convertRowsToDevices(result);
         return devices;
     }
 
@@ -728,26 +723,14 @@ export class StorageService extends BaseService {
 
         // get device
         result = await this.dbService!.query(
-            "select d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.last_watchdog_reset, h.id houseid, h.name housename from device d left outer join house h on d.houseid=h.id where d.id=$1",
+            `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d left outer join house h on d.houseid=h.id where d.id=$1`,
             deviceId
         );
         if (!result || result.rowCount !== 1) {
             throw Error(`Unable to execute query or unable to find device with ID <${deviceId}>`);
         }
 
-        const row = result.rows[0];
-        return {
-            id: row.deviceid,
-            name: row.devicename,
-            active: row.deviceactive,
-            lastPing: row.last_ping,
-            lastRestart: row.last_restart,
-            lastWatchdogReset: row.last_watchdog_reset,
-            house: {
-                id: row.houseid,
-                name: row.housename,
-            } as House,
-        } as Device;
+        return convertRowsToDevices(result)[0];
     }
 
     /**
@@ -883,11 +866,11 @@ export class StorageService extends BaseService {
         let result;
         if (this.isAllDataAccessUser(user)) {
             result = await this.dbService!.query(
-                "select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, house h where s.deviceId=d.id and d.houseId=h.id order by s.name asc"
+                `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, house h where s.deviceId=d.id and d.houseId=h.id order by s.name asc`
             );
         } else {
             result = await this.dbService!.query(
-                "select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1) h where s.deviceId=d.id and d.houseId=h.id order by s.name asc",
+                `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1) h where s.deviceId=d.id and d.houseId=h.id order by s.name asc`,
                 this.getUserIdFromUser(user)
             );
         }
@@ -895,6 +878,11 @@ export class StorageService extends BaseService {
         // convert and filter
         let sensors = convertRowsToSensors(result);
         if (queryData) {
+            if (queryData.favorite) {
+                const favSensors = await (await this.getFavoriteSensors(user, queryData.type ? {"type": queryData.type} : undefined)).map(s => s.id);
+                sensors = sensors.filter(s => favSensors.includes(s.id));
+            }
+
             if (queryData.houseId) sensors = sensors.filter((s) => s.device?.house.id === queryData.houseId);
             if (queryData.deviceId) sensors = sensors.filter((s) => s.device?.id === queryData.deviceId);
             if (queryData.type) sensors = sensors.filter((s) => s.type === queryData.type);
@@ -921,12 +909,12 @@ export class StorageService extends BaseService {
         let result;
         if (this.isAllDataAccessUser(user)) {
             result = await this.dbService!.query(
-                "select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, house h where s.deviceId=d.id and d.houseId=h.id and s.id=$1 order by s.name asc",
+                `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, house h where s.deviceId=d.id and d.houseId=h.id and s.id=$1 order by s.name asc`,
                 sensorId
             );
         } else {
             result = await this.dbService!.query(
-                "select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1) h where s.deviceId=d.id and d.houseId=h.id and s.id=$2 order by s.name asc",
+                `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1) h where s.deviceId=d.id and d.houseId=h.id and s.id=$2 order by s.name asc`,
                 this.getUserIdFromUser(user),
                 use_sensorId
             );
@@ -969,7 +957,7 @@ export class StorageService extends BaseService {
         // validate
         const use_id = id.trim();
         const use_name = name.trim();
-        const use_label = label.trim();
+        const use_label = label ? label.trim() : undefined;
 
         // ensure sensor id doesn't contain __
         if (use_id.indexOf("__") >= 0) {
@@ -1026,7 +1014,7 @@ export class StorageService extends BaseService {
         // validate
         const use_id = id.trim();
         const use_name = name.trim();
-        const use_label = label.trim();
+        const use_label = label ? label.trim() : undefined;
 
         // get sensor (also validates access)
         const sensor = await this.getSensor(user, use_id);
@@ -1049,6 +1037,7 @@ export class StorageService extends BaseService {
         this.eventService?.publishTopic(constants.TOPICS.CONTROL, "sensor.update", {
             new: {
                 deviceId: sensor.deviceId,
+                id: use_id,
                 name: use_name,
                 label: use_label,
                 type: type,
@@ -1109,7 +1098,7 @@ export class StorageService extends BaseService {
      */
     async getFavoriteSensors(user: BackendIdentity, data?: FavoriteSensorsInput) {
         const result = await this.dbService!.query(
-            "select s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, d.id deviceid, d.name devicename, h.id houseid, h.name housename from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1 and u.houseId=$2) h where s.deviceid=d.id and d.houseid=h.id and s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc",
+            `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1 and u.houseId=$2) h where s.deviceid=d.id and d.houseid=h.id and s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc`,
             this.getUserIdFromUser(user),
             user.identity.houseId
         );
@@ -1151,10 +1140,191 @@ export class StorageService extends BaseService {
     }
 
     /**
+     * Return user defined alerts from the database.
+     * @param _user
+     * @returns
+     */
+    async getAlerts(user: BackendIdentity, target: Sensor|Device|undefined, active: NullableBoolean | undefined) : Promise<Alert[]> {
+        // get all alerts
+        let result;
+        if (this.isAllDataAccessUser(user)) {
+            if (target && "device" in target) {
+                result = await this.dbService.query(
+                    `select * from alert where not userid is null and sensorid=$1`,
+                    target.id
+                );
+            } else if (target) {
+                result = await this.dbService.query(
+                    `select * from alert where not userid is null and deviceid=$1`,
+                    target.id
+                );
+            } else {
+                result = await this.dbService.query(
+                    `select * from alert where not userid is null`
+                );
+            }
+        } else {
+            if (target && "device" in target) {
+                result = await this.dbService.query(
+                    `select * from alert where userid=$1 and sensorid=$2`,
+                    this.getUserIdFromUser(user),
+                    target.id
+                );    
+            } else if (target) {
+                result = await this.dbService.query(
+                    `select * from alert where userid=$1 and deviceid=$2`,
+                    this.getUserIdFromUser(user),
+                    target.id
+                );
+            } else {
+                result = await this.dbService.query(
+                    `select * from alert where userid=$1`,
+                    this.getUserIdFromUser(user)
+                );
+            }
+        }
+
+        // get ids and get domain objects
+        const deviceMap = convertRowsToDevices(
+            await this.dbService.query(
+                `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d, house h where h.id=d.houseid and d.id in (select distinct deviceid from alert where not deviceid is null)`
+            )
+        ).reduce((prev: Map<string, Device>, d: Device) => {
+            prev.set(d.id, d);
+            return prev;
+        }, new Map<string, Device>());
+        const sensorMap = convertRowsToSensors(
+            await this.dbService!.query(
+                `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, house h where s.deviceid=d.id and d.houseid=h.id and s.id in (select distinct sensorid from alert where not sensorid is null) order by s.name asc`
+            )
+        ).reduce((prev: Map<string, Sensor>, s: Sensor) => {
+            prev.set(s.id, s);
+            return prev;
+        }, new Map<string, Sensor>());
+
+        return result.rows
+            .filter((r) => ["onDeviceTimeout", "onSensorTimeout", "onSensorValue"].includes(r.event_type))
+            .map((r): Alert => {
+                let a!: Alert;
+                if (r.event_type === "onDeviceTimeout") {
+                    a = new DeviceTimeoutAlert(
+                        r.id,
+                        r.userid,
+                        deviceMap.get(r.deviceid)!,
+                        r.event_data as TimeoutAlertEventData
+                    );
+                } else if (r.event_type === "onSensorTimeout") {
+                    a = new SensorTimeoutAlert(
+                        r.id,
+                        r.userid,
+                        sensorMap.get(r.sensorid)!,
+                        new TimeoutAlertEventData(r.event_data.timeout)
+                    );
+                } else if (r.event_type === "onSensorValue") {
+                    const data = new SensorValueEventData();
+                    (data.test = stringToAlertValueTest(r.event_data.test)), (data.value = r.event_data.value);
+                    a = new SensorValueAlert(r.id, r.userid, sensorMap.get(r.sensorid)!, data);
+                }
+                if (a) {
+                    a.notifyType = stringToNotifyUsing(r.notify_type);
+                    a.active = r.active;
+                    a.description = r.description || "";
+                }
+                return a;
+            }).filter(a => {
+                if (!active) return true;
+                if (NullableBoolean.yes === active) return a.active;
+                return !a.active;
+            });
+    }
+
+    /**
+     * Get a specific alert for the user.
+     * 
+     * @param user 
+     * @param id 
+     * @returns 
+     */
+    async getAlert(user: BackendIdentity, id: string) : Promise<Alert> {
+        const alerts = (await this.getAlerts(user, undefined, undefined)).filter(a => a.id === id);
+        if (!alerts || alerts.length !== 1) throw new Error(`Unable to find alert with id <${id}>`);
+        return alerts[0];
+    }
+
+    async createAlert(user: BackendIdentity, data: CreateAlertInput) : Promise<Alert> {
+        const userId = user.identity.callerId === "*" ? user.identity.impersonationId : user.identity.callerId;
+        const id = uuid();
+        const sensorId = !data.targetIsDevice ? data.targetId : undefined;
+        const deviceId = data.targetIsDevice ? data.targetId : undefined;
+
+        try {
+            // insert in database
+            await this.dbService.query(`insert into alert (id, userid, sensorid, deviceid, description, event_type, event_data, notify_type, notify_data) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                id,
+                userId,
+                sensorId,
+                deviceId,
+                data.description,
+                data.eventType, 
+                JSON.parse(data.eventData),
+                data.notifyType,
+                data.notifyData ? JSON.parse(data.notifyData) : undefined
+            );
+
+            // publish event
+            this.eventService.publishTopic(constants.TOPICS.CONTROL, "alert.create", {
+                new: {
+                    id,
+                    targetId: data.targetId,
+                    targetIdIsDevice: data.targetIsDevice
+                },
+                user: user,
+            });
+
+            // return
+            return this.getAlert(user, id);
+
+        } catch (err) {
+            throw new Error(`Unable to create alert due to error: ${err.message}`);
+        }
+    }
+
+    async deleteAlert(user: BackendIdentity, data: DeleteAlertInput) : Promise<boolean> {
+        // ensure user has access to alert
+        const alert = await this.getAlert(user, data.id);
+        
+        try {
+            // delete from database
+            const userId = user.identity.callerId === "*" ? user.identity.impersonationId : user.identity.callerId;
+            await this.dbService.query(
+                `delete from alert where id=$1 and userid=$2`,
+                data.id,
+                userId
+            );
+
+            // publish event
+            this.eventService.publishTopic(constants.TOPICS.CONTROL, "alert.delete", {
+                old: {
+                    id: data.id,
+                    targetId: alert.target.id,
+                    targetIdIsDevice: !("device" in alert.target),
+                },
+                user: user,
+            });
+
+            // return
+            return true;
+
+        } catch (err) {
+            throw new Error(`Unable to delete alert due to error: ${err.message}`);
+        }
+    }
+
+    /**
      * Given a device ID returns the notification settings for that device.
      *
      * @param deviceId
-     */
+     *
     async getDeviceWatchdogNotifiers(deviceId: string) {
         const result = await this.dbService!.query(
             "select id, email, fn, ln,default_notify_using, pushover_userkey, pushover_apptoken, dw.notify, dw.muted_until from login_user l, device_watchdog dw where l.id=dw.userId and dw.deviceId=$1",
@@ -1197,13 +1367,14 @@ export class StorageService extends BaseService {
             return notifier;
         });
     }
+    */
 
     /**
      * Returns the device watchdog configuration for the supplied user and device
      * or default values if not configured.
      * @param user
      * @param deviceId
-     */
+     *
     async getDeviceWatchdog(user: BackendIdentity, deviceId: string) {
         // get device to ensure access
         await this.getDevice(user, deviceId);
@@ -1227,7 +1398,8 @@ export class StorageService extends BaseService {
             } as DeviceWatchdog;
         }
     }
-
+    */
+    /*
     async updateDeviceWatchdog(user: BackendIdentity, data: WatchdogNotificationInput) {
         // get device to ensure user have access
         await this.getDevice(user, data.id);
@@ -1269,29 +1441,29 @@ export class StorageService extends BaseService {
             );
         }
     }
+    */
 
     /**
-     * Returns the settings to the supplied user.
+     * Returns the notification settings for the supplied user.
      *
      * @param user
      */
-    async settings(user: BackendIdentity): Promise<NotificationSettings> {
-        const result = await this.dbService!.query(
-            "select default_notify_using, pushover_userkey, pushover_apptoken from login_user where id=$1",
-            this.getUserIdFromUser(user)
+    async getNotificationSettingsForUser(callingUser: BackendIdentity, userId?: string): Promise<NotificationSettings> {
+        let useUserId = userId;
+        if (this.isAllDataAccessUser(callingUser)) {
+            if (!userId) throw new Error("Must supply a userId when all-access user");
+        } else {
+            useUserId = callingUser.identity.callerId;
+        }
+        const result = await this.dbService.query(
+            "select u.email email, p.userkey pushover_userkey, p.apptoken pushover_apptoken from login_user u left outer join  pushover_info p on p.userid=u.id where u.id=$1;",
+            useUserId
         );
-        if (!result || !result.rowCount) throw Error(`Unable to find login with ID <${this.getUserIdFromUser(user)}>`);
+        if (!result || !result.rowCount) throw Error(`Unable to find login with ID <${userId}>`);
+        const user = await this.getUser(callingUser, useUserId!);
 
+        // build result
         const r = result.rows[0];
-        const notifyUsing = (function (n: string) {
-            if (!n) return undefined;
-            switch (n) {
-                case "pushover":
-                    return NotifyUsing.pushover;
-                case "email":
-                    return NotifyUsing.email;
-            }
-        })(r.default_notify_using);
         const pushover = (function (userkey: string, apptoken: string) {
             if (userkey && apptoken) {
                 return {
@@ -1301,28 +1473,25 @@ export class StorageService extends BaseService {
             }
         })(r.pushover_userkey, r.pushover_apptoken);
 
+        // return
         return {
-            notifyUsing,
+            user,
             pushover,
         } as NotificationSettings;
     }
 
     /**
      * Updates the settings for the user.
+     *
      * @param user
      * @param data
      */
-    async updateSettings(user: BackendIdentity, data: UpdateSettingsInput): Promise<void> {
-        if (data.notify_using === NotifyUsing.pushover && (!data.pushover_apptoken || !data.pushover_userkey)) {
-            // must supply pushover tokens if using pushover
-            throw Error("Must supply pushover tokens if notifying via pushover");
-        }
+    async updatePushoverSettings(user: BackendIdentity, data: UpdatePushoverSettingsInput): Promise<void> {
         await this.dbService!.query(
-            "update login_user set default_notify_using=$1, pushover_apptoken=$2, pushover_userkey=$3 where id=$4",
-            data.notify_using === NotifyUsing.none ? undefined : data.notify_using,
-            data.pushover_apptoken,
+            "insert into pushover_info (userid, userkey, apptoken) values ($1, $2, $3) on conflict (userid) do update set userkey=$2, apptoken=$3",
+            this.getUserIdFromUser(user),
             data.pushover_userkey,
-            this.getUserIdFromUser(user)
+            data.pushover_apptoken
         );
     }
 
@@ -1411,13 +1580,6 @@ export class StorageService extends BaseService {
     ): Promise<void> {
         let str_sql;
         let persistValue = value;
-        if (sensor.type === SensorType.binary) {
-            if (value === 0) {
-                persistValue = 0;
-            } else {
-                persistValue = 1;
-            }
-        }
         let args = [sensor.id, persistValue, dt.toISOString()];
         if (from_dt) {
             args.push(from_dt.toISOString());

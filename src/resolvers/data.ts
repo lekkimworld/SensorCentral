@@ -6,7 +6,7 @@ import { ISO8601_DATETIME_FORMAT } from "../constants";
 import { CounterQueryAdjustBy, DataElement, DataQueryGroupBy, DataQueryService, GraphQLDataElement, GraphQLDataset, GroupedQueryDateFilterInput, GroupedQueryFormatInput, GroupedQueryGroupByInput, GroupedQueryOffsetFilterInput, PowerConsumptionQueryFilterInput, PowerConsumptionQueryFormatInput, PowerDataQueryFilterInput, PowerDataQueryFormatInput, PowerPriceQueryFilterInput, UngroupedQueryCountFilterInput, UngroupedQueryDateFilterInput, UngroupedQueryFormatInput, ungroupedQuery } from "../services/dataquery-service";
 //@ts-ignore
 import {lookupService} from "../configure-services";
-const nordpool = require("nordpool");
+import {Prices} from "nordpool";
 
 
 registerEnumType(DataQueryGroupBy, {
@@ -229,7 +229,8 @@ export class DataQueryResolver {
                 area: constants.DEFAULTS.NORDPOOL.AREA,
                 date: m.format("YYYY-MM-DD"),
             };
-            const results = await new nordpool.Prices().hourly(opts);
+            const results = await new Prices().hourly(opts);
+            if (!results) return ds;
 
             // map data
             ds.data = results.map((v: any) => {

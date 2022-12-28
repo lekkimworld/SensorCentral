@@ -7,7 +7,8 @@ import {BaseService, Device, Sensor, TopicSensorMessage, RedisSensorMessage,
     TopicDeviceMessage, TopicControlMessage, ControlMessageTypes, 
     IngestedSensorMessage, IngestedDeviceMessage, IngestedControlMessage, 
     RedisDeviceMessage, 
-    BackendIdentity} from "../types";
+    BackendIdentity,
+    SensorType} from "../types";
 import { ISubscriptionResult } from "../configure-queues-topics";
 import moment, {Moment} from "moment";
 import { IdentityService } from "./identity-service";
@@ -110,7 +111,7 @@ export class QueueListenerService extends BaseService {
         this.eventService!.subscribeTopic(constants.TOPICS.SENSOR, "#", (result: ISubscriptionResult) => {
             const data = result.data as TopicSensorMessage;
             logger.debug(
-                `Storage service received message on ${result.exchangeName} / ${result.routingKey} for sensor id <${data.sensorId}> value <${data.value}>`
+                `Received message on ${result.exchangeName} / ${result.routingKey} for sensor id <${data.sensorId}> value <${data.value}>`
             );
 
             // set sensor in redis
@@ -141,6 +142,7 @@ export class QueueListenerService extends BaseService {
         this.eventService!.subscribeQueue(constants.QUEUES.SENSOR, (result) => {
             // cast
             const msg = result.data as IngestedSensorMessage;
+            let persistValue = msg.value;
 
             // see if we know the sensor
             this.storage
@@ -157,7 +159,16 @@ export class QueueListenerService extends BaseService {
                     if (msg.duration) {
                         from_dt = moment(dt).subtract(msg.duration, "second");
                     }
-                    return this.storage!.persistSensorSample(sensor, msg.value, dt, from_dt).then(() => {
+
+                    // clamp value if binary sensor
+                    if (sensor.type === SensorType.binary) {
+                        if (msg.value === 0) {
+                            persistValue = 0;
+                        } else {
+                            persistValue = 1;
+                        }
+                    }
+                    return this.storage!.persistSensorSample(sensor, persistValue, dt, from_dt).then(() => {
                         // mark msg as consumed
                         result.callback();
 
@@ -180,14 +191,14 @@ export class QueueListenerService extends BaseService {
                     // create an augmented sensor reading and post to topic
                     const payload = {
                         deviceId: device.id,
-                        value: msg.value,
+                        value: persistValue,
                         sensorId: msg.id,
                     } as TopicSensorMessage;
 
                     // publish
                     this.eventService!.publishTopic(
                         constants.TOPICS.SENSOR,
-                        sensor ? "known" : "unknown",
+                        sensor ? `known.${msg.id}` : `unknown.${msg.id}`,
                         payload
                     ).then(() => {
                         logger.debug(`Posted augmented sensor message to ${constants.TOPICS.SENSOR}`);
@@ -298,9 +309,9 @@ export class QueueListenerService extends BaseService {
                 } else if (result.routingKey?.indexOf(`.${ControlMessageTypes.restart}`) > 0) {
                     if (data.device) this.updateDeviceLastRestart(data.device.id);
                     redis_device.restarts++;
-                } else if (result.routingKey?.indexOf(`.${ControlMessageTypes.watchdogReset}`) > 0) {
-                    if (data.device) this.updateDeviceLastWatchdogReset(data.device.id);
-                    redis_device.watchdogResets++;
+                } else if (result.routingKey?.indexOf(`.${ControlMessageTypes.timeout}`) > 0) {
+                    //if (data.device) this.updateDeviceLastWatchdogReset(data.device.id);
+                    redis_device.timeouts++;
                 }
             });
         });
@@ -328,7 +339,7 @@ export class QueueListenerService extends BaseService {
                         id: deviceId,
                         dt: new Date(),
                         restarts: 0,
-                        watchdogResets: 0,
+                        timeouts: 0,
                     };
                 } else {
                     // parse extracted json and reinit date
@@ -361,23 +372,6 @@ export class QueueListenerService extends BaseService {
             .catch((err) => {
                 logger.warn(
                     `Caught error while trying to update device last ping timestamp for device with ID <${deviceId}>`,
-                    err
-                );
-            });
-    }
-
-    /**
-     * Update the last watchdog reset for the device with the supplied ID.
-     * @param deviceId
-     */
-    private async updateDeviceLastWatchdogReset(deviceId: string) {
-        this.dbService!.query("update device set last_watchdog_reset=current_timestamp where id=$1", deviceId)
-            .then(() => {
-                logger.debug(`Updated device last watchdog reset timestamp for device with ID <${deviceId}>`);
-            })
-            .catch((err) => {
-                logger.warn(
-                    `Caught error while trying to update device last watchdog reset timestamp for device with ID <${deviceId}>`,
                     err
                 );
             });

@@ -5,27 +5,34 @@ declare global {
             PORT?: string;
 
             /**
-             * Heroku managed
+             * Log level - one of TRACE, DEBUG, INFO, WARN, ERROR
+             */
+            LOG_LEVEL: "trace" | "debug" | "info" | "warn" | "error" | undefined;
+
+            /**
+             * URL for Postgres database
              */
             DATABASE_URL: string;
             /**
-             * Heroku managed
+             * Set to allow database to init / upgrade database schema
+             */
+            DATABASE_ALLOW_SCHEMA_UPGRADE: string;
+            /**
+             * Set to ALWAYS rollback schema upgrade and throw exception. Used for testing.
+             */
+            DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE: string;
+
+            /**
+             * URL for rabbitmq
              */
             CLOUDAMQP_URL: string;
+
             /**
-             * Heroku managed
-             */
-            CLOUDAMQP_APIKEY: string;
-            /**
-             * Heroku managed
-             */
-            PAPERTRAIL_API_TOKEN: string;
-            /**
-             * Heroku managed
+             * URL for Redis
              */
             REDIS_URL: string;
             /**
-             * Heroku managed
+             * TLS URL for Redis
              */
             REDIS_TLS_URL?: string;
 
@@ -48,6 +55,11 @@ declare global {
              * If set do not send notifications using email or Pushover no matter what
              */
             NOTIFICATIONS_DISABLED: string;
+
+            /**
+             * Send all notifications to this email.
+             */
+            NOTIFICATIONS_EMAIL_OVERRIDE: string;
 
             /**
              * Domain the app is running on
@@ -137,20 +149,12 @@ declare global {
              */
             GRAPHQL_PATH?: string;
 
-            /**
-             * Watchdog timeout in milliseconds (defauls to 10 minutes) for devices
-             */
-            WATCHDOG_INTERVAL_DEVICES?: string;
 
             /**
-             * Watchdog timeout in milliseconds (defauls to 5 minutes) for sensors
+             * Should we just disable binary sensor timeouts.
+             * 
              */
-            WATCHDOG_INTERVAL_SENSORS?: string;
-
-            /**
-             * If set we ignore device watchdog resets.
-             */
-            WATCHDOG_DISABLED_DEVICES: string | undefined;
+            ALERTS_BINARY_SENSOR_DISABLE: string;
         }
     }
 }

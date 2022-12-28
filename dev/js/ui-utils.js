@@ -1,12 +1,9 @@
-const $ = require("jquery");
-const storage = require("./storage-utils.js");
-const log = require("./logger.js");
-const fetcher = require("./fetch-util");
-const formsutil = require("./forms-util");
+import * as storage from "../ts/storage-utils";
+import {SettingsForm} from "../ts/forms/settings";
 
 const ID_ACTION_ITEMS = "action-icons";
 
-const fillMenus = () => {
+export const fillMenus = () => {
     const user = storage.getUser();
     const elemUsername = $("#navbarUsernameDropdown");
     const elemMenuitems = $("#navbarMenuItems");
@@ -36,6 +33,7 @@ const fillMenus = () => {
             </a>
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
                 <a class="dropdown-item" href="/#powermeter/config">Powermeter Setup</a>
+                <a class="dropdown-item" href="/#alerts">Alerts</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="settings">Settings</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>`;
         user.houses.forEach(house => {
@@ -65,11 +63,7 @@ const fillMenus = () => {
         })
         $("#settings").on("click", () => {
             $('.navbar-collapse').removeClass('show');
-            return fetcher.graphql(`{settings{notify_using,pushover_userkey,pushover_apptoken}}`).then(data => {
-                formsutil.appendSettings(data.settings, data => {
-                    fetcher.graphql(`mutation{updateSettings(data: {notify_using: "${data.notify_using}", pushover_userkey: "${data.pushover_userkey}", pushover_apptoken: "${data.pushover_apptoken}"})}`)
-                });
-            })
+            new SettingsForm().show();
         })
     }
 
@@ -79,7 +73,7 @@ const fillMenus = () => {
     });
 }
 
-const htmlBreadcrumbs = (objs) => {
+export const htmlBreadcrumbs = (objs) => {
     return objs.map(o => {
         if (!o.id) return o.text;
         if (o.id.indexOf("#") === 0) return `<a href="${o.id}">${o.text}</a>`;
@@ -87,7 +81,7 @@ const htmlBreadcrumbs = (objs) => {
     }).join(" &gt; ");
 }
 
-const htmlTitleRow = (title, actions, tag = "h3") => {
+export const htmlTitleRow = (title, actions, tag = "h3") => {
     const htmlTitle = htmlPageTitle(title, tag);
     const htmlActions = htmlActionBar(actions);
     const html = `<div class="row">
@@ -97,27 +91,27 @@ const htmlTitleRow = (title, actions, tag = "h3") => {
     return html;
 }
 
-const htmlSectionTitle = (title, classList) => {
+export const htmlSectionTitle = (title, classList) => {
     return `<h5 class="${classList ? classList : ""}">${title}</h5>`;
 }
 
-const htmlPageTitle = (title, tag = "h3") => {
-    const html = `<div class="col-lg-9 col-md-9 col-sm-12">
+export const htmlPageTitle = (title, tag = "h3") => {
+    const html = `<div class="col-lg-8 col-md-8 col-sm-12">
         <${tag}>${title}</${tag}>
     </div>`;
     return html;
 }
 
-const htmlActionBar = (actions) => {
+export const htmlActionBar = (actions) => {
     if (!actions || !actions.length) return "";
     const html = actions.map(action => {
         return `<button type="button" class="btn fa fa-${action.icon} ml-2 p-0 sensorcentral-size-1_5x float-right" aria-hidden="true" rel="${action.rel}"></button>`
     }).join("");
 
-    return `<div class="col-lg-3 col-md-3 col-sm-12" id="${ID_ACTION_ITEMS}">${html}</div>`;
+    return `<div class="col-lg-4 col-md-4 col-sm-12" id="${ID_ACTION_ITEMS}">${html}</div>`;
 }
 
-const htmlDataTable = (input = {}) => {
+export const htmlDataTable = (input = {}) => {
         const ctx = Object.assign({}, input);
         if (!ctx.hasOwnProperty("headers")) ctx.headers = [];
         if (!ctx.hasOwnProperty("rows")) ctx.rows = [];
@@ -136,28 +130,28 @@ const htmlDataTable = (input = {}) => {
     return html;
 }
 
-const appendTitleRow = (elem, title, actions = [], tag = "h3") => {
-    const html = htmlTitleRow(title, actions, tag);
+export const appendTitleRow = (elem, title, actions = [], args) => {
+    const html = htmlTitleRow(title, actions, args && args.tag ? args.tag : "h3");
     elem.append(html);
 
     // add click handler
     if (!actions || !actions.length) return;
-    $(`#${ID_ACTION_ITEMS}`).on("click", ev => {
+    $(`#${args && args.actionItemsId ? args.actionItemsId  : ID_ACTION_ITEMS}`).on("click", (ev) => {
         const rel = ev.target.getAttribute("rel");
-        const filteredActions = actions.filter(action => action.rel === rel);
+        const filteredActions = actions.filter((action) => action.rel === rel);
         if (!filteredActions.length) return;
         const action = filteredActions[0];
         if (action.hasOwnProperty("click") && typeof action.click === "function") {
             action.click.call(ev.target, action);
         }
-    })
+    });
 }
 
-const appendSectionTitle = (elem, title) => {
+export const appendSectionTitle = (elem, title) => {
     elem.append(htmlSectionTitle(title));
 }
 
-const appendDataTable = (elem, input = {}) => {
+export const appendDataTable = (elem, input = {}) => {
     // append html table to page
     const html = htmlDataTable(input);
     elem.append(html);
@@ -199,17 +193,4 @@ const appendDataTable = (elem, input = {}) => {
             }
         }
     })
-}
-
-module.exports = {
-    htmlTitleRow,
-    htmlPageTitle,
-    htmlSectionTitle, 
-    htmlActionBar,
-    htmlDataTable,
-    appendDataTable,
-    appendTitleRow,
-    appendSectionTitle,
-    fillMenus,
-    htmlBreadcrumbs
 }

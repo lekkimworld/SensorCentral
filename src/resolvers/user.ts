@@ -22,7 +22,7 @@ export class User {
     email : string;
 }
 
-@Resolver()
+@Resolver((_of) => User)
 export class UsersResolver {
     @Query(() => User, { description: "Searches for a user", nullable: true })
     async user(@Arg("email") email : string, @Ctx() ctx : types.GraphQLResolverContext) {
