@@ -45,7 +45,7 @@ export const smartmeVerifyCredentials = async (username:string, password: string
     });
 
     // verify the username / password
-    let res = await fetch(smartmeGetApiUrl("/Account/login"), fetch_attrs);
+    let res = await fetch(smartmeGetApiUrl("/User"), fetch_attrs);
     if (res.status === 524) throw new Cloudflare524Error("Error logging in to smart-me");
     if (res.status !== 200) throw new Error("Unable to verify smart-me credentials");
     return true;
