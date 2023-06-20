@@ -11,8 +11,7 @@ export const ensureScopesWithMethodFactory = (scopes : string[], method? : strin
     const user = res.locals.user as BackendIdentity;
     
     // ensure user has all required scopes
-    if ((!method || method === req.method) && scopes.every(s => user.scopes.includes(s))) {
-        // if methods supplied ensu
+    if ((!method || method.toUpperCase() === req.method) && scopes.every(s => user.scopes.includes(s))) {
         return next();
     } else {
         return next(new HttpException(401, `Unauthorized - requires <${scopes.join()}> scope(s)`));
@@ -23,7 +22,7 @@ export const ensureScopeFactory = (scope : string) => ensureScopesWithMethodFact
 /**
  * Requires the read scope on GET requests.
  */
-export const ensureReadScopeWhenGetRequest = ensureScopesWithMethodFactory([constants.JWT.SCOPE_READ], "get");
+export const ensureReadScopeWhenGetRequest = ensureScopesWithMethodFactory([constants.JWT.SCOPE_READ], "GET");
 /**
  * Requires the admin scope.
  */
