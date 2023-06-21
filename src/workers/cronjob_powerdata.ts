@@ -2,7 +2,7 @@
 import services from "../configure-services";
 import { StorageService } from "../services/storage-service";
 import moment, {Moment} from "moment-timezone";
-import { DataElement, Dataset } from "../resolvers/data";
+import { DataElement, Dataset } from "../services/dataquery-service";
 import constants from "../constants";
 import { Logger } from "../logger";
 const nordpool = require("nordpool");

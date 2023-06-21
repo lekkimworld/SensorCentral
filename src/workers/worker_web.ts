@@ -3,6 +3,7 @@ import { config as dotenv_config } from "dotenv";
 dotenv_config();
 
 // require
+import "reflect-metadata";
 import terminateListener from '../terminate-listener';
 import configureExpress from '../configure-express';
 //@ts-ignore
@@ -14,6 +15,7 @@ import { NotifyService } from  "../services/notify-service";
 import { RedisService } from  "../services/redis-service";
 import { QueueListenerService } from  "../services/queuelistener-service";
 import { StorageService } from '../services/storage-service';
+import { DataQueryService } from "../services/dataquery-service";
 import { WatchdogService } from  "../services/watchdog-service";
 import { EmailService } from '../services/email-service';
 import constants from '../constants';
@@ -53,6 +55,7 @@ services.registerService(new WatchdogService());
 services.registerService(new EmailService());
 services.registerService(new PowermeterService());
 services.registerService(new CronService());
+services.registerService(new DataQueryService());
 
 // setup termination listener
 terminateListener(() => {

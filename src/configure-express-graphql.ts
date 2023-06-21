@@ -1,5 +1,4 @@
 import { Application } from "express";
-import "reflect-metadata";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
 import ensureAuthenticated from "./middleware/ensureAuthenticated";

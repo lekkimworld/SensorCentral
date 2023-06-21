@@ -133,18 +133,6 @@ declare global {
             SMARTME_PROTOCOL: "http" | "https";
 
             /**
-             * Prometeus auth header for scraping
-             * @deprecated
-             */
-            PROMETHEUS_AUTH_HEADER: string;
-
-            /**
-             * URL to prometheus to fetch data
-             * @deprecated
-             */
-            PROMETHEUS_URL: string;
-
-            /**
              * Path on which to host GraphQL endpoint (defaults to /graphql)
              */
             GRAPHQL_PATH?: string;
