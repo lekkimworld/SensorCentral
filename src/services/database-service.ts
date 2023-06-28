@@ -38,11 +38,11 @@ const dbpool: Promise<Pool> = new Promise(async (resolve, reject) => {
 
     while (retries) {
         try {
-            logger.debug(`Attempting to create a database pool with config <${JSON.stringify(config_clone)}>`);
+            logger.info(`Attempting to create a database pool with config <${JSON.stringify(config_clone)}>`);
             const p = new Pool(config);
-            logger.debug("Created database pool - attempting querying via pool");
+            logger.info("Created database pool - attempting querying via pool");
             await p.query("select count(*) from user", []);
-            logger.debug("Completed query - acquired database connection");
+            logger.info("Completed query - acquired database connection");
             resolve(p);
             break;
         } catch (err) {
@@ -69,12 +69,16 @@ export class DatabaseService extends BaseService {
             this._pool = await dbpool;
 
             // see if database is initialized
+            logger.info("Looking for DATABASE_ALLOW_SCHEMA_UPGRADE environment variable");
             if (objectHasOwnProperty_Trueish(process.env, "DATABASE_ALLOW_SCHEMA_UPGRADE")) {
                 logger.info("Checking if database is initialized");
                 await initdb(false);
+            } else {
+                logger.info("DATABASE_ALLOW_SCHEMA_UPGRADE environment variable is not trueish so ignoring schema upgrade");
             }
 
             // callback
+            logger.info("Service initialized - calling back");
             callback();
 
         } catch (err) {

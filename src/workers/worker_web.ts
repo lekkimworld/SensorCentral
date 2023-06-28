@@ -40,8 +40,6 @@ if (!process.env.SMARTME_KEY) {
 	logger.info("SMARTME_KEY environment variable not set - cannot start!");
 	process.exit(1);
 }
-logger.info(`WATCHDOG_INTERVAL set to ${process.env.WATCHDOG_INTERVAL}`);
-logger.info(`WATCHDOG_DISABLED set to ${process.env.WATCHDOG_DISABLED}`);
 
 // add services
 services.registerService(new IdentityService());

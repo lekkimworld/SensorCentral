@@ -13,10 +13,17 @@ declare global {
              * URL for Postgres database
              */
             DATABASE_URL: string;
+
+            /**
+             * Use TLS for database connection. Also requires NODE_ENV to be set to production.
+             */
+            DATABASE_SSL: string;
+
             /**
              * Set to allow database to init / upgrade database schema
              */
             DATABASE_ALLOW_SCHEMA_UPGRADE: string;
+            
             /**
              * Set to ALWAYS rollback schema upgrade and throw exception. Used for testing.
              */
@@ -149,12 +156,16 @@ declare global {
              */
             GRAPHQL_PATH?: string;
 
-
             /**
              * Should we just disable binary sensor timeouts.
-             * 
+             *
              */
             ALERTS_BINARY_SENSOR_DISABLE: string;
+
+            /**
+             * Timeout in milliseonds to override default timeout of 10 minutes
+             */
+            TIMEOUT_BINARY_SENSOR: string;
         }
     }
 }

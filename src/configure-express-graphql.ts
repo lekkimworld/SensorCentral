@@ -1,5 +1,6 @@
 import { Application } from "express";
 import { ApolloServer } from "apollo-server-express";
+import { InMemoryLRUCache } from "@apollo/utils.keyvaluecache";
 import { buildSchema } from "type-graphql";
 import ensureAuthenticated from "./middleware/ensureAuthenticated";
 import {HouseResolver} from "./resolvers/house";
@@ -44,14 +45,15 @@ export default  async (app : Application) => {
     // create server
     const apolloServer = new ApolloServer({
         schema,
-        "context": ({ res }) : GraphQLResolverContext => {
+        context: ({ res }): GraphQLResolverContext => {
             const user = res.locals.user as BackendIdentity;
             return {
                 storage,
-                user
-            } as GraphQLResolverContext
+                user,
+            } as GraphQLResolverContext;
         },
-        "introspection": true
+        introspection: true,
+        cache: new InMemoryLRUCache()
     });
     await apolloServer.start();
 
