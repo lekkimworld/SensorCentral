@@ -351,7 +351,7 @@ export class ClickEvent extends Event {
         this.rel = rel;
     }
 }
-export type FormData = Record<string,undefined|string|string[]|number|number[]|boolean|boolean[]|Date|Date[]>;
+export type FormData = Record<string,undefined|string|string[]|number|number[]|boolean|boolean[]|Date|Date[]|Moment|Moment[]>;
 export class InitEvent extends Event {
     readonly catalog: UICatalog;
     constructor(catalog: UICatalog) {
@@ -413,14 +413,12 @@ export class ToggleButtonControl extends UIControl {
     }
 }
 export class DateTimeControl extends UIControl {
-    private id : string;
     constructor(options: FieldOptionsBasic) {
         super(options);
     }
 
     init() {
         const opts = this.options as FieldOptionsDatetimePicker;
-        this.id = opts.name;
         initDateTimePicker({
             id: opts.name,
             inline: true,
@@ -429,7 +427,7 @@ export class DateTimeControl extends UIControl {
     }
 
     get moment(): Moment {
-        return $(`#${this.id}`).data("DateTimePicker").date();
+        return $(`#${this.options.name}`).data("DateTimePicker").date();
     }
 
     get date(): Date {
@@ -437,25 +435,22 @@ export class DateTimeControl extends UIControl {
     }
 }
 export class DateControl extends DateTimeControl {
-    constructor(options: FieldOptionsBasic) {
+    private adjust: InitDateTime | undefined;
+
+    constructor(options: FieldOptionsBasic, adjust?: InitDateTime) {
         super(options);
+        this.adjust = adjust;
     }
 
     init() {
         const opts = this.options as FieldOptionsDatetimePicker;
-        initDatePicker({
+        const initArgs = {
             id: opts.name,
             inline: true,
             sideBySide: true,
-        });
-    }
-
-    get moment(): Moment {
-        return $(`#${this.options.name}Input`).data("DateTimePicker").date();
-    }
-
-    get date(): Date {
-        return $(`#${this.options.name}Input`).data("DateTimePicker").date().toDate();
+        } as FieldInitDateTimePicker;
+        if (this.adjust) initArgs.dateInit = this.adjust;
+        initDatePicker(initArgs);
     }
 }
 export class NumberControl extends UIControl {
@@ -518,9 +513,9 @@ export class UICatalog {
         return html;
     }
 
-    datepicker(options: FieldOptionsDatetimePicker): string {
+    datepicker(options: FieldOptionsDatetimePicker, adjust?: InitDateTime): string {
         const html = datetimepicker(options);
-        this.controls.set(options.name, new DateControl(options));
+        this.controls.set(options.name, new DateControl(options, adjust));
         return html;
     }
 

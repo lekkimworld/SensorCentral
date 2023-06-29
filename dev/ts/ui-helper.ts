@@ -11,7 +11,10 @@ export const ICONS = {
     star_empty: "star-o",
     star_filled: "star",
     pencil: "pencil",
-    trash: "trash"
+    trash: "trash",
+    key: "key",
+    info: "info",
+    download: "download"
 } as const;
 export type ActionIcon = ObjectValues<typeof ICONS>;
 

@@ -121,7 +121,7 @@ export class CreateAlertInput extends BaseAlertInput {
 export class AlertResolver {
     @Query(() => [Alert], { description: "Returns all alerts for the active user" })
     async alerts(
-        @Arg("active", {defaultValue: types.NullableBoolean.yes}) active: types.NullableBoolean, 
+        @Arg("active", {defaultValue: types.NullableBoolean.yes, nullable: true}) active: types.NullableBoolean, 
         @Arg("targetId", {nullable: true}) targetId: string,
         @Ctx() ctx: types.GraphQLResolverContext) {
         const alerts = await ctx.storage.getAlerts(ctx.user, undefined, active);

@@ -2,7 +2,7 @@ import * as uiutils from "../../js/ui-utils";
 import { addChartContainer } from "../../js/charts-util";
 import { graphql } from "../fetch-util";
 import * as formsutil from "../forms-util";
-import {createBreadcrumbHeader, createContainers} from "../ui-helper";
+import {ICONS, RouteAction, createBreadcrumbHeader, createContainers} from "../ui-helper";
 import { SensorType, Device, House, Sensor } from "../clientside-types";
 import { addAlertsTable } from "../alerts-helper";
 import {DeleteForm} from "../forms/delete";
@@ -30,71 +30,76 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
         // get element
         const elemSensorsTitle = sensorsContainer.children!.title.elem;
 
-        // add title
-        uiutils.appendTitleRow(
-            elemSensorsTitle,
-            device.name,
-            [
-                {
-                    rel: "create",
-                    icon: "plus",
-                    click: () => {
-                        new SensorForm(device).addEventListener("data", document.location.reload).show();
-                    },
+        // define actions
+        const actions: RouteAction[] = [
+            {
+                rel: "create",
+                icon: ICONS.plus,
+                click: () => {
+                    new SensorForm(device).addEventListener("data", document.location.reload).show();
                 },
-                {
-                    rel: "refresh",
-                    icon: "refresh",
-                    click: async () => {
-                        const data = await graphql(`{device(id: "${deviceId}") {
+            },
+            {
+                rel: "refresh",
+                icon: ICONS.refresh,
+                click: async () => {
+                    const data = await graphql(`{device(id: "${deviceId}") {
                             sensors {
                                 id,name,favorite,icon,type,scaleFactor
                             }
                         }}`);
-                        const sensors = data.device.sensors as Array<RequestedSensor>;
-                        updateUISensors(sensors);
-                    },
+                    const sensors = data.device.sensors as Array<RequestedSensor>;
+                    updateUISensors(sensors);
                 },
-                {
-                    rel: "davicedata",
-                    icon: "info",
-                    click: () => {
-                        new DeviceData(device).show();
-                    },
+            },
+            {
+                rel: "davicedata",
+                icon: ICONS.info,
+                click: () => {
+                    new DeviceData(device).show();
                 },
-                {
-                    icon: "pencil",
-                    rel: "edit",
-                    click: function () {
-                        new DeviceForm(device.house, device).show();
-                    },
+            },
+            {
+                rel: "edit",
+                icon: ICONS.pencil,
+                click: function () {
+                    new DeviceForm(device.house, device).show();
                 },
-                {
-                    icon: "trash",
-                    rel: "trash",
-                    click: function () {
-                        new DeleteForm({
-                            title: "Delete Device",
-                            message:
-                                "Are you absolutely sure you want to DELETE this device? This will also DELETE all sensors for this device. Sensor samples are not deleted from the database.",
-                            id: device.id,
-                            name: device.name,
-                        }).addEventListener("data", async e => {
+            },
+            {
+                rel: "trash",
+                icon: ICONS.trash,
+                click: function () {
+                    new DeleteForm({
+                        title: "Delete Device",
+                        message:
+                            "Are you absolutely sure you want to DELETE this device? This will also DELETE all sensors for this device. Sensor samples are not deleted from the database.",
+                        id: device.id,
+                        name: device.name,
+                    })
+                        .addEventListener("data", async (e) => {
                             const dataEvent = e as formsutil.DataEvent;
                             const data = dataEvent.data;
                             await graphql(`mutation {deleteDevice(data: {id: "${device.id}"})}`);
                             document.location.hash = `#configuration/house/${device.house.id}`;
-                        }).show();
-                    },
+                        })
+                        .show();
                 },
-                {
-                    icon: "key",
-                    rel: "jwt",
-                    click: function () {
-                        new DeviceJWTForm(device).show();
-                    },
+            },
+            {
+                rel: "jwt",
+                icon: ICONS.key,
+                click: function () {
+                    new DeviceJWTForm(device).show();
                 },
-            ],
+            },
+        ];
+
+        // add title
+        uiutils.appendTitleRow(
+            elemSensorsTitle,
+            device.name,
+            actions,
             {
                 actionItemsId: "sensors-title",
             }

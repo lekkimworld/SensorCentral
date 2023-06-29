@@ -1,7 +1,9 @@
 import { Application } from "express";
-import { ApolloServer } from "apollo-server-express";
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@apollo/server/express4";
 import { InMemoryLRUCache } from "@apollo/utils.keyvaluecache";
-import { buildSchema } from "type-graphql";
+import cors from "cors";
+import {buildSchema} from "type-graphql";
 import ensureAuthenticated from "./middleware/ensureAuthenticated";
 import {HouseResolver} from "./resolvers/house";
 import {DeviceResolver} from "./resolvers/device";
@@ -16,9 +18,10 @@ import { StorageService } from "./services/storage-service";
 import { UsersResolver } from "./resolvers/user";
 import { Logger } from "./logger";
 import { AlertResolver } from "./resolvers/alert";
+import constants from "./constants";
 
 const logger = new Logger("configure-express-graphql");
-const path = process.env.GRAPHQL_PATH || "/graphql";
+const path = constants.DEFAULTS.GRAPHQL.PATH;
 
 export default  async (app : Application) => {
     // storage service
@@ -30,8 +33,7 @@ export default  async (app : Application) => {
 
     // define schema
     const schema = await buildSchema({
-        resolvers: [
-            HouseResolver, 
+        resolvers: [HouseResolver, 
             DeviceResolver, 
             SensorResolver, 
             SettingsResolver, 
@@ -39,28 +41,27 @@ export default  async (app : Application) => {
             SmartmeResolver,
             UsersResolver,
             AlertResolver],
-            "dateScalarMode": "isoDate"
+        dateScalarMode: "isoDate"
     })
 
     // create server
-    const apolloServer = new ApolloServer({
-        schema,
-        context: ({ res }): GraphQLResolverContext => {
+    const apolloServer =
+        new ApolloServer<GraphQLResolverContext>({
+            schema,
+            introspection: true,
+            cache: new InMemoryLRUCache(),
+        });
+    await apolloServer.start();
+
+    // attach the middleware to the app
+    app.use(constants.DEFAULTS.GRAPHQL.PATH, cors<cors.CorsRequest>(), expressMiddleware(apolloServer, {
+        context: async ({ res }) : Promise<GraphQLResolverContext> => {
             const user = res.locals.user as BackendIdentity;
             return {
                 storage,
                 user,
             } as GraphQLResolverContext;
-        },
-        introspection: true,
-        cache: new InMemoryLRUCache()
-    });
-    await apolloServer.start();
-
-    // attach the middleware to the app
-    apolloServer.applyMiddleware({
-        "path": path,
-        "app": app
-    });
+        }
+    }));
     logger.info(`Applied middleware from Apollo at path ${path}`);
 }

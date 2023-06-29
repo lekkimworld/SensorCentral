@@ -55,7 +55,7 @@ export default async () => {
         res.set("X-Request-ID", reqId);
 
         // log request
-        logger.info(`path <${req.path}> method <${req.method}> secure <${req.secure}> headers <${Object.keys(req.headers).map(h => `${h}=${h === "authorization" ? "EXCLUDED" : req.header(h)}`).join(",")}>`);
+        logger.debug(`path <${req.path}> method <${req.method}> secure <${req.secure}> headers <${Object.keys(req.headers).map(h => `${h}=${h === "authorization" ? "EXCLUDED" : req.header(h)}`).join(",")}>`);
 
         // next
         next();

@@ -136,6 +136,9 @@ export default {
             CURRENCY: "DKK",
             AREA: "DK2",
         },
+        GRAPHQL: {
+            PATH: process.env.GRAPHQL_PATH || "/graphql"
+        },
     },
     JWT,
     GOOGLE: {

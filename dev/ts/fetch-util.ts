@@ -12,6 +12,7 @@ export type FetchBodyType = string | any[] | Record<string,any>;
 
 export type FetchOptions = {
     noSpinner?: boolean;
+    accept?: string;
 }
 
 const buildContext = (method: MethodType, headers?: Record<string,string>, body?: FetchBodyType) : FetchContext => {
@@ -20,6 +21,9 @@ const buildContext = (method: MethodType, headers?: Record<string,string>, body?
         headers: {}
     }
     
+    if (headers && headers["accept"]) {
+        ctx.headers["accept"] = headers.accept;
+    }
     if (headers && headers["type"]) {
         ctx.headers["content-type"] = headers["type"];
     } else if (headers && headers["content-type"]) {

@@ -10,6 +10,7 @@ import { addAlertsTable } from "../alerts-helper";
 import { ManualSampleForm } from "../forms/manual-sample";
 import { DeleteForm } from "../forms/delete";
 import { SensorForm } from "../forms/create-edit-sensor";
+import { DownloadForm } from "../forms/download";
 
 type RequestedHouse = Required<Readonly<Pick<House, "id"|"name">>>;
 type RequestedDevice = Required<Readonly<Pick<Device, "id"|"name">>>;
@@ -87,6 +88,11 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
             }).show();
         }}
     );
+    actions.push({
+        rel: "download", icon: ICONS.download, click: () => {
+            new DownloadForm(sensor).show();
+        }
+    })
 
     // create title row
     uiutils.appendTitleRow(sensorsContainer.children!.title.elem, sensor.name, actions);

@@ -177,8 +177,8 @@ export class PowerPriceQueryFilterInput {
 }
 
 /* --------- Ungrouped data query -------- */
-@InputType({ isAbstract: true })
-export class BaseQueryFilterInput {
+@InputType()
+class BaseQueryFilterInput {
     @Field(() => [String])
     sensorIds: string[];
 }
