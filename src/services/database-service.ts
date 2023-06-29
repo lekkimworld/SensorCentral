@@ -38,7 +38,8 @@ const dbpool: Promise<Pool> = new Promise(async (resolve, reject) => {
 
     while (retries) {
         try {
-            logger.info(`Attempting to create a database pool with config <${JSON.stringify(config_clone)}>`);
+            logger.info(`Attempting to create a database pool`);
+            logger.debug(`Database pool config <${JSON.stringify(config_clone)}>`);
             const p = new Pool(config);
             logger.info("Created database pool - attempting querying via pool");
             await p.query("select count(*) from user", []);

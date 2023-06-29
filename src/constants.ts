@@ -29,8 +29,30 @@ export default {
     APP: {
         LOG_LEVEL: (svc?: string) => {
             if (!svc) return log_level;
-            const srvc_level = process.env[`LOG_LEVEL_${svc.toUpperCase()}`];
-            if (!srvc_level) return log_level;
+            let srvc_level = process.env[`LOG_LEVEL_${svc.toUpperCase()}`];
+            if (!srvc_level) {
+                // no specific config - look in LOG_LEVEL_SERVICES
+                const log_level_services = process.env.LOG_LEVEL_LOGGERS;
+                if (!log_level_services) {
+                    // return default log level
+                    return log_level;
+                }
+
+                log_level_services.split(",").forEach(elem => {
+                    if (srvc_level) return;
+                    const parts = elem.split("=");
+                    if (parts.length !== 2) return;
+                    if (parts[0].toUpperCase() === svc.toUpperCase()) {
+                        srvc_level = parts[1];
+                    }
+                })
+                if (!srvc_level) {
+                    // no custom level found - return default level
+                    return log_level;
+                }
+            }
+            
+            // convert level
             const l = stringToLogLevel(srvc_level);
             if (!l) {
                 console.log(

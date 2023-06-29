@@ -10,6 +10,12 @@ declare global {
             LOG_LEVEL: "trace" | "debug" | "info" | "warn" | "error" | undefined;
 
             /**
+             * Specify log level for individual loggers separated by comma in the following 
+             * format "LOGGER_NAME=LEVEL,LOGGER_NAME=LEVEL" i.e. "CONFIGURE-EXPRESS=DEBUG,DATABASE-SERVICE=INFO"
+             */
+            LOG_LEVEL_LOGGERS: string;
+
+            /**
              * URL for Postgres database
              */
             DATABASE_URL: string;

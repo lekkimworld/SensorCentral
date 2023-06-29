@@ -12,7 +12,6 @@ export type FetchBodyType = string | any[] | Record<string,any>;
 
 export type FetchOptions = {
     noSpinner?: boolean;
-    accept?: string;
 }
 
 const buildContext = (method: MethodType, headers?: Record<string,string>, body?: FetchBodyType) : FetchContext => {
