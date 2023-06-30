@@ -3,7 +3,7 @@ import favoriteSensorWidget from "../widgets/favorite-sensors";
 import powerdataWidget from "../widgets/powerdata";
 import stackedDeltaSensorsWidget from "../widgets/stacked-delta-sensors";
 import favBinarySensorsWidget from "../widgets/chart-favorite-binary-sensors";
-import favGaugeSensorsWidget from "../widgets/chart-favorite-binary-sensors";
+import favGaugeSensorsWidget from "../widgets/chart-favorite-gauge-sensors";
 
 export default (elemRoot: JQuery<HTMLElement>) => {
     if (!storage.isLoggedIn()) {
