@@ -6,7 +6,7 @@ import { ObjectValues } from "./helpers";
  * Type of icons we support for RouteActions.
  */
 export const ICONS = {
-    plus: "create",
+    plus: "plus",
     refresh: "refresh",
     star_empty: "star-o",
     star_filled: "star",
