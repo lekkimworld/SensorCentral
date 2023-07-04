@@ -11,13 +11,22 @@ export class DownloadForm extends Form<Sensor> {
             const data = dataEvent.data;
             const startDate = (data.startDate as Moment).toISOString();
             const endDate = (data.endDate as Moment).toISOString();
-            const blob = await get(
-                `/api/v1/excel/${data.grouped ? "grouped" : "ungrouped"}/range/${
+            const scaleFactor = data.scaleFactor as boolean;
+            if (data.grouped) {
+                var url = `/api/v1/excel/grouped/range/${this.ctx!.id}/${startDate}/${endDate}/${scaleFactor}`;
+            } else {
+                var url = `/api/v1/excel/ungrouped/range/${
                     this.ctx!.id
-                }/${startDate}/${endDate}`
-            );
+                }/${startDate}/${endDate}`;
+            }
+            const blob = await get(url);
             const file = window.URL.createObjectURL(blob);
-            window.location.assign(file);
+            const a = document.createElement("a");
+            a.download = `${this.ctx!.id}_${startDate.replace(/:/g, "")}_${endDate.replace(/:/g, "")}.xlsx`;
+            a.href = file;
+            document.querySelector("body")?.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(file);
         });
     }
 
@@ -45,12 +54,22 @@ export class DownloadForm extends Form<Sensor> {
                 required: true,
                 name: "endDate",
             })}
-            ${catalog.toggleButton({
+            ${this.ctx!.type === "delta" ? catalog.toggleButton({
                 label: "Grouped",
                 name: "grouped",
                 fieldExplanation: "Deselect if you want to export raw samples",
                 on: true,
-            })}
+            }) : ""}
+            ${
+                this.ctx!.type === "delta"
+                    ? catalog.toggleButton({
+                          label: "Apply scale factor",
+                          name: "scaleFactor",
+                          fieldExplanation: "Deselect if you want to export raw samples",
+                          on: true,
+                      })
+                    : ""
+            }
         </form>`;
     }
 
@@ -62,11 +81,14 @@ export class DownloadForm extends Form<Sensor> {
     async getData(catalog: UICatalog) {
         const startDate = (catalog.get("startDate") as DateControl).moment;
         const endDate = (catalog.get("endDate") as DateControl).moment;
-        const grouped = (catalog.get("grouped") as ToggleButtonControl).checked;
+        const grouped = this.ctx!.type === "delta" ? (catalog.get("grouped") as ToggleButtonControl).checked : false;
+        const scaleFactor =
+            this.ctx!.type === "delta" ? (catalog.get("scaleFactor") as ToggleButtonControl).checked : false;
         return {
             startDate,
             endDate,
-            grouped
+            grouped,
+            scaleFactor
         };
     }
 }

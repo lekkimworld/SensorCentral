@@ -77,7 +77,7 @@ const sendExcelWorkbook = (res: Response, buf: Buffer, filename: string) => {
     res.send(buf).end();
 };
 
-const fetchDataGrouped = async (start: Date, end: Date, sensorId: string, user: BackendIdentity): Promise<Dataset> => {
+const fetchDataGrouped = async (start: Date, end: Date, sensorId: string, applyScaleFactor: boolean, user: BackendIdentity): Promise<Dataset> => {
     // get service
     const srvc = await lookupService(DataQueryService.NAME) as DataQueryService;
 
@@ -92,7 +92,7 @@ const fetchDataGrouped = async (start: Date, end: Date, sensorId: string, user: 
     grouping.groupBy = DataQueryGroupBy.hour;
     
     const format = new GroupedQueryFormatInput();
-    format.applyScaleFactor = false;
+    format.applyScaleFactor = applyScaleFactor;
     format.addMissingTimeSeries = false;
     format.ensureDefaults();
     
@@ -126,7 +126,8 @@ const exportDataGrouped = async (
     res: express.Response,
     sensorId: string,
     start: Date,
-    end: Date
+    end: Date,
+    applyScaleFactor: boolean
 ) => {
     // create filename
     const timestamp = moment().utc().format(ISO8601_DATETIME_FORMAT);
@@ -137,6 +138,7 @@ const exportDataGrouped = async (
         start,
         end,
         sensorId,
+        applyScaleFactor,
         res.locals.user as BackendIdentity
     );
 
@@ -178,10 +180,11 @@ const exportDataUngrouped = async (res: express.Response, sensorId: string, star
 // ensure READ scope for GET requests
 router.use(ensureReadScopeWhenGetRequest);
 
-router.get("/grouped/range/:sensorId/:start/:end", (req, res, next) => {
+router.get("/grouped/range/:sensorId/:start/:end/:applyScaleFactor", (req, res, next) => {
     const sensorId = req.params.sensorId;
     const strstart = req.params.start;
     const strend = req.params.end;
+    const applyScaleFactor = "true" === req.params.applyScaleFactor;
     if (
         !strstart.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z/) ||
         !strend.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z/)
@@ -192,7 +195,7 @@ router.get("/grouped/range/:sensorId/:start/:end", (req, res, next) => {
     const start = moment(strstart, ISO8601_DATETIME_FORMAT).utc(true).set("millisecond", 0);
     const end = moment(strend, ISO8601_DATETIME_FORMAT).utc(true).set("millisecond", 0);
     
-    exportDataGrouped(res, sensorId, start.toDate(), end.toDate());
+    exportDataGrouped(res, sensorId, start.toDate(), end.toDate(), applyScaleFactor);
 });
 
 router.get("/ungrouped/range/:sensorId/:start/:end", (req, res, next) => {
