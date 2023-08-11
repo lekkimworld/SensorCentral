@@ -54,14 +54,18 @@ export class DownloadForm extends Form<Sensor> {
                 required: true,
                 name: "endDate",
             })}
-            ${this.ctx!.type === "delta" ? catalog.toggleButton({
-                label: "Grouped",
-                name: "grouped",
-                fieldExplanation: "Deselect if you want to export raw samples",
-                on: true,
-            }) : ""}
             ${
-                this.ctx!.type === "delta"
+                this.doGroupedAndScaled()
+                    ? catalog.toggleButton({
+                          label: "Grouped",
+                          name: "grouped",
+                          fieldExplanation: "Deselect if you want to export raw samples",
+                          on: true,
+                      })
+                    : ""
+            }
+            ${
+                this.doGroupedAndScaled()
                     ? catalog.toggleButton({
                           label: "Apply scale factor",
                           name: "scaleFactor",
@@ -81,14 +85,18 @@ export class DownloadForm extends Form<Sensor> {
     async getData(catalog: UICatalog) {
         const startDate = (catalog.get("startDate") as DateControl).moment;
         const endDate = (catalog.get("endDate") as DateControl).moment;
-        const grouped = this.ctx!.type === "delta" ? (catalog.get("grouped") as ToggleButtonControl).checked : false;
+        const grouped = this.doGroupedAndScaled() ? (catalog.get("grouped") as ToggleButtonControl).checked : false;
         const scaleFactor =
-            this.ctx!.type === "delta" ? (catalog.get("scaleFactor") as ToggleButtonControl).checked : false;
+            this.doGroupedAndScaled() ? (catalog.get("scaleFactor") as ToggleButtonControl).checked : false;
         return {
             startDate,
             endDate,
             grouped,
             scaleFactor
         };
+    }
+
+    private doGroupedAndScaled() : boolean {
+        return this.ctx!.type === "delta" || this.ctx!.type === "counter";
     }
 }
