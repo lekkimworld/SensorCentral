@@ -11,6 +11,7 @@ import devicesRoute from "./routes/devices";
 import sensorsRoute from "./routes/sensors";
 import sensordetailsRoute from "./routes/sensordetails";
 import aboutRoute from "./routes/about";
+import loginChooseRoute from "./routes/login-choose";
 import powerChartsRoute from "./routes/powermeter-charts";
 import powerConfigRoute from "./routes/powermeter-config";
 
@@ -79,8 +80,13 @@ const navigationChange = async () => {
     elemRoot.html("");
 
     if ("#login" === hash) {
+        loginChooseRoute(elemRoot);
+    } else if (hash.startsWith("#login-")) {
+        // get provider
+        const provider = hash.substring(7);
+        log.debug(`Read provider from hash: ${provider}`);
         try {
-            const body = await get("/api/v1/login");
+            const body = await get(`/api/v1/login/${provider}`);
             log.debug(`Received URL for login back from API - redirecting to it...`);
             document.location.href = body.url;
         } catch (err) {

@@ -32,7 +32,7 @@ const buildContext = (method: MethodType, headers?: Record<string,string>, body?
     }
     if (headers && headers["authorization"]) {
         ctx.headers["authorization"] = headers["authorization"];
-    } else {
+    } else if (storage.isLoggedIn()) {
         ctx.headers["authorization"] = `Bearer ${storage.getJWT()}`;
     }
     if (body && ["POST","PUT"].includes(method)) {

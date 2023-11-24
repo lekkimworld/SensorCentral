@@ -10,7 +10,7 @@ declare global {
             LOG_LEVEL: "trace" | "debug" | "info" | "warn" | "error" | undefined;
 
             /**
-             * Specify log level for individual loggers separated by comma in the following 
+             * Specify log level for individual loggers separated by comma in the following
              * format "LOGGER_NAME=LEVEL,LOGGER_NAME=LEVEL" i.e. "CONFIGURE-EXPRESS=DEBUG,DATABASE-SERVICE=INFO"
              */
             LOG_LEVEL_LOGGERS: string;
@@ -29,7 +29,7 @@ declare global {
              * Set to allow database to init / upgrade database schema
              */
             DATABASE_ALLOW_SCHEMA_UPGRADE: string;
-            
+
             /**
              * Set to ALWAYS rollback schema upgrade and throw exception. Used for testing.
              */
@@ -110,11 +110,6 @@ declare global {
             API_JWT_AUDIENCE: string | undefined;
 
             /**
-             * Only allow logins from this domain using OIDC if set
-             */
-            GOOGLE_HOSTED_DOMAIN: string;
-
-            /**
              * Private key used to sign JWT's used when sending email through gmail
              */
             GOOGLE_PRIVATE_KEY: string;
@@ -129,10 +124,15 @@ declare global {
              */
             GOOGLE_TOKEN_URI: string;
 
-            OIDC_CLIENT_ID: string;
-            OIDC_CLIENT_SECRET: string;
-            OIDC_PROVIDER_URL: string;
-            OIDC_REDIRECT_URI: string;
+            // OIDC providers
+            OIDC_CLIENT_ID_GOOGLE: string;
+            OIDC_CLIENT_SECRET_GOOGLE: string;
+            OIDC_PROVIDER_URL_GOOGLE: string;
+            OIDC_REDIRECT_URI_GOOGLE: string;
+            OIDC_CLIENT_ID_GITHUB: string;
+            OIDC_CLIENT_SECRET_GITHUB: string;
+            OIDC_PROVIDER_URL_GITHUB: string;
+            OIDC_REDIRECT_URI_GITHUB: string;
 
             /**
              * Session secret

@@ -18,15 +18,16 @@ export class User {
     @Field()
     ln : string;
 
-    @Field()
-    email : string;
+    @Field(() => String)
+    email : string | undefined;
 }
 
 @Resolver((_of) => User)
 export class UsersResolver {
     @Query(() => User, { description: "Searches for a user", nullable: true })
-    async user(@Arg("email") email : string, @Ctx() ctx : types.GraphQLResolverContext) {
-        const u = await ctx.storage.getUser(ctx.user, email);
+    async user(@Arg("email", {nullable: true}) email : string, @Arg("id", {nullable: true}) id : string, @Ctx() ctx : types.GraphQLResolverContext) {
+        if (!email && !id) return undefined;
+        const u = await ctx.storage.getUser(ctx.user, (email || id)!);
         if (!u) return undefined;
         return new User(u);
     }

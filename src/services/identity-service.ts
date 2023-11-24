@@ -75,16 +75,18 @@ export class IdentityService extends BaseService {
         try {
             // verify token
             decoded = await jwt.verify(token, secret, {
-                "algorithms": ["HS256"],
-                "audience": constants.JWT.AUDIENCE,
-                "issuer": constants.JWT.ISSUERS
-            })
+                algorithms: ["HS256"],
+                audience: constants.JWT.AUDIENCE,
+                issuer: constants.JWT.ISSUERS,
+            });
         } catch (err) {
             throw Error(`Unable to verify JWT: ${err.message}`);
         }
 
         // if there is no impersonation id see if it's a whitelisted device id
-        const whitelistedDeviceIds = process.env.WHITELISTED_DEVICE_IDS ? process.env.WHITELISTED_DEVICE_IDS.split(",") : [];
+        const whitelistedDeviceIds = process.env.WHITELISTED_DEVICE_IDS
+            ? process.env.WHITELISTED_DEVICE_IDS.split(",")
+            : [];
         const whitelistedImpId = process.env.WHITELISTED_IMPERSONATION_ID;
         if (whitelistedImpId && !decoded.imp && whitelistedDeviceIds.includes(decoded.sub)) {
             decoded.imp = whitelistedImpId;
@@ -104,44 +106,40 @@ export class IdentityService extends BaseService {
             // there is an impersonation id in the token so it's for a non-user
             const device = await this.storage.getDevice(this.authUser, decoded.sub);
             ident = {
-                "identity": {
-                    "callerId": decoded.sub,
-                    "impersonationId": decoded.imp,
-                    "houseId": decoded.houseid
+                identity: {
+                    callerId: decoded.sub,
+                    impersonationId: decoded.imp,
+                    houseId: decoded.houseid,
                 } as Identity,
-                "principal": new DevicePrincipal(device.name),
-                "scopes": decoded.scopes.split(" ")
+                principal: new DevicePrincipal(device.name),
+                scopes: decoded.scopes.split(" "),
             } as BackendIdentity;
-
         } else if (decoded.sub === "*") {
             ident = {
-                "identity": {
-                    "callerId": decoded.sub,
-                    "impersonationId": undefined,
-                    "houseId": decoded.houseId
+                identity: {
+                    callerId: decoded.sub,
+                    impersonationId: undefined,
+                    houseId: decoded.houseId,
                 } as Identity,
-                "principal": new SystemPrincipal("God"),
-                "scopes": decoded.scopes.split(" ")
+                principal: new SystemPrincipal("God"),
+                scopes: decoded.scopes.split(" "),
             } as BackendIdentity;
         } else {
             // lookup user
             const user = await this.storage.getUser(this.authUser, decoded.sub);
             ident = {
-                "identity": {
-                    "callerId": decoded.sub,
-                    "impersonationId": undefined,
-                    "houseId": decoded.houseid
+                identity: {
+                    callerId: decoded.sub,
+                    impersonationId: undefined,
+                    houseId: decoded.houseid,
                 } as Identity,
-                "principal": user,
-                "scopes": decoded.scopes.split(" ")
+                principal: user,
+                scopes: decoded.scopes.split(" "),
             } as BackendIdentity;
         }
 
         // cache
-        this.redis.setex(
-            redis_key,
-            constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS,
-            JSON.stringify(ident));
+        this.redis.setex(redis_key, constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS, JSON.stringify(ident));
 
         // return
         return ident;
@@ -175,13 +173,13 @@ export class IdentityService extends BaseService {
         if (userId === "*") throw Error(`Cannot issue impersonation user for userId=*`);
         if (user && user.identity.callerId === "*") {
             return {
-                "identity": {
-                    "callerId": userId,
-                    "impersonationId": user.identity.callerId,
-                    "houseId": user.identity.houseId
+                identity: {
+                    callerId: userId,
+                    impersonationId: user.identity.callerId,
+                    houseId: user.identity.houseId,
                 },
-                "principal": user.principal,
-                "scopes": [constants.JWT.SCOPE_API]
+                principal: user.principal,
+                scopes: [constants.JWT.SCOPE_API],
             } as BackendIdentity;
         }
 
@@ -191,30 +189,63 @@ export class IdentityService extends BaseService {
     getServiceBackendIdentity(serviceName: string): BackendIdentity {
         logger.info(`Creating Service Backend Identity for <${serviceName}>`);
         const ident = {
-            "identity": {
-                "callerId": "*",
-                "impersonationId": undefined,
-                "houseId": "*"
+            identity: {
+                callerId: "*",
+                impersonationId: undefined,
+                houseId: "*",
             },
-            "principal": new SystemPrincipal(serviceName),
-            "scopes": [constants.JWT.SCOPE_ADMIN]
+            principal: new SystemPrincipal(serviceName),
+            scopes: [constants.JWT.SCOPE_ADMIN],
         } as BackendIdentity;
         return ident;
     }
 
     /**
-     * After logging using OIDC returns the user logging in from the database or 
-     * inserts the user in the database and returns the internal user id.
+     * Add a OIDC login mapping for the supplied user id, sub and provider. If the sub / provider 
+     * combination exists we throw an exception.
      * 
-     * @param param0 
+     * @param id 
+     * @param sub 
+     * @param provider 
      */
-    async getOrCreateBrowserLoginResponse({ source, oidc_sub, email, fn, ln }: CreateLoginUserInput): Promise<BrowserLoginResponse> {
+    async addOidcMapping(id: string, sub: string, provider: LoginSource) : Promise<void> {
+        logger.debug(`Attemping to add login provider for <${id}> to sub <${sub}> / <${provider}>`);
+        let result = await this.db!.query("select userid from login_oidc_mapping where sub=$1 and provider=$2", sub, provider);
+        if (result.rowCount > 0) throw new Error(`Found ${result.rowCount} rows for sub ${sub} - expected 0`);
+
+        // add row
+        await this.db!.query(
+                "insert into login_oidc_mapping (userid, sub, provider, verified) values ($1, $2, $3, TRUE)",
+                id,
+                sub,
+                provider
+            );
+    }
+
+    /**
+     * After logging using OIDC returns the user logging in from the database or
+     * inserts the user in the database and returns the internal user id.
+     *
+     * @param param0
+     */
+    async getOrCreateBrowserLoginResponse({
+        source,
+        oidc_sub,
+        email,
+        fn,
+        ln,
+    }: CreateLoginUserInput): Promise<BrowserLoginResponse> {
         // see if we can find the user by sub based on source
         let result: QueryResult | undefined;
-        logger.debug(`Querying database for user - sub <${oidc_sub}> email <${email}>`);
+        logger.debug(`Querying database for user - sub <${oidc_sub}>`);
         switch (source) {
             case LoginSource.google:
-                result = await this.db!.query("select id, email, fn, ln, google_sub from login_user where google_sub=$1 OR email=$2", oidc_sub, email);
+            case LoginSource.github:
+                result = await this.db!.query(
+                    "select id, email, fn, ln from login_user join login_oidc_mapping on id=userid and provider=$1 and sub=$2",
+                    source,
+                    oidc_sub
+                );
                 break;
             default:
                 throw Error(`Unhandled LoginSource <${source}>`);
@@ -222,20 +253,15 @@ export class IdentityService extends BaseService {
         logger.debug(`Database result - rows <${result ? result.rowCount : undefined}> (${result})`);
 
         if (result && result.rowCount === 1) {
-            // found user - ensure it contains the sub for the oidc
+            // found user
             const row = result.rows[0];
             logger.debug(`Found user in database (${row})`);
-            switch (source) {
-                case LoginSource.google:
-                    if (row.google_sub !== oidc_sub) {
-                        // we need to update it
-                        await this.db?.query("update login_user set google_sub=$1 where email=$2", oidc_sub, email)
-                    }
-                    break;
-            }
 
             // find default house id if any
-            result = await this.db!.query("select houseId from user_house_access where userId=$1 and is_default=true", row.id);
+            result = await this.db!.query(
+                "select houseId from user_house_access where userId=$1 and is_default=true",
+                row.id
+            );
 
             // return
             logger.debug(`Getting ready to return data`);
@@ -243,42 +269,49 @@ export class IdentityService extends BaseService {
             const houseId = result.rowCount === 1 ? result.rows[0].houseid : undefined;
             const jwt = await this.generateUserJWT(this.getImpersonationIdentity(this.authUser, row.id), houseId);
             const result_payload = {
-                "userinfo": {
-                    "id": row.id,
-                    "fn": row.fn,
-                    "ln": row.ln,
-                    "email": row.email,
-                    "houses": houses,
-                    "houseId": houseId
+                userinfo: {
+                    id: row.id,
+                    fn: row.fn,
+                    ln: row.ln,
+                    email: row.email,
+                    houses: houses,
+                    houseId: houseId,
                 } as BrowserUser,
-                "jwt": jwt
+                jwt: jwt,
             } as BrowserLoginResponse;
             logger.debug(`Generated result payload`);
             return result_payload;
-
         } else {
-            // we need to add the user
+            // user not found - we need to add the user
             logger.debug("We need to add the user");
             const id = uuid();
-            switch (source) {
-                case LoginSource.google:
-                    await this.db!.query("insert into login_user (id, email, fn, ln, google_sub) values ($1, $2, $3, $4, $5)", id, email, fn, ln, oidc_sub);
-                    break;
-            }
-            logger.debug(`Inserted user with UUID <${uuid}>`);
+            await this.db!.query(
+                "insert into login_user (id, email, fn, ln) values ($1, $2, $3, $4)",
+                id,
+                email,
+                fn,
+                ln
+            );
+            await this.db!.query(
+                "insert into login_oidc_mapping (userid, sub, provider) values ($1, $2, $3)",
+                id,
+                oidc_sub,
+                source
+            );
+            logger.debug(`Inserted user with UUID <${id}>`);
 
             // return
             const jwt = await this.generateUserJWT(this.getImpersonationIdentity(this.authUser, id), undefined);
             const result_payload = {
-                "userinfo": {
-                    "id": id,
-                    "fn": fn,
-                    "ln": ln,
-                    "email": email,
-                    "houseId": undefined,
-                    "houses": []
+                userinfo: {
+                    id: id,
+                    fn: fn,
+                    ln: ln,
+                    email: email,
+                    houseId: undefined,
+                    houses: [],
                 } as BrowserUser,
-                "jwt": jwt
+                jwt: jwt,
             } as BrowserLoginResponse;
             logger.debug(`Generated result payload`);
             return result_payload;
@@ -289,21 +322,18 @@ export class IdentityService extends BaseService {
         // lookup user
         const user = await this.storage.getUser(this.authUser, userId);
         const ident = {
-            "identity": {
-                "callerId": user.id,
-                "impersonationId": undefined,
-                "houseId": houseId
+            identity: {
+                callerId: user.id,
+                impersonationId: undefined,
+                houseId: houseId,
             } as Identity,
-            "principal": user,
-            "scopes": constants.DEFAULTS.JWT.USER_SCOPES
+            principal: user,
+            scopes: constants.DEFAULTS.JWT.USER_SCOPES,
         } as BackendIdentity;
 
         // cache
         const redis_key = this.getRedisKey(user.id, user.id);
-        this.redis.setex(
-            redis_key,
-            constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS,
-            JSON.stringify(ident));
+        this.redis.setex(redis_key, constants.DEFAULTS.REDIS.LOGINUSER_EXPIRATION_SECS, JSON.stringify(ident));
 
         // return
         return ident;
@@ -311,13 +341,12 @@ export class IdentityService extends BaseService {
 
     /**
      * Removes a cache backend identity.
-     * 
-     * @param user 
+     *
+     * @param user
      */
     removeCachedIdentity(user: BackendIdentity) {
         const redis_key = this.getRedisKey(user.identity.callerId, user.identity.callerId);
         this.redis.del(redis_key);
         logger.debug(`Deleted cached identity in Redis using key <${redis_key}>`);
     }
-
 }

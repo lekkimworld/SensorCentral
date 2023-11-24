@@ -11,7 +11,8 @@ export interface GraphQLResolverContext {
  * Sources where we can login from/using.
  */
 export enum LoginSource {
-    google = "google"
+    google = "google",
+    github = "github"
 }
 
 /**
@@ -47,9 +48,9 @@ export class UserPrincipal implements NamedPrincipal {
     readonly id : string;
     readonly fn : string;
     readonly ln : string;
-    readonly email : string;
+    readonly email : string | undefined;
 
-    constructor(id : string, fn : string, ln : string, email : string) {
+    constructor(id : string, fn : string, ln : string, email : string | undefined) {
         this.id = id;
         this.fn = fn;
         this.ln = ln;
@@ -131,7 +132,7 @@ export interface BrowserUser {
     readonly id : string;
     readonly fn : string;
     readonly ln : string;
-    readonly email : string;
+    readonly email : string | undefined;
     readonly houseId : string | undefined;
     readonly houses : House[] | undefined;
 }

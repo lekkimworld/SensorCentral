@@ -1,4 +1,4 @@
-import { graphql } from "../fetch-util";
+import { get, graphql } from "../fetch-util";
 import { button, buttonClose, buttonPerformAction, ClickEvent, DataEvent, Form, InitEvent, UICatalog } from "../forms-util";
 import * as storage from "../storage-utils";
 
@@ -37,6 +37,10 @@ export class SettingsForm extends Form<undefined> {
                 setTimeout(() => {
                     $("#copied").removeClass("shown").addClass("hidden");
                 }, 2000);
+            } else if (rel.startsWith("oidc_")) {
+                const provider = rel.substring(5);
+                const data = await get(`/api/v1/login/${provider}`);
+                document.location.href = data.url
             }
         })
     }
@@ -59,6 +63,24 @@ export class SettingsForm extends Form<undefined> {
                         fieldExplanation:
                             "This is the JWT used to authorize your access. You may use this for API access if required.",
                     })}
+                    <h3 class="font-small">OpenID Connect Login Providers</h3>
+                    <p>
+                        This section allows you to add additional login providers to your account. Adding 
+                        an existing login provider again will fail.
+                    </p>
+                    <div id="oidcProviders"></div>
+                    <ul>
+                    <li>${button({
+                        text: "Add Login with Github",
+                        rel: "oidc_github",
+                        classList: ["btn", "btn-warning", "mb-1"],
+                    })}</li>
+                    <li>${button({
+                        text: "Add Login with Google",
+                        rel: "oidc_google",
+                        classList: ["btn", "btn-warning", "mb-1"],
+                    })}</li>
+                    </ul>
                     <div id="copied" class="hidden">
                         JWT copied to clipboard.
                     </div>

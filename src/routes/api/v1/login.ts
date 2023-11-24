@@ -12,6 +12,11 @@ import { Logger } from "../../../logger";
 declare module "express-session" {
     export interface SessionData {
         nonce: string;
+        browserResponse: BrowserLoginResponse;
+
+        // used when adding login provider
+        oidc_add: boolean;
+        oidc_userid: string;
     }
 }
 
@@ -21,15 +26,33 @@ const router = express.Router();
 /**
  * Returns the login url to the (anonymous) caller.
  */
-//@ts-ignore
-router.get("/", async (req, res, next) => {
+router.get("/:provider", async (req, res, next) => {
+    if (req.params.provider === "jwt") return next();
+
     // get url
-    const result = await getAuthenticationUrl();
+    const result = await getAuthenticationUrl(req.params.provider);
+
+    // get session
+    const session = req.session;
+
+    // look for authorization header - if found we assume we are adding
+    // login provider to account
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+        // extract JWT
+        const bearerToken = req.headers.authorization.substring(7);
+
+        // verify
+        const identityService = (await lookupService(IdentityService.NAME)) as IdentityService;
+        const identity = await identityService.verifyJWT(bearerToken);
+
+        // set flag in session to indicate we are adding login provider
+        session!.oidc_add = true;
+        session!.oidc_userid = identity.identity.callerId;
+    }
 
     // save nonce, save session
-    const session = req.session;
     session!.nonce = result.nonce;
-    session!.save((err : Error) => {
+    session!.save((err: Error) => {
         // abort if errror
         if (err) {
             return next(new HttpException(500, "Unable to save session", err));
@@ -37,10 +60,10 @@ router.get("/", async (req, res, next) => {
 
         // return response
         return res.send({
-            "url": result.url
-        } as AuthenticationUrlPayload)
-    })
-
+            provider: req.params.provider,
+            url: result.url,
+        } as AuthenticationUrlPayload);
+    });
 })
 
 /**

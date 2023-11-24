@@ -29,7 +29,7 @@ export const fillMenus = () => {
             </li>
             `;
         htmlUsername = `<a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarUsernameLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-            Username: ${user.email}
+            Username: ${user.email || user.id}
             </a>
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
                 <a class="dropdown-item" href="/#powermeter/config">Powermeter Setup</a>

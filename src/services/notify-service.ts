@@ -141,6 +141,10 @@ export class NotifyService extends BaseService {
         if (NotifyUsing.email === data.notifyType) {
             // notify using email
             let email = user.email;
+            if (!email) {
+                logger.warn(`Cannot send email notification to user due to missing email address (id: ${user.id}, name: ${user.fn} ${user.ln})`);
+                return;
+            }
             if (process.env.NOTIFICATIONS_EMAIL_OVERRIDE) {
                 logger.warn(
                     `NOTIFICATIONS_EMAIL_OVERRIDE is set so using that email <${process.env.NOTIFICATIONS_EMAIL_OVERRIDE}>`

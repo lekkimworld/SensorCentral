@@ -119,15 +119,14 @@ export class StorageService extends BaseService {
     }
 
     /**
-     * Find user in the database by google id, our interal id or email.
+     * Find user in the database by our interal id or email.
      * @param user
      * @param userIdOrEmail
      */
     //@ts-ignore
     async getUser(user: BackendIdentity, id: string): Promise<UserPrincipal> {
         const result = await this.dbService!.query(
-            "select id, email, fn, ln, google_sub from login_user where id=$1 OR google_sub=$2 OR email=$3",
-            id,
+            "select id, email, fn, ln from login_user where id=$1 OR email=$2",
             id,
             id
         );
