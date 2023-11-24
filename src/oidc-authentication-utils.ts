@@ -33,35 +33,48 @@ export type OidcEndpoint = {
  */
 export const getOidcEndpoint = (provider: string) : OidcEndpoint => {
     switch (provider) {
-            case LoginSource.google:
-                return {
-                    loginSource: LoginSource.google,
-                    userinfoEndpoint: undefined,
-                    authorizationEndpoint: undefined,
-                    tokenEndpoint: undefined,
-                    providerUrl: process.env.OIDC_PROVIDER_URL_GOOGLE as string,
-                    clientId: process.env.OIDC_CLIENT_ID_GOOGLE as string,
-                    clientSecret: process.env.OIDC_CLIENT_SECRET_GOOGLE as string,
-                    redirectUri: process.env.OIDC_REDIRECT_URI_GOOGLE as string,
-                    scopes: "openid email profile",
-                };
-                
-            case LoginSource.github:
-                return {
-                    loginSource: LoginSource.github,
-                    userinfoEndpoint: "https://api.github.com/user",
-                    authorizationEndpoint: "https://github.com/login/oauth/authorize",
-                    tokenEndpoint: "https://github.com/login/oauth/access_token",
-                    providerUrl: process.env.OIDC_PROVIDER_URL_GITHUB as string,
-                    clientId: process.env.OIDC_CLIENT_ID_GITHUB as string,
-                    clientSecret: process.env.OIDC_CLIENT_SECRET_GITHUB as string,
-                    redirectUri: process.env.OIDC_REDIRECT_URI_GITHUB as string,
-                    scopes: "read:user user:email",
-                };
-                
-            default:
-                throw new Error(`Supplied provider (${provider}) is not supported`);
-        }
+        case LoginSource.google:
+            return {
+                loginSource: LoginSource.google,
+                userinfoEndpoint: undefined,
+                authorizationEndpoint: undefined,
+                tokenEndpoint: undefined,
+                providerUrl: process.env.OIDC_PROVIDER_URL_GOOGLE as string,
+                clientId: process.env.OIDC_CLIENT_ID_GOOGLE as string,
+                clientSecret: process.env.OIDC_CLIENT_SECRET_GOOGLE as string,
+                redirectUri: process.env.OIDC_REDIRECT_URI_GOOGLE as string,
+                scopes: "openid email profile",
+            };
+
+        case LoginSource.microsoft:
+            return {
+                loginSource: LoginSource.microsoft,
+                userinfoEndpoint: undefined,
+                authorizationEndpoint: undefined,
+                tokenEndpoint: undefined,
+                providerUrl: process.env.OIDC_PROVIDER_URL_MICROSOFT as string,
+                clientId: process.env.OIDC_CLIENT_ID_MICROSOFT as string,
+                clientSecret: process.env.OIDC_CLIENT_SECRET_MICROSOFT as string,
+                redirectUri: process.env.OIDC_REDIRECT_URI_MICROSOFT as string,
+                scopes: "openid email profile",
+            };
+
+        case LoginSource.github:
+            return {
+                loginSource: LoginSource.github,
+                userinfoEndpoint: "https://api.github.com/user",
+                authorizationEndpoint: "https://github.com/login/oauth/authorize",
+                tokenEndpoint: "https://github.com/login/oauth/access_token",
+                providerUrl: process.env.OIDC_PROVIDER_URL_GITHUB as string,
+                clientId: process.env.OIDC_CLIENT_ID_GITHUB as string,
+                clientSecret: process.env.OIDC_CLIENT_SECRET_GITHUB as string,
+                redirectUri: process.env.OIDC_REDIRECT_URI_GITHUB as string,
+                scopes: "read:user user:email",
+            };
+
+        default:
+            throw new Error(`Supplied provider (${provider}) is not supported`);
+    }
 }
 
 // build OpenID client
@@ -71,6 +84,7 @@ export const getOidcClient = async (provider: string) => {
     const oidcEndpoint = getOidcEndpoint(provider);
     switch (provider) {
         case LoginSource.google:
+        case LoginSource.microsoft:
             oidcIssuer = await Issuer.discover(oidcEndpoint.providerUrl);
             break;
         case LoginSource.github:

@@ -239,6 +239,7 @@ export class IdentityService extends BaseService {
         let result: QueryResult | undefined;
         logger.debug(`Querying database for user - sub <${oidc_sub}>`);
         switch (source) {
+            case LoginSource.microsoft:
             case LoginSource.google:
             case LoginSource.github:
                 result = await this.db!.query(

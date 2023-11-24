@@ -80,6 +80,11 @@ export class SettingsForm extends Form<undefined> {
                         rel: "oidc_google",
                         classList: ["btn", "btn-warning", "mb-1"],
                     })}</li>
+                    <li>${button({
+                        text: "Add Login with Microsoft",
+                        rel: "oidc_microsoft",
+                        classList: ["btn", "btn-warning", "mb-1"],
+                    })}</li>
                     </ul>
                     <div id="copied" class="hidden">
                         JWT copied to clipboard.

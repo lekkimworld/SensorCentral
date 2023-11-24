@@ -12,7 +12,8 @@ export interface GraphQLResolverContext {
  */
 export enum LoginSource {
     google = "google",
-    github = "github"
+    github = "github",
+    microsoft = "microsoft"
 }
 
 /**

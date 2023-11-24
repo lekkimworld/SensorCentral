@@ -11,6 +11,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 <ul>
                 <li><a href="#login-google">Login with Google</a></li>
                 <li><a href="#login-github">Login with Github</a></li>
+                <li><a href="#login-microsoft">Login with Microsoft</a></li>
                 </ul>
             </p>
         </div>

@@ -47,6 +47,7 @@ router.get("/callback/:provider", async (req, res, next) => {
         let oidcClaims: OidcClaims | undefined;
         switch (oidcEndpoint.loginSource) {
             case LoginSource.google:
+            case LoginSource.microsoft:
                 // get token set
                 const tokenSet = await oidcClient.callback(
                     oidcEndpoint.redirectUri,
@@ -54,11 +55,11 @@ router.get("/callback/:provider", async (req, res, next) => {
                     { nonce },
                     callbackExtras
                 );
-                logger.debug("Performed Google OIDC callback and retrieved tokenset");
+                logger.debug(`Performed ${req.params.provider} OIDC callback and retrieved tokenset`);
 
                 // get claims and validate hosted domain
                 const claims = tokenSet.claims();
-                logger.debug(`Retrieved Google OIDC claims (${JSON.stringify(claims)})`);
+                logger.debug(`Retrieved ${req.params.provider} OIDC claims (${JSON.stringify(claims)})`);
 
                 // create claims
                 oidcClaims = {
