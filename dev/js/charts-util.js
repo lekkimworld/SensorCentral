@@ -274,7 +274,7 @@ const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount
         const sensorIdsStr = sensors.map(s => `"${s.id}"`);
         if (start && end) {
             return fetcher.graphql(
-                `{dataUngroupedDateQuery(filter: {sensorIds: [${sensorIdsStr.join()}]start: "${start.toISOString()}", end: "${end.toISOString()}"}, format: {decimals: 2, , applyScaleFactor: false}){id, name, data{x,y}}}`
+                `{dataUngroupedDateQuery(filter: {sensorIds: [${sensorIdsStr.join()}], start: "${start.toISOString()}", end: "${end.toISOString()}"}, format: {decimals: 2, applyScaleFactor: false}){id, name, data{x,y}}}`
             );
         } else {
             return fetcher.graphql(
