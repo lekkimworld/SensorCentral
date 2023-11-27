@@ -1546,22 +1546,21 @@ export class StorageService extends BaseService {
         await this.getSensor(user, sensorId);
 
         // get data
-        return this.dbService!.query(
+        const result = await this.dbService!.query(
             `select t.* from (select sd.value as value, sd.dt dt, case when s.scalefactor is null then 1 else s.scalefactor end, row_number() over (order by dt desc) as row from sensor_data sd left outer join sensor s on sd.id=s.id where sd.id=$1 and dt >= $2 and dt <= $3 order by dt desc) t where t.row % $4 = 0`,
             sensorId,
             start,
             end,
             onlyEveryXSample
-        ).then((result) => {
-            const arr = result.rows.map((row) => {
-                return {
-                    id: sensorId,
-                    dt: row.dt,
-                    value: applyScaleFactor ? row.value * row.scalefactor : row.value,
-                } as SensorSample;
-            });
-            return Promise.resolve(arr);
+        );
+        const arr = result.rows.map((row) => {
+            return {
+                id: sensorId,
+                dt: row.dt,
+                value: applyScaleFactor ? row.value * row.scalefactor : row.value,
+            } as SensorSample;
         });
+        return arr;
     }
 
     /**
