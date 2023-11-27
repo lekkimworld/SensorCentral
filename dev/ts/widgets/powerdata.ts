@@ -35,17 +35,17 @@ export default async (elem: JQuery<HTMLElement>) => {
     const selectDateAndLoadPowerData = () => {
         new DateSelectForm().addEventListener("data", e => {
             const ev = e as DataEvent;
-            loadAndShowPowerdata(ev.data.date);
+            loadAndShowPowerdata(ev.data.moment);
         }).show();
     };
 
     // load power data
     const loadAndShowPowerdata = input => {
         // construct query
-        const dates = (Array.isArray(input) ? input : [input]);
+        const moments = (Array.isArray(input) ? input : [input]);
         let powerquery = "query {";
-        (Array.isArray(dates) ? dates : [dates]).forEach((d, idx) => {
-            powerquery += `query${idx}: powerPriceQuery(filter: {date: "${d.format("YYYY-MM-DD")}"}){id,name,fromCache,data{x,y}}\n`;
+        (Array.isArray(moments) ? moments : [moments]).forEach((m, idx) => {
+            powerquery += `query${idx}: powerPriceQuery(filter: {date: "${m.format("YYYY-MM-DD")}"}){id,name,fromCache,data{x,y}}\n`;
         })
         powerquery += "}";
 
@@ -75,7 +75,7 @@ export default async (elem: JQuery<HTMLElement>) => {
             )
 
             // store dates
-            visibleDates = dates.map(d => d.format("YYYY-MM-DD"));
+            visibleDates = moments.map(m => m.format("YYYY-MM-DD"));
         })
     }
 

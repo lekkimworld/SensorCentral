@@ -23,9 +23,10 @@ export class DateSelectForm extends Form<undefined> {
     }
 
     async getData(catalog: UICatalog) {
-        const date = (catalog.get("dt") as DateTimeControl).date;
+        const ctl = (catalog.get("dt") as DateTimeControl);
         return {
-            date
+            "moment": ctl.moment,
+            "date": ctl.date
         }
     }
 }

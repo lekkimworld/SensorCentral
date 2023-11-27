@@ -320,7 +320,7 @@ const buildQueryForSensorType_Counter = (
     format: GroupedQueryFormatInput
 ) => {
     // figure out timezone
-    const tz = format.timezone || "Europe/Copenhagen";
+    const tz = format.timezone || constants.DEFAULTS.TIMEZONE;
 
     // create query with adjusted days
     const dataQuery = `
