@@ -38,20 +38,20 @@ export default {
                     return log_level;
                 }
 
-                log_level_services.split(",").forEach(elem => {
+                log_level_services.split(",").forEach((elem) => {
                     if (srvc_level) return;
                     const parts = elem.split("=");
                     if (parts.length !== 2) return;
                     if (parts[0].toUpperCase() === svc.toUpperCase()) {
                         srvc_level = parts[1];
                     }
-                })
+                });
                 if (!srvc_level) {
                     // no custom level found - return default level
                     return log_level;
                 }
             }
-            
+
             // convert level
             const l = stringToLogLevel(srvc_level);
             if (!l) {
@@ -85,8 +85,8 @@ export default {
         DOMAIN: process.env.SMARTME_DOMAIN || "api.smart-me.com",
     },
     ALERT: {
-        TIMEOUT_BINARY_SENSOR: (process.env.TIMEOUT_BINARY_SENSOR
-            ? Number.parseInt(process.env.TIMEOUT_BINARY_SENSOR)
+        TIMEOUT_BINARY_SENSOR: (process.env.ALERTS_TIMEOUT_BINARY_SENSOR
+            ? Number.parseInt(process.env.ALERTS_TIMEOUT_BINARY_SENSOR)
             : 10 * 60 * 1000) as number,
     },
     NOTIFY: {
@@ -159,7 +159,7 @@ export default {
             AREA: "DK2",
         },
         GRAPHQL: {
-            PATH: process.env.GRAPHQL_PATH || "/graphql"
+            PATH: process.env.GRAPHQL_PATH || "/graphql",
         },
     },
     JWT,

@@ -1,6 +1,10 @@
+import { Logger } from "../../logger";
 import { Device, NotifyUsing, Sensor } from "../../types";
 import { v4 as uuid } from "uuid";
 import Watchdog from "watchdog";
+
+// logger
+const logger = new Logger("alert-types");
 
 export enum AlertEventType {
     onDeviceTimeout = "onDeviceTimeout",
@@ -16,7 +20,7 @@ export enum AlertValueTest {
     greaterOrEqual = "greaterOrEqual",
     greater = "greater",
     lessOrEqual = "lessOrEqual",
-    less = "less"
+    less = "less",
 }
 export const stringToAlertValueTest = (v: string) => {
     if (v === "equals") return AlertValueTest.equal;
@@ -25,7 +29,7 @@ export const stringToAlertValueTest = (v: string) => {
     if (v === "lessOrEqual") return AlertValueTest.lessOrEqual;
     if (v === "less") return AlertValueTest.less;
     throw new Error(`${v} is not a valid AlertValueTest`);
-}
+};
 
 export abstract class AlertNotifyData {}
 export abstract class AlertEventData {}
@@ -45,18 +49,18 @@ export class SensorValueEventData extends AlertEventData {
     test: AlertValueTest;
     value: number;
 
-    match(value: number) : boolean {
+    match(value: number): boolean {
         switch (this.test) {
             case AlertValueTest.equal:
-                return (value === this.value);
+                return value === this.value;
             case AlertValueTest.less:
-                return (value < this.value)
+                return value < this.value;
             case AlertValueTest.greater:
-                return (value > this.value);
+                return value > this.value;
             case AlertValueTest.lessOrEqual:
-                return (value <= this.value);
+                return value <= this.value;
             case AlertValueTest.greaterOrEqual:
-                return (value >= this.value);
+                return value >= this.value;
         }
         return false;
     }
@@ -73,7 +77,7 @@ export abstract class Alert {
     notifyType: NotifyUsing = NotifyUsing.none;
     notifyData: AlertNotifyData | undefined;
 
-    constructor(id? : string) {
+    constructor(id?: string) {
         if (id) {
             this.id = id;
         } else {
@@ -128,7 +132,7 @@ export abstract class TimeoutAlert extends Alert {
 
 /**
  * Alert for watchdog on sensor.
- * 
+ *
  */
 export class SensorTimeoutAlert extends TimeoutAlert {
     constructor(id: string, userId: string | undefined, sensor: Sensor, eventData: TimeoutAlertEventData) {
@@ -140,16 +144,18 @@ export class SensorTimeoutAlert extends TimeoutAlert {
     }
 
     feed() {
+        logger.debug(`Feeding watchdog for target <${this.target.id}>`);
         this.wd.feed({
             type: AlertEventType.onSensorTimeout,
             data: this,
         });
+        logger.debug(`Fed watchdog for target <${this.target.id}>`);
     }
 }
 
 /**
  * Alert for binary sensors where a timeout means we emit a sensor sample.
- * 
+ *
  */
 export class BinarySensorAlert extends SensorTimeoutAlert {
     constructor(sensor: Sensor, eventData: TimeoutAlertEventData) {
@@ -159,7 +165,7 @@ export class BinarySensorAlert extends SensorTimeoutAlert {
 
 /**
  * Alert for watchdog on device.
- * 
+ *
  */
 export class DeviceTimeoutAlert extends TimeoutAlert {
     constructor(id: string, userId: string | undefined, device: Device, eventData: TimeoutAlertEventData) {

@@ -427,8 +427,7 @@ export class DateTimeControl extends UIControl {
     }
 
     get moment(): Moment {
-        // the returned date is midnight the day before the selected date so we add a day
-        return $(`#${this.options.name}`).data("DateTimePicker").date().add(1, "day");
+        return $(`#${this.options.name}`).data("DateTimePicker").date();
     }
 
     get date(): Date {
@@ -452,6 +451,11 @@ export class DateControl extends DateTimeControl {
         } as FieldInitDateTimePicker;
         if (this.adjust) initArgs.dateInit = this.adjust;
         initDatePicker(initArgs);
+    }
+
+    get moment(): Moment {
+        // the returned date is midnight the day before the selected date so we add a day
+        return $(`#${this.options.name}`).data("DateTimePicker").date().add(1, "day");
     }
 }
 export class NumberControl extends UIControl {

@@ -1,6 +1,6 @@
 import { Sensor } from "../clientside-types";
 import { post } from "../fetch-util";
-import { buttonClose, buttonPerformAction, DataEvent, DateTimeControl, EVENTS, Form, InitEvent, NumberControl, UICatalog } from "../forms-util";
+import { buttonClose, buttonPerformAction, DataEvent, DateTimeControl, EVENTS, Form, InitEvent, NumberControl, ToggleButtonControl, UICatalog } from "../forms-util";
 
 export class ManualSampleForm extends Form<Sensor> {
     constructor(sensor: Sensor) {
@@ -12,7 +12,7 @@ export class ManualSampleForm extends Form<Sensor> {
             // build post body
             let postbody = {
                 id: this.ctx!.id!,
-                value: data.value,
+                value: typeof data.value === "boolean" && data.value === true ? 1 : data.value,
                 deviceId: this.ctx!.device!.id,
                 dt: (data.date as Date).toISOString(),
             };
@@ -33,14 +33,23 @@ export class ManualSampleForm extends Form<Sensor> {
                     name: "id",
                     value: this.ctx!.id,
                 })}
-                ${catalog.numberField({
-                    name: "sample",
-                    label: "Sample",
-                    placeholder: "Enter sample value",
-                    required: true,
-                    validationText: "You must specify the sample value for the sensor. Must be a number.",
-                    fieldExplanation: "Specify the sample value (must be a number).",
-                })}
+                ${
+                    this.ctx!.type === "binary"
+                        ? catalog.toggleButton({
+                            name: "sample",
+                            label: "Sample",
+                            fieldExplanation: "Select the sample value",
+                            on: true
+                        })
+                        : catalog.numberField({
+                              name: "sample",
+                              label: "Sample",
+                              placeholder: "Enter sample value",
+                              required: true,
+                              validationText: "You must specify the sample value for the sensor. Must be a number.",
+                              fieldExplanation: "Specify the sample value (must be a number).",
+                          })
+                }
                 ${catalog.datetimepicker({
                     name: "datetimepicker1",
                     label: "Date/time",
@@ -58,7 +67,12 @@ export class ManualSampleForm extends Form<Sensor> {
     async getData(catalog: UICatalog) {
         // build and return data
         const date = (catalog.get("datetimepicker1") as DateTimeControl).date;
-        const value = (catalog.get("sample") as NumberControl).float;
+        let value : number | undefined;
+        if (this.ctx!.type === "binary") {
+            value = (catalog.get("sample") as ToggleButtonControl).checked ? 1 : 0;
+        } else {
+            value = (catalog.get("sample") as NumberControl).float;
+        }
         return {
             date,
             value,

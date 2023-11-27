@@ -1,10 +1,10 @@
 import moment from "moment-timezone";
 import semaphore, { Semaphore } from "semaphore";
-import { objectHasOwnProperty_Trueish } from "../../utils";
 import { ISubscriptionResult } from "../../configure-queues-topics";
 import constants from "../../constants";
 import { Logger } from "../../logger";
 import { BackendIdentity, BaseService, ControlMessageTypes, Device, NullableBoolean, QueueNotifyMessage, Sensor, SensorType, TopicControlMessage, TopicSensorMessage } from "../../types";
+import { objectHasOwnProperty_Trueish } from "../../utils";
 import { EventService } from "../event-service";
 import { IdentityService } from "../identity-service";
 import { StorageService } from "../storage-service";
@@ -247,13 +247,14 @@ export class AlertService extends BaseService {
             msg.sensorId,
             undefined,
             (a) => {
-                if (a instanceof TimeoutAlert) {
-                    a.feed();
-                } else if (a instanceof SensorSampleAlert) {
-                    this.notify(a, {});
-                } else if (a instanceof SensorValueAlert) {
-                    const data = a.eventData as SensorValueEventData;
-                    if (data.match(msg.value)) this.notify(a, { value: msg.value });
+                const alert = a.alert;
+                if (alert instanceof TimeoutAlert) {
+                    alert.feed();
+                } else if (alert instanceof SensorSampleAlert) {
+                    this.notify(alert, {});
+                } else if (alert instanceof SensorValueAlert) {
+                    const data = alert.eventData as SensorValueEventData;
+                    if (data.match(msg.value)) this.notify(alert, { value: msg.value });
                 }
             },
             undefined
