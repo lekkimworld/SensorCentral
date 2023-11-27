@@ -45,8 +45,20 @@ export default {
         // create div for graph
         chartCtx = addChartContainer(elemRoot, {
             actions: ["INTERVAL", "DOWNLOAD"],
-            callback: (action, data) => {
-                samplesTable(sensor, data);
+            callback: async (action, data) => {
+                if ("INTERVAL" !== action) return;
+
+                // get dates
+                const start_dt = data.start_dt;
+                const end_dt = data.end_dt;
+
+                // reload
+                const samples = await chartCtx.reload({
+                    start_dt, end_dt
+                })
+
+                // show samples
+                samplesTable(sensor, samples);
             },
         });
 

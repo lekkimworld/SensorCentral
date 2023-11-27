@@ -79,31 +79,26 @@ export const createBreadcrumbHeader = async (pageObject: House|Device|Sensor, co
     const elems : Array<BreadcrumbElement> = [{
         text: "Home", id: "#root"
     }]
-    if (!("house" in pageObject)) {
+    if ("house" in pageObject) {
+        // house found - this is a device
+        const d = pageObject as Device;
         elems.push({
             text: "Houses", id: "houses"
         })
-        elems.push({
-            text: (pageObject as Device).name!,
-        });
-    }
-    if ("house" in pageObject) {
-        elems.push({
-            text: "Houses",
-            id: "houses",
-        });
-        elems.push({
-            text: (pageObject as Device).house!.name!,
-            id: `house/${(pageObject as Device).house!.id!}`
-        });
-        elems.push({
-            text: (pageObject as Device).name!
-        });
-    }
-    if ("device" in pageObject) {
+        elems.push({ text: d.house!.name!, id: `house/${d.house!.id}` });
+        elems.push({text: d.name!});
+        
+    } else if ("device" in pageObject) {
+        // this is a sensor
         const s = pageObject as Sensor;
+        elems.push({ text: "Houses", id: "houses" });
         elems.push({text: s.device!.house!.name!, id: `house/${s.device!.house!.id}` });
         elems.push({text: s.device!.name!, id: `house/${s.device!.house!.id}/device/${s.device!.id}` });
+        elems.push({text: s.name!});
+    } else {
+        // this is a house
+        elems.push({ text: "Houses", id: "houses" });
+        elems.push({ text: pageObject.name! });
     }
 
     // add breadcrumbs
