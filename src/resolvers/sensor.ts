@@ -5,6 +5,7 @@ import { SensorQueryData } from "../services/storage-service";
 import * as types from "../types";
 import { Alert } from "./alert";
 import { Device } from "./device";
+import { OnSensorSampleEvent } from "./event";
 
 registerEnumType(types.SensorType, {
     "name": "SensorType",
@@ -76,6 +77,9 @@ export class Sensor {
 
     @Field(() => [Alert])
     alerts: alert_types.Alert[];
+
+    @Field(() => [OnSensorSampleEvent])
+    events: OnSensorSampleEvent[];
 }
 
 @InputType()
@@ -145,7 +149,10 @@ export class FavoriteSensorsInput {
 @Resolver((_of) => Sensor)
 export class SensorResolver {
     @Query(() => [Sensor], {})
-    async sensors(@Arg("data", {nullable: true, defaultValue: {}}) data: SensorsQuery, @Ctx() ctx: types.GraphQLResolverContext) {
+    async sensors(
+        @Arg("data", { nullable: true, defaultValue: {} }) data: SensorsQuery,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ) {
         let sensors = await ctx.storage.getSensors(ctx.user, {
             sensorIds: data.sensorIds,
             deviceId: data.deviceId,
@@ -197,8 +204,20 @@ export class SensorResolver {
     }
 
     @FieldResolver()
-    async alerts(@Arg("active", () => types.NullableBoolean, {nullable: true}) active: types.NullableBoolean, @Root() sensor: Sensor, @Ctx() ctx: types.GraphQLResolverContext): Promise<Alert[]> {
+    async alerts(
+        @Arg("active", () => types.NullableBoolean, { nullable: true }) active: types.NullableBoolean,
+        @Root() sensor: Sensor,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ): Promise<Alert[]> {
         return (await ctx.storage.getAlerts(ctx.user, sensor.storageSensor, active)).map((a) => new Alert(a));
+    }
+
+    @FieldResolver()
+    async events(
+        @Root() sensor: Sensor,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ): Promise<OnSensorSampleEvent[]> {
+        return (await ctx.storage.getUserOnSensorSampleEvents(ctx.user, sensor.id)).map((e) => new OnSensorSampleEvent(e));
     }
 
     @FieldResolver()

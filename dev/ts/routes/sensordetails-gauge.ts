@@ -1,7 +1,6 @@
 import * as uiutils from "../../js/ui-utils";
 import { addChartContainer } from "../../js/charts-util";
-import * as dateutils from "../../js/date-utils";
-import { SensorDetails } from "./sensordetails-base";
+import { SensorDetails, samplesTable } from "./sensordetails-base";
 
 const ID_SAMPLES_DIV = "samples";
 const ID_SAMPLES_TABLE = "samples_table";
@@ -9,30 +8,12 @@ const ID_SAMPLES_TABLE = "samples_table";
 let chartCtx;
 let lastSamplesQueryCount = undefined;
 
-const samplesTable = (sensor, samplesInput) => {
-    const samplesDiv = $(`#${ID_SAMPLES_DIV}`);
-    const samplesTable = $(`#${ID_SAMPLES_TABLE}`);
-    const samples = Array.isArray(samplesInput) ? samplesInput[0] : samplesInput;
-
-    // get sample count
-    samplesTable.html("");
-    uiutils.appendDataTable(samplesTable, {
-        "id": ID_SAMPLES_TABLE,
-        "headers": ["DATE/TIME", "VALUE"],
-        "rows": samples.data.map(s => {
-            return {
-                "data": s,
-                "columns": [dateutils.formatDMYTime(s.x), s.y]
-            }
-        })
-    });
-    return Promise.resolve();
-}
-
 const buildChartAndTable = (sensor) => {
-    chartCtx.gaugeChart({ "sensors": [sensor] }).then(samples => {
-        if (!samples) return;
-        samplesTable(sensor, samples);
+    chartCtx.gaugeChart({ "sensors": [sensor] }).then(sensorSamples => {
+        if (!sensorSamples) return;
+        const samples = Array.isArray(sensorSamples) ? sensorSamples[0] : sensorSamples;
+        console.log("buildChartAndTable", samples);
+        samplesTable(sensor, samples.data);
     })
 }
 
@@ -58,7 +39,7 @@ export default {
                 })
 
                 // show samples
-                samplesTable(sensor, samples);
+                samplesTable(sensor, samples.data);
             },
         });
 

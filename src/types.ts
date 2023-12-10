@@ -494,3 +494,28 @@ export class HttpException extends Error {
     frequency : number;
     encryptedCredentials : string;
   }
+
+export enum HttpMethod {
+    GET = "GET",
+    POST = "POST"
+}
+
+export const getHttpMethod = (method: string) : HttpMethod => {
+    return (method.toLowerCase() === "post" ? HttpMethod.POST : HttpMethod.GET);
+}
+
+export type Endpoint = {
+    id: string;
+    name: string;
+    baseUrl: string;
+    bearerToken?: string;
+}
+
+export type OnSensorSampleEvent = {
+    id: string;
+    user?: UserPrincipal;
+    endpoint: Endpoint;
+    method: HttpMethod;
+    path: string;
+    bodyTemplate: string;
+}

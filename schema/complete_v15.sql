@@ -1,5 +1,7 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 create table DATABASE_VERSION (version int not null);
-insert into DATABASE_VERSION (version) values (13);
+insert into DATABASE_VERSION (version) values (15);
 
 create table HOUSE (id character varying(36) not null primary key, name character varying(128) not null);
 alter table HOUSE add constraint HOUSE_NAME_UNIQUE UNIQUE (name);
@@ -9,9 +11,16 @@ alter table DEVICE add foreign key (houseid) references house (id) on delete cas
 
 create type NOTIFY_METHOD as ENUM ('email','pushover');
 
-create table LOGIN_USER (id character varying(36) not null primary key, google_sub character varying(128), email character varying(128) not null, fn character varying(128) not null, ln character varying(128) not null);
-alter table LOGIN_USER add constraint USER_EMAIL_UNIQUE UNIQUE (email);
-alter table LOGIN_USER add constraint GOOGLE_SUB_UNIQUE UNIQUE (google_sub);
+create table LOGIN_USER (id character varying(36) not null primary key, email character varying(128), fn character varying(128) not null, ln character varying(128) not null);
+
+create table login_oidc_mapping (
+    userid character varying(36) not null, 
+    provider character varying(36) not null, 
+    sub character varying(128) not null,
+    verified boolean not null default false
+);
+alter table login_oidc_mapping add foreign key (userid) references login_user(id);
+alter table login_oidc_mapping add primary key (userid, provider);
 
 create table PUSHOVER_INFO (userId character varying(36) not null, userkey character varying(36) not null, apptoken character varying(36) not null);
 alter table pushover_info add primary key (userid);
@@ -42,64 +51,29 @@ ALTER TABLE POWERMETER_SUBSCRIPTION ADD PRIMARY KEY (houseid, sensorid);
 ALTER TABLE POWERMETER_SUBSCRIPTION ADD FOREIGN KEY (houseid) REFERENCES HOUSE(id) ON DELETE CASCADE;
 ALTER TABLE POWERMETER_SUBSCRIPTION ADD FOREIGN KEY (sensorid) REFERENCES SENSOR(id) ON DELETE CASCADE;
 
-
-create type ALERT_EVENT as ENUM (
-    'onDeviceTimeout',
-    'onDeviceRestart',
-    'onDeviceMessage',
-    'onSensorTimeout',
-    'onSensorSample',
-    'onSensorValue'
-);
-create table ALERT (
-    id character varying(36) primary key,
-    active boolean not null default true,
+create table endpoint (
+    id character varying(36) not null primary key default uuid_generate_v4(), 
+    name character varying(128) not null,
     userId character varying(36) not null, 
-    deviceId character varying(36), 
-    sensorId character varying(36), 
-    description character varying(128),
-    notify_type NOTIFY_METHOD not null,
-    notify_data json,
-    event_type ALERT_EVENT not null,
-    event_data json not null
+    baseurl character varying(128) not null,
+    bearertoken character varying(1024)
 );
-alter table ALERT ADD FOREIGN KEY (userId) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
-alter table ALERT ADD FOREIGN KEY (deviceId) REFERENCES DEVICE(id) ON DELETE CASCADE;
-alter table ALERT ADD FOREIGN KEY (sensorId) REFERENCES SENSOR(id) ON DELETE CASCADE;
-alter table ALERT ADD CONSTRAINT deviceid_or_sensorid CHECK ((NOT sensorId IS NULL AND deviceId IS NULL) OR (sensorId IS NULL AND NOT deviceId IS NULL));
+alter table endpoint ADD FOREIGN KEY (userId) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
 
-CREATE FUNCTION alert_pushover_valid_check() RETURNS trigger AS $alert_pushover_valid_check$
-    DECLARE
-        pushover_userkey character varying(36);
-        sensor_ids character varying(36)[];
-        device_ids character varying(36)[];
-    BEGIN
-        /* verify user has pushover enabled */
-        IF NEW.notify_type = 'pushover' THEN
-            SELECT userkey into pushover_userkey from pushover_info where userid=NEW.userId;
-            IF pushover_userkey IS NULL THEN
-                RAISE EXCEPTION 'User with ID % has no pushover_info record', NEW.userid;
-            END IF;
-        END IF;
+create type HTTP_METHOD as ENUM (
+    'GET',
+    'POST'
+);
 
-        /* verify device id */
-        IF NOT NEW.deviceId IS NULL THEN
-            device_ids := ARRAY(select d.id from device d, house h where d.houseid=h.id and h.id in (select houseid from user_house_access where userid=NEW.userId));
-            IF NOT NEW.deviceId = ANY(device_ids) THEN
-                RAISE EXCEPTION 'User with ID % does not have access to specified device %', NEW.userid, NEW.deviceid;
-            END IF;
-        END IF;
-
-        /* verify sensor id */
-        IF NOT NEW.sensorId IS NULL THEN
-            sensor_ids := ARRAY(select s.id from sensor s, device d, house h where s.deviceid=d.id and d.houseid=h.id and h.id in (select houseid from user_house_access where userid=NEW.userId));
-            IF NOT NEW.sensorId = ANY(sensor_ids) THEN
-                RAISE EXCEPTION 'User with ID % does not have access to specified sensor %', NEW.userid, NEW.sensorid;
-            END IF;
-        END IF;
-
-        RETURN NEW;
-    END;
-$alert_pushover_valid_check$ LANGUAGE plpgsql;
-
-CREATE TRIGGER alert_pushover_valid_check BEFORE INSERT OR UPDATE ON ALERT FOR EACH ROW EXECUTE PROCEDURE alert_pushover_valid_check();
+create table event_onsensorsample (
+    id character varying(36) not null primary key default uuid_generate_v4(), 
+    sensorid character varying(36) not null,
+    userid  character varying(36) not null,
+    endpointid character varying(36) not null,
+    method HTTP_METHOD not null,
+    path character varying(128),
+    body character varying(1024)
+);
+alter table event_onsensorsample ADD FOREIGN KEY (userId) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
+alter table event_onsensorsample ADD FOREIGN KEY (sensorid) REFERENCES sensor(id) ON DELETE CASCADE;
+alter table event_onsensorsample ADD FOREIGN KEY (endpointid) REFERENCES endpoint(id) ON DELETE CASCADE;

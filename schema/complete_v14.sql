@@ -48,3 +48,65 @@ CREATE TABLE POWERMETER_SUBSCRIPTION (houseid character varying(36) not null, se
 ALTER TABLE POWERMETER_SUBSCRIPTION ADD PRIMARY KEY (houseid, sensorid);
 ALTER TABLE POWERMETER_SUBSCRIPTION ADD FOREIGN KEY (houseid) REFERENCES HOUSE(id) ON DELETE CASCADE;
 ALTER TABLE POWERMETER_SUBSCRIPTION ADD FOREIGN KEY (sensorid) REFERENCES SENSOR(id) ON DELETE CASCADE;
+
+
+create type ALERT_EVENT as ENUM (
+    'onDeviceTimeout',
+    'onDeviceRestart',
+    'onDeviceMessage',
+    'onSensorTimeout',
+    'onSensorSample',
+    'onSensorValue'
+);
+create table ALERT (
+    id character varying(36) primary key,
+    active boolean not null default true,
+    userId character varying(36) not null, 
+    deviceId character varying(36), 
+    sensorId character varying(36), 
+    description character varying(128),
+    notify_type NOTIFY_METHOD not null,
+    notify_data json,
+    event_type ALERT_EVENT not null,
+    event_data json not null
+);
+alter table ALERT ADD FOREIGN KEY (userId) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
+alter table ALERT ADD FOREIGN KEY (deviceId) REFERENCES DEVICE(id) ON DELETE CASCADE;
+alter table ALERT ADD FOREIGN KEY (sensorId) REFERENCES SENSOR(id) ON DELETE CASCADE;
+alter table ALERT ADD CONSTRAINT deviceid_or_sensorid CHECK ((NOT sensorId IS NULL AND deviceId IS NULL) OR (sensorId IS NULL AND NOT deviceId IS NULL));
+
+CREATE FUNCTION alert_pushover_valid_check() RETURNS trigger AS $alert_pushover_valid_check$
+    DECLARE
+        pushover_userkey character varying(36);
+        sensor_ids character varying(36)[];
+        device_ids character varying(36)[];
+    BEGIN
+        /* verify user has pushover enabled */
+        IF NEW.notify_type = 'pushover' THEN
+            SELECT userkey into pushover_userkey from pushover_info where userid=NEW.userId;
+            IF pushover_userkey IS NULL THEN
+                RAISE EXCEPTION 'User with ID % has no pushover_info record', NEW.userid;
+            END IF;
+        END IF;
+
+        /* verify device id */
+        IF NOT NEW.deviceId IS NULL THEN
+            device_ids := ARRAY(select d.id from device d, house h where d.houseid=h.id and h.id in (select houseid from user_house_access where userid=NEW.userId));
+            IF NOT NEW.deviceId = ANY(device_ids) THEN
+                RAISE EXCEPTION 'User with ID % does not have access to specified device %', NEW.userid, NEW.deviceid;
+            END IF;
+        END IF;
+
+        /* verify sensor id */
+        IF NOT NEW.sensorId IS NULL THEN
+            sensor_ids := ARRAY(select s.id from sensor s, device d, house h where s.deviceid=d.id and d.houseid=h.id and h.id in (select houseid from user_house_access where userid=NEW.userId));
+            IF NOT NEW.sensorId = ANY(sensor_ids) THEN
+                RAISE EXCEPTION 'User with ID % does not have access to specified sensor %', NEW.userid, NEW.sensorid;
+            END IF;
+        END IF;
+
+        RETURN NEW;
+    END;
+$alert_pushover_valid_check$ LANGUAGE plpgsql;
+
+CREATE TRIGGER alert_pushover_valid_check BEFORE INSERT OR UPDATE ON ALERT FOR EACH ROW EXECUTE PROCEDURE alert_pushover_valid_check();

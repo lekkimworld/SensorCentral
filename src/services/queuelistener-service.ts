@@ -1,5 +1,5 @@
 import constants from "../constants";
-import { EventService } from "./event-service";
+import { PubsubService } from "./pubsub-service";
 import { RedisService } from "./redis-service";
 import { Logger } from "../logger";
 import { DatabaseService } from "./database-service";
@@ -27,7 +27,7 @@ export class QueueListenerService extends BaseService {
     public static NAME = "queuelistener";
 
     dbService?: DatabaseService;
-    eventService?: EventService;
+    eventService?: PubsubService;
     redisService?: RedisService;
     storage: StorageService;
     security: IdentityService;
@@ -37,7 +37,7 @@ export class QueueListenerService extends BaseService {
         super(QueueListenerService.NAME);
         this.dependencies = [
             DatabaseService.NAME,
-            EventService.NAME,
+            PubsubService.NAME,
             RedisService.NAME,
             StorageService.NAME,
             IdentityService.NAME,
@@ -46,7 +46,7 @@ export class QueueListenerService extends BaseService {
 
     async init(callback: (err?: Error) => {}, services: BaseService[]) {
         this.dbService = services[0] as unknown as DatabaseService;
-        this.eventService = services[1] as unknown as EventService;
+        this.eventService = services[1] as unknown as PubsubService;
         this.redisService = services[2] as unknown as RedisService;
         this.storage = services[3] as StorageService;
         this.security = services[4] as IdentityService;

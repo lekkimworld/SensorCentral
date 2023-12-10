@@ -95,6 +95,11 @@ declare global {
             APP_GITCOMMIT: string;
 
             /**
+             * The app title show in the browser. Defaults to SensorCentral.
+             */
+            APP_TITLE: string;
+
+            /**
              * Secret used to sign / verify JWT's issued by the app
              */
             API_JWT_SECRET: string;

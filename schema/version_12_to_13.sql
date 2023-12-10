@@ -45,13 +45,12 @@ alter table ALERT ADD FOREIGN KEY (deviceId) REFERENCES DEVICE(id) ON DELETE CAS
 alter table ALERT ADD FOREIGN KEY (sensorId) REFERENCES SENSOR(id) ON DELETE CASCADE;
 alter table ALERT ADD CONSTRAINT deviceid_or_sensorid CHECK ((NOT sensorId IS NULL AND deviceId IS NULL) OR (sensorId IS NULL AND NOT deviceId IS NULL));
 
-CREATE FUNCTION alert_pushover_valid_check() RETURNS trigger AS $alert_pushover_valid_check$
+CREATE FUNCTION alert_pushover_valid_check() RETURNS trigger LANGUAGE plpgsql AS $$ 
     DECLARE
         pushover_userkey character varying(36);
         sensor_ids character varying(36)[];
         device_ids character varying(36)[];
     BEGIN
-        /* verify user has pushover enabled */
         IF NEW.notify_type = 'pushover' THEN
             SELECT userkey into pushover_userkey from pushover_info where userid=NEW.userId;
             IF pushover_userkey IS NULL THEN
@@ -59,7 +58,6 @@ CREATE FUNCTION alert_pushover_valid_check() RETURNS trigger AS $alert_pushover_
             END IF;
         END IF;
 
-        /* verify device id */
         IF NOT NEW.deviceId IS NULL THEN
             device_ids := ARRAY(select d.id from device d, house h where d.houseid=h.id and h.id in (select houseid from user_house_access where userid=NEW.userId));
             IF NOT NEW.deviceId = ANY(device_ids) THEN
@@ -67,7 +65,6 @@ CREATE FUNCTION alert_pushover_valid_check() RETURNS trigger AS $alert_pushover_
             END IF;
         END IF;
 
-        /* verify sensor id */
         IF NOT NEW.sensorId IS NULL THEN
             sensor_ids := ARRAY(select s.id from sensor s, device d, house h where s.deviceid=d.id and d.houseid=h.id and h.id in (select houseid from user_house_access where userid=NEW.userId));
             IF NOT NEW.sensorId = ANY(sensor_ids) THEN
@@ -77,7 +74,7 @@ CREATE FUNCTION alert_pushover_valid_check() RETURNS trigger AS $alert_pushover_
 
         RETURN NEW;
     END;
-$alert_pushover_valid_check$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER alert_pushover_valid_check BEFORE INSERT OR UPDATE ON ALERT FOR EACH ROW EXECUTE PROCEDURE alert_pushover_valid_check();
 

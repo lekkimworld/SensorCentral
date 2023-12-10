@@ -18,6 +18,8 @@ import { StorageService } from "./services/storage-service";
 import { UsersResolver } from "./resolvers/user";
 import { Logger } from "./logger";
 import { AlertResolver } from "./resolvers/alert";
+import { EventResolver } from "./resolvers/event";
+import { EndpointResolver } from "./resolvers/endpoint";
 import constants from "./constants";
 
 const logger = new Logger("configure-express-graphql");
@@ -40,7 +42,10 @@ export default  async (app : Application) => {
             DataQueryResolver,
             SmartmeResolver,
             UsersResolver,
-            AlertResolver],
+            AlertResolver,
+            EventResolver,
+            EndpointResolver
+        ],
         dateScalarMode: "isoDate"
     })
 

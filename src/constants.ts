@@ -72,6 +72,7 @@ export default {
         DOMAIN: process.env.APP_DOMAIN,
         NO_PROD_TLS: process.env.APP_NO_PROD_TLS && process.env.APP_NO_PROD_TLS.substring(0, 1) === "t" ? true : false,
         GITCOMMIT: process.env.APP_GITCOMMIT || "n_a",
+        TITLE: process.env.APP_TITLE || "SensorCentral"
     },
     HTTP_CONTEXT: {
         REQUEST_ID: "requestId",

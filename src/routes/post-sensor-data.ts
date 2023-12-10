@@ -1,6 +1,6 @@
 import * as express from 'express';
 const services = require('../configure-services');
-import {EventService} from "../services/event-service";
+import {PubsubService} from "../services/pubsub-service";
 import constants from "../constants";
 import { Logger } from '../logger';
 import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException, ControlMessageTarget } from '../types';
@@ -10,7 +10,7 @@ import { IdentityService } from '../services/identity-service';
 const logger = new Logger("post-sensor-data");
 const router = express.Router();
 
-const postControlEvent = (eventSvc : EventService, payload : IngestedControlMessage) => {
+const postControlEvent = (eventSvc : PubsubService, payload : IngestedControlMessage) => {
 	eventSvc.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
 		logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
 	}).catch(err => {
@@ -58,7 +58,7 @@ router.post('/', (req, res, next) => {
 	// lookup services
 	services.lookupService(["event", "storage", "identity"]).then((svcs : BaseService[]) => {
 		// get services
-		const eventSvc = svcs[0] as EventService;
+		const eventSvc = svcs[0] as PubsubService;
 		const storage = svcs[1] as StorageService;
 		const identity = svcs[2] as IdentityService;
 

@@ -2,6 +2,7 @@ import * as uiutils from "../../js/ui-utils";
 import { graphql } from "../fetch-util";
 import { addChartContainer } from "../../js/charts-util";
 import moment from "moment";
+import { SensorSample } from "../clientside-types";
 
 const ID_SAMPLES_DIV = "samples";
 const ID_SAMPLES_TABLE = "samples_table";
@@ -16,11 +17,10 @@ export type SensorDetails = {
     updateUI?: (sensor, body) => void
 }
 
-const samplesTable = (sensor, samples) => {
+export const samplesTable = (sensor, samples) => {
     if (!samples || !samples.length) return;
     const samplesDiv = $(`#${ID_SAMPLES_DIV}`);
     const samplesTable = $(`#${ID_SAMPLES_TABLE}`);
-
     const isXDate = samples[0].x.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z/);
 
     // get sample count
@@ -29,11 +29,19 @@ const samplesTable = (sensor, samples) => {
         "id": ID_SAMPLES_TABLE,
         "headers": isXDate ? ["DATE", "TIME", "VALUE"] : ["TIME", "VALUE"],
         "rows": samples.map(s => {
-            return {
-                "data": s,
-                "columns": isXDate ? [moment(s.x).format("DD/MM-YYYY"), moment(s.x).format("HH:mm"), s.y] : [s.x, s.y]
-            }
-        })
+                if (isXDate) {
+                    s.moment = moment(s.x);
+                }
+                return s;
+            }).toSorted((a, b) => {
+                if (!isXDate) return 0;
+                return b.moment.diff(a.moment);
+            }).map(s => {
+                return {
+                    "data": s,
+                    "columns": isXDate ? [s.moment.format("DD/MM-YYYY"), s.moment.format("HH:mm"), s.y] : [s.x, s.y]
+                }
+            })
     });
     return Promise.resolve();
 }

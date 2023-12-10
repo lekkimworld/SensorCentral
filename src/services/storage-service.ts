@@ -7,11 +7,11 @@ import { CreateHouseInput, DeleteHouseInput, FavoriteHouseInput, House, UpdateHo
 import { CreateSensorType, DeleteSensorType, FavoriteSensorsInput, UpdateSensorType } from "../resolvers/sensor";
 import { UpdatePushoverSettingsInput } from "../resolvers/settings";
 import {
-    BackendIdentity, BaseService, Device, DeviceData, HouseUser, NotificationSettings, NullableBoolean, PowerPhase, PowerType, PushoverSettings, Sensor,
+    BackendIdentity, BaseService, Device, DeviceData, Endpoint, getHttpMethod, HouseUser, HttpMethod, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Sensor,
     SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, UserPrincipal
 } from "../types";
 import { DatabaseService } from "./database-service";
-import { EventService } from "./event-service";
+import { PubsubService } from "./pubsub-service";
 import { RedisService } from "./redis-service";
 import moment = require("moment");
 //@ts-ignore
@@ -23,6 +23,8 @@ import { ISO8601_DATETIME_FORMAT } from "../constants";
 import { Alert, DeviceTimeoutAlert, SensorTimeoutAlert, SensorValueAlert, SensorValueEventData, stringToAlertValueTest, TimeoutAlertEventData } from "./alert/alert-types";
 import { IdentityService } from "./identity-service";
 import { CreateAlertInput, DeleteAlertInput } from "../resolvers/alert";
+import { CreateEndpointInput, UpdateEndpointInput, DeleteEndpointInput } from "../resolvers/endpoint";
+import { CreateOnSensorSampleEventInput, DeleteOnSensorSampleEventInput, UpdateOnSensorSampleEventInput } from "../resolvers/event";
 
 const DEVICE_DATA_KEY_PREFIX = "device_data:";
 const HOUSE_COLUMNS = "h.id houseid, h.name housename";
@@ -101,17 +103,17 @@ export const LAST_N_SAMPLES = 100;
 export class StorageService extends BaseService {
     public static NAME = "storage";
     dbService!: DatabaseService;
-    eventService!: EventService;
+    eventService!: PubsubService;
     redisService!: RedisService;
 
     constructor() {
         super(StorageService.NAME);
-        this.dependencies = [DatabaseService.NAME, EventService.NAME, RedisService.NAME];
+        this.dependencies = [DatabaseService.NAME, PubsubService.NAME, RedisService.NAME];
     }
 
     init(callback: (err?: Error) => {}, services: BaseService[]) {
         this.dbService = services[0] as unknown as DatabaseService;
-        this.eventService = services[1] as unknown as EventService;
+        this.eventService = services[1] as unknown as PubsubService;
         this.redisService = services[2] as unknown as RedisService;
 
         // did init
@@ -878,8 +880,10 @@ export class StorageService extends BaseService {
         let sensors = convertRowsToSensors(result);
         if (queryData) {
             if (queryData.favorite) {
-                const favSensors = await (await this.getFavoriteSensors(user, queryData.type ? {"type": queryData.type} : undefined)).map(s => s.id);
-                sensors = sensors.filter(s => favSensors.includes(s.id));
+                const favSensors = await (
+                    await this.getFavoriteSensors(user, queryData.type ? { type: queryData.type } : undefined)
+                ).map((s) => s.id);
+                sensors = sensors.filter((s) => favSensors.includes(s.id));
             }
 
             if (queryData.houseId) sensors = sensors.filter((s) => s.device?.house.id === queryData.houseId);
@@ -1143,7 +1147,11 @@ export class StorageService extends BaseService {
      * @param _user
      * @returns
      */
-    async getAlerts(user: BackendIdentity, target: Sensor|Device|undefined, active: NullableBoolean | undefined) : Promise<Alert[]> {
+    async getAlerts(
+        user: BackendIdentity,
+        target: Sensor | Device | undefined,
+        active: NullableBoolean | undefined
+    ): Promise<Alert[]> {
         // get all alerts
         let result;
         if (this.isAllDataAccessUser(user)) {
@@ -1158,9 +1166,7 @@ export class StorageService extends BaseService {
                     target.id
                 );
             } else {
-                result = await this.dbService.query(
-                    `select * from alert where not userid is null`
-                );
+                result = await this.dbService.query(`select * from alert where not userid is null`);
             }
         } else {
             if (target && "device" in target) {
@@ -1168,7 +1174,7 @@ export class StorageService extends BaseService {
                     `select * from alert where userid=$1 and sensorid=$2`,
                     this.getUserIdFromUser(user),
                     target.id
-                );    
+                );
             } else if (target) {
                 result = await this.dbService.query(
                     `select * from alert where userid=$1 and deviceid=$2`,
@@ -1230,7 +1236,8 @@ export class StorageService extends BaseService {
                     a.description = r.description || "";
                 }
                 return a;
-            }).filter(a => {
+            })
+            .filter((a) => {
                 if (!active) return true;
                 if (NullableBoolean.yes === active) return a.active;
                 return !a.active;
@@ -1239,18 +1246,18 @@ export class StorageService extends BaseService {
 
     /**
      * Get a specific alert for the user.
-     * 
-     * @param user 
-     * @param id 
-     * @returns 
+     *
+     * @param user
+     * @param id
+     * @returns
      */
-    async getAlert(user: BackendIdentity, id: string) : Promise<Alert> {
-        const alerts = (await this.getAlerts(user, undefined, undefined)).filter(a => a.id === id);
+    async getAlert(user: BackendIdentity, id: string): Promise<Alert> {
+        const alerts = (await this.getAlerts(user, undefined, undefined)).filter((a) => a.id === id);
         if (!alerts || alerts.length !== 1) throw new Error(`Unable to find alert with id <${id}>`);
         return alerts[0];
     }
 
-    async createAlert(user: BackendIdentity, data: CreateAlertInput) : Promise<Alert> {
+    async createAlert(user: BackendIdentity, data: CreateAlertInput): Promise<Alert> {
         const userId = user.identity.callerId === "*" ? user.identity.impersonationId : user.identity.callerId;
         const id = uuid();
         const sensorId = !data.targetIsDevice ? data.targetId : undefined;
@@ -1258,13 +1265,14 @@ export class StorageService extends BaseService {
 
         try {
             // insert in database
-            await this.dbService.query(`insert into alert (id, userid, sensorid, deviceid, description, event_type, event_data, notify_type, notify_data) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            await this.dbService.query(
+                `insert into alert (id, userid, sensorid, deviceid, description, event_type, event_data, notify_type, notify_data) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
                 id,
                 userId,
                 sensorId,
                 deviceId,
                 data.description,
-                data.eventType, 
+                data.eventType,
                 JSON.parse(data.eventData),
                 data.notifyType,
                 data.notifyData ? JSON.parse(data.notifyData) : undefined
@@ -1275,31 +1283,26 @@ export class StorageService extends BaseService {
                 new: {
                     id,
                     targetId: data.targetId,
-                    targetIdIsDevice: data.targetIsDevice
+                    targetIdIsDevice: data.targetIsDevice,
                 },
                 user: user,
             });
 
             // return
             return this.getAlert(user, id);
-
         } catch (err) {
             throw new Error(`Unable to create alert due to error: ${err.message}`);
         }
     }
 
-    async deleteAlert(user: BackendIdentity, data: DeleteAlertInput) : Promise<boolean> {
+    async deleteAlert(user: BackendIdentity, data: DeleteAlertInput): Promise<boolean> {
         // ensure user has access to alert
         const alert = await this.getAlert(user, data.id);
-        
+
         try {
             // delete from database
             const userId = user.identity.callerId === "*" ? user.identity.impersonationId : user.identity.callerId;
-            await this.dbService.query(
-                `delete from alert where id=$1 and userid=$2`,
-                data.id,
-                userId
-            );
+            await this.dbService.query(`delete from alert where id=$1 and userid=$2`, data.id, userId);
 
             // publish event
             this.eventService.publishTopic(constants.TOPICS.CONTROL, "alert.delete", {
@@ -1313,7 +1316,6 @@ export class StorageService extends BaseService {
 
             // return
             return true;
-
         } catch (err) {
             throw new Error(`Unable to delete alert due to error: ${err.message}`);
         }
@@ -1768,6 +1770,248 @@ export class StorageService extends BaseService {
         );
         const subscription_results = this.buildSmartmeSubscriptionsFromRows(result);
         return subscription_results;
+    }
+
+    /**
+     * Returns the endpoint for the supplied user or all users if an all-access-user is supplied. The
+     * bearer token is truncted.
+     *
+     * @param user
+     * @returns
+     */
+    async getEndpoints(user: BackendIdentity): Promise<Endpoint[]> {
+        let result;
+        if (this.isAllDataAccessUser(user)) {
+            result = await this.dbService.query("select id, name, baseurl, bearertoken, userid from endpoint");
+        } else {
+            result = await this.dbService.query(
+                "select id, name, baseurl, bearertoken, userid from endpoint where userid=$1",
+                user.identity.callerId
+            );
+        }
+
+        // loop and return
+        return result.rows.map((row) => {
+            return {
+                id: row.id,
+                name: row.name,
+                baseUrl: row.baseurl,
+                bearerToken:
+                    !row.bearertoken || row.bearertoken.length <= 15
+                        ? "xxxxx"
+                        : `...${row.bearertoken.substring(
+                              row.bearertoken.length - 5
+                          )}`,
+            } as Endpoint;
+        });
+    }
+
+    async createEndpoint(user: BackendIdentity, input: CreateEndpointInput): Promise<Endpoint> {
+        const userid = user.identity.callerId;
+        const id = uuid();
+        logger.debug(`Creating endpoint record with id <${id}> for user <${userid}>`);
+        await this.dbService.query(
+            "insert into endpoint (id, name, baseurl, bearertoken, userid) values ($1,$2,$3,$4,$5)",
+            id,
+            input.name,
+            input.baseUrl,
+            input.bearerToken,
+            userid
+        );
+        logger.trace(`Created endpoint record with id <${id}> for user <${userid}>`);
+
+        // return
+        return (await this.getEndpoints(user)).find((e) => e.id === id)!;
+    }
+
+    async updateEndpoint(user: BackendIdentity, input: UpdateEndpointInput): Promise<Endpoint> {
+        const userid = user.identity.callerId;
+
+        let queryFields = [];
+        let queryData = [userid, input.id];
+        if (input.bearerToken && input.bearerToken.length) {
+            queryFields.push(`bearertoken=\$${queryData.length + 1}`);
+            queryData.push(input.bearerToken);
+        }
+        if (input.name && input.name.length) {
+            queryFields.push(`name=\$${queryData.length + 1}`);
+            queryData.push(input.name);
+        }
+        if (input.baseUrl && input.baseUrl.length) {
+            queryFields.push(`baseurl=\$${queryData.length + 1}`);
+            queryData.push(input.baseUrl);
+        }
+        logger.debug(`Updating endpoint record with id <${input.id}> for user <${userid}>`);
+        const result = await this.dbService.query(
+            `update endpoint set ${queryFields.join(",")} where userid=$1 and id=$2`,
+            ...queryData
+        );
+
+        if (result.rowCount === 1) {
+            logger.trace(`Updated endpoint record with id <${input.id}> for user <${userid}>`);
+        } else {
+            throw new Error(`Unable to update endpoint - expected 1 as rowCount but was ${result.rowCount}`);
+        }
+
+        // return
+        return (await this.getEndpoints(user)).find((e) => e.id === input.id)!;
+    }
+
+    async deleteEndpoint(user: BackendIdentity, input: DeleteEndpointInput): Promise<boolean> {
+        const userid = user.identity.callerId;
+
+        logger.debug(`Deleting endpoint record with id <${input.id}> for user <${userid}>`);
+        const result = await this.dbService.query("delete from endpoint where userid=$1 and id=$2", userid, input.id);
+        if (result.rowCount === 1) {
+            logger.trace(`Deleted endpoint record with id <${input.id}> for user <${userid}>`);
+            return true;
+        } else {
+            logger.error(`Unable to delete endpoint record with id <${input.id}> for user <${userid}>`);
+            throw new Error(`Unable to delete endpoint record with id <${input.id}> for user <${userid}>`);
+        }
+    }
+
+    /**
+     * Returns all onSensorSample event definitions along with requried info for actually
+     * performing the callout. Must have all-data-access to call.
+     *
+     * @param user
+     * @param sensorId
+     * @returns
+     */
+    async getAllOnSensorSampleEvents(user: BackendIdentity, sensorId: string): Promise<OnSensorSampleEvent[]> {
+        if (!this.isAllDataAccessUser(user)) throw new Error("Must have all data access");
+        const result = await this.dbService!.query(
+            "select event_onsensorsample.id as eventid, sensorid, event_onsensorsample.userid as userid, endpointid, method, path, body, baseurl, bearertoken, fn, ln, email from event_onsensorsample, endpoint, login_user where sensorid=$1 and event_onsensorsample.endpointid=endpoint.id and login_user.id=event_onsensorsample.userid",
+            sensorId
+        );
+        return result.rows.map((row) => {
+            const e = {
+                id: row.eventid,
+                user: {
+                    id: row.userid,
+                    fn: row.fn,
+                    ln: row.ln,
+                    email: row.email,
+                },
+                path: row.path,
+                method: getHttpMethod(row.method),
+                bodyTemplate: row.body,
+                endpoint: {
+                    baseUrl: row.baseurl,
+                    bearerToken: row.bearertoken,
+                    id: row.endpointid,
+                },
+            } as OnSensorSampleEvent;
+            return e;
+        });
+    }
+
+    async getUserOnSensorSampleEvents(user: BackendIdentity, sensorId?: string): Promise<OnSensorSampleEvent[]> {
+        if (this.isAllDataAccessUser(user)) throw new Error("Use method for all-data-access users");
+        let result;
+        if (sensorId) {
+            result = await this.dbService!.query(
+                "select event_onsensorsample.id id, endpointid, endpoint.name endpointname, endpoint.baseurl, method, path, body from event_onsensorsample, endpoint where event_onsensorsample.endpointid=endpoint.id and sensorid=$2 and event_onsensorsample.userid=$1",
+                user.identity.callerId,
+                sensorId
+            );
+        } else {
+            result = await this.dbService!.query(
+                "select event_onsensorsample.id id, endpointid, endpoint.name endpointname, endpoint.baseurl, method, path, body from event_onsensorsample, endpoint where event_onsensorsample.endpointid=endpoint.id and event_onsensorsample.userid=$1",
+                user.identity.callerId
+            );
+        }
+        return result.rows.map((row) => {
+            const e = {
+                id: row.id,
+                path: row.path,
+                method: getHttpMethod(row.method),
+                bodyTemplate: row.body,
+                endpoint: {
+                    baseUrl: row.baseurl,
+                    name: row.endpointname,
+                    id: row.endpointid,
+                },
+            } as OnSensorSampleEvent;
+            return e;
+        });
+    }
+
+    async createOnSensorSampleEvent(
+        user: BackendIdentity,
+        input: CreateOnSensorSampleEventInput
+    ): Promise<OnSensorSampleEvent> {
+        const userid = user.identity.callerId;
+        const id = uuid();
+        logger.debug(`Creating event_onsensorsample record with id <${id}> for user <${userid}>`);
+        await this.dbService.query(
+            "insert into event_onsensorsample (id, path, body, method, endpointid, sensorid, userid) values ($1, $2, $3,$4,$5,$6,$7)",
+            id,
+            input.path,
+            input.bodyTemplate,
+            input.method === HttpMethod.POST ? "POST" : "GET",
+            input.endpointId,
+            input.sensorId,
+            userid
+        );
+        logger.trace(`Created event_onsensorsample record with id <${id}> for user <${userid}>`);
+
+        // return
+        return (await this.getUserOnSensorSampleEvents(user, input.sensorId)).find((e) => e.id === id)!;
+    }
+
+    async updateOnSensorSampleEvent(user: BackendIdentity, input: UpdateOnSensorSampleEventInput): Promise<OnSensorSampleEvent> {
+        const userid = user.identity.callerId;
+
+        let queryFields = [];
+        let queryData = [userid, input.id];
+        if (input.path && input.path.length) {
+            queryFields.push(`path=\$${queryData.length + 1}`);
+            queryData.push(input.path);
+        }
+        if (input.bodyTemplate && input.bodyTemplate.length) {
+            queryFields.push(`body=\$${queryData.length + 1}`);
+            queryData.push(input.bodyTemplate);
+        }
+        if (input.method) {
+            queryFields.push(`method=\$${queryData.length + 1}`);
+            queryData.push(input.method == HttpMethod.POST ? "POST" : "GET");
+        }
+        logger.debug(`Updating event_onsensorsample record with id <${input.id}> for user <${userid}>`);
+        const result = await this.dbService.query(
+            `update event_onsensorsample set ${queryFields.join(",")} where userid=$1 and id=$2`,
+            ...queryData
+        );
+
+        if (result.rowCount === 1) {
+            logger.trace(`Updated event_onsensorsample record with id <${input.id}> for user <${userid}>`);
+        } else {
+            throw new Error(
+                `Unable to update event_onsensorsample - expected 1 as rowCount but was ${result.rowCount}`
+            );
+        }
+
+        // return
+        return (await this.getUserOnSensorSampleEvents(user)).find((e) => e.id === input.id)!;
+    }
+
+    async deleteOnSensorSampleEvent(user: BackendIdentity, input: DeleteOnSensorSampleEventInput): Promise<boolean> {
+        const userid = user.identity.callerId;
+
+        logger.debug(`Deleting event_onsensorsample record with id <${input.id}> for user <${userid}>`);
+        const result = await this.dbService.query(
+            "delete from event_onsensorsample where userid=$1 and id=$2",
+            userid,
+            input.id
+        );
+        if (result.rowCount === 1) {
+            logger.trace(`Deleted event_onsensorsample record with id <${input.id}> for user <${userid}>`);
+            return true;
+        } else {
+            logger.error(`Unable to delete event_onsensorsample record with id <${input.id}> for user <${userid}>`);
+            throw new Error(`Unable to delete event_onsensorsample record with id <${input.id}> for user <${userid}>`);
+        }
     }
 
     private buildSmartmeSubscriptionsFromRows(result: QueryResult<any>): SmartmeSubscription[] {

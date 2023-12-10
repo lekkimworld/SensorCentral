@@ -7,7 +7,7 @@ import { BackendIdentity, BaseService, Device, NotifyUsing, PushoverSettings, Qu
 import { objectHasOwnProperty_Trueish } from "../utils";
 import { AlertEventType } from "./alert/alert-types";
 import { EmailMessage, EmailService, RFC822Address } from "./email-service";
-import { EventService } from "./event-service";
+import { PubsubService } from "./pubsub-service";
 import { IdentityService } from "./identity-service";
 import { StorageService } from "./storage-service";
 
@@ -22,18 +22,18 @@ const logger = new Logger("notify-service");
 export class NotifyService extends BaseService {
     public static NAME = "notify";
     serviceUser!: BackendIdentity;
-    eventService!: EventService;
+    eventService!: PubsubService;
     storage!: StorageService;
     email!: EmailService;
     templates = new Map<AlertEventType, Template>();
 
     constructor() {
         super(NotifyService.NAME);
-        this.dependencies = [EventService.NAME, StorageService.NAME, EmailService.NAME, IdentityService.NAME];
+        this.dependencies = [PubsubService.NAME, StorageService.NAME, EmailService.NAME, IdentityService.NAME];
     }
 
     init(callback: (err?: Error) => {}, services: BaseService[]) {
-        this.eventService = services[0] as unknown as EventService;
+        this.eventService = services[0] as unknown as PubsubService;
         this.storage = services[1] as unknown as StorageService;
         this.email = services[2] as unknown as EmailService;
         const identity = services[3] as IdentityService;

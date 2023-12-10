@@ -3,9 +3,9 @@ import semaphore, { Semaphore } from "semaphore";
 import { ISubscriptionResult } from "../../configure-queues-topics";
 import constants from "../../constants";
 import { Logger } from "../../logger";
-import { BackendIdentity, BaseService, ControlMessageTypes, Device, NullableBoolean, QueueNotifyMessage, Sensor, SensorType, TopicControlMessage, TopicSensorMessage } from "../../types";
+import { BackendIdentity, BaseService, ControlMessageTypes, Device, QueueNotifyMessage, Sensor, SensorType, TopicControlMessage, TopicSensorMessage } from "../../types";
 import { objectHasOwnProperty_Trueish } from "../../utils";
-import { EventService } from "../event-service";
+import { PubsubService } from "../pubsub-service";
 import { IdentityService } from "../identity-service";
 import { StorageService } from "../storage-service";
 import {
@@ -48,14 +48,14 @@ const logger = new Logger("alert-service");
 export class AlertService extends BaseService {
     public static NAME = "alert";
     private storage!: StorageService;
-    private events!: EventService;
+    private events!: PubsubService;
     private serviceUser: BackendIdentity;
     private alerts = new Map<string, Array<AlertWrapper>>();
     private alertsSem = new PromisifiedSemaphore(1);
 
     constructor() {
         super(AlertService.NAME);
-        this.dependencies = [StorageService.NAME, IdentityService.NAME, EventService.NAME];
+        this.dependencies = [StorageService.NAME, IdentityService.NAME, PubsubService.NAME];
 
         // show config
         logger.info(`ALERT.TIMEOUT_BINARY_SENSOR=${constants.ALERT.TIMEOUT_BINARY_SENSOR}`);
@@ -68,13 +68,13 @@ export class AlertService extends BaseService {
 
         // get services
         this.storage = services[0] as StorageService;
-        this.events = services[2] as EventService;
+        this.events = services[2] as PubsubService;
 
         // create alerts for binary sensors
         this.initBinarySensorAlerts();
 
         // create user defined alerts
-        this.initUserDefinedAlerts();
+        //this.initUserDefinedAlerts();
 
         // listen for messages about sensors coming and going
         this.events.subscribeTopic(constants.TOPICS.CONTROL, "#", this.controlMessages.bind(this));
@@ -108,6 +108,7 @@ export class AlertService extends BaseService {
         })
     }
 
+    /*
     private async initUserDefinedAlerts() {
         // get alerts
         const alerts = await this.storage.getAlerts(this.serviceUser, undefined, NullableBoolean.yes);
@@ -136,6 +137,7 @@ export class AlertService extends BaseService {
             resolve();
         });
     }
+    */
 
     private async initBinarySensorAlerts() {
         if (objectHasOwnProperty_Trueish(process.env, "ALERTS_BINARY_SENSOR_DISABLE")) {
@@ -282,8 +284,8 @@ export class AlertService extends BaseService {
             // new alert was created
             const id = result.data.new.id;
             logger.info(`Alert with ID ${id} was created`);
-            const alert = await this.storage.getAlert(this.serviceUser, id);
-            this.initUserDefinedAlert(alert);
+            //const alert = await this.storage.getAlert(this.serviceUser, id);
+            //this.initUserDefinedAlert(alert);
         } else if (parts[1] === "update") {
             // sensor was updated
             const id = result.data.new.id;

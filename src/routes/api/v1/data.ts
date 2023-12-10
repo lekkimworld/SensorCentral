@@ -2,7 +2,7 @@ import * as express from 'express';
 import { BaseService, ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage, 
 	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity, ControlMessageTarget } from '../../../types';
 import { Logger } from '../../../logger';
-import { EventService } from '../../../services/event-service';
+import { PubsubService } from '../../../services/pubsub-service';
 import { LAST_N_SAMPLES, StorageService } from '../../../services/storage-service';
 const {lookupService} = require('../../../configure-services');
 import constants from "../../../constants";
@@ -15,7 +15,7 @@ import { Sensor } from '../../../types';
 const logger = new Logger("data");
 const router = express.Router();
 
-const postControlEvent = (eventSvc : EventService, payload : IngestedControlMessage) => {
+const postControlEvent = (eventSvc : PubsubService, payload : IngestedControlMessage) => {
 	eventSvc.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
 		logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
 	}).catch(err => {
@@ -58,8 +58,8 @@ router.use(ensureScopeFactory(constants.JWT.SCOPE_SENSORDATA));
  * 
  */
 router.post("/samples", (req, res, next) => {
-	lookupService([EventService.NAME, StorageService.NAME]).then((services : BaseService[]) => {
-		const eventService = services[0] as EventService;
+	lookupService([PubsubService.NAME, StorageService.NAME]).then((services : BaseService[]) => {
+		const eventService = services[0] as PubsubService;
 		const storageService = services[1] as StorageService;
 
 		const user = res.locals.user;
@@ -110,9 +110,9 @@ router.post("/samples", (req, res, next) => {
  * 
  */
 router.post("/", async (req, res, next) => {
-	const services = await lookupService([StorageService.NAME, EventService.NAME])
+	const services = await lookupService([StorageService.NAME, PubsubService.NAME])
 	const storageService = services[0] as StorageService;
-	const eventService = services[1] as EventService;
+	const eventService = services[1] as PubsubService;
 
 	const body = req.body
 	const user = res.locals.user as BackendIdentity;

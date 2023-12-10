@@ -8,7 +8,7 @@ import {
 } from "../types";
 import {smartmeGetDevices, PowerUnit, Cloudflare524Error} from "../resolvers/smartme";
 import { Logger } from "../logger";
-import { EventService } from "./event-service";
+import { PubsubService } from "./pubsub-service";
 import { ISubscriptionResult } from "../configure-queues-topics";
 import { StorageService } from "./storage-service";
 import { IdentityService } from "./identity-service";
@@ -20,7 +20,7 @@ const logger = new Logger("powermeter-service");
 
 export class PowermeterService extends BaseService {
     public static NAME = "powermeter";
-    eventService?: EventService;
+    eventService?: PubsubService;
     storageService?: StorageService;
     security: IdentityService;
     cron: CronService;
@@ -28,11 +28,11 @@ export class PowermeterService extends BaseService {
 
     constructor() {
         super(PowermeterService.NAME);
-        this.dependencies = [EventService.NAME, StorageService.NAME, IdentityService.NAME, CronService.NAME];
+        this.dependencies = [PubsubService.NAME, StorageService.NAME, IdentityService.NAME, CronService.NAME];
     }
 
     async init(callback: (err?: Error) => {}, services: BaseService[]) {
-        this.eventService = services[0] as unknown as EventService;
+        this.eventService = services[0] as unknown as PubsubService;
         this.storageService = services[1] as unknown as StorageService;
         this.security = services[2] as IdentityService;
         this.cron = services[3] as CronService;

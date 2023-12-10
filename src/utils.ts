@@ -39,5 +39,6 @@ export const buildBaseHandlebarsContext = () : any => {
         app_current_year: new Date().getFullYear(),
         app_gitcommit: constants.APP.GITCOMMIT,
         app_gitcommit_url: `https://github.com/lekkimworld/SensorCentral/commit/${constants.APP.GITCOMMIT}`,
+        app_title: constants.APP.TITLE
     };
 }

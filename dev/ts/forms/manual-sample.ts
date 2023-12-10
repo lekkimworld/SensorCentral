@@ -46,6 +46,7 @@ export class ManualSampleForm extends Form<Sensor> {
                               label: "Sample",
                               placeholder: "Enter sample value",
                               required: true,
+                              step: .001,
                               validationText: "You must specify the sample value for the sensor. Must be a number.",
                               fieldExplanation: "Specify the sample value (must be a number).",
                           })

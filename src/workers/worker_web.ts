@@ -9,7 +9,7 @@ import configureExpress from '../configure-express';
 //@ts-ignore
 import services from '../configure-services';
 import { DatabaseService } from "../services/database-service";
-import { EventService } from "../services/event-service";
+import { PubsubService } from "../services/pubsub-service";
 import { Logger } from "../logger";
 import { NotifyService } from  "../services/notify-service";
 import { RedisService } from  "../services/redis-service";
@@ -23,6 +23,7 @@ import { PowermeterService } from "../services/powermeter-service";
 import { CronService } from "../services/cron-service";
 import cronjobPowerdata  from "./cronjob_powerdata";
 import { AlertService } from "../services/alert/alert-service";
+import { EventService } from "../services/event-service";
 
 // number of workers we should create
 const logger = new Logger("worker_web");
@@ -43,7 +44,7 @@ if (!process.env.SMARTME_KEY) {
 
 // add services
 services.registerService(new IdentityService());
-services.registerService(new EventService());
+services.registerService(new PubsubService());
 services.registerService(new RedisService());
 services.registerService(new QueueListenerService());
 services.registerService(new StorageService());
@@ -54,6 +55,7 @@ services.registerService(new PowermeterService());
 services.registerService(new CronService());
 services.registerService(new DataQueryService());
 services.registerService(new AlertService());
+services.registerService(new EventService());
 
 // setup termination listener
 terminateListener(() => {
