@@ -151,7 +151,7 @@ export class AlertService extends BaseService {
     }
 
     private async initBinarySensorAlert(s: Sensor): Promise<void> {
-        logger.info(`Initializing alert for binary sensor <${s.id}> / <${s.name}>`);
+        logger.info(`Initializing alert for binary sensor - sensor id <${s.id}> name <${s.name}>`);
         return new Promise<void>(async (resolve) => {
             // create object
             const a = new BinarySensorAlert(s, {
@@ -176,11 +176,11 @@ export class AlertService extends BaseService {
     private async onAlertTimeout(a: TimeoutAlert) {
         if ("device" in a.target) {
             // sensor
-            logger.debug(`Alert timeout for <${a.id}> - sensor <${a.target.name}>`);
+            logger.debug(`Alert timeout for alert id <${a.id}> - sensor id <${a.target.id}> name <${a.target.name}>`);
             this.onSensorAlertTimeout(a);
         } else {
             // device
-            logger.debug(`Alert timeout for <${a.id}> - device <${a.target.name}>`);
+            logger.debug(`Alert timeout for alert id <${a.id}> - device id <${a.target.id}> name <${a.target.name}>`);
             this.onDeviceAlertTimeout(a);
         }
     }
@@ -188,7 +188,7 @@ export class AlertService extends BaseService {
     private async onSensorAlertTimeout(a: TimeoutAlert) {
         // log
         const sensor = a.target as Sensor;
-        logger.info(`Sensor (<${sensor.id}> / <${sensor.name}> / <${sensor.type}>) timeout`);
+        logger.info(`Alert timeout id <${a.id}> - Sensor Alert Timeout id <${sensor.id}> name <${sensor.name}> type <${sensor.type}>`);
 
         // publish on topic
         const payload: TopicControlMessage = {
@@ -214,7 +214,9 @@ export class AlertService extends BaseService {
     private async onDeviceAlertTimeout(a: TimeoutAlert) {
         // log
         const device = a.target as Device;
-        logger.info(`Device (<${device.id}> / <${device.name}>) timeout`);
+        logger.info(
+            `Alert timeout id <${a.id}> - Device Alert Timeout id <${device.id}> name <${device.name}>`
+        );
 
         // publish on topic
         const payload: TopicControlMessage = {
