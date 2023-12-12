@@ -15,6 +15,9 @@ export type FieldOptionsBasic = {
      */
     fieldExplanation?: string;
 };
+export type FieldOptionsDisabled = {
+    disabled?: boolean;
+}
 export type FieldOptionsValue = {
     value?: string|number;
 }
@@ -33,7 +36,7 @@ export type FieldOptionsClassList = {
 export type FieldOptionsPlaceholder = {
     placeholder?: string;
 };
-export type FieldOptionsText = FieldOptionsBasic & FieldOptionsLabel & FieldOptionsPlaceholder & FieldOptionsRequired & FieldOptionsValue;
+export type FieldOptionsText = FieldOptionsBasic & FieldOptionsLabel & FieldOptionsPlaceholder & FieldOptionsRequired & FieldOptionsValue & FieldOptionsDisabled;
 export type FieldOptionsDisabledText = FieldOptionsBasic & FieldOptionsLabel & FieldOptionsValue;
 export type FieldOptionsNumber = FieldOptionsBasic &
     FieldOptionsLabel &
@@ -193,10 +196,24 @@ const fieldRequired = (options: FieldOptionsRequired) => {
 export const textField = (options: FieldOptionsText) => {
     return `<div class="form-group">
     <label for="${options.name}Input">${options.label || options.placeholder}</label>
-    <input type="text" ${options.required ? "required" : ""} class="form-control" id="${options.name}Input" aria-describedby="${name}Help" placeholder="${options.placeholder || ""}" value="${options.value || ""}">
+    <input type="text" ${options.required ? "required" : ""} ${options.disabled ? 'disabled="1"' : ""} class="form-control" id="${options.name}Input" aria-describedby="${name}Help" placeholder="${options.placeholder || ""}" value="${options.value || ""}">
     ${fieldExplanation(options)}
     ${fieldRequired(options)}
 </div>`
+}
+
+/**
+ * Creates a disabled (non-editable) text field in a form.
+ * 
+ * @param options
+ * @returns 
+ */
+export const disabledTextField = (options: FieldOptionsDisabledText) => {
+    return `<div class="form-group">
+    <label for="${options.name}Input">${options.label}</label>
+    <input type="text" required class="form-control" id="${options.name}Input" disabled="1" value="${options.value || ""}">
+    ${fieldExplanation(options)}
+</div>`;
 }
 
 /**
@@ -212,20 +229,6 @@ export const numberField = (options: FieldOptionsNumber) => {
         ${fieldExplanation(options)}
         ${fieldRequired(options)}
     </div>`;
-}
-
-/**
- * Creates a disabled (non-editable) text field in a form.
- * 
- * @param options
- * @returns 
- */
-export const disabledTextField = (options: FieldOptionsDisabledText) => {
-    return `<div class="form-group">
-    <label for="${options.name}Input">${options.label}</label>
-    <input type="text" required class="form-control" id="${options.name}Input" disabled="1" value="${options.value || ""}">
-    ${fieldExplanation(options)}
-</div>`;
 }
 
 /**
@@ -293,6 +296,15 @@ export const buttonPerformAction = (text = "Save Changes", rel = "std") => {
         attributes: {id: "performAction"}
     })
 }
+
+export const buttonPerformDestructiveAction = (text = "Delete", rel = "delete") => {
+    return button({
+        text,
+        rel,
+        classList: ["btn-danger"],
+        attributes: { id: "deleteAction" },
+    });
+};
 
 export const datetimepicker = (options: FieldOptionsDatetimePicker) => {
     return `<label for="${options.name}Input">${options.label}</label>
@@ -379,8 +391,19 @@ class UIControl {
         $(`#${this.options.name}Input`).val(v);
     }
 }
+export class TextControl extends UIControl {
+    constructor(options: FieldOptionsBasic) {
+        super(options);
+    }
+    disable() {
+        $(`#${this.options.name}Input`).attr("disabled", "1");
+    }
+    enable() {
+        $(`#${this.options.name}Input`).removeAttr("disabled");
+    }
+}
 type OnChangeCallback = (value:string) => void;
-export class DropdownControl extends UIControl {
+class OnChangeControl extends UIControl {
     private listeners: Array<OnChangeCallback> = [];
 
     constructor(options: FieldOptionsBasic) {
@@ -400,16 +423,21 @@ export class DropdownControl extends UIControl {
         this.listeners.push(cb);
     }
 }
-export class ToggleButtonControl extends UIControl {
+export class DropdownControl extends OnChangeControl {
+    constructor(options: FieldOptionsBasic) {
+        super(options);
+    }
+}
+export class ToggleButtonControl extends OnChangeControl {
     constructor(options: FieldOptionsBasic) {
         super(options);
     }
 
-    get checked() : boolean {
+    get checked(): boolean {
         return $(`#${this.options.name}Input`).prop("checked");
     }
     set checked(v: boolean) {
-        $(`#${this.options.name}Input`).prop("checked",  v);
+        $(`#${this.options.name}Input`).prop("checked", v);
     }
 }
 export class DateTimeControl extends UIControl {
@@ -496,7 +524,7 @@ export class UICatalog {
 
     textField(options: FieldOptionsText): string {
         const html = textField(options);
-        this.controls.set(options.name, new UIControl(options));
+        this.controls.set(options.name, new TextControl(options));
         return html;
     }
 

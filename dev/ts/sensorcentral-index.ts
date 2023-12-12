@@ -14,6 +14,7 @@ import aboutRoute from "./routes/about";
 import loginChooseRoute from "./routes/login-choose";
 import powerChartsRoute from "./routes/powermeter-charts";
 import powerConfigRoute from "./routes/powermeter-config";
+import endpointsRoute from "./routes/endpoints";
 
 const log = {
     debug: (s:string) => {
@@ -99,6 +100,10 @@ const navigationChange = async () => {
         loggedoutRoute(elemRoot);
     } else if ("#about" === hash) {
         aboutRoute(elemRoot);
+    } else if (hash === "#endpoints") {
+        // user is switching to see endpoints
+        endpointsRoute(elemRoot);
+
     } else if (hash.indexOf("#powermeter") === 0) {
         const parts = hash.split("/");
         if (parts[1] === "config") {
@@ -123,13 +128,6 @@ const navigationChange = async () => {
         } else if (parts.length === 7 && parts[1] === "house" && parts[3] === "device" && parts[5] === "sensor") {
             // sensor details
             log.debug(`Rendering sensorcentral-sensordetails with parts <${parts.join()}>`);
-            /*
-            {
-                houseId: parts[2],
-                deviceId: parts[4],
-                sensorId: parts[6],
-            }
-            */
             sensordetailsRoute(elemRoot, parts[6]);
         }
     } else {

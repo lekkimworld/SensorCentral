@@ -10,9 +10,7 @@ export const ALERT_TYPES = {
     onDeviceRestart: "onDeviceRestart",
     onDeviceMessage: "onDeviceMessage",
     onDeviceMessageNoSensor: "onDeviceMessageNoSensor",
-    onSensorTimeout: "onSensorTimeout",
-    onSensorSample: "onSensorSample",
-    onSensorValue: "onSensorValue",
+    onSensorTimeout: "onSensorTimeout"
 };
 type ObjectValues<T> = T[keyof T];
 export type AlertType = ObjectValues<typeof ALERT_TYPES>;
@@ -32,6 +30,29 @@ export type Alert = Readonly<Partial<{
     notifyData: string;
     */
 }>>
+
+export const HTTP_METHODS = {
+    POST: "POST",
+    GET: "GET"
+};
+export type HttpMethod = ObjectValues<typeof HTTP_METHODS>;
+export type OnSensorSampleEvent = Readonly<
+    Partial<{
+        id: string;
+        path?: string;
+        bodyTemplate?: string;
+        method: HttpMethod;
+    }>
+> & { endpoint: Array<Required<Pick<Endpoint, "id">>> };;
+
+export type Endpoint = Readonly<
+    Partial<{
+        id: string;
+        name: string;
+        baseUrl: string;
+        bearerToken?: string;
+    }>
+>;
 
 export type House = Readonly<
     Partial<{

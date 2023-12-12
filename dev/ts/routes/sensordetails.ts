@@ -7,6 +7,7 @@ import { SensorDetails } from "./sensordetails-base";
 import { Device, House, Sensor } from "../clientside-types";
 import { RouteAction, ActionIcon, createBreadcrumbHeader, createContainers, ICONS } from "../ui-helper";
 import { addAlertsTable } from "../alerts-helper";
+import { addEventsTable } from "../events-helper";
 import { ManualSampleForm } from "../forms/manual-sample";
 import { DeleteForm } from "../forms/delete";
 import { SensorForm } from "../forms/create-edit-sensor";
@@ -20,7 +21,9 @@ type RequestedSensor = Required<Readonly<Pick<Sensor, "id"|"type"|"name"|"label"
 
 export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
     // fetch sensor
-    const data = await graphql(`{sensor(id:"${sensorId}"){id, type, name, label, icon, favorite, scaleFactor, device{id,name,house{id,name}}}}`);
+    const data = await graphql(
+        `{sensor(id:"${sensorId}"){id, type, name, label, icon, favorite, scaleFactor, device{id,name,house{id,name}}}}`
+    );
     const sensor = data.sensor as RequestedSensor;
 
     // create containers
@@ -31,7 +34,7 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
     createBreadcrumbHeader(sensor, headerContainer);
 
     // build ui based on sensor type
-    let module : SensorDetails;
+    let module: SensorDetails;
     if (["gauge", "binary"].includes(sensor.type)) {
         module = detailsGauge;
     } else if (sensor.type === "counter") {
@@ -42,24 +45,32 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
         elemRoot.append(`Unknown sensor type: ${sensor.type}`);
         return;
     }
-    const actions : RouteAction[] = [];
+    const actions: RouteAction[] = [];
     if (module.actionManualSample) {
-        actions.push(
-            {rel :"create", icon: ICONS.plus, click: async () => {
-                new ManualSampleForm(sensor).addEventListener("postdata", () => {
-                    actions.find(a => a.rel === "refresh")!.click();
-                }).show();
-            }}
-        )
+        actions.push({
+            rel: "create",
+            icon: ICONS.plus,
+            click: async () => {
+                new ManualSampleForm(sensor)
+                    .addEventListener("postdata", () => {
+                        actions.find((a) => a.rel === "refresh")!.click();
+                    })
+                    .show();
+            },
+        });
     }
-    actions.push(
-        {rel :"refresh", icon: ICONS.refresh, click: () => {
+    actions.push({
+        rel: "refresh",
+        icon: ICONS.refresh,
+        click: () => {
             sensorsContainer.children!.content.elem.html("");
             module.buildUI(sensorsContainer.children!.content.elem, sensor);
-        }}
-    );
-    actions.push(
-        {rel :"favorite", icon: sensor.favorite ? ICONS.star_filled : ICONS.star_empty, click: () => {
+        },
+    });
+    actions.push({
+        rel: "favorite",
+        icon: sensor.favorite ? ICONS.star_filled : ICONS.star_empty,
+        click: () => {
             const btn = $('button[rel="favorite"]');
             btn.toggleClass("fa-star");
             btn.toggleClass("fa-star-o");
@@ -68,31 +79,40 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
             } else {
                 graphql(`mutation {removeFavoriteSensor(id: \"${sensor.id}\")}`);
             }
-        }}
-    );
-    actions.push(
-        {rel :"edit", icon: ICONS.pencil, click: () => {
+        },
+    });
+    actions.push({
+        rel: "edit",
+        icon: ICONS.pencil,
+        click: () => {
             new SensorForm(sensor.device, sensor).show();
-        }}
-    );
-    actions.push(
-        {rel :"trash", icon: ICONS.trash, click: () => {
+        },
+    });
+    actions.push({
+        rel: "trash",
+        icon: ICONS.trash,
+        click: () => {
             new DeleteForm({
                 id: sensor.id,
                 name: sensor.name,
                 title: "Delete Sensor",
-                message: "Are you absolutely sure you want to DELETE this sensor? Sensor samples will not be deleted from the database."
-            }).addEventListener("data", async () => {
-                await graphql(`mutation {deleteSensor(data: {id: "${sensor.id}"})}`);
-                document.location.hash = `#configuration/house/${sensor.device.house.id}/device/${sensor.device.id}`;
-            }).show();
-        }}
-    );
+                message:
+                    "Are you absolutely sure you want to DELETE this sensor? Sensor samples will not be deleted from the database.",
+            })
+                .addEventListener("data", async () => {
+                    await graphql(`mutation {deleteSensor(data: {id: "${sensor.id}"})}`);
+                    document.location.hash = `#configuration/house/${sensor.device.house.id}/device/${sensor.device.id}`;
+                })
+                .show();
+        },
+    });
     actions.push({
-        rel: "download", icon: ICONS.download, click: () => {
+        rel: "download",
+        icon: ICONS.download,
+        click: () => {
             new DownloadForm(sensor).show();
-        }
-    })
+        },
+    });
 
     // create title row
     uiutils.appendTitleRow(sensorsContainer.children!.title.elem, sensor.name, actions);
@@ -102,4 +122,7 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
 
     // add alerts
     addAlertsTable(elemRoot, sensor);
+
+    // add events
+    addEventsTable(elemRoot, sensor);
 }

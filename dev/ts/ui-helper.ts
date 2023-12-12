@@ -49,6 +49,7 @@ export const createContainers = (root: JQuery<HTMLElement>, idPrefix: string, ..
     // create root
     const mainContainer = document.createElement("div");
     mainContainer.id = `${idPrefix}-container`;
+    mainContainer.className = "mt-4";
 
     // start result
     const result : Container = {

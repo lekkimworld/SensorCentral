@@ -12,7 +12,6 @@ const buildChartAndTable = (sensor) => {
     chartCtx.gaugeChart({ "sensors": [sensor] }).then(sensorSamples => {
         if (!sensorSamples) return;
         const samples = Array.isArray(sensorSamples) ? sensorSamples[0] : sensorSamples;
-        console.log("buildChartAndTable", samples);
         samplesTable(sensor, samples.data);
     })
 }
