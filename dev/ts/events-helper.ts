@@ -3,6 +3,7 @@ import * as uiutils from "../js/ui-utils";
 import { Endpoint, OnSensorSampleEvent, Sensor } from "./clientside-types";
 import { graphql } from "./fetch-util";
 import { DeleteForm } from "./forms/delete";
+import { OnSensorSampleEventForm } from "./forms/create-edit-event";
 
 export type UIContext<P, R> = {
     title: Container;
@@ -24,7 +25,7 @@ const createUIEvents = (ctx: UIContext<Sensor, OnSensorSampleEvent>) => {
                 rel: "create",
                 icon: "plus",
                 click: async () => {
-                    
+                    new OnSensorSampleEventForm(ctx.parent).show();
                 },
             },
             {
@@ -81,16 +82,16 @@ const updateUIEvents = async (ctx: UIContext<Sensor, OnSensorSampleEvent>) => {
             return {
                 id: e.id,
                 data: e,
-                columns: [e.path, e.method, e.bodyTemplate],
+                columns: [e.path, e.method, e.bodyTemplate || ""],
                 click: function () {
-                    
+                    new OnSensorSampleEventForm(ctx.parent, this.data).show();
                 },
             };
         }),
     });
 };
 
-type RequestedEvent = Required<Pick<OnSensorSampleEvent, "id" | "path" | "bodyTemplate" | "method">> & {"endpoint": Array<Required<Pick<Endpoint, "id">>>};
+type RequestedEvent = Required<Pick<OnSensorSampleEvent, "id" | "path" | "bodyTemplate" | "method">> & {"endpoint": Required<Pick<Endpoint, "id">>};
 type RequestedSensorWithEvents = Required<Pick<Sensor, "id">> & {"events": Array<RequestedEvent>};
 
 export const addEventsTable = (parentElem: JQuery<HTMLElement>, target: Sensor) => {

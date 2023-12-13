@@ -516,6 +516,6 @@ export type OnSensorSampleEvent = {
     user?: UserPrincipal;
     endpoint: Endpoint;
     method: HttpMethod;
-    path: string;
-    bodyTemplate: string;
+    path?: string;
+    bodyTemplate?: string;
 }

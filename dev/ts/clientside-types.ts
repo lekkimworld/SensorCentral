@@ -42,8 +42,9 @@ export type OnSensorSampleEvent = Readonly<
         path?: string;
         bodyTemplate?: string;
         method: HttpMethod;
+        endpoint: Required<Pick<Endpoint, "id">>;
     }>
-> & { endpoint: Array<Required<Pick<Endpoint, "id">>> };;
+>;
 
 export type Endpoint = Readonly<
     Partial<{

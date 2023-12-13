@@ -36,7 +36,17 @@ export type FieldOptionsClassList = {
 export type FieldOptionsPlaceholder = {
     placeholder?: string;
 };
-export type FieldOptionsText = FieldOptionsBasic & FieldOptionsLabel & FieldOptionsPlaceholder & FieldOptionsRequired & FieldOptionsValue & FieldOptionsDisabled;
+export type FieldOptionsRowsAndCols = {
+    rows?: number;
+    cols?: number;
+}
+export type FieldOptionsTextInput = FieldOptionsBasic & FieldOptionsLabel & FieldOptionsPlaceholder & FieldOptionsRequired & FieldOptionsValue & FieldOptionsDisabled;
+export type FieldOptionsTextArea = FieldOptionsBasic &
+    FieldOptionsLabel &
+    FieldOptionsRequired &
+    FieldOptionsValue &
+    FieldOptionsDisabled &
+    FieldOptionsRowsAndCols;
 export type FieldOptionsDisabledText = FieldOptionsBasic & FieldOptionsLabel & FieldOptionsValue;
 export type FieldOptionsNumber = FieldOptionsBasic &
     FieldOptionsLabel &
@@ -193,10 +203,25 @@ const fieldRequired = (options: FieldOptionsRequired) => {
  * @param options Options for the text field
  * @returns 
  */
-export const textField = (options: FieldOptionsText) => {
+export const textField = (options: FieldOptionsTextInput) => {
     return `<div class="form-group">
     <label for="${options.name}Input">${options.label || options.placeholder}</label>
     <input type="text" ${options.required ? "required" : ""} ${options.disabled ? 'disabled="1"' : ""} class="form-control" id="${options.name}Input" aria-describedby="${name}Help" placeholder="${options.placeholder || ""}" value="${options.value || ""}">
+    ${fieldExplanation(options)}
+    ${fieldRequired(options)}
+</div>`
+}
+
+/**
+ * Creates a text area in a form.
+ * 
+ * @param options Options for the text area
+ * @returns 
+ */
+export const textArea = (options: FieldOptionsTextArea) => {
+    return `<div class="form-group">
+    <label for="${options.name}Input">${options.label}</label>
+    <textarea ${options.required ? "required" : ""} ${options.disabled ? 'disabled="1"' : ""} class="form-control" id="${options.name}Input" aria-describedby="${options.name}Help" rows="${options.rows || 5}" cols="${options.cols || 50}">${options.value || ""}</textarea>
     ${fieldExplanation(options)}
     ${fieldRequired(options)}
 </div>`
@@ -522,7 +547,13 @@ export class UICatalog {
         return html;
     }
 
-    textField(options: FieldOptionsText): string {
+    textArea(options: FieldOptionsTextInput): string {
+        const html = textArea(options);
+        this.controls.set(options.name, new TextControl(options));
+        return html;
+    }
+
+    textField(options: FieldOptionsTextInput): string {
         const html = textField(options);
         this.controls.set(options.name, new TextControl(options));
         return html;
@@ -599,6 +630,14 @@ export abstract class Form<T> {
     protected footer(): string {
         return buttonClose();
     }
+
+    /**
+     * Template method the form needs to load data. We will await the returned promise first 
+     * thing when showing the dialog.
+     */
+    async loadData() : Promise<void> {
+        
+    }
     async getData(catalog: UICatalog) : Promise<FormData> {
         return {} as FormData;
     }
@@ -618,6 +657,9 @@ export abstract class Form<T> {
     }
 
     async show() {
+        // await promise
+        await this.loadData();
+
         // get form root element
         const elem = $(`#${ID_ELEM_FORM}`);
 

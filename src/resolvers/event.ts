@@ -39,13 +39,13 @@ export class OnSensorSampleEvent {
     @Field(() => types.HttpMethod)
     method: types.HttpMethod;
 
-    @Field()
+    @Field({nullable: true})
     @Length(0, 128)
-    path: string;
+    path?: string;
 
-    @Field()
-    @Length(1, 1024)
-    bodyTemplate: string;
+    @Field({nullable: true})
+    @Length(0, 1024)
+    bodyTemplate?: string;
 
     @Field()
     endpoint: Endpoint;

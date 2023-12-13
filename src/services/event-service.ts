@@ -16,6 +16,7 @@ type RequestData = {
      */
     id: string;
 
+    headers: Record<string,string>,
     endpoint: Endpoint,
     body: string | undefined,
     path: string,
@@ -105,13 +106,15 @@ export class EventService extends BaseService {
         // replace in body if any
         const body = this.substituteFromContext(ev.id, ev.bodyTemplate, ctx);
         const path = this.substituteFromContext(ev.id, ev.path, ctx);
-        const requestData : RequestData = {
+        const requestData: RequestData = {
             id: ev.id,
             endpoint: ev.endpoint,
             url: `${ev.endpoint.baseUrl}${path}`,
             path: path!,
-            body
+            body,
+            headers: {},
         };
+        if (ev.endpoint.bearerToken && ev.endpoint.bearerToken != null) requestData.headers.authorization = `Bearer ${ev.endpoint.bearerToken}`; 
 
         // look at method and forward call
         if (ev.method === HttpMethod.POST) {
@@ -125,10 +128,9 @@ export class EventService extends BaseService {
         logger.debug(`Event definition <${data.id}> - sending GET request to <${data.url}>`);
         const resp = await fetch(data.url, {
             method: "GET",
-            headers: {
-                authorization: `Bearer ${data.endpoint.bearerToken}`,
-                accept: MIMETYPE_JSON,
-            },
+            headers: Object.assign({}, data.headers, {
+                "accept": MIMETYPE_JSON,
+            }),
         });
 
         if (resp.status < 300 && resp.status >= 200) {
@@ -147,12 +149,11 @@ export class EventService extends BaseService {
         const resp = await fetch(data.url, {
             method: "POST",
             body: data.body,
-            headers: {
+            headers: Object.assign({}, data.headers, {
                 "content-type": MIMETYPE_JSON,
-                "authorization": `Bearer ${data.endpoint.bearerToken}`,
-                "accept": MIMETYPE_JSON
-            }
-        })
+                "accept": MIMETYPE_JSON,
+            }),
+        });
         
         if (resp.status < 300 && resp.status >= 200) {
             logger.debug(`Received success response - status <${resp.status}>`);
