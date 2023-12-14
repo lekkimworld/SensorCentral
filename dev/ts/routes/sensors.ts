@@ -119,8 +119,8 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
         sensors!.sort((a, b) => a.name.localeCompare(b.name));
 
         // create context for chart and create it
-        const gaugeSensors = sensors!.filter((s) => s.type === SensorType.gauge);
-        if (gaugeSensors.length) {
+        const gaugeBinarySensors = sensors!.filter((s) => [SensorType.gauge, SensorType.binary].includes(s.type));
+        if (gaugeBinarySensors.length) {
             const chartContainer = document.createElement("div");
             elemSensorsContent.append(chartContainer);
             const chartCtx = addChartContainer($(chartContainer), {

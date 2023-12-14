@@ -262,7 +262,7 @@ const buildGaugeChart = (elementId, { deviceId, sensorIds, sensors, samplesCount
             resolve(sensors);
         } else if (deviceId) {
             fetcher.graphql(`{sensors(data: {deviceId:"${deviceId}"}){id,name, type}}`).then(data => {
-                resolve(data.sensors.filter(s => s.type === "gauge"));
+                resolve(data.sensors.filter((s) => ["gauge", "binary"].includes(s.type)));
             })
         } else {
             fetcher.graphql(`query {sensors(data: {sensorIds: [${sensorIds.map(s => `"${s}"`).join()}]}){id,name}}`).then(data => {
