@@ -20,7 +20,7 @@ export class CronService extends BaseService {
         callback();
     }
 
-    add(name : string, cronTime : string, callback : () => void) {
+    add(name : string, cronTime : string, callback : () => void, runImmediately?: boolean) {
         logger.debug(`Adding cronjob for <${name}> at <${cronTime}>`);
         if (Object.keys(this.jobs).includes(name)) {
             this.jobs[name].stop();
@@ -28,6 +28,15 @@ export class CronService extends BaseService {
         const job = new CronJob(cronTime, callback, null, true, constants.DEFAULTS.TIMEZONE);
         job.start();
         this.jobs[name] = job;
+
+        if (runImmediately) {
+            logger.debug(`Asked to run cronjob <${name}> immediately on add so doing that...`);
+            try {
+                global.setImmediate(callback);
+            } catch (err) {
+                logger.error(`Unable to run cronjon <${name}> immediately`, err);
+            }
+        }
     }
 
     remove(name:string) {

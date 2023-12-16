@@ -4,10 +4,10 @@ import moment from "moment";
 import excel from "node-excel-export";
 import constants, { ISO8601_DATETIME_FORMAT } from "../../../constants";
 import { ensureReadScopeWhenGetRequest } from "../../../middleware/ensureScope";
-import { BackendIdentity, HttpException } from "../../../types";
+import { BackendIdentity, Dataset, HttpException } from "../../../types";
 //@ts-ignore
 import { lookupService } from "../../../configure-services";
-import { DataQueryGroupBy, Dataset, DataQueryService, GroupedQueryDateFilterInput, GroupedQueryFormatInput, GroupedQueryGroupByInput, UngroupedQueryDateFilterInput, UngroupedQueryFormatInput } from "../../../services/dataquery-service";
+import { DataQueryGroupBy, DataQueryService, GroupedQueryDateFilterInput, GroupedQueryFormatInput, GroupedQueryGroupByInput, UngroupedQueryDateFilterInput, UngroupedQueryFormatInput } from "../../../services/dataquery/dataquery-service";
 
 const router = express.Router();
 

@@ -1,54 +1,18 @@
 //@ts-ignore
 import services from "../configure-services";
-import { StorageService } from "../services/storage-service";
 import moment, {Moment} from "moment-timezone";
-import { DataElement, Dataset } from "../services/dataquery-service";
 import constants from "../constants";
 import { Logger } from "../logger";
-import {Prices} from "nordpool";
+import { PowerpriceService } from "../services/powerprice-service";
 
 // get logger
-const log = new Logger("cronjob-powerdata");
-
-const fetchPowerdataForMoment = async (storage : StorageService, m : Moment) : Promise<void> => {
-    log.info(`Getting powerdata for: ${m.format("YYYY-MM-DD")}`);
-    const ds = {} as Dataset;
-    ds.id = "power";
-    ds.name = m.format("DD-MM-YYYY");
-
-    const opts = {
-        currency: constants.DEFAULTS.NORDPOOL.CURRENCY,
-        area: constants.DEFAULTS.NORDPOOL.AREA,
-        date: m.format("YYYY-MM-DD"),
-    };
-
-    // fetch data
-    const results = await new Prices().hourly(opts);
-    if (!results) {
-        log.warn(`Unable to get powerdata for ${m.format("YYYY-MM-DD")}`);
-        throw new Error(`Unable to get powerdata for ${m.format("YYYY-MM-DD")}`);
-    }
-
-    // map data
-    ds.data = results.map((v: any) => {
-        let date = moment.utc(v.date);
-        let price = Number.parseFloat((v.value / 1000).toFixed(2)); // unit i MWh
-        let time = date.tz(constants.DEFAULTS.TIMEZONE).format("H:mm");
-        const elem = {} as DataElement;
-        elem.x = time;
-        elem.y = price;
-        return elem;
-    });
-
-    // cache
-    await storage.setPowerPriceData(m.format("YYYY-MM-DD"), ds.data);
-}
+const log = new Logger("cronjob-powerprice");
 
 export default async () => {
-    log.info("Starting cronjob to load powerdata");
+    log.info("Cronjob to load power prices starting");
 
-    const svcs = await services.lookupService([StorageService.NAME]);
-    const storage = svcs[0] as StorageService;
+    const svcs = await services.lookupService([PowerpriceService.NAME]);
+    const pp = svcs[0] as PowerpriceService;
 
     // create moments to fetch for (allways current date but maybe also tomorrow)
     const moments: Moment[] = [];
@@ -62,15 +26,15 @@ export default async () => {
 
     // create dataset and fetch data for each moment
     try {
-        log.info("Starting to load powerdata");
+        log.info("Asking powerprice-service to load power price");
         await Promise.allSettled(
             moments.map((m) => {
-                return fetchPowerdataForMoment(storage, m);
+                return pp.getPowerdataForMoment(m, true);
             })
         );
 
-        log.info("Done loading powerdata");
+        log.info("Cronjob to load power prices done");
     } catch (err) {
-        log.error("Error loading powerdata", err);
+        log.error("Error loading power price", err);
     }
 }

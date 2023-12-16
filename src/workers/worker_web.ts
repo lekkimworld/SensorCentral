@@ -15,7 +15,7 @@ import { NotifyService } from  "../services/notify-service";
 import { RedisService } from  "../services/redis-service";
 import { QueueListenerService } from  "../services/queuelistener-service";
 import { StorageService } from '../services/storage-service';
-import { DataQueryService } from "../services/dataquery-service";
+import { DataQueryService } from "../services/dataquery/dataquery-service";
 import { EmailService } from '../services/email-service';
 import constants from '../constants';
 import { IdentityService } from '../services/identity-service';
@@ -24,6 +24,7 @@ import { CronService } from "../services/cron-service";
 import cronjobPowerdata  from "./cronjob_powerdata";
 import { AlertService } from "../services/alert/alert-service";
 import { EventService } from "../services/event-service";
+import { PowerpriceService } from "../services/powerprice-service";
 
 // number of workers we should create
 const logger = new Logger("worker_web");
@@ -56,6 +57,7 @@ services.registerService(new CronService());
 services.registerService(new DataQueryService());
 services.registerService(new AlertService());
 services.registerService(new EventService());
+services.registerService(new PowerpriceService());
 
 // setup termination listener
 terminateListener(() => {
@@ -72,7 +74,7 @@ const main = async () => {
 	// add cron jobs
 	logger.info("Start adding cron jobs");
 	const cron = services.getService(CronService.NAME) as CronService;
-	cron.add("load-powerdata-daily", "0 1 * * *", cronjobPowerdata);
+	cron.add("load-powerdata-daily", "0 1 * * *", cronjobPowerdata, true);
 	logger.info("Done adding cron jobs");
 
 	// start server

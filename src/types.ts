@@ -519,3 +519,15 @@ export type OnSensorSampleEvent = {
     path?: string;
     bodyTemplate?: string;
 }
+
+export interface Dataset {
+    id: string;
+    name: string | undefined;
+    fromCache: boolean;
+    data: DataElement[];
+}
+
+export interface DataElement {
+    x: string;
+    y: number;
+}

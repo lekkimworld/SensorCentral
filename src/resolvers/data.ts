@@ -1,12 +1,14 @@
-import { Resolver, Query, Arg, Ctx, registerEnumType } from "type-graphql";
-import * as types from "../types";
 import moment from "moment";
-import constants from "../constants";
+import { Arg, Ctx, Query, Resolver, registerEnumType } from "type-graphql";
 import { ISO8601_DATETIME_FORMAT } from "../constants";
-import { CounterQueryAdjustBy, DataElement, DataQueryGroupBy, DataQueryService, GraphQLDataElement, GraphQLDataset, GroupedQueryDateFilterInput, GroupedQueryFormatInput, GroupedQueryGroupByInput, GroupedQueryOffsetFilterInput, PowerConsumptionQueryFilterInput, PowerConsumptionQueryFormatInput, PowerDataQueryFilterInput, PowerDataQueryFormatInput, PowerPriceQueryFilterInput, UngroupedQueryCountFilterInput, UngroupedQueryDateFilterInput, UngroupedQueryFormatInput, ungroupedQuery } from "../services/dataquery-service";
+import { CounterQueryAdjustBy, DataQueryGroupBy, DataQueryService, GroupedQueryDateFilterInput, GroupedQueryFormatInput, GroupedQueryGroupByInput, GroupedQueryOffsetFilterInput, UngroupedQueryCountFilterInput, UngroupedQueryDateFilterInput, UngroupedQueryFormatInput, ungroupedQuery } from "../services/dataquery/dataquery-service";
+import * as types from "../types";
+import { PowerpriceService } from "../services/powerprice-service";
 //@ts-ignore
-import {lookupService} from "../configure-services";
-import {Prices} from "nordpool";
+import { lookupService } from "../configure-services";
+import { GraphQLDataElement, GraphQLDataset } from "./resolver-types";
+import { PowerConsumptionQueryFilterInput, PowerConsumptionQueryFormatInput, PowerDataQueryFilterInput, PowerDataQueryFormatInput } from "../services/dataquery/powerdata-query";
+import { PowerPriceQueryFilterInput } from "./powerprice";
 
 
 registerEnumType(DataQueryGroupBy, {
@@ -184,69 +186,22 @@ export class DataQueryResolver {
     })
     async powerPriceQuery(
         @Arg("filter") filter: PowerPriceQueryFilterInput,
-        @Ctx() ctx: types.GraphQLResolverContext
+        @Ctx() _ctx: types.GraphQLResolverContext
     ): Promise<GraphQLDataset> {
         // calc date to ask for
         const m = filter.date ? moment(filter.date, "YYYY-MM-DD") : moment();
 
-        // create dataset
-        const ds = new GraphQLDataset("power", m.format("DD-MM-YYYY"));
+        // ask service
+        const ppSvc = await lookupService(PowerpriceService.NAME) as PowerpriceService;
+        const ds = await ppSvc.getPowerdataForMoment(m, filter.ignoreCache);
+        const result = new GraphQLDataset(
+            ds.id,
+            ds.name
+        );
+        result.fromCache = ds.fromCache;
+        result.data = ds.data;
 
-        // see if we could potentially have the data
-        const midnight = moment().hour(0).minute(0).second(0).millisecond(0).add(1, "day");
-        if (midnight.diff(m) <= 0) {
-            // supplied date is in the future
-            const tomorrowMidnight = moment().hour(0).minute(0).second(0).millisecond(0).add(2, "day");
-            const today2pm = moment().hour(14).minute(0).second(0).millisecond(0);
-            if (tomorrowMidnight.diff(m) <= 0) {
-                // supplied date is after tomorrow midnight - we never have
-                // that data
-                return ds;
-            } else {
-                // we could have the data for tomorrow if it's after 2pm
-                if (moment().diff(today2pm) < 0) {
-                    // it's before 2pm - we cannot have the data yet
-                    return ds;
-                }
-            }
-        }
-
-        // look in cache if allowed
-        if (!filter.ignoreCache) {
-            const data = await ctx.storage.getPowerPriceData(m.format("YYYY-MM-DD"));
-            if (data) {
-                // found in cache
-                ds.data = data as any as DataElement[];
-                ds.fromCache = true;
-                return ds;
-            }
-        }
-
-        // get data
-        try {
-            const opts = {
-                currency: constants.DEFAULTS.NORDPOOL.CURRENCY,
-                area: constants.DEFAULTS.NORDPOOL.AREA,
-                date: m.format("YYYY-MM-DD"),
-            };
-            const results = await new Prices().hourly(opts);
-            if (!results) return ds;
-
-            // map data
-            ds.data = results.map((v: any) => {
-                let date = moment.utc(v.date);
-                let price = Number.parseFloat((v.value / 1000).toFixed(2)); // unit i MWh
-                let time = date.tz(constants.DEFAULTS.TIMEZONE).format("H:mm");
-                return new GraphQLDataElement(time, price);
-            });
-
-            // cache
-            ctx.storage.setPowerPriceData(m.format("YYYY-MM-DD"), ds.data);
-
-            // return
-            return ds;
-        } catch (err) {
-            throw Error(`Unable to load powerquery data for date (${m.format("YYYY-MM-DD")}, ${err.message})`);
-        }
+        // return
+        return result;
     }
 }

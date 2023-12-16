@@ -7,7 +7,7 @@ import { CreateHouseInput, DeleteHouseInput, FavoriteHouseInput, House, UpdateHo
 import { CreateSensorType, DeleteSensorType, FavoriteSensorsInput, UpdateSensorType } from "../resolvers/sensor";
 import { UpdatePushoverSettingsInput } from "../resolvers/settings";
 import {
-    BackendIdentity, BaseService, Device, DeviceData, Endpoint, getHttpMethod, HouseUser, HttpMethod, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Sensor,
+    BackendIdentity, BaseService, DataElement, Device, DeviceData, Endpoint, getHttpMethod, HouseUser, HttpMethod, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Sensor,
     SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, UserPrincipal
 } from "../types";
 import { DatabaseService } from "./database-service";
@@ -200,14 +200,17 @@ export class StorageService extends BaseService {
      * Try and lookup power price data in cache.
      * @param key
      */
-    async getPowerPriceData(key: string): Promise<object | undefined> {
+    async getPowerPriceData(key: string): Promise<DataElement[] | undefined> {
         const data = await this.redisService!.get(`${POWERDATA_REDIS_KEY}${key}`);
         if (data) {
+            // keep data a little longer in cache as it was accessed
             this.redisService!.expire(
                 `${POWERDATA_REDIS_KEY}${key}`,
                 constants.DEFAULTS.REDIS.POWERDATA_EXPIRATION_SECS
             );
-            return JSON.parse(data);
+
+            // parse and return
+            return JSON.parse(data) as DataElement[];
         } else {
             return undefined;
         }
@@ -218,13 +221,14 @@ export class StorageService extends BaseService {
      * @param key
      * @param data
      */
-    async setPowerPriceData(key: string, data: object) {
+    async setPowerPriceData(key: string, data: DataElement[]) {
         const str = JSON.stringify(data);
-        return await this.redisService!.setex(
+        await this.redisService!.setex(
             `${POWERDATA_REDIS_KEY}${key}`,
             constants.DEFAULTS.REDIS.POWERDATA_EXPIRATION_SECS,
             str
         );
+        logger.debug(`Stored power price data in cache with key <${key}>`);
     }
 
     /**

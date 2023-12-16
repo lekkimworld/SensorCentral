@@ -1,12 +1,14 @@
-import { Logger } from "../logger";
-import { ObjectType, Field, InputType, ID } from "type-graphql";
-import { IsEnum, Matches } from "class-validator";
-import constants, { ISO8601_DATETIME_FORMAT } from "../constants";
-import * as types from "../types";
-import { QueryResult } from "pg";
+import { IsEnum } from "class-validator";
 import moment from "moment";
-import { Sensor } from "../resolvers/sensor";
-import { StorageService } from "./storage-service";
+import { QueryResult } from "pg";
+import { Field, InputType } from "type-graphql";
+import constants, { ISO8601_DATETIME_FORMAT } from "../../constants";
+import { Logger } from "../../logger";
+import { Sensor } from "../../resolvers/sensor";
+import * as types from "../../types";
+import { StorageService } from "../storage-service";
+
+const logger = new Logger("dataquery-service");
 
 export enum DataQueryGroupBy {
     year = "YYYY",
@@ -27,156 +29,7 @@ export interface IEnsureDefaults {
     ensureDefaults(): void;
 }
 
-@ObjectType()
-export class GraphQLDataset implements Dataset {
-    constructor(id: string, name: string | undefined) {
-        this.id = id;
-        this.name = name;
-        this.data = [];
-        this.fromCache = false;
-    }
-
-    @Field(() => ID)
-    id: string;
-
-    @Field(() => String, { nullable: true })
-    name: string | undefined;
-
-    @Field(() => Boolean, { nullable: false })
-    fromCache: boolean;
-
-    @Field(() => [GraphQLDataElement])
-    data: DataElement[];
-}
-
-@InputType()
-export class PowerConsumptionQueryFilterInput {
-    @Field({ nullable: false, description: "The sensor ID of the power meter" })
-    id: string;
-
-    @Field({ nullable: false, description: "Start date/time in ISO8601 format" })
-    start: Date;
-
-    @Field({ nullable: false, description: "End date/time in ISO8601 format" })
-    end: Date;
-}
-
-@InputType()
-export class PowerConsumptionQueryFormatInput implements IEnsureDefaults {
-    @Field({
-        nullable: true,
-        description: "The timezone for the date/time information in the x-field of the dataset",
-        defaultValue: constants.DEFAULTS.TIMEZONE,
-    })
-    timezone: string;
-
-    ensureDefaults() {
-        if (!Object.prototype.hasOwnProperty.call(this, "timezone")) {
-            this.timezone = constants.DEFAULTS.TIMEZONE;
-        }
-    }
-}
-
-@InputType()
-export class PowerDataQueryFilterInput {
-    @Field({ nullable: false, description: "The sensor ID of the power meter" })
-    id: string;
-
-    @Field(() => types.PowerPhase, { nullable: false, description: "The phase you are querying for" })
-    @IsEnum(types.PowerPhase)
-    phase: types.PowerPhase;
-
-    @Field(() => types.PowerType, { nullable: false, description: "The type of data you are querying for" })
-    @IsEnum(types.PowerType)
-    type: types.PowerType;
-
-    @Field({ nullable: false, description: "Start date/time in ISO8601 format" })
-    start: Date;
-
-    @Field({ nullable: false, description: "End date/time in ISO8601 format" })
-    end: Date;
-}
-
-@InputType()
-export class PowerDataQueryFormatInput implements IEnsureDefaults {
-    @Field({
-        nullable: true,
-        description:
-            "The format for date/time information in the x-field of the dataset (default: " +
-            ISO8601_DATETIME_FORMAT +
-            ")",
-    })
-    format: string;
-
-    @Field({
-        nullable: true,
-        description: "The timezone for the date/time information in the x-field of the dataset",
-        defaultValue: constants.DEFAULTS.TIMEZONE,
-    })
-    timezone: string;
-
-    @Field({ nullable: true, description: "Sort ascending (true) or descending (false)", defaultValue: true })
-    sortAscending: true;
-
-    ensureDefaults() {
-        if (!Object.prototype.hasOwnProperty.call(this, "timezone")) {
-            this.timezone = constants.DEFAULTS.TIMEZONE;
-        }
-        if (!Object.prototype.hasOwnProperty.call(this, "format")) {
-            this.format = ISO8601_DATETIME_FORMAT;
-        }
-        if (!Object.prototype.hasOwnProperty.call(this, "sortAscending")) {
-            this.sortAscending = true;
-        }
-    }
-}
-
-/* --------- Dataset --------- */
-export interface Dataset {
-    id: string;
-    name: string | undefined;
-    fromCache: boolean;
-    data: DataElement[];
-}
-
-export interface DataElement {
-    x: string;
-    y: number;
-}
-
-@ObjectType()
-export class GraphQLDataElement implements DataElement {
-    constructor(x: string, y: number) {
-        this.x = x;
-        this.y = y;
-    }
-
-    @Field()
-    x: string;
-
-    @Field()
-    y: number;
-}
-
-/* ------ Power Price query ------- */
-@InputType()
-export class PowerPriceQueryFilterInput {
-    @Field({
-        nullable: true,
-        description: "The date for the power price formatted as YYYY-MM-DD. If not specified uses current date.",
-    })
-    @Matches(/\d{4}-\d{2}-\d{2}/)
-    date: string;
-
-    @Field({
-        nullable: true,
-        defaultValue: false,
-        description: "Cached data is returned if found. Set to true to always fetch a fresh copy of the data.",
-    })
-    ignoreCache: boolean;
-}
-
-/* --------- Ungrouped data query -------- */
+/* --------- common -------- */
 @InputType()
 class BaseQueryFilterInput {
     @Field(() => [String])
@@ -184,12 +37,24 @@ class BaseQueryFilterInput {
 }
 
 @InputType()
-export class UngroupedQueryDateFilterInput extends BaseQueryFilterInput {
-    @Field({ nullable: false })
+export class DateQueryFilterInput extends BaseQueryFilterInput {
+    @Field({
+        nullable: false,
+        description: "The start date/time",
+    })
     start: Date;
 
-    @Field({ nullable: false })
+    @Field({
+        nullable: false,
+        description: "The end date/time",
+    })
     end: Date;
+}
+
+/* --------- Ungrouped data query -------- */
+
+@InputType()
+export class UngroupedQueryDateFilterInput extends DateQueryFilterInput {
 }
 
 @InputType()
@@ -230,18 +95,7 @@ export class UngroupedQueryFormatInput implements IEnsureDefaults {
 
 /* ---------- Grouped date query ----------- */
 @InputType()
-export class GroupedQueryDateFilterInput extends BaseQueryFilterInput {
-    @Field({
-        nullable: false,
-        description: "The start date/time",
-    })
-    start: Date;
-
-    @Field({
-        nullable: false,
-        description: "The end date/time",
-    })
-    end: Date;
+export class GroupedQueryDateFilterInput extends DateQueryFilterInput {
 }
 
 @InputType()
@@ -398,35 +252,44 @@ export const doGroupedQuery = async (
     format: GroupedQueryFormatInput,
     storage: StorageService,
     user: types.BackendIdentity
-) => {
+) : Promise<types.Dataset[]> => {
     // get sensors
     const sensors = await getSensorsForSensorIDs(filter.sensorIds, storage, user);
 
     // method for formatting results from database
     const formatResult = (dbdata: (QueryResult<any> | undefined)[]) => {
         // create response
-        const dss: Array<Dataset> = [];
+        const dss: Array<types.Dataset> = [];
         for (let i = 0; i < filter.sensorIds.length; i++) {
             const result = dbdata[i] as QueryResult;
             const sensor = sensors[i] as Sensor;
 
-            let ds;
+            let ds : Partial<types.Dataset>;
             if (!sensor) {
                 // unknown sensor
-                ds = new GraphQLDataset(filter.sensorIds[i], undefined);
+                ds = {
+                    id: filter.sensorIds[i],
+                    name: undefined
+                };
             } else {
                 const scaleFactor = format.applyScaleFactor ? sensor.scaleFactor : 1;
-                ds = new GraphQLDataset(sensor.id, sensor.name);
-                ds.data = result.rows.map((r: any) => {
+                ds = {
+                    id: sensor.id,
+                    name: sensor.name
+                };
+                ds.data = result.rows.map((r: any) : types.DataElement => {
                     return {
                         x: r.period,
                         y:
                             Math.floor((r.value || 0) * scaleFactor * Math.pow(10, format.decimals)) /
                             Math.pow(10, format.decimals),
-                    } as DataElement;
+                    };
                 });
             }
-            dss.push(ds);
+
+            // set fromCache and return as Dataset
+            ds.fromCache = false;
+            dss.push(ds as types.Dataset);
         }
         return dss;
     };
@@ -548,18 +411,24 @@ export const ungroupedQuery = async (
     );
 
     // build dataset(s);
-    const dss: Array<Dataset> = [];
+    const dss: Array<types.Dataset> = [];
     for (let i = 0; i < filter.sensorIds.length; i++) {
         const result = dbdata[i] as types.SensorSample[];
         const sensor = sensors[i] as Sensor;
-        let ds;
+        let ds : Partial<types.Dataset>;
         if (!sensor) {
             // unknown sensor
-            ds = new GraphQLDataset(filter.sensorIds[i], undefined);
+            ds = {
+                id: filter.sensorIds[i],
+                name: undefined
+            }
         } else {
-            ds = new GraphQLDataset(sensor.id, sensor.name);
+            ds = {
+                id: sensor.id,
+                name: sensor.name
+            }
             ds.data = result
-                .map((r) => {
+                .map((r) : types.DataElement => {
                     return {
                         x: moment.utc(r.dt).tz(format.timezone).format(format.format),
                         y: Math.floor((r.value || 0) * Math.pow(10, format.decimals)) / Math.pow(10, format.decimals),
@@ -567,13 +436,14 @@ export const ungroupedQuery = async (
                 })
                 .reverse();
         }
-        dss.push(ds);
+
+        // set fromCache and converty type
+        ds.fromCache = false;
+        dss.push(ds as types.Dataset);
     }
 
     return dss;
 };
-
-const logger = new Logger("dataquery-service");
 
 export class DataQueryService extends types.BaseService {
     public static NAME = "dataquery";
@@ -589,7 +459,7 @@ export class DataQueryService extends types.BaseService {
         this.storage = services[0] as StorageService;
         callback();
     }
-
+    
     async groupedQuery(
         filter: GroupedQueryDateFilterInput | GroupedQueryOffsetFilterInput,
         grouping: GroupedQueryGroupByInput,

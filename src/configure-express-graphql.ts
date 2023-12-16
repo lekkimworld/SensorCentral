@@ -20,6 +20,7 @@ import { Logger } from "./logger";
 import { AlertResolver } from "./resolvers/alert";
 import { EventResolver } from "./resolvers/event";
 import { EndpointResolver } from "./resolvers/endpoint";
+import { PowerPriceResolver } from "./resolvers/powerprice";
 import constants from "./constants";
 
 const logger = new Logger("configure-express-graphql");
@@ -44,7 +45,8 @@ export default  async (app : Application) => {
             UsersResolver,
             AlertResolver,
             EventResolver,
-            EndpointResolver
+            EndpointResolver,
+            PowerPriceResolver
         ],
         dateScalarMode: "isoDate"
     })
