@@ -83,7 +83,7 @@ export default async () => {
             secure: req.secure, 
             headers: {} as Record<string,string|number|string[]>
         }
-        const requestCtx = Object.assign({}, baseCtx, {body: req.body});
+        const requestCtx = Object.assign({}, baseCtx, {status: req.statusCode, body: req.body});
         Object.keys(req.headers).forEach((h : string) => {
             requestCtx.headers[h] = (h === "authorization" ? "EXCLUDED" : h ? req.header(h) : "EMPTY")!;
         })
@@ -92,7 +92,7 @@ export default async () => {
         // intercept calls to response.send
         res.send = resDotSendInterceptor(res, res.send);
         res.on("finish", () => {
-            const responseCtx = Object.assign({}, baseCtx, { body: res.contentBody });
+            const responseCtx = Object.assign({}, baseCtx, { status: res.statusCode, body: res.contentBody });
             Object.keys(res.getHeaders()).forEach((h: string) => {
                 responseCtx.headers[h] = (h === "authorization" ? "EXCLUDED" : h ? res.getHeader(h) : "EMPTY")!;
             });
