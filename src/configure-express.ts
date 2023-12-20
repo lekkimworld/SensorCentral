@@ -24,7 +24,8 @@ declare global {
 
 // logger
 const logger = new Logger("configure-express");
-const loggerHttp = new Logger("http");
+const loggerHttpRequest = new Logger("http-request", true);
+const loggerHttpResponse = new Logger("http-response", true);
 
 const resDotSendInterceptor = (res: Response, send: Send) => (content?: any) : any => {
     // store constent
@@ -83,21 +84,24 @@ export default async () => {
             secure: req.secure, 
             headers: {} as Record<string,string|number|string[]>
         }
-        const requestCtx = Object.assign({}, baseCtx, {status: req.statusCode, body: req.body});
+        const requestCtx = Object.assign({}, baseCtx, {body: req.body, is_request: true});
         Object.keys(req.headers).forEach((h : string) => {
             requestCtx.headers[h] = (h === "authorization" ? "EXCLUDED" : h ? req.header(h) : "EMPTY")!;
         })
-        loggerHttp.trace(`HTTP request ${JSON.stringify(requestCtx)}`);
+        loggerHttpRequest.trace(requestCtx);
 
         // intercept calls to response.send
         res.send = resDotSendInterceptor(res, res.send);
         res.on("finish", () => {
-            const responseCtx = Object.assign({}, baseCtx, { status: res.statusCode, body: res.contentBody });
-            Object.keys(res.getHeaders()).forEach((h: string) => {
-                responseCtx.headers[h] = (h === "authorization" ? "EXCLUDED" : h ? res.getHeader(h) : "EMPTY")!;
+            const responseCtx = Object.assign({}, baseCtx, {
+                status: res.statusCode,
+                body: res.contentBody,
+                is_response: true,
             });
-            loggerHttp.trace(
-                `HTTP response ${JSON.stringify(responseCtx)}`);
+            Object.keys(res.getHeaders()).forEach((h: string) => {
+                responseCtx.headers[h] = (h ? res.getHeader(h) : "EMPTY")!;
+            });
+            loggerHttpResponse.trace(responseCtx);
         });
         
         // next
