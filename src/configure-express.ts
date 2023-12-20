@@ -1,5 +1,5 @@
 import { middleware as httpContextMiddleware, set as setToHttpContext } from "express-http-context";
-import express from "express";
+import express, { Response, Send } from "express";
 import { json as bp_json, raw as bp_raw } from "body-parser";
 import path from "path";
 import attachApplicationRoutes from "./configure-express-routes";
@@ -13,8 +13,29 @@ import { Logger } from "./logger";
 import constants from "./constants";
 import { v1 as uuid } from "uuid";
 
+declare global {
+    namespace Express {
+        interface Response {
+            contentBody?: any;
+        }
+    }
+}
+
+
 // logger
 const logger = new Logger("configure-express");
+const loggerHttp = new Logger("http");
+
+const resDotSendInterceptor = (res: Response, send: Send) => (content?: any) : any => {
+    // store constent
+    res.contentBody = content;
+
+    // swap method back
+    res.send = send;
+
+    // send content
+    return res.send(content);
+};
 
 export default async () => {
     // create app
@@ -55,9 +76,30 @@ export default async () => {
         res.set("X-Request-ID", reqId);
 
         // log request
-        logger.trace(`path <${req.path}> method <${req.method}> secure <${req.secure}> headers <${Object.keys(req.headers).map(h => `${h}=${h === "authorization" ? "EXCLUDED" : req.header(h)}`).join(",")}>`);
-        logger.trace(`body <${JSON.stringify(req.body)}>`);
+        const requestPath = req.path;
+        const baseCtx = {
+            path: requestPath, 
+            method: req.method, 
+            secure: req.secure, 
+            headers: {} as Record<string,string|number|string[]>
+        }
+        const requestCtx = Object.assign({}, baseCtx, {body: req.body});
+        Object.keys(req.headers).forEach((h : string) => {
+            requestCtx.headers[h] = (h === "authorization" ? "EXCLUDED" : h ? req.header(h) : "EMPTY")!;
+        })
+        loggerHttp.trace(`HTTP request ${JSON.stringify(requestCtx)}`);
 
+        // intercept calls to response.send
+        res.send = resDotSendInterceptor(res, res.send);
+        res.on("finish", () => {
+            const responseCtx = Object.assign({}, baseCtx, { body: res.contentBody });
+            Object.keys(res.getHeaders()).forEach((h: string) => {
+                responseCtx.headers[h] = (h === "authorization" ? "EXCLUDED" : h ? res.getHeader(h) : "EMPTY")!;
+            });
+            loggerHttp.trace(
+                `HTTP response ${JSON.stringify(responseCtx)}`);
+        });
+        
         // next
         next();
     });
