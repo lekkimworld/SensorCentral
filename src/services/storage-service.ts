@@ -127,7 +127,7 @@ export class StorageService extends BaseService {
      */
     //@ts-ignore
     async getUser(user: BackendIdentity, id: string): Promise<UserPrincipal> {
-        const result = await this.dbService!.query(
+        const result = await this.dbService.query(
             "select id, email, fn, ln from login_user where id=$1 OR email=$2",
             id,
             id
@@ -183,7 +183,7 @@ export class StorageService extends BaseService {
                 )} as value from powermeter_data where dt >= $2 and dt < $3 and id=$1 and not ${columnNullTest} is null order by dt desc;`;
             }
         })();
-        const result = await this.dbService!.query(query, id, start, end);
+        const result = await this.dbService.query(query, id, start, end);
 
         // create samples
         const samples = result.rows.map((row) => {
@@ -290,10 +290,10 @@ export class StorageService extends BaseService {
     async getHouse(user: BackendIdentity, houseid: string): Promise<House> {
         let result;
         if (this.isAllHousesAccessUser(user)) {
-            result = await this.dbService!.query(`select id, name from house h where h.id=$1`, houseid);
+            result = await this.dbService.query(`select id, name from house h where h.id=$1`, houseid);
             if (result.rowCount !== 1) throw Error(`Unable to find a single House with ID <${houseid}>`);
         } else {
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 `select id, name from house h, user_house_access u where h.id=u.houseId and u.houseId=$2 and u.userId=$1`,
                 this.getUserIdFromUser(user),
                 houseid
@@ -318,9 +318,9 @@ export class StorageService extends BaseService {
     async getHouses(user: BackendIdentity): Promise<House[]> {
         let result;
         if (this.isAllHousesAccessUser(user)) {
-            result = await this.dbService!.query("select id, name from house h order by name asc");
+            result = await this.dbService.query("select id, name from house h order by name asc");
         } else if (this.ensureScope(user, constants.JWT.SCOPE_READ)) {
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 "select id, name from house h, user_house_access u where u.userId=$1 and h.id=u.houseId order by name asc",
                 this.getUserIdFromUser(user)
             );
@@ -372,23 +372,23 @@ export class StorageService extends BaseService {
         }
 
         // insert house row
-        return this.dbService!.query("BEGIN")
+        return this.dbService.query("BEGIN")
             .then(() => {
-                return this.dbService!.query("insert into house (id, name) values ($1, $2)", house_id, use_name);
+                return this.dbService.query("insert into house (id, name) values ($1, $2)", house_id, use_name);
             })
             .then(() => {
-                return this.dbService!.query(
+                return this.dbService.query(
                     "insert into user_house_access (userId, houseId, owner) values ($1, $2, TRUE)",
                     this.getUserIdFromUser(user),
                     house_id
                 );
             })
             .then(() => {
-                return this.dbService!.query("COMMIT");
+                return this.dbService.query("COMMIT");
             })
             .then(() => {
                 // publish event
-                this.eventService?.publishTopic(constants.TOPICS.CONTROL, "house.create", {
+                this.eventService.publish(`${constants.TOPICS.CONTROL}.house.create`, {
                     new: {
                         id: house_id,
                         name: use_name,
@@ -401,7 +401,7 @@ export class StorageService extends BaseService {
             })
             .catch((err) => {
                 logger.warn(`Unable to create house due to error: ${err.message}`);
-                return this.dbService!.query("ROLLBACK").then(() => {
+                return this.dbService.query("ROLLBACK").then(() => {
                     return Promise.reject(Error(`Unable to create house due to error (${err.message})`));
                 });
             });
@@ -424,13 +424,13 @@ export class StorageService extends BaseService {
         const house = await this.getHouse(user, use_id);
 
         // update house
-        const result = await this.dbService!.query(`update house set name=$1 where id=$2`, use_name, use_id);
+        const result = await this.dbService.query(`update house set name=$1 where id=$2`, use_name, use_id);
         if (!result || result.rowCount !== 1) {
             throw Error(`Unable to update house with ID <${use_id}>`);
         }
 
         // publish event
-        this.eventService?.publishTopic(constants.TOPICS.CONTROL, "house.update", {
+        this.eventService.publish(`${constants.TOPICS.CONTROL}.house.update`, {
             new: {
                 id: use_id,
                 name: use_name,
@@ -453,7 +453,7 @@ export class StorageService extends BaseService {
      * @param data
      */
     async getFavoriteHouse(user: BackendIdentity): Promise<House | undefined> {
-        const result = await this.dbService!.query(
+        const result = await this.dbService.query(
             "select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1 and u.is_default=true",
             this.getUserIdFromUser(user)
         );
@@ -473,7 +473,7 @@ export class StorageService extends BaseService {
     async isHouseOwner(user: BackendIdentity, userId: string, houseId: string): Promise<boolean> {
         // ensure access
         const house = await this.getHouse(user, houseId);
-        const result = await this.dbService!.query(
+        const result = await this.dbService.query(
             "select owner from user_house_access where userId=$1 and houseId=$2",
             userId,
             house.id
@@ -492,7 +492,7 @@ export class StorageService extends BaseService {
     async getHouseUsers(user: BackendIdentity, houseId: string): Promise<HouseUser[]> {
         // ensure access to house
         const house = await this.getHouse(user, houseId);
-        const result = await this.dbService?.query(
+        const result = await this.dbService.query(
             "select id, fn, ln, email, u.owner owner from login_user l, user_house_access u where l.id=u.userId and u.houseId=$1",
             house.id
         );
@@ -507,9 +507,9 @@ export class StorageService extends BaseService {
      * @param data
      */
     async setFavoriteHouse(user: BackendIdentity, { id }: FavoriteHouseInput): Promise<House> {
-        return this.dbService!.query(`BEGIN;`)
+        return this.dbService.query(`BEGIN;`)
             .then(() => {
-                return this.dbService!.query(
+                return this.dbService.query(
                     "select userId, houseId, is_default from user_house_access where userId=$1 and houseId=$2",
                     this.getUserIdFromUser(user),
                     id
@@ -522,20 +522,20 @@ export class StorageService extends BaseService {
                 }
 
                 // mark all user houses as not-default
-                return this.dbService!.query(
+                return this.dbService.query(
                     `update user_house_access set is_default=false WHERE userId=$1`,
                     this.getUserIdFromUser(user)
                 );
             })
             .then(() => {
-                return this.dbService!.query(
+                return this.dbService.query(
                     `update user_house_access set is_default=true where userId=$1 and houseId=$2;`,
                     this.getUserIdFromUser(user),
                     id
                 );
             })
             .then(() => {
-                return this.dbService!.query(`COMMIT;`);
+                return this.dbService.query(`COMMIT;`);
             })
             .then(() => {
                 // get the house
@@ -543,7 +543,7 @@ export class StorageService extends BaseService {
             })
             .then((house) => {
                 // publish event
-                this.eventService?.publishTopic(constants.TOPICS.CONTROL, "house.favorite", {
+                this.eventService.publish(`${constants.TOPICS.CONTROL}.house.favorite`, {
                     new: {
                         id: id,
                         name: house.name,
@@ -555,7 +555,7 @@ export class StorageService extends BaseService {
                 return Promise.resolve(house);
             })
             .catch((err: Error) => {
-                this.dbService!.query(`ROLLBACK;`);
+                this.dbService.query(`ROLLBACK;`);
                 return Promise.reject(Error(`Unable to set house as favorite: ${err.message}`));
             });
     }
@@ -564,11 +564,11 @@ export class StorageService extends BaseService {
         // get house to ensure access
         const house = await this.getHouse(user, houseId);
 
-        return this.dbService!.query("BEGIN")
+        return this.dbService.query("BEGIN")
             .then(() => {
                 return serial(
                     (Array.isArray(userId) ? userId : [userId]).map((uid) => () => {
-                        return this.dbService!.query(
+                        return this.dbService.query(
                             "insert into user_house_access (userId, houseId) values ($1, $2) on conflict do nothing",
                             uid,
                             house.id
@@ -577,13 +577,13 @@ export class StorageService extends BaseService {
                 );
             })
             .then(() => {
-                return this.dbService!.query("COMMIT");
+                return this.dbService.query("COMMIT");
             })
             .then(() => {
                 return Promise.resolve(true);
             })
             .catch((err) => {
-                return this.dbService!.query("ROLLBACK").then(() => {
+                return this.dbService.query("ROLLBACK").then(() => {
                     return Promise.reject(Error(`Unable to grant access for users to house (${err.message})`));
                 });
             });
@@ -592,11 +592,11 @@ export class StorageService extends BaseService {
     async revokeHouseAccess(user: BackendIdentity, houseId: string, userId: string | Array<string>): Promise<boolean> {
         // get house to ensure access
         const house = await this.getHouse(user, houseId);
-        return this.dbService!.query("BEGIN")
+        return this.dbService.query("BEGIN")
             .then(() => {
                 return serial(
                     (Array.isArray(userId) ? userId : [userId]).map((uid) => () => {
-                        return this.dbService!.query(
+                        return this.dbService.query(
                             "delete from user_house_access where userId=$1 and houseId=$2 and owner=false",
                             uid,
                             house.id
@@ -605,20 +605,20 @@ export class StorageService extends BaseService {
                 );
             })
             .then(() => {
-                return this.dbService!.query("select count(*) count from user_house_access where houseId=$1", house.id);
+                return this.dbService.query("select count(*) count from user_house_access where houseId=$1", house.id);
             })
             .then((result) => {
                 if (result.rows[0].count === 0) {
                     // cannot remove all access
                     return Promise.reject(Error("Cannot delete last user with access to house"));
                 }
-                return this.dbService!.query("COMMIT");
+                return this.dbService.query("COMMIT");
             })
             .then(() => {
                 return Promise.resolve(true);
             })
             .catch((err) => {
-                return this.dbService!.query("ROLLBACK").then(() => {
+                return this.dbService.query("ROLLBACK").then(() => {
                     return Promise.reject(err);
                 });
             });
@@ -639,10 +639,10 @@ export class StorageService extends BaseService {
         const house = await this.getHouse(user, use_id);
 
         // delete house
-        await this.dbService!.query("delete from house where id=$1", use_id);
+        await this.dbService.query("delete from house where id=$1", use_id);
 
         // publish event
-        this.eventService?.publishTopic(constants.TOPICS.CONTROL, "house.delete", {
+        this.eventService.publish(`${constants.TOPICS.CONTROL}.house.delete`, {
             old: {
                 id: house.id,
                 name: house.name,
@@ -660,11 +660,11 @@ export class StorageService extends BaseService {
         // query to devices
         let result;
         if (this.isAllDataAccessUser(user)) {
-            result = await this.dbService?.query(
+            result = await this.dbService.query(
                 `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d join house h on d.houseid=h.id order by d.name asc`
             );
         } else {
-            result = await this.dbService?.query(
+            result = await this.dbService.query(
                 `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d, house h, user_house_access u where d.houseid=h.id and h.id=u.houseid and u.userId=$1 order by d.name asc`,
                 this.getUserIdFromUser(user)
             );
@@ -689,12 +689,12 @@ export class StorageService extends BaseService {
         // query to devices
         let result;
         if (this.isAllDataAccessUser(user)) {
-            result = await this.dbService?.query(
+            result = await this.dbService.query(
                 `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d left outer join house h on d.houseid=h.id where h.id=$1 order by d.name asc`,
                 houseId
             );
         } else {
-            result = await this.dbService?.query(
+            result = await this.dbService.query(
                 `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d, house h, user_house_access u where d.houseid=h.id and h.id=u.houseId and h.id=$1 and u.userId=$2 order by d.name asc`,
                 houseId,
                 this.getUserIdFromUser(user)
@@ -717,7 +717,7 @@ export class StorageService extends BaseService {
         // ensure user have access to the house for the device in question
         let result;
         if (false === this.isAllDataAccessUser(user)) {
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 `select d.id id from device d, house h, user_house_access u where d.id=$2 and d.houseId=h.id and h.id=u.houseId and u.userId=$1`,
                 this.getUserIdFromUser(user),
                 deviceId
@@ -727,7 +727,7 @@ export class StorageService extends BaseService {
         }
 
         // get device
-        result = await this.dbService!.query(
+        result = await this.dbService.query(
             `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d left outer join house h on d.houseid=h.id where d.id=$1`,
             deviceId
         );
@@ -749,7 +749,7 @@ export class StorageService extends BaseService {
     async createDevice(user: BackendIdentity, { houseId, id, name, active }: CreateDeviceInput): Promise<Device> {
         // ensure user have access to house
         if (false === this.isAllDataAccessUser(user)) {
-            const result = await this.dbService!.query(
+            const result = await this.dbService.query(
                 "select houseId from user_house_access where houseId=$1 and userId=$2",
                 houseId,
                 this.getUserIdFromUser(user)
@@ -763,7 +763,7 @@ export class StorageService extends BaseService {
         const use_house = houseId.trim();
 
         // try and insert device
-        await this.dbService!.query(
+        await this.dbService.query(
             `insert into device (id, name, active, houseid) values ($1, $2, $3, $4)`,
             use_id,
             use_name,
@@ -772,7 +772,7 @@ export class StorageService extends BaseService {
         );
 
         // publish event
-        this.eventService?.publishTopic(constants.TOPICS.CONTROL, "device.create", {
+        this.eventService.publish(`${constants.TOPICS.CONTROL}.device.create`, {
             new: {
                 id: use_id,
                 name: use_name,
@@ -801,7 +801,7 @@ export class StorageService extends BaseService {
         const device = await this.getDevice(user, use_id);
 
         // attempt to update the device
-        const result = await this.dbService?.query(
+        const result = await this.dbService.query(
             "update device set name=$1, active=$3 where id=$2",
             use_name,
             use_id,
@@ -812,7 +812,7 @@ export class StorageService extends BaseService {
         }
 
         // publish event
-        this.eventService?.publishTopic(constants.TOPICS.CONTROL, "device.update", {
+        this.eventService.publish(`${constants.TOPICS.CONTROL}.device.update`, {
             new: {
                 id: use_id,
                 name: use_name,
@@ -845,13 +845,13 @@ export class StorageService extends BaseService {
         const device = await this.getDevice(user, use_id);
 
         // attempt to delete the device
-        const result = await this.dbService?.query("delete from device where id=$1", use_id);
+        const result = await this.dbService.query("delete from device where id=$1", use_id);
         if (!result || result.rowCount !== 1) {
             throw Error(`Unable to delete with ID <${use_id}>`);
         }
 
         // publish event
-        this.eventService?.publishTopic(constants.TOPICS.CONTROL, "device.delete", {
+        this.eventService.publish(`${constants.TOPICS.CONTROL}.device.delete`, {
             old: {
                 id: use_id,
                 name: device.name,
@@ -870,11 +870,11 @@ export class StorageService extends BaseService {
     async getSensors(user: BackendIdentity, queryData?: SensorQueryData): Promise<Sensor[]> {
         let result;
         if (this.isAllDataAccessUser(user)) {
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, house h where s.deviceId=d.id and d.houseId=h.id order by s.name asc`
             );
         } else {
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1) h where s.deviceId=d.id and d.houseId=h.id order by s.name asc`,
                 this.getUserIdFromUser(user)
             );
@@ -915,12 +915,12 @@ export class StorageService extends BaseService {
         // get sensor
         let result;
         if (this.isAllDataAccessUser(user)) {
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, house h where s.deviceId=d.id and d.houseId=h.id and s.id=$1 order by s.name asc`,
                 sensorId
             );
         } else {
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1) h where s.deviceId=d.id and d.houseId=h.id and s.id=$2 order by s.name asc`,
                 this.getUserIdFromUser(user),
                 use_sensorId
@@ -975,7 +975,7 @@ export class StorageService extends BaseService {
         await this.getDevice(user, deviceId);
 
         // create sensor
-        await this.dbService!.query(
+        await this.dbService.query(
             `insert into sensor (deviceid, id, name, label, type, icon, scalefactor) values ($1, $2, $3, $4, $5, $6, $7)`,
             deviceId,
             use_id,
@@ -990,7 +990,7 @@ export class StorageService extends BaseService {
         const sensor = await this.getSensor(user, use_id);
 
         // publish event
-        this.eventService?.publishTopic(constants.TOPICS.CONTROL, "sensor.create", {
+        this.eventService.publish(`${constants.TOPICS.CONTROL}.sensor.create`, {
             new: {
                 deviceId: deviceId,
                 id: use_id,
@@ -1027,7 +1027,7 @@ export class StorageService extends BaseService {
         const sensor = await this.getSensor(user, use_id);
 
         // update sensor
-        const result = await this.dbService?.query(
+        const result = await this.dbService.query(
             "update sensor set name=$1, label=$2, type=$3, icon=$5, scalefactor=$6 where id=$4",
             use_name,
             use_label,
@@ -1041,7 +1041,7 @@ export class StorageService extends BaseService {
         }
 
         // publish event
-        this.eventService?.publishTopic(constants.TOPICS.CONTROL, "sensor.update", {
+        this.eventService.publish(`${constants.TOPICS.CONTROL}.sensor.update`, {
             new: {
                 deviceId: sensor.deviceId,
                 id: use_id,
@@ -1082,10 +1082,10 @@ export class StorageService extends BaseService {
         const sensor = await this.getSensor(user, use_id);
 
         // delete the sensor
-        await this.dbService?.query("delete from sensor where id=$1", use_id);
+        await this.dbService.query("delete from sensor where id=$1", use_id);
 
         // publish event
-        this.eventService?.publishTopic(constants.TOPICS.CONTROL, "sensor.delete", {
+        this.eventService.publish(`${constants.TOPICS.CONTROL}.sensor.delete`, {
             old: {
                 deviceId: sensor.deviceId,
                 id: use_id,
@@ -1104,7 +1104,7 @@ export class StorageService extends BaseService {
      * @param user
      */
     async getFavoriteSensors(user: BackendIdentity, data?: FavoriteSensorsInput) {
-        const result = await this.dbService!.query(
+        const result = await this.dbService.query(
             `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, (select id, name from house h, user_house_access u where h.id=u.houseId and u.userId=$1 and u.houseId=$2) h where s.deviceid=d.id and d.houseid=h.id and s.id in (select sensorId from favorite_sensor where userId=$1) order by s.name asc`,
             this.getUserIdFromUser(user),
             user.identity.houseId
@@ -1125,7 +1125,7 @@ export class StorageService extends BaseService {
      * @param id
      */
     async addFavoriteSensor(user: BackendIdentity, id: string) {
-        await this.dbService!.query(
+        await this.dbService.query(
             "insert into favorite_sensor (userId, sensorId) values ($1, $2) on conflict do nothing",
             this.getUserIdFromUser(user),
             id
@@ -1139,7 +1139,7 @@ export class StorageService extends BaseService {
      * @param id
      */
     async removeFavoriteSensor(user: BackendIdentity, id: string) {
-        await this.dbService!.query(
+        await this.dbService.query(
             "delete from favorite_sensor where userId=$1 and sensorId=$2",
             this.getUserIdFromUser(user),
             id
@@ -1203,7 +1203,7 @@ export class StorageService extends BaseService {
             return prev;
         }, new Map<string, Device>());
         const sensorMap = convertRowsToSensors(
-            await this.dbService!.query(
+            await this.dbService.query(
                 `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, house h where s.deviceid=d.id and d.houseid=h.id and s.id in (select distinct sensorid from alert where not sensorid is null) order by s.name asc`
             )
         ).reduce((prev: Map<string, Sensor>, s: Sensor) => {
@@ -1283,7 +1283,7 @@ export class StorageService extends BaseService {
             );
 
             // publish event
-            this.eventService.publishTopic(constants.TOPICS.CONTROL, "alert.create", {
+            this.eventService.publish(`${constants.TOPICS.CONTROL}.alert.create`, {
                 new: {
                     id,
                     targetId: data.targetId,
@@ -1309,7 +1309,7 @@ export class StorageService extends BaseService {
             await this.dbService.query(`delete from alert where id=$1 and userid=$2`, data.id, userId);
 
             // publish event
-            this.eventService.publishTopic(constants.TOPICS.CONTROL, "alert.delete", {
+            this.eventService.publish(`${constants.TOPICS.CONTROL}.alert.delete`, {
                 old: {
                     id: data.id,
                     targetId: alert.target.id,
@@ -1331,7 +1331,7 @@ export class StorageService extends BaseService {
      * @param deviceId
      *
     async getDeviceWatchdogNotifiers(deviceId: string) {
-        const result = await this.dbService!.query(
+        const result = await this.dbService.query(
             "select id, email, fn, ln,default_notify_using, pushover_userkey, pushover_apptoken, dw.notify, dw.muted_until from login_user l, device_watchdog dw where l.id=dw.userId and dw.deviceId=$1",
             deviceId
         );
@@ -1385,7 +1385,7 @@ export class StorageService extends BaseService {
         await this.getDevice(user, deviceId);
 
         // get watchdogs
-        const result = await this.dbService!.query(
+        const result = await this.dbService.query(
             "select notify, muted_until from device_watchdog where userId=$1 and deviceId=$2",
             this.getUserIdFromUser(user),
             deviceId
@@ -1421,14 +1421,14 @@ export class StorageService extends BaseService {
             str_muted_until = mutedUntil?.toISOString();
         }
 
-        let result = await this.dbService!.query(
+        let result = await this.dbService.query(
             "select userId, deviceId from device_watchdog where userId=$1 AND deviceId=$2",
             this.getUserIdFromUser(user),
             data.id
         );
         if (!result || result.rowCount === 0) {
             // insert
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 "insert into device_watchdog (notify, muted_until, userId, deviceId) values ($1, $2, $3, $4)",
                 data.notify,
                 str_muted_until,
@@ -1437,7 +1437,7 @@ export class StorageService extends BaseService {
             );
         } else {
             // update
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 "update device_watchdog set notify=$1, muted_until=$2 where userId=$3 AND deviceId=$4",
                 data.notify,
                 str_muted_until,
@@ -1492,7 +1492,7 @@ export class StorageService extends BaseService {
      * @param data
      */
     async updatePushoverSettings(user: BackendIdentity, data: UpdatePushoverSettingsInput): Promise<void> {
-        await this.dbService!.query(
+        await this.dbService.query(
             "insert into pushover_info (userid, userkey, apptoken) values ($1, $2, $3) on conflict (userid) do update set userkey=$2, apptoken=$3",
             this.getUserIdFromUser(user),
             data.pushover_userkey,
@@ -1517,7 +1517,7 @@ export class StorageService extends BaseService {
         await this.getSensor(user, sensorId);
 
         // get data
-        return this.dbService!.query(
+        return this.dbService.query(
             `select sd.value as value, sd.dt dt, case when s.scalefactor is null then 1 else s.scalefactor end from sensor_data sd left outer join sensor s on sd.id=s.id where sd.id='${sensorId}' order by dt desc limit ${samples}`
         ).then((result) => {
             const arr = result.rows.map((row) => {
@@ -1552,7 +1552,7 @@ export class StorageService extends BaseService {
         await this.getSensor(user, sensorId);
 
         // get data
-        const result = await this.dbService!.query(
+        const result = await this.dbService.query(
             `select t.* from (select sd.value as value, sd.dt dt, case when s.scalefactor is null then 1 else s.scalefactor end, row_number() over (order by dt desc) as row from sensor_data sd left outer join sensor s on sd.id=s.id where sd.id=$1 and dt >= $2 and dt <= $3 order by dt desc) t where t.row % $4 = 0`,
             sensorId,
             start,
@@ -1591,7 +1591,7 @@ export class StorageService extends BaseService {
         } else {
             str_sql = "insert into sensor_data (id, value, dt) values ($1, $2, $3)";
         }
-        await this.dbService!.query(str_sql, ...args);
+        await this.dbService.query(str_sql, ...args);
     }
 
     /**
@@ -1631,7 +1631,7 @@ export class StorageService extends BaseService {
                 sample.voltageL3
             }>`
         );
-        this.dbService!.query(
+        this.dbService.query(
             `insert into powermeter_data (
             id, 
             dt, 
@@ -1679,7 +1679,7 @@ export class StorageService extends BaseService {
 
         // publish on control topic
         logger.debug(`User <${user}> has access to house <${house}> - publish on topic`);
-        this.eventService!.publishTopic(constants.TOPICS.CONTROL, "powermeter_subscription.delete", {
+        this.eventService!.publish(`${constants.TOPICS.CONTROL}.powermeter_subscription.delete`, {
             old: {
                 id: house.id,
             },
@@ -1687,7 +1687,7 @@ export class StorageService extends BaseService {
         });
 
         // delete subscriptions from db
-        this.dbService!.query("delete from powermeter_subscription where houseid=$1", houseId);
+        this.dbService.query("delete from powermeter_subscription where houseid=$1", houseId);
     }
 
     /**
@@ -1720,7 +1720,7 @@ export class StorageService extends BaseService {
                 sensor.device!.house
             }> and sensor <${sensor}> exists - publish on topic`
         );
-        this.eventService!.publishTopic(constants.TOPICS.CONTROL, "powermeter_subscription.create", {
+        this.eventService!.publish(`${constants.TOPICS.CONTROL}.powermeter_subscription.create`, {
             new: {
                 houseId: sensor.device!.house.id,
                 deviceId: sensor.device!.id,
@@ -1732,7 +1732,7 @@ export class StorageService extends BaseService {
         });
 
         // insert subscriptions into db
-        this.dbService!.query(
+        this.dbService.query(
             "insert into powermeter_subscription (houseid, sensorid, frequency, ciphertext) values ($1, $2, $3, $4)",
             sensor.device!.house.id,
             sensor.id,
@@ -1751,7 +1751,7 @@ export class StorageService extends BaseService {
     async getAllPowermeterSubscriptions(user: BackendIdentity): Promise<SmartmeSubscription[]> {
         if (!this.isAllDataAccessUser(user))
             throw Error("You must have all data access to get all powermeter subscriptions");
-        const result = await this.dbService!.query(
+        const result = await this.dbService.query(
             "select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, d.name device_name, d.active device_active, s.label sensor_label, frequency, ciphertext from powermeter_subscription p, house h, sensor s, device d where p.houseid=h.id and p.sensorid=s.id and s.deviceid=d.id;"
         );
         const subscription_results = this.buildSmartmeSubscriptionsFromRows(result);
@@ -1767,7 +1767,7 @@ export class StorageService extends BaseService {
     async getPowermeterSubscriptions(user: BackendIdentity): Promise<SmartmeSubscription[]> {
         const houses = await this.getHouses(user);
         const houseIds = houses.map((h) => h.id);
-        const result = await this.dbService!.query(
+        const result = await this.dbService.query(
             `select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, d.name device_name, d.active device_active, s.label sensor_label, frequency, ciphertext from powermeter_subscription p, house h, sensor s, device d where p.houseid=h.id and p.sensorid=s.id and s.deviceid=d.id and h.id IN ('${houseIds.join(
                 "','"
             )}');`
@@ -1885,7 +1885,7 @@ export class StorageService extends BaseService {
      */
     async getAllOnSensorSampleEvents(user: BackendIdentity, sensorId: string): Promise<OnSensorSampleEvent[]> {
         if (!this.isAllDataAccessUser(user)) throw new Error("Must have all data access");
-        const result = await this.dbService!.query(
+        const result = await this.dbService.query(
             "select event_onsensorsample.id as eventid, sensorid, event_onsensorsample.userid as userid, endpointid, method, path, body, baseurl, bearertoken, fn, ln, email from event_onsensorsample, endpoint, login_user where sensorid=$1 and event_onsensorsample.endpointid=endpoint.id and login_user.id=event_onsensorsample.userid",
             sensorId
         );
@@ -1915,13 +1915,13 @@ export class StorageService extends BaseService {
         if (this.isAllDataAccessUser(user)) throw new Error("Use method for all-data-access users");
         let result;
         if (sensorId) {
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 "select event_onsensorsample.id id, endpointid, endpoint.name endpointname, endpoint.baseurl, method, path, body from event_onsensorsample, endpoint where event_onsensorsample.endpointid=endpoint.id and sensorid=$2 and event_onsensorsample.userid=$1",
                 user.identity.callerId,
                 sensorId
             );
         } else {
-            result = await this.dbService!.query(
+            result = await this.dbService.query(
                 "select event_onsensorsample.id id, endpointid, endpoint.name endpointname, endpoint.baseurl, method, path, body from event_onsensorsample, endpoint where event_onsensorsample.endpointid=endpoint.id and event_onsensorsample.userid=$1",
                 user.identity.callerId
             );

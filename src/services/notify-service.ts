@@ -1,5 +1,4 @@
 import Handlebars from "handlebars";
-import { ISubscriptionResult } from "../configure-queues-topics";
 import constants from "../constants";
 import { Logger } from "../logger";
 import pushover from "../pushover";
@@ -7,10 +6,9 @@ import { BackendIdentity, BaseService, Device, NotifyUsing, PushoverSettings, Qu
 import { objectHasOwnProperty_Trueish } from "../utils";
 import { AlertEventType } from "./alert/alert-types";
 import { EmailMessage, EmailService, RFC822Address } from "./email-service";
-import { PubsubService } from "./pubsub-service";
 import { IdentityService } from "./identity-service";
 import { StorageService } from "./storage-service";
-
+import { QueueService, QueueSubscription } from "./queue-service";
 
 type Template = {
     title: HandlebarsTemplateDelegate<any>;
@@ -22,20 +20,20 @@ const logger = new Logger("notify-service");
 export class NotifyService extends BaseService {
     public static NAME = "notify";
     serviceUser!: BackendIdentity;
-    eventService!: PubsubService;
+    queueService!: QueueService;
     storage!: StorageService;
     email!: EmailService;
     templates = new Map<AlertEventType, Template>();
 
     constructor() {
         super(NotifyService.NAME);
-        this.dependencies = [PubsubService.NAME, StorageService.NAME, EmailService.NAME, IdentityService.NAME];
+        this.dependencies = [QueueService.NAME, StorageService.NAME, EmailService.NAME, IdentityService.NAME];
     }
 
     init(callback: (err?: Error) => {}, services: BaseService[]) {
-        this.eventService = services[0] as unknown as PubsubService;
-        this.storage = services[1] as unknown as StorageService;
-        this.email = services[2] as unknown as EmailService;
+        this.queueService = services[0] as QueueService;
+        this.storage = services[1] as StorageService;
+        this.email = services[2] as EmailService;
         const identity = services[3] as IdentityService;
         this.serviceUser = identity.getServiceBackendIdentity(NotifyService.NAME);
 
@@ -43,7 +41,7 @@ export class NotifyService extends BaseService {
         this.initTemplates();
 
         // listen for device watchdog resets
-        this.eventService.subscribeQueue(constants.QUEUES.NOTIFY, this.listenForNotify.bind(this));
+        this.queueService.subscribe(constants.QUEUES.NOTIFY, this.listenForNotify.bind(this));
 
         // callback
         callback();
@@ -72,14 +70,14 @@ export class NotifyService extends BaseService {
         });
     }
 
-    private async listenForNotify(result: ISubscriptionResult) {
+    private async listenForNotify(result: QueueSubscription) {
         // mark msg as consumed
         result.callback();
-        
+
         // get data
         const data = result.data as QueueNotifyMessage;
         logger.debug(
-            `Received message on ${result.exchangeName} for target id <${data.target}> data <${JSON.stringify(data)}>`
+            `Received message on ${result.queueName} for target id <${data.target}> data <${JSON.stringify(data)}>`
         );
 
         // get objects
@@ -111,9 +109,11 @@ export class NotifyService extends BaseService {
             device,
             data: data.data,
         });
-        args.url.target = ((device: Device|undefined, sensor: Sensor|undefined) => {
+        args.url.target = ((device: Device | undefined, sensor: Sensor | undefined) => {
             if (sensor) {
-                return `${args.url.app}/#configuration/house/${sensor.device!.house.id}/device/${sensor.device!.id}/sensor/${sensor.id}`;
+                return `${args.url.app}/#configuration/house/${sensor.device!.house.id}/device/${
+                    sensor.device!.id
+                }/sensor/${sensor.id}`;
             } else if (device) {
                 return `${args.url.app}/#configuration/house/${device.house.id}/device/${device!.id}`;
             }
@@ -142,13 +142,15 @@ export class NotifyService extends BaseService {
             // notify using email
             let email = user.email;
             if (!email) {
-                logger.warn(`Cannot send email notification to user due to missing email address (id: ${user.id}, name: ${user.fn} ${user.ln})`);
+                logger.warn(
+                    `Cannot send email notification to user due to missing email address (id: ${user.id}, name: ${user.fn} ${user.ln})`
+                );
                 return;
             }
             if (process.env.NOTIFICATIONS_EMAIL_OVERRIDE) {
                 logger.warn(
                     `NOTIFICATIONS_EMAIL_OVERRIDE is set so using that email <${process.env.NOTIFICATIONS_EMAIL_OVERRIDE}>`
-                );    
+                );
                 email = process.env.NOTIFICATIONS_EMAIL_OVERRIDE;
             }
             const msg = new EmailMessage();
@@ -162,7 +164,10 @@ export class NotifyService extends BaseService {
             pushover({
                 title,
                 message,
-                settings: { userkey: userSettings.pushover.userkey, apptoken: userSettings.pushover.apptoken } as PushoverSettings,
+                settings: {
+                    userkey: userSettings.pushover.userkey,
+                    apptoken: userSettings.pushover.apptoken,
+                } as PushoverSettings,
             });
         }
     }
@@ -173,11 +178,11 @@ export class NotifyService extends BaseService {
                 name: constants.APP.NAME,
                 prococol: constants.APP.PROTOCOL,
                 domain: constants.APP.DOMAIN,
-                commit: constants.APP.GITCOMMIT
+                commit: constants.APP.GITCOMMIT,
             },
             url: {
-                app: `${constants.APP.PROTOCOL}://${constants.APP.DOMAIN}`
-            }
+                app: `${constants.APP.PROTOCOL}://${constants.APP.DOMAIN}`,
+            },
         };
         return data;
     }

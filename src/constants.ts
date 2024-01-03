@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { DEBUG, ERROR, INFO, Level, TRACE, WARN } from "./logger";
 
 export const ISO8601_DATETIME_FORMAT = "YYYY-MM-DDTHH:mm:ss.SSS[Z]";
@@ -73,6 +74,10 @@ export default {
         NO_PROD_TLS: process.env.APP_NO_PROD_TLS && process.env.APP_NO_PROD_TLS.substring(0, 1) === "t" ? true : false,
         GITCOMMIT: process.env.APP_GITCOMMIT || "n_a",
         TITLE: process.env.APP_TITLE || "SensorCentral"
+    },
+    ADMIN: {
+        USERNAME: process.env.ADMIN_USERNAME || randomUUID(),
+        PASSWORD: process.env.ADMIN_PASSWORD || randomUUID()
     },
     HTTP_CONTEXT: {
         REQUEST_ID: "requestId",

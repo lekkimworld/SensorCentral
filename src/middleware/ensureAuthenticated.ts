@@ -24,11 +24,10 @@ export default async (req : Request, res : Response, next : NextFunction) => {
 
     // see if we have a session with a userId
     log.trace("Looking for session and browserResponse in session");
-    const session = req.session as any;
-    if (session && session.browserResponse) {
+    if (req.session && req.session.browserResponse) {
         // we do - get userId and convert to a user object
         log.trace("Found session and browserResponse in session - getting identity");
-        const resp = session.browserResponse as BrowserLoginResponse;
+        const resp = req.session.browserResponse as BrowserLoginResponse;
         const user = await identity.getLoginUserIdentity(resp.userinfo.id, resp.userinfo.houseId);
         log.trace(`Found identity from session: ${backendIdentityToString(user)}`)
         res.locals.user = user;

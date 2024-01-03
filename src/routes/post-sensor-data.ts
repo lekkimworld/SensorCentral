@@ -1,21 +1,19 @@
 import * as express from 'express';
 const services = require('../configure-services');
-import {PubsubService} from "../services/pubsub-service";
 import constants from "../constants";
 import { Logger } from '../logger';
 import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException, ControlMessageTarget } from '../types';
 import { StorageService } from '../services/storage-service';
 import { IdentityService } from '../services/identity-service';
+import { QueueService } from '../services/queue-service';
 
 const logger = new Logger("post-sensor-data");
 const router = express.Router();
 
-const postControlEvent = (eventSvc : PubsubService, payload : IngestedControlMessage) => {
-	eventSvc.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
-		logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
-	}).catch(err => {
-		logger.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
-	})
+const postControlEvent = async (queues : QueueService, payload : IngestedControlMessage) => {
+	const queueName = constants.QUEUES.CONTROL;
+	await queues.publish(queueName, payload);
+	logger.debug(`Posted message (<${JSON.stringify(payload)}>) to queue <${queueName}>`)
 }
 
 router.post('/', (req, res, next) => {
@@ -56,9 +54,9 @@ router.post('/', (req, res, next) => {
 	}
 
 	// lookup services
-	services.lookupService(["event", "storage", "identity"]).then((svcs : BaseService[]) => {
+	services.lookupService([QueueService.NAME, StorageService.NAME, IdentityService.NAME]).then((svcs : BaseService[]) => {
 		// get services
-		const eventSvc = svcs[0] as PubsubService;
+		const eventSvc = svcs[0] as QueueService;
 		const storage = svcs[1] as StorageService;
 		const identity = svcs[2] as IdentityService;
 
@@ -105,12 +103,14 @@ router.post('/', (req, res, next) => {
 
 			} else if (msgtype === 'data') {
 				// post message that we heard from the device
-				eventSvc.publishQueue(constants.QUEUES.DEVICE, {
-					"id": device.id
-				} as IngestedDeviceMessage).then(resp => {
-					logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
-					const msg = resp.data as IngestedDeviceMessage;
-	
+				const queueName = constants.QUEUES.DEVICE;
+				const deviceId = device.id;
+				const payload = {
+                    id: deviceId,
+                } as IngestedDeviceMessage;
+				eventSvc.publish(queueName, payload).then(() => {
+					logger.debug(`Posted message (<${JSON.stringify(payload)}>) to queue <${queueName}>`);
+					
 					// see if there is sensor data
 					if (!postObj.data || !Array.isArray(postObj.data) || !postObj.data.length) {
 						// there is no data, it's not an array or no elements in it 
@@ -127,9 +127,9 @@ router.post('/', (req, res, next) => {
 							const payload : IngestedSensorMessage = {
 								'value': element["sensorValue"],
 								'id': element["sensorId"],
-								"deviceId": msg.id
+								"deviceId": deviceId
 							}
-							eventSvc.publishQueue(constants.QUEUES.SENSOR, payload);
+							eventSvc.publish(constants.QUEUES.SENSOR, payload);
 						})
 					}
 				})

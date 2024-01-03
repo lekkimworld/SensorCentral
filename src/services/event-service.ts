@@ -2,8 +2,7 @@ import Handlebars from "handlebars";
 import constants from "../constants";
 import { BackendIdentity, BaseService, HttpMethod, OnSensorSampleEvent, TopicSensorMessage, Endpoint, Sensor } from "../types";
 import { Logger } from "../logger";
-import { PubsubService } from "./pubsub-service";
-import { ISubscriptionResult } from "../configure-queues-topics";
+import { PubsubService, TopicMessage } from "./pubsub-service";
 import { StorageService } from "./storage-service";
 import { IdentityService } from "./identity-service";
 
@@ -45,23 +44,23 @@ export class EventService extends BaseService {
         this.identity = (services[2] as IdentityService).getServiceBackendIdentity(EventService.NAME);
 
         // listen for known sensor messages
-        pubsub.subscribeTopic(constants.TOPICS.SENSOR, "known.#", this.sensorTopicMessages.bind(this));
+        pubsub.subscribe(`${constants.TOPICS.SENSOR}.known.*`, this.sensorTopicMessages.bind(this));
 
         // callback
         logger.info("Initialized event-service");
         callback();
     }
 
-    private async sensorTopicMessages(result: ISubscriptionResult) {
+    private async sensorTopicMessages(result: TopicMessage) {
         // get msg and log
         const msg = result.data as TopicSensorMessage;
         logger.debug(
-            `Received message on ${result.exchangeName} / ${result.routingKey} for sensor id <${msg.sensorId}> value <${msg.value}>`
+            `Received message on channel <${result.channel}> for sensor id <${msg.sensorId}> value <${msg.value}>`
         );
 
         // get events defined for this sensor (across users)
         const events = await this.storage.getAllOnSensorSampleEvents(this.identity, msg.sensorId);
-        logger.info(`Found <${events.length}> onSensorSample event definitions for sensor <${msg.sensorId}> after receiving event`);
+        logger.debug(`Found <${events.length}> onSensorSample event definitions for sensor <${msg.sensorId}> after receiving event`);
 
         // loop
         events.forEach(async (ev) => {

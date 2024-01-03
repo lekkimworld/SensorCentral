@@ -1,34 +1,16 @@
 import moment from "moment-timezone";
-import semaphore, { Semaphore } from "semaphore";
-import { ISubscriptionResult } from "../../configure-queues-topics";
 import constants from "../../constants";
 import { Logger } from "../../logger";
 import { BackendIdentity, BaseService, ControlMessageTypes, Device, QueueNotifyMessage, Sensor, SensorType, TopicControlMessage, TopicSensorMessage } from "../../types";
-import { objectHasOwnProperty_Trueish } from "../../utils";
-import { PubsubService } from "../pubsub-service";
+import { PromisifiedSemaphore, objectHasOwnProperty_Trueish } from "../../utils";
+import { PubsubService, TopicMessage } from "../pubsub-service";
 import { IdentityService } from "../identity-service";
 import { StorageService } from "../storage-service";
 import {
     Alert, BinarySensorAlert, SensorSampleAlert,
     SensorValueAlert, SensorValueEventData, TimeoutAlert, TimeoutAlertEventData
 } from "./alert-types";
-
-class PromisifiedSemaphore {
-    _sem: Semaphore;
-    readonly capacity: number;
-    constructor(num: number) {
-        this._sem = semaphore(num);
-        this.capacity = num;
-    }
-    async take(): Promise<void> {
-        return new Promise<void>((resolve) => {
-            this._sem.take(resolve);
-        });
-    }
-    leave(): void {
-        this._sem.leave();
-    }
-}
+import { QueueService } from "../queue-service";
 
 /**
  * Used to track alert state internally.
@@ -48,14 +30,15 @@ const logger = new Logger("alert-service");
 export class AlertService extends BaseService {
     public static NAME = "alert";
     private storage!: StorageService;
-    private events!: PubsubService;
-    private serviceUser: BackendIdentity;
+    private pubsub!: PubsubService;
+    private queues!: QueueService;
+    private serviceUser!: BackendIdentity;
     private alerts = new Map<string, Array<AlertWrapper>>();
     private alertsSem = new PromisifiedSemaphore(1);
 
     constructor() {
         super(AlertService.NAME);
-        this.dependencies = [StorageService.NAME, IdentityService.NAME, PubsubService.NAME];
+        this.dependencies = [StorageService.NAME, IdentityService.NAME, PubsubService.NAME, QueueService.NAME];
 
         // show config
         logger.info(`ALERT.TIMEOUT_BINARY_SENSOR=${constants.ALERT.TIMEOUT_BINARY_SENSOR}`);
@@ -68,7 +51,8 @@ export class AlertService extends BaseService {
 
         // get services
         this.storage = services[0] as StorageService;
-        this.events = services[2] as PubsubService;
+        this.pubsub = services[2] as PubsubService;
+        this.queues = services[3] as QueueService;
 
         // create alerts for binary sensors
         this.initBinarySensorAlerts();
@@ -77,10 +61,10 @@ export class AlertService extends BaseService {
         //this.initUserDefinedAlerts();
 
         // listen for messages about sensors coming and going
-        this.events.subscribeTopic(constants.TOPICS.CONTROL, "#", this.controlMessages.bind(this));
+        this.pubsub.subscribe(`${constants.TOPICS.CONTROL}.*`, this.controlMessages.bind(this));
 
         // listen for messages when sensors post data
-        this.events.subscribeTopic(constants.TOPICS.SENSOR, "known.#", this.sensorTopicMessages.bind(this));
+        this.pubsub.subscribe(`${constants.TOPICS.SENSOR}.known.*`, this.sensorTopicMessages.bind(this));
 
         // callback
         logger.info("Initialized alert-service");
@@ -200,7 +184,7 @@ export class AlertService extends BaseService {
             sensor: sensor,
             sensorId: sensor.id,
         };
-        this.events.publishTopic(constants.TOPICS.CONTROL, `known.sensor.${ControlMessageTypes.timeout}`, payload);
+        this.pubsub.publish(`${constants.TOPICS.CONTROL}.known.sensor.${ControlMessageTypes.timeout}`, payload);
 
         if (SensorType.binary === sensor.type) {
             // add sensor reading for binary sensor
@@ -226,7 +210,7 @@ export class AlertService extends BaseService {
             device: device!,
             deviceId: device!.id,
         };
-        this.events.publishTopic(constants.TOPICS.CONTROL, `known.device.${ControlMessageTypes.timeout}`, payload);
+        this.pubsub.publish(`${constants.TOPICS.CONTROL}.known.device.${ControlMessageTypes.timeout}`, payload);
 
         // notify
         this.notify(a, {
@@ -239,11 +223,11 @@ export class AlertService extends BaseService {
      *
      * @param result
      */
-    private async sensorTopicMessages(result: ISubscriptionResult) {
+    private async sensorTopicMessages(result: TopicMessage) {
         // get msg and log
         const msg = result.data as TopicSensorMessage;
         logger.debug(
-            `Received message on ${result.exchangeName} / ${result.routingKey} for sensor id <${msg.sensorId}> value <${msg.value}>`
+            `Received message on channel <${result.channel}> for sensor id <${msg.sensorId}> value <${msg.value}>`
         );
 
         // process alerts for known sensor
@@ -269,28 +253,29 @@ export class AlertService extends BaseService {
      * Process messages about elements of interest coming and going
      * @param result
      */
-    private async controlMessages(result: ISubscriptionResult) {
-        if (result.routingKey?.indexOf("sensor.") === 0) return this.sensorControlMessages(result);
-        if (result.routingKey?.indexOf("alert.") === 0) return this.alertControlMessages(result);
+    private async controlMessages(result: TopicMessage) {
+        logger.debug(`Received controlMessage on channel ${result.channel}`);
+        if (result.channel.startsWith(`${constants.TOPICS.CONTROL}.sensor.`)) return this.sensorControlMessages(result);
+        if (result.channel.startsWith(`${constants.TOPICS.CONTROL}.alert.`)) return this.alertControlMessages(result);
     }
 
     /**
      * Process messages about alerts coming and going
      * @param result
      */
-    private async alertControlMessages(result: ISubscriptionResult) {
-        const parts = result.routingKey!.split(".");
-        if (parts[1] === "create") {
+    private async alertControlMessages(result: TopicMessage) {
+        const parts = result.channel.split(".");
+        if (parts[2] === "create") {
             // new alert was created
             const id = result.data.new.id;
             logger.info(`Alert with ID ${id} was created`);
             //const alert = await this.storage.getAlert(this.serviceUser, id);
             //this.initUserDefinedAlert(alert);
-        } else if (parts[1] === "update") {
+        } else if (parts[2] === "update") {
             // sensor was updated
             const id = result.data.new.id;
             logger.info(`Alert with ID ${id} was updated`);
-        } else if (parts[1] === "delete") {
+        } else if (parts[2] === "delete") {
             // alert was deleted
             const id = result.data.old.targetId;
             logger.info(`Alert with ID ${id} was deleted`);
@@ -302,9 +287,9 @@ export class AlertService extends BaseService {
      * Process messages about sensors coming and going
      * @param result
      */
-    private async sensorControlMessages(result: ISubscriptionResult) {
-        const parts = result.routingKey!.split(".");
-        if (parts[1] === "create") {
+    private async sensorControlMessages(result: TopicMessage) {
+        const parts = result.channel.split(".");
+        if (parts[2] === "create") {
             // new sensor was created
             const sensorId: string = result.data.new.id;
             const sensorType: SensorType = result.data.new.type;
@@ -312,7 +297,7 @@ export class AlertService extends BaseService {
                 logger.info(`Binary sensor with ID <${sensorId}> was created - adding alert`);
                 this.initBinarySensorAlert(result.data.new as Sensor);
             }
-        } else if (parts[1] === "update") {
+        } else if (parts[2] === "update") {
             // sensor was updated
             const sensorId = result.data.new.id;
             const newSensorType: SensorType = result.data.new.type;
@@ -339,7 +324,7 @@ export class AlertService extends BaseService {
                     undefined
                 );
             }
-        } else if (parts[1] === "delete") {
+        } else if (parts[2] === "delete") {
             // sensor was deleted
             const sensorId = result.data.old.id;
             this.deleteAlertsForTarget(sensorId);
@@ -432,7 +417,7 @@ export class AlertService extends BaseService {
 
     private async notify(a: Alert, data: any): Promise<void> {
         if (!a.userId || !a.notifyType) return;
-        this.events.publishQueue(constants.QUEUES.NOTIFY, {
+        this.queues.publish(constants.QUEUES.NOTIFY, {
             userId: a.userId,
             alertId: a.id,
             eventType: a.eventType,

@@ -75,6 +75,17 @@ declare global {
             NOTIFICATIONS_EMAIL_OVERRIDE: string;
 
             /**
+             * Admin password
+             */
+            ADMIN_USERNAME: string;
+
+            /**
+             * Admin password.
+             * 
+             */
+            ADMIN_PASSWORD: string;
+
+            /**
              * Domain the app is running on
              */
             APP_DOMAIN: string;

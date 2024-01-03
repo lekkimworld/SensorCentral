@@ -5,7 +5,6 @@ dotenv_config();
 // require
 import "reflect-metadata";
 import terminateListener from '../terminate-listener';
-import configureExpress from '../configure-express';
 //@ts-ignore
 import services from '../configure-services';
 import { DatabaseService } from "../services/database-service";
@@ -25,6 +24,8 @@ import cronjobPowerdata  from "./cronjob_powerdata";
 import { AlertService } from "../services/alert/alert-service";
 import { EventService } from "../services/event-service";
 import { PowerpriceService } from "../services/powerprice-service";
+import { QueueService } from "../services/queue-service";
+import { ExpressService } from "../services/express-service";
 
 // number of workers we should create
 const logger = new Logger("worker_web");
@@ -44,12 +45,14 @@ if (!process.env.SMARTME_KEY) {
 }
 
 // add services
+services.registerService(new ExpressService());
+services.registerService(new RedisService());
+services.registerService(new DatabaseService());
 services.registerService(new IdentityService());
 services.registerService(new PubsubService());
-services.registerService(new RedisService());
+services.registerService(new QueueService());
 services.registerService(new QueueListenerService());
 services.registerService(new StorageService());
-services.registerService(new DatabaseService());
 services.registerService(new NotifyService());
 services.registerService(new EmailService());
 services.registerService(new PowermeterService());
@@ -69,7 +72,7 @@ terminateListener(() => {
 // start app
 const main = async () => {
 	// configure express
-	const app = await configureExpress();
+	const app = await (await services.lookupService(ExpressService.NAME) as ExpressService).configureExpress();
 
 	// add cron jobs
 	logger.info("Start adding cron jobs");

@@ -1,5 +1,6 @@
 import moment, {Moment} from 'moment-timezone';
 import constants from "./constants";
+import semaphore, { Semaphore } from "semaphore";
 const pckg = require('../package.json');
 
 export const formatDate = function(date? : any, format? : string) : string {
@@ -41,4 +42,21 @@ export const buildBaseHandlebarsContext = () : any => {
         app_gitcommit_url: `https://github.com/lekkimworld/SensorCentral/commit/${constants.APP.GITCOMMIT}`,
         app_title: constants.APP.TITLE
     };
+}
+
+export class PromisifiedSemaphore {
+    _sem: Semaphore;
+    readonly capacity: number;
+    constructor(num: number) {
+        this._sem = semaphore(num);
+        this.capacity = num;
+    }
+    async take(): Promise<void> {
+        return new Promise<void>((resolve) => {
+            this._sem.take(resolve);
+        });
+    }
+    leave(): void {
+        this._sem.leave();
+    }
 }

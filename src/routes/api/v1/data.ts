@@ -1,8 +1,7 @@
 import * as express from 'express';
-import { BaseService, ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage, 
+import { ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage, 
 	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity, ControlMessageTarget } from '../../../types';
 import { Logger } from '../../../logger';
-import { PubsubService } from '../../../services/pubsub-service';
 import { LAST_N_SAMPLES, StorageService } from '../../../services/storage-service';
 const {lookupService} = require('../../../configure-services');
 import constants from "../../../constants";
@@ -11,16 +10,15 @@ import moment from 'moment';
 import { ensureScopeFactory, hasScope } from '../../../middleware/ensureScope';
 import {v4 as uuid} from 'uuid';
 import { Sensor } from '../../../types';
+import { QueueService } from '../../../services/queue-service';
 
 const logger = new Logger("data");
 const router = express.Router();
 
-const postControlEvent = (eventSvc : PubsubService, payload : IngestedControlMessage) => {
-	eventSvc.publishQueue(constants.QUEUES.CONTROL, payload).then(resp => {
-		logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to exchange <${resp.exchangeName}> and key <${resp.routingKey}>`)
-	}).catch(err => {
-		logger.error(`Could NOT post message (<${JSON.stringify(err.data)}>) to exchange <${err.exchangeName}> and key <${err.routingKey}>`, err)
-	})
+const postControlEvent = async (queueSvc : QueueService, payload : IngestedControlMessage) => {
+	const queueName = constants.QUEUES.CONTROL;
+	await queueSvc.publish(queueName, payload);
+	logger.debug(`Posted message (<${JSON.stringify(payload)}>) to exchange <${queueName}>`)
 }
 
 // set default response type to json
@@ -57,52 +55,58 @@ router.use(ensureScopeFactory(constants.JWT.SCOPE_SENSORDATA));
  * REST API to post a sample to for a sensor on a device.
  * 
  */
-router.post("/samples", (req, res, next) => {
-	lookupService([PubsubService.NAME, StorageService.NAME]).then((services : BaseService[]) => {
-		const eventService = services[0] as PubsubService;
-		const storageService = services[1] as StorageService;
-
-		const user = res.locals.user;
-		const body = req.body
-		const deviceId = body.deviceId;
-
-		// validate
-		const str_dt = body.dt;
-		const value = body.value;
-		const id = body.id;
-		if (!id) return next(new HttpException(417, "Missing id"));
-		if (!deviceId) return next(new HttpException(417, "Missing device id"));
-		if (Number.isNaN(value)) return next(new HttpException(417, "Missing value or value is not a number"));
-		if (!str_dt || !str_dt.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)) return  res.status(417).send({"error": true, "message": "Missing sample date/time or date/time is not in ISO8601 (HH-MM-DDTHH:mm:ss.SSSZ) format"});
-		
-		// ensure we know the device still (device may have an JWT for a deleted device)
-		storageService.getDevice(user, deviceId).then(() => {
-			const queueObj = {
-				id,
-				value,
-				deviceId,
-				dt: str_dt
-			} as IngestedSensorMessage;
-			return eventService.publishQueue(constants.QUEUES.SENSOR, queueObj);
-
-		}).then(resp => {
-			logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
-			return res.status(201).send({
-				id, 
-				value, 
-				"dt": str_dt,
-				"dt_string": formatDate(moment.utc(str_dt))
-			});
-
-		}).catch((err:Error) => {
-			logger.warn(`Unable to send sample for sensor with ID <${id}> to queue...`);
-			return next(new HttpException(500, `Unable to add sample to database (${err.message})`, err));
-		})
-		
-	}).catch((err:Error) => {
+router.post("/samples", async (req, res, next) => {
+	// get services
+	let services;
+	try {
+		services = await lookupService([QueueService.NAME, StorageService.NAME]);
+	} catch (err) {
 		return next(new HttpException(500, `Unable to find required services (${err.message})`, err));
-	})
-	
+	}
+	const queueService = services[0] as QueueService;
+	const storageService = services[1] as StorageService;
+
+	// get data
+	const user = res.locals.user;
+	const body = req.body
+	const deviceId = body.deviceId;
+
+	// validate
+	const str_dt = body.dt;
+	const value = body.value;
+	const id = body.id;
+	if (!id) return next(new HttpException(417, "Missing id"));
+	if (!deviceId) return next(new HttpException(417, "Missing device id"));
+	if (Number.isNaN(value)) return next(new HttpException(417, "Missing value or value is not a number"));
+	if (!str_dt || !str_dt.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)) return  res.status(417).send({"error": true, "message": "Missing sample date/time or date/time is not in ISO8601 (HH-MM-DDTHH:mm:ss.SSSZ) format"});
+		
+	// define payload
+	const queueObj = {
+		id,
+		value,
+		deviceId,
+		dt: str_dt
+	} as IngestedSensorMessage;
+	try {
+		// ensure we know the device still (device may have an JWT for a deleted device)
+		await storageService.getDevice(user, deviceId);
+
+		// publish on queue
+		await queueService.publish(constants.QUEUES.SENSOR, queueObj);
+		logger.debug(`Posted message (<${JSON.stringify(queueObj)}>) to queue <${constants.QUEUES.SENSOR}>`);
+
+		// return
+		return res.status(201).send({
+			id, 
+			value, 
+			"dt": str_dt,
+			"dt_string": formatDate(moment.utc(str_dt))
+		});
+
+	} catch (err) {
+		logger.warn(`Unable to send sample for sensor with ID <${id}> to queue...`);
+		return next(new HttpException(500, `Unable to add sample to database (${err.message})`, err));
+	}
 })
 
 /**
@@ -110,9 +114,9 @@ router.post("/samples", (req, res, next) => {
  * 
  */
 router.post("/", async (req, res, next) => {
-	const services = await lookupService([StorageService.NAME, PubsubService.NAME])
+	const services = await lookupService([StorageService.NAME, QueueService.NAME])
 	const storageService = services[0] as StorageService;
-	const eventService = services[1] as PubsubService;
+	const eventService = services[1] as QueueService;
 
 	const body = req.body
 	const user = res.locals.user as BackendIdentity;
@@ -203,8 +207,8 @@ router.post("/", async (req, res, next) => {
 			"id": deviceId,
 			"deviceData": body.deviceData
 		}
-		const resp = await eventService.publishQueue(constants.QUEUES.DEVICE, payload)
-		logger.debug(`Posted message (<${JSON.stringify(resp.data)}>) to queue <${resp.exchangeName}>`);
+		await eventService.publish(constants.QUEUES.DEVICE, payload)
+		logger.debug(`Posted message (<${JSON.stringify(payload)}>) to queue <${constants.QUEUES.DEVICE}>`);
 			
 		// if there is no elements in the data array send a control event to signal 
 		if (dataArray.length === 0) {
@@ -227,7 +231,7 @@ router.post("/", async (req, res, next) => {
 					payload.duration = element.sensorDuration / 1000;
 				}
 				
-				eventService.publishQueue(constants.QUEUES.SENSOR, payload).then(() => {
+				eventService.publish(constants.QUEUES.SENSOR, payload).then(() => {
 					logger.debug(`Published message to ${constants.QUEUES.SENSOR}`);
 				}).catch(err => {
 					logger.error(`Unable to publish message to ${constants.QUEUES.SENSOR}`, err);

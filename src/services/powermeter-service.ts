@@ -8,76 +8,82 @@ import {
 } from "../types";
 import {smartmeGetDevices, PowerUnit, Cloudflare524Error} from "../resolvers/smartme";
 import { Logger } from "../logger";
-import { PubsubService } from "./pubsub-service";
-import { ISubscriptionResult } from "../configure-queues-topics";
+import { PubsubService, TopicMessage } from "./pubsub-service";
 import { StorageService } from "./storage-service";
 import { IdentityService } from "./identity-service";
 import { InvalidInputError, InvalidSignatureError, verifyPayload } from "../smartme-signature";
 import { CronService } from "./cron-service";
 import {objectHasOwnProperty_Trueish} from "../utils";
+import { QueueService } from "./queue-service";
 
 const logger = new Logger("powermeter-service");
 
 export class PowermeterService extends BaseService {
     public static NAME = "powermeter";
-    eventService?: PubsubService;
-    storageService?: StorageService;
-    security: IdentityService;
-    cron: CronService;
-    authUser: BackendIdentity;
+    pubsub!: PubsubService;
+    queues!: QueueService;
+    storageService!: StorageService;
+    security!: IdentityService;
+    cron!: CronService;
+    authUser!: BackendIdentity;
 
     constructor() {
         super(PowermeterService.NAME);
-        this.dependencies = [PubsubService.NAME, StorageService.NAME, IdentityService.NAME, CronService.NAME];
+        this.dependencies = [
+            PubsubService.NAME,
+            StorageService.NAME,
+            IdentityService.NAME,
+            CronService.NAME,
+            QueueService.NAME,
+        ];
     }
 
     async init(callback: (err?: Error) => {}, services: BaseService[]) {
-        this.eventService = services[0] as unknown as PubsubService;
-        this.storageService = services[1] as unknown as StorageService;
+        this.pubsub = services[0] as PubsubService;
+        this.storageService = services[1] as StorageService;
         this.security = services[2] as IdentityService;
         this.cron = services[3] as CronService;
+        this.queues = services[4] as QueueService;
 
         // get auth user for service
         this.authUser = await this.security.getServiceBackendIdentity(PowermeterService.NAME);
 
         // listen for subscription events
-        this.eventService.subscribeTopic(
-            constants.TOPICS.CONTROL,
-            "powermeter_subscription.delete",
+        this.pubsub.subscribe(
+            `${constants.TOPICS.CONTROL}.powermeter_subscription.delete`,
             this.listenForPowermeterSubscriptionRemove.bind(this)
         );
-        this.eventService.subscribeTopic(
-            constants.TOPICS.CONTROL,
-            "powermeter_subscription.create",
+        this.pubsub.subscribe(
+            `${constants.TOPICS.CONTROL}.powermeter_subscription.create`,
             this.listenForPowermeterSubscriptionCreate.bind(this)
         );
 
         // get all subscriptions
         const subs = await this.storageService!.getAllPowermeterSubscriptions(this.authUser);
-        subs.forEach(sub => {
+        subs.forEach((sub) => {
             this.addCronJob(sub.house.id, sub.sensor.deviceId, sub.sensor.id, sub.frequency, sub.encryptedCredentials);
-        })
+        });
 
         // callback
         callback();
     }
 
-    private logAndGetMessage(result: ISubscriptionResult): any {
+    private logAndGetMessage(result: TopicMessage): any {
         logger.debug(
-            `Powermeter Subscription service received message on topic ${
-                result.routingKey
+            `Powermeter Subscription service received message on channel ${
+                result.channel
             } with payload=${JSON.stringify(result.data)}`
         );
         const msg = result.data as any;
         return msg;
     }
 
-    private getJobName(houseId:string):string {
+    private getJobName(houseId: string): string {
         const jobName = `powermeter_subscription_${houseId}>`;
         return jobName;
     }
 
-    private async executeCronJob(houseId : string, deviceId : string, sensorId: string, cipherText : string) {
+    private async executeCronJob(houseId: string, deviceId: string, sensorId: string, cipherText: string) {
         try {
             const creds = verifyPayload(cipherText);
             const deviceData = await smartmeGetDevices(creds.username, creds.password, sensorId);
@@ -89,31 +95,31 @@ export class PowermeterService extends BaseService {
                 logger.warn(`Received an array of Smartme device data instances - expected a single instance`);
             } else {
                 // publish a device event to feed watchdog
-                const payload : IngestedDeviceMessage = {
-                    "id": deviceId
-                }
+                const payload: IngestedDeviceMessage = {
+                    id: deviceId,
+                };
 
                 // see if counter reading is in kwh - if yes convert to wh
                 if (deviceData.counterReadingUnit === PowerUnit.kWh) {
                     logger.debug(
                         `Powermeter counterReading is <${deviceData.counterReading}> but counterReadingUnit is kWh - multiplying by 1000`
                     );
-                    deviceData.counterReading = deviceData.counterReading*1000;
+                    deviceData.counterReading = deviceData.counterReading * 1000;
                     deviceData.counterReadingImport = deviceData.counterReadingImport * 1000;
                     logger.debug(`Powermeter counterReading is now <${deviceData.counterReading}> Wh`);
                 }
-                
+
                 // publish event to store as regular sensor
-                this.eventService!.publishQueue(constants.QUEUES.DEVICE, payload).then(() => {
+                this.queues.publish(constants.QUEUES.DEVICE, payload).then(() => {
                     // send event to persist as sensor_data
-                    this.eventService!.publishQueue(constants.QUEUES.SENSOR, {
+                    this.queues.publish(constants.QUEUES.SENSOR, {
                         deviceId: deviceId,
                         id: deviceData.id,
                         dt: deviceData.valueDate.toISOString(),
                         value: deviceData.counterReadingImport,
                     } as IngestedSensorMessage);
                 });
-                
+
                 // persist full powermeter reading
                 this.storageService!.persistPowermeterReadingFromDeviceRequest(deviceData);
             }
@@ -130,7 +136,7 @@ export class PowermeterService extends BaseService {
         }
     }
 
-    private addCronJob(houseId : string, deviceId : string, sensorId : string, frequency : number, cipherText : string) {
+    private addCronJob(houseId: string, deviceId: string, sensorId: string, frequency: number, cipherText: string) {
         logger.debug(`Creating powermeter subscription for house <${houseId}> frequency <${frequency}>`);
         const jobName = this.getJobName(houseId);
         this.cron.add(jobName, `*/${frequency} * * * *`, async () => {
@@ -140,16 +146,16 @@ export class PowermeterService extends BaseService {
                 );
                 return;
             }
-            this.executeCronJob(houseId, deviceId,  sensorId, cipherText);
+            this.executeCronJob(houseId, deviceId, sensorId, cipherText);
         });
     }
 
-    private async listenForPowermeterSubscriptionRemove(result: ISubscriptionResult) {
+    private async listenForPowermeterSubscriptionRemove(result: TopicMessage) {
         const msg = this.logAndGetMessage(result);
         this.cron.remove(this.getJobName(msg.old.id));
     }
 
-    private async listenForPowermeterSubscriptionCreate(result: ISubscriptionResult) {
+    private async listenForPowermeterSubscriptionCreate(result: TopicMessage) {
         const msg = this.logAndGetMessage(result);
         this.addCronJob(msg.new.houseId, msg.new.deviceId, msg.new.sensorId, msg.new.frequency, msg.new.cipherText);
     }

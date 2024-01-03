@@ -1,5 +1,5 @@
 import constants from "../constants";
-import { PubsubService } from "./pubsub-service";
+import { PubsubService, TopicMessage } from "./pubsub-service";
 import { RedisService } from "./redis-service";
 import { Logger } from "../logger";
 import { DatabaseService } from "./database-service";
@@ -9,10 +9,10 @@ import {BaseService, Device, Sensor, TopicSensorMessage, RedisSensorMessage,
     RedisDeviceMessage, 
     BackendIdentity,
     SensorType} from "../types";
-import { ISubscriptionResult } from "../configure-queues-topics";
 import moment, {Moment} from "moment";
 import { IdentityService } from "./identity-service";
 import { StorageService } from "./storage-service";
+import { QueueService, QueueSubscription } from "./queue-service";
 
 const SENSOR_KEY_PREFIX = 'sensor:';
 const DEVICE_KEY_PREFIX = 'device:';
@@ -26,12 +26,13 @@ const logger = new Logger("queuelistener-service");
 export class QueueListenerService extends BaseService {
     public static NAME = "queuelistener";
 
-    dbService?: DatabaseService;
-    eventService?: PubsubService;
-    redisService?: RedisService;
-    storage: StorageService;
-    security: IdentityService;
-    authUser: BackendIdentity;
+    dbService!: DatabaseService;
+    pubsub!: PubsubService;
+    redisService!: RedisService;
+    storage!: StorageService;
+    security!: IdentityService;
+    queues!: QueueService;
+    authUser!: BackendIdentity;
 
     constructor() {
         super(QueueListenerService.NAME);
@@ -41,15 +42,17 @@ export class QueueListenerService extends BaseService {
             RedisService.NAME,
             StorageService.NAME,
             IdentityService.NAME,
+            QueueService.NAME
         ];
     }
 
     async init(callback: (err?: Error) => {}, services: BaseService[]) {
-        this.dbService = services[0] as unknown as DatabaseService;
-        this.eventService = services[1] as unknown as PubsubService;
-        this.redisService = services[2] as unknown as RedisService;
+        this.dbService = services[0] as DatabaseService;
+        this.pubsub = services[1] as PubsubService;
+        this.redisService = services[2] as RedisService;
         this.storage = services[3] as StorageService;
         this.security = services[4] as IdentityService;
+        this.queues = services[5] as QueueService;
 
         // get auth user for service
         this.authUser = await this.security.getServiceBackendIdentity(QueueListenerService.NAME);
@@ -86,7 +89,7 @@ export class QueueListenerService extends BaseService {
     async getRedisSensorMessage(...sensorIds: string[]): Promise<RedisSensorMessage[]> {
         if (!sensorIds || sensorIds.length === 0) return [];
         const redisKeys = sensorIds.map((id) => `${SENSOR_KEY_PREFIX}${id}`);
-        const redisData = await this.redisService!.mget(...redisKeys);
+        const redisData = await this.redisService.mget(...redisKeys);
         return redisData.map((d) => (d ? JSON.parse(d) : undefined));
     }
 
@@ -100,7 +103,7 @@ export class QueueListenerService extends BaseService {
     async getRedisDeviceMessage(...deviceIds: string[]): Promise<RedisDeviceMessage[]> {
         if (!deviceIds || deviceIds.length === 0) return [];
         const redisKeys = deviceIds.map((id) => `${DEVICE_KEY_PREFIX}${id}`);
-        const redisData = await this.redisService!.mget(...redisKeys);
+        const redisData = await this.redisService.mget(...redisKeys);
         return redisData.map((d) => (d ? JSON.parse(d) : undefined));
     }
 
@@ -108,10 +111,10 @@ export class QueueListenerService extends BaseService {
      * Listen for messages on the sensor topic and keep last event data around for each sensor.
      */
     private addListenerToSensorTopic() {
-        this.eventService!.subscribeTopic(constants.TOPICS.SENSOR, "#", (result: ISubscriptionResult) => {
+        this.pubsub.subscribe(`${constants.TOPICS.SENSOR}.*`, (result) => {
             const data = result.data as TopicSensorMessage;
             logger.debug(
-                `Received message on ${result.exchangeName} / ${result.routingKey} for sensor id <${data.sensorId}> value <${data.value}>`
+                `Received message on channel <${result.channel}> for sensor id <${data.sensorId}> value <${data.value}>`
             );
 
             // set sensor in redis
@@ -124,7 +127,7 @@ export class QueueListenerService extends BaseService {
             logger.debug(
                 `Setting sensor with key <${SENSOR_KEY_PREFIX}${data.sensorId}> (device <${data.deviceId}>) in Redis`
             );
-            this.redisService!.setex(
+            this.redisService.setex(
                 `${SENSOR_KEY_PREFIX}${data.sensorId}`,
                 constants.DEFAULTS.REDIS.SENSOR_EXPIRATION_SECS,
                 JSON.stringify(redis_sensor)
@@ -139,7 +142,7 @@ export class QueueListenerService extends BaseService {
      * 3. If yes and no: Create augmented sensor reading object and post to sensor topic
      */
     private addListenerToSensorQueue() {
-        this.eventService!.subscribeQueue(constants.QUEUES.SENSOR, (result) => {
+        this.queues.subscribe(constants.QUEUES.SENSOR, (result : QueueSubscription) => {
             // cast
             const msg = result.data as IngestedSensorMessage;
             let persistValue = msg.value;
@@ -168,7 +171,7 @@ export class QueueListenerService extends BaseService {
                             persistValue = 1;
                         }
                     }
-                    return this.storage!.persistSensorSample(sensor, persistValue, dt, from_dt).then(() => {
+                    return this.storage.persistSensorSample(sensor, persistValue, dt, from_dt).then(() => {
                         // mark msg as consumed
                         result.callback();
 
@@ -196,10 +199,9 @@ export class QueueListenerService extends BaseService {
                     } as TopicSensorMessage;
 
                     // publish
-                    this.eventService!.publishTopic(
-                        constants.TOPICS.SENSOR,
-                        sensor ? `known.${msg.id}` : `unknown.${msg.id}`,
-                        payload
+                    const subChannel = sensor ? `known.${msg.id}` : `unknown.${msg.id}`;
+                    this.pubsub.publish(
+                        `${constants.TOPICS.SENSOR}.${subChannel}`, payload
                     ).then(() => {
                         logger.debug(`Posted augmented sensor message to ${constants.TOPICS.SENSOR}`);
                     });
@@ -208,7 +210,7 @@ export class QueueListenerService extends BaseService {
     }
 
     private addListenerToControlQueue() {
-        this.eventService!.subscribeQueue(constants.QUEUES.CONTROL, (result) => {
+        this.queues.subscribe(constants.QUEUES.CONTROL, (result: QueueSubscription) => {
             // cast
             const msg = result.data as IngestedControlMessage;
 
@@ -230,9 +232,11 @@ export class QueueListenerService extends BaseService {
                     } as TopicControlMessage;
 
                     // publish
-                    this.eventService!.publishTopic(
-                        constants.TOPICS.CONTROL,
-                        device ? `known.${msg.target}.${msg.type}` : `unknown.${msg.target}.${msg.type}`,
+                    const subChannel = device
+                        ? `known.${msg.target}.${msg.type}`
+                        : `unknown.${msg.target}.${msg.type}`;
+                    this.pubsub.publish(
+                        `${constants.TOPICS.CONTROL}.${subChannel}`,
                         payload
                     );
                 });
@@ -240,7 +244,7 @@ export class QueueListenerService extends BaseService {
     }
 
     private addListenerToDeviceQueue() {
-        this.eventService!.subscribeQueue(constants.QUEUES.DEVICE, (result) => {
+        this.queues.subscribe(constants.QUEUES.DEVICE, (result: QueueSubscription) => {
             // cast
             const msg = result.data as IngestedDeviceMessage;
             logger.debug(
@@ -272,11 +276,11 @@ export class QueueListenerService extends BaseService {
                     // if any device data update redis
                     if (device && msg.deviceData) {
                         logger.debug(`Received message on <${constants.QUEUES.DEVICE}> and we know the device <${device.id}> and there is deviceData - update data in Redis`);
-                        this.storage!.setDeviceData(device.id, msg.deviceData);
+                        this.storage.setDeviceData(device.id, msg.deviceData);
                     }
 
                     // publish
-                    this.eventService!.publishTopic(constants.TOPICS.DEVICE, device ? "known" : "unknown", payload);
+                    this.pubsub.publish(`${constants.TOPICS.DEVICE}.${device ? "known" : "unknown"}`, payload);
                 });
         });
     }
@@ -286,7 +290,7 @@ export class QueueListenerService extends BaseService {
      *
      */
     private addListenerToDeviceTopic() {
-        this.eventService!.subscribeTopic(constants.TOPICS.DEVICE, "#", (result) => {
+        this.pubsub.subscribe(`${constants.TOPICS.DEVICE}.*`, (result) => {
             // cast
             const data = result.data as TopicDeviceMessage;
 
@@ -300,16 +304,16 @@ export class QueueListenerService extends BaseService {
      *
      */
     private addListenerToControlTopic() {
-        this.eventService!.subscribeTopic(constants.TOPICS.CONTROL, "#", (result: ISubscriptionResult) => {
+        this.pubsub.subscribe(`${constants.TOPICS.CONTROL}.*`, (result: TopicMessage) => {
             const data = result.data as TopicControlMessage;
             this.getOrCreateRedisDeviceMessage(data.deviceId, (redis_device) => {
                 // act on event
-                if (!result.routingKey) {
+                if (!result.channel) {
                     logger.debug("Ignoring control topic message as no routing key");
-                } else if (result.routingKey?.indexOf(`.${ControlMessageTypes.restart}`) > 0) {
+                } else if (result.channel.indexOf(`.${ControlMessageTypes.restart}`) > 0) {
                     if (data.device) this.updateDeviceLastRestart(data.device.id);
                     redis_device.restarts++;
-                } else if (result.routingKey?.indexOf(`.${ControlMessageTypes.timeout}`) > 0) {
+                } else if (result.channel.indexOf(`.${ControlMessageTypes.timeout}`) > 0) {
                     //if (data.device) this.updateDeviceLastWatchdogReset(data.device.id);
                     redis_device.timeouts++;
                 }
@@ -330,7 +334,7 @@ export class QueueListenerService extends BaseService {
         callback?: (redis_device: RedisDeviceMessage) => void
     ): Promise<void> {
         // query redis
-        return this.redisService!.get(`${DEVICE_KEY_PREFIX}${deviceId}`)
+        return this.redisService.get(`${DEVICE_KEY_PREFIX}${deviceId}`)
             .then((str_device) => {
                 // see if device is already in redis or create if not
                 let redis_device: RedisDeviceMessage;
@@ -353,7 +357,7 @@ export class QueueListenerService extends BaseService {
                 redis_device.dt = new Date();
 
                 // (re)store in redis
-                return this.redisService!.set(`${DEVICE_KEY_PREFIX}${deviceId}`, JSON.stringify(redis_device));
+                return this.redisService.set(`${DEVICE_KEY_PREFIX}${deviceId}`, JSON.stringify(redis_device));
             })
             .then(() => {
                 return Promise.resolve();
@@ -365,7 +369,7 @@ export class QueueListenerService extends BaseService {
      * @param deviceId
      */
     private async updateDeviceLastPing(deviceId: string) {
-        this.dbService!.query("update device set last_ping=current_timestamp where id=$1", deviceId)
+        this.dbService.query("update device set last_ping=current_timestamp where id=$1", deviceId)
             .then(() => {
                 logger.debug(`Updated device last ping timestamp for device with ID <${deviceId}>`);
             })
@@ -382,7 +386,7 @@ export class QueueListenerService extends BaseService {
      * @param deviceId
      */
     private async updateDeviceLastRestart(deviceId: string) {
-        this.dbService!.query("update device set last_restart=current_timestamp where id=$1", deviceId)
+        this.dbService.query("update device set last_restart=current_timestamp where id=$1", deviceId)
             .then(() => {
                 logger.debug(`Updated device last restart timestamp for device with ID <${deviceId}>`);
             })
