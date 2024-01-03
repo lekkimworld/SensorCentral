@@ -5,7 +5,8 @@ module.exports = function (grunt) {
     grunt.initConfig({
         clean: {
             all: ["public", "server-dist", "tscommand-*.tmp.txt"],
-            public: ["public"]
+            public: ["public"],
+            serverside: ["server-dist/src"]
         },
         copy: {
             main: {
@@ -64,6 +65,16 @@ module.exports = function (grunt) {
                     },
                 ],
             },
+            serverside: {
+                files: [
+                    {
+                        expand: true,
+                        cwd: "server-dist/src",
+                        src: "**/*.js",
+                        dest: "server-dist",
+                    },
+                ],
+            },
         },
         concat: {
             "public/css/styles.css": [
@@ -112,6 +123,8 @@ module.exports = function (grunt) {
         "copy:main",
         "webpack",
         "concat",
+        "copy:serverside",
+        "clean:serverside",
     ]);
     grunt.registerTask("clientside", [
         "clean:public",

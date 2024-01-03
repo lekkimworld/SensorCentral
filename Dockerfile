@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:21-alpine
 
 EXPOSE 8080
 ARG NODE_ENV
@@ -93,4 +93,4 @@ COPY scripts/write_dotenv.sh ./
 RUN /usr/src/app/write_dotenv.sh ${APP_GITCOMMIT}
 RUN npm run build
 
-CMD [ "npm", "run", "start" ]
+CMD [ "npm", "run", "web-serve" ]
