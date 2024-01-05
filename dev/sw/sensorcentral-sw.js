@@ -12,10 +12,11 @@ const filesToCache = [
     "/images/icon-332.png",
     "/fonts/fontawesome-webfont.woff",
     "/fonts/fontawesome-webfont.woff2",
-    "/css/styles.css",
-    "/js/index.js",
     "/js/bootstrap.bundle.min.js",
-    "/js/jquery.min.js"
+    "/js/moment-with-locales.min.js",
+    "/js/bootstrap-datetimepicker.min.js",
+    "/css/styles.css",
+    "/js/bundle.js"
 ];
 const nameVersion = `${package.name}-${package.version}-${Date.now()}`;
 
