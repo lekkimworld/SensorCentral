@@ -1,4 +1,4 @@
-import * as dateutils from "../../js/date-utils";
+import * as dateutils from "../date-utils";
 import { Device } from "../clientside-types";
 import { graphql } from "../fetch-util";
 import { Form, UICatalog, InitEvent } from "../forms-util";

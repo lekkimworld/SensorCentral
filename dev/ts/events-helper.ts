@@ -1,5 +1,5 @@
 import {Container, createContainers} from "./ui-helper";
-import * as uiutils from "../js/ui-utils";
+import * as uiutils from "./ui-utils";
 import { Endpoint, OnSensorSampleEvent, Sensor } from "./clientside-types";
 import { graphql } from "./fetch-util";
 import { DeleteForm } from "./forms/delete";
@@ -31,7 +31,7 @@ const createUIEvents = (ctx: UIContext<Sensor, OnSensorSampleEvent>) => {
             {
                 rel: "refresh",
                 icon: "refresh",
-                click: () => {
+                click: async () => {
                     updateUIEvents(ctx);
                 },
             },

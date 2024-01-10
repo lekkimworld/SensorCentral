@@ -35,8 +35,8 @@ router.use('/data', dataRoutes);
 // *****************************************
 // EXCEL
 // *****************************************
-import excelRoutes from "./excel";
-router.use("/excel", excelRoutes);
+import exportRoutes from "./export";
+router.use("/export", exportRoutes);
 
 // *****************************************
 // WATCHDOG

@@ -397,8 +397,8 @@ export class InitEvent extends Event {
     }
 }
 export class DataEvent extends Event {
-    readonly data: FormData;
-    constructor(data: FormData) {
+    readonly data: any | FormData;
+    constructor(data: any | FormData) {
         super(EVENTS.data);
         this.data = data;
     }
@@ -638,7 +638,7 @@ export abstract class Form<T> {
     async loadData() : Promise<void> {
         
     }
-    async getData(catalog: UICatalog) : Promise<FormData> {
+    async getData(catalog: UICatalog) : Promise<FormData | T> {
         return {} as FormData;
     }
 

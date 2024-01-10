@@ -241,6 +241,10 @@ router.post("/", async (req, res, next) => {
 	}
 })
 
+/**
+ * Allows download of power data.
+ * 
+ */
 router.post("/power", async (req, res) => {
 	const obj = req.body;
 
@@ -276,7 +280,7 @@ router.post("/power", async (req, res) => {
 	
 	// set in redis
 	const key = uuid();
-	storage.setTemporaryData(key, 120, str);
+	storage.setTemporaryData(key, 120, Buffer.from(str));
 
 	// respond
 	res.status(200).type("json").send({
@@ -284,6 +288,10 @@ router.post("/power", async (req, res) => {
 	});
 })
 
+/**
+ * Allows download of ungrouped data.
+ * 
+ */
 router.post("/ungrouped", async (req, res) => {
 	const obj = req.body;
 	const user = res.locals.user as BackendIdentity;
@@ -355,7 +363,7 @@ router.post("/ungrouped", async (req, res) => {
 
 	// set in redis
 	const key = uuid();
-	storage.setTemporaryData(key, 120, str);
+	storage.setTemporaryData(key, 120, Buffer.from(str));
 
 	// respond
 	res.status(200).type("json").send({

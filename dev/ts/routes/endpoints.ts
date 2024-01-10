@@ -1,7 +1,7 @@
 import { Endpoint } from "../clientside-types";
 import { graphql } from "../fetch-util";
 import { createContainers } from "../ui-helper";
-import * as uiutils from "../../js/ui-utils";
+import * as uiutils from "../ui-utils";
 import {EndpointForm} from "../forms/create-edit-endpoint";
 
 // create type for endpoints
@@ -32,14 +32,14 @@ export default (elemRoot: JQuery<HTMLElement>) => {
             {
                 rel: "create",
                 icon: "plus",
-                click: function () {
+                click: async function () {
                     new EndpointForm().show();
                 },
             },
             {
                 rel: "refresh",
                 icon: "refresh",
-                click: function () {
+                click: async function () {
                     updateUI();
                 },
             },

@@ -1,6 +1,6 @@
 import * as moment from "moment";
 import "moment-timezone";
-import constants from "./constants";
+import constants from "../js/constants";
 
 export const TIMEZONE = constants.TIMEZONE;
 export const DATETIME_DATETIME_SHORT = "D/M HH:mm";

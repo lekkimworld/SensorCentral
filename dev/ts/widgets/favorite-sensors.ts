@@ -1,6 +1,6 @@
 import {graphql} from "../fetch-util";
-import * as dateutils from "../../js/date-utils";
-import * as uiutils from "../../js/ui-utils";
+import * as dateutils from "../date-utils";
+import * as uiutils from "../ui-utils";
 
 export default async (elem: JQuery<HTMLElement>) => {
     const updateFavoriteSensors = async () => {

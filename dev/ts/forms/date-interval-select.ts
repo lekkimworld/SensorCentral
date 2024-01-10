@@ -1,29 +1,39 @@
-import { buttonClose, buttonPerformAction, DateTimeControl, Form, initDateTimePicker, UICatalog } from "../forms-util";
+import { Moment } from "moment";
+import { buttonClose, buttonPerformAction, DateControl, DateTimeControl, Form, initDatePicker, initDateTimePicker, UICatalog } from "../forms-util";
 
-export class DateIntervalSelectForm extends Form<undefined> {
+export type DateIntervalSelectFormData = {
+    start: Date;
+    end: Date;
+    moment: {
+        start: Moment,
+        end: Moment
+    }
+}
+
+export class DateIntervalSelectForm extends Form<DateIntervalSelectFormData> {
     constructor() {
         super("intervalselect", "Interval Selection");
         this.addEventListener("init", () => {
             // init date/time pickers
-            initDateTimePicker({ id: "start_dt", inline: true, sideBySide: true });
-            initDateTimePicker({ id: "end_dt", inline: true, sideBySide: true });
+            initDatePicker({ id: "start_dt" });
+            initDatePicker({ id: "end_dt" });
         })
     }
     body(catalog: UICatalog) {
         return `<form id="${this.name}Form" novalidate>
-                ${catalog.datetimepicker({
+                ${catalog.datepicker({
                     name: "start_dt",
                     label: "Start Date",
-                    fieldExplanation: "Specify the start date/time.",
+                    fieldExplanation: "Specify the start date - the selected date is included.",
                     required: true,
-                    validationText: "You must specify the start date/time."
+                    validationText: "You must specify the start date"
                 })}
-                ${catalog.datetimepicker({
+                ${catalog.datepicker({
                     name: "end_dt",
                     label: "End Date",
-                    fieldExplanation: "Specify the end date/time.",
+                    fieldExplanation: "Specify the end date - the selected date is included.",
                     required: true,
-                    validationText: "You must specify the end date/time."
+                    validationText: "You must specify the end date."
                 })}
             </form>`
     }
@@ -34,11 +44,15 @@ export class DateIntervalSelectForm extends Form<undefined> {
 
     async getData(catalog: UICatalog) {
         // build return data
-        const sdt = (catalog.get("start_dt") as DateTimeControl).moment;
-        const edt = (catalog.get("end_dt") as DateTimeControl).moment;
+        const sdt = (catalog.get("start_dt") as DateControl).moment;
+        const edt = (catalog.get("end_dt") as DateControl).moment.add(1, "day");
         return {
-            start_dt: (edt.isAfter(sdt) ? sdt : edt).toDate(),
-            end_dt: (edt.isAfter(sdt) ? edt : sdt).toDate(),
-        };
+            start: (edt.isAfter(sdt) ? sdt : edt).toDate(),
+            end: (edt.isAfter(sdt) ? edt : sdt).toDate(),
+            moment: {
+                start: edt.isAfter(sdt) ? sdt : edt,
+                end: edt.isAfter(sdt) ? edt : sdt
+            },
+        } as DateIntervalSelectFormData;
     }
 }

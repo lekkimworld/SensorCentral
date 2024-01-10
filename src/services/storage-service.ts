@@ -268,7 +268,7 @@ export class StorageService extends BaseService {
      * @param ttl
      * @param data
      */
-    async setTemporaryData(key: string, ttl: number, data: string) {
+    async setTemporaryData(key: string, ttl: number, data: Buffer) {
         this.redisService!.setex(key, ttl, data);
     }
 
@@ -277,8 +277,9 @@ export class StorageService extends BaseService {
      *
      * @param key
      */
-    async getTemporaryData(key: string): Promise<string | null> {
-        return this.redisService!.get(key);
+    async getTemporaryData(key: string): Promise<Buffer | null> {
+        const buf = await this.redisService!.getBuffer(key);
+        return buf;
     }
 
     /**

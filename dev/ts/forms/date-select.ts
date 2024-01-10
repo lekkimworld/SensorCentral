@@ -1,6 +1,12 @@
+import { Moment } from "moment";
 import { buttonClose, buttonPerformAction, DateTimeControl, Form, UICatalog } from "../forms-util";
 
-export class DateSelectForm extends Form<undefined> {
+export type DateSelectFormData = {
+    date: Date;
+    moment: Moment;
+};
+
+export class DateSelectForm extends Form<DateSelectFormData> {
     constructor() {
         super("dateselect", "Date Select");
     }
@@ -22,11 +28,11 @@ export class DateSelectForm extends Form<undefined> {
             ${buttonPerformAction("Apply")}`;
     }
 
-    async getData(catalog: UICatalog) {
-        const ctl = (catalog.get("dt") as DateTimeControl);
+    async getData(catalog: UICatalog) : Promise<DateSelectFormData> {
+        const ctl = catalog.get("dt") as DateTimeControl;
         return {
-            "moment": ctl.moment,
-            "date": ctl.date
-        }
+            moment: ctl.moment,
+            date: ctl.date,
+        } as DateSelectFormData;
     }
 }

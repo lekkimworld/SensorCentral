@@ -12,7 +12,7 @@ const CONNECTION_TIMEOUT =
 
 export class RedisService extends BaseService {
     public static NAME = "redis";
-    private client! : Redis;
+    private client!: Redis;
 
     constructor() {
         super(RedisService.NAME);
@@ -26,7 +26,6 @@ export class RedisService extends BaseService {
             const data = await this.client.get(dummyKey);
             logger.info("Queried redis for dummy key - result: " + data);
             callback(undefined);
-
         } catch (err) {
             logger.error("Error querying redis for dummy key", err);
             callback(err);
@@ -40,7 +39,7 @@ export class RedisService extends BaseService {
         });
     }
 
-    createClient(options?: RedisOptions) : Redis {
+    createClient(options?: RedisOptions): Redis {
         if (!process.env.REDIS_TLS_URL && !process.env.REDIS_URL) {
             throw new Error(`Both REDIS_TLS_URL and REDIS_URL is undefined - cannot init RedisService`);
         }
@@ -57,12 +56,14 @@ export class RedisService extends BaseService {
         );
         if (process.env.REDIS_URL && redis_uri && redis_uri.protocol!.indexOf("rediss") === 0) {
             logger.debug(`Creating new Redis client and will use TLS to connect to <${redis_uri.host}>`);
-            const r = new Redis(Object.assign(redis_options, {
-                tls: {
-                    rejectUnauthorized: false,
-                    requestCert: true, 
-                }
-            }));
+            const r = new Redis(
+                Object.assign(redis_options, {
+                    tls: {
+                        rejectUnauthorized: false,
+                        requestCert: true,
+                    },
+                })
+            );
             return r;
         } else {
             logger.debug(`Creating new Redis client and will NOT use TLS to connect to <${redis_uri.host}>`);
@@ -77,10 +78,13 @@ export class RedisService extends BaseService {
     get(key: string) {
         return this.client.get(key);
     }
-    set(key: string, value: string) {
+    getBuffer(key: string) {
+        return this.client.getBuffer(key);
+    }
+    set(key: string, value: string | Buffer) {
         return this.client.set(key, value);
     }
-    setex(key: string, expire: number, value: string) {
+    setex(key: string, expire: number, value: string | number | Buffer) {
         return this.client.setex(key, expire, value);
     }
     keys(pattern: string) {

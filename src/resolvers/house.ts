@@ -89,7 +89,7 @@ export class HouseResolver {
         const houses = await ctx.storage.getHouses(ctx.user);
         return houses.map((h) => new House(h));
     }
-    
+
     @Query((_returns) => House!, { description: "Returns the House with the supplied ID" })
     async house(@Arg("id") id: string, @Ctx() ctx: types.GraphQLResolverContext) {
         const house = await ctx.storage.getHouse(ctx.user, id);
@@ -103,7 +103,7 @@ export class HouseResolver {
         @Ctx() ctx: types.GraphQLResolverContext
     ) {
         return (await ctx.storage.getDevices(ctx.user, house.id))
-            .filter((d) => !active ? true : active === types.NullableBoolean.yes ? d.active : !d.active)
+            .filter((d) => (!active ? true : active === types.NullableBoolean.yes ? d.active : !d.active))
             .map((d) => new Device(d));
     }
 
@@ -114,17 +114,16 @@ export class HouseResolver {
     }
 
     @FieldResolver(() => Boolean)
-    async owner(@Root() house : House, @Ctx() ctx: types.GraphQLResolverContext) : Promise<boolean> {
+    async owner(@Root() house: House, @Ctx() ctx: types.GraphQLResolverContext): Promise<boolean> {
         return ctx.storage.isHouseOwner(ctx.user, ctx.user.identity.callerId, house.id);
     }
 
     @FieldResolver(() => Boolean)
-    async favorite(@Root() house : House, @Ctx() ctx : types.GraphQLResolverContext) : Promise<boolean> {
+    async favorite(@Root() house: House, @Ctx() ctx: types.GraphQLResolverContext): Promise<boolean> {
         const favhouse = await ctx.storage.getFavoriteHouse(ctx.user);
         if (!favhouse) return false;
         return favhouse.id === house.id;
     }
-
 
     @Mutation(() => House, { description: "Creates a new House" })
     async createHouse(@Arg("data") data: CreateHouseInput, @Ctx() ctx: types.GraphQLResolverContext) {

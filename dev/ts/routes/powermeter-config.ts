@@ -1,4 +1,4 @@
-import * as uiutils from "../../js/ui-utils";
+import * as uiutils from "../ui-utils";
 import { toggleButton, dropdown, textField, buttonPerformAction } from "../forms-util";
 import { graphql } from "../fetch-util";
 import {v4 as uuid} from "uuid";
@@ -12,10 +12,10 @@ export default (elemRoot: JQuery<HTMLElement>) => {
             elemRoot, 
             "Powermeter Setup", 
             [
-                {"rel": "create", "icon": "plus", "click": function() {
+                {rel: "create", icon: "plus", "click": async function() {
                     
                 }}, 
-                {"rel": "refresh", "icon": "refresh", "click": function() {
+                {rel: "refresh", icon: "refresh", click: async function() {
                     updateUI();
                 }}
             ]

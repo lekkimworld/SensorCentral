@@ -1,14 +1,14 @@
-import * as uiutils from "../../js/ui-utils";
+import * as uiutils from "../ui-utils";
 import { graphql } from "../fetch-util";
 import {HouseForm} from "../forms/create-edit-house";
 import {DeleteForm} from "../forms/delete";
 import {DeviceForm} from "../forms/create-edit-device";
 import {HouseAccessForm} from "../forms/house-access";
-import * as dateutils from "../../js/date-utils";
+import * as dateutils from "../date-utils";
 import { Device, House } from "../clientside-types";
 import { createBreadcrumbHeader, createContainers } from "../ui-helper";
 
-type RequestedHouse = Required<Pick<House, "id" | "name">> & {
+type RequestedHouse = Required<Pick<House, "id" | "name" | "favorite" | "owner">> & {
     devices: Array<Required<Pick<Device, "id" | "name" | "last_ping" | "last_restart" | "active">>>;
 };
 
@@ -23,7 +23,7 @@ export default (elemRoot: JQuery<HTMLElement>, houseId: string) => {
         const houseContainer = createContainers(elemRoot, "house");
 
         const data = await graphql(
-            `{house(id:"${houseId}"){id,name,devices(active:null) {id,name,last_ping,last_restart,active}}}`
+            `{house(id:"${houseId}"){id,name, favorite,owner, devices(active:null) {id,name,last_ping,last_restart,active}}}`
         );
         const house = data.house as RequestedHouse;
         const houseName = house.name;
@@ -39,45 +39,47 @@ export default (elemRoot: JQuery<HTMLElement>, houseId: string) => {
             {
                 rel: "create",
                 icon: "plus",
-                click: () => {
+                click: async () => {
                     new DeviceForm(house, undefined).addEventListener("data", document.location.reload).show();
                 },
             },
             {
                 rel: "refresh",
                 icon: "refresh",
-                click: () => {
+                click: async () => {
                     updateUI();
                 },
             },
             {
                 rel: "edit",
                 icon: "pencil",
-                click: function (ctx) {
+                click: async function () {
                     new HouseForm(house).show();
                 },
             },
             {
                 icon: "trash",
                 rel: "trash",
-                click: function () {
+                click: async function () {
                     new DeleteForm({
                         title: "Delete House?",
                         message:
                             "Are you absolutely sure you want to DELETE this house? This will also DELETE all devices and sensors for this house. Sensor samples are not removed from the database.",
                         id: house.id,
                         name: house.name,
-                    }).addEventListener("data", async () => {
-                        await graphql(`mutation {deleteHouse(data: {id: "${house.id}"})}`);
-                        document.location.hash = "#root";  
-                    }).show();
+                    })
+                        .addEventListener("data", async () => {
+                            await graphql(`mutation {deleteHouse(data: {id: "${house.id}"})}`);
+                            document.location.hash = "#root";
+                        })
+                        .show();
                 },
             },
             {
                 rel: "favorite",
-                icon: (data) => (data.favorite ? "star" : "star-o"),
-                click: (ctx) => {
-                    graphql(`mutation {favoriteHouse(data: {id: "${ctx.id}"}){id}}`).then((body) => {
+                icon: () => house.favorite ? "star_filled" : "star_empty",
+                click: async () => {
+                    graphql(`mutation {favoriteHouse(data: {id: "${house.id}"}){id}}`).then((body) => {
                         document.location.reload();
                     });
                 },
@@ -85,8 +87,8 @@ export default (elemRoot: JQuery<HTMLElement>, houseId: string) => {
             {
                 icon: "lock",
                 rel: "lock",
-                visible: (row) => row.data.owner,
-                click: function () {
+                visible: () => house.owner,
+                click: async function () {
                     new HouseAccessForm(house).show();
                 },
             },

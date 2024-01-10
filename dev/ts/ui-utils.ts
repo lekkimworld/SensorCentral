@@ -1,5 +1,6 @@
-import * as storage from "../ts/storage-utils";
-import {SettingsForm} from "../ts/forms/settings";
+import * as storage from "./storage-utils";
+import {SettingsForm} from "./forms/settings";
+import { getFontAwesomeIcon, RouteAction } from "./ui-helper";
 
 const ID_ACTION_ITEMS = "action-icons";
 
@@ -81,7 +82,7 @@ export const htmlBreadcrumbs = (objs) => {
     }).join(" &gt; ");
 }
 
-export const htmlTitleRow = (title, actions, tag = "h3") => {
+export const htmlTitleRow = (title, actions: Array<RouteAction<any>> | undefined, tag = "h3") => {
     const htmlTitle = htmlPageTitle(title, tag);
     const htmlActions = htmlActionBar(actions);
     const html = `<div class="row">
@@ -91,7 +92,7 @@ export const htmlTitleRow = (title, actions, tag = "h3") => {
     return html;
 }
 
-export const htmlSectionTitle = (title, classList) => {
+export const htmlSectionTitle = (title, classList?) => {
     return `<h5 class="${classList ? classList : ""}">${title}</h5>`;
 }
 
@@ -102,17 +103,19 @@ export const htmlPageTitle = (title, tag = "h3") => {
     return html;
 }
 
-export const htmlActionBar = (actions) => {
+export const htmlActionBar = (actions: Array<RouteAction<any|void>> | undefined) => {
     if (!actions || !actions.length) return "";
     const html = actions.map(action => {
-        return `<button type="button" class="btn fa fa-${action.icon} ml-2 p-0 sensorcentral-size-1_5x float-right" aria-hidden="true" rel="${action.rel}"></button>`
+        const iconkey = typeof action.icon === "function" ? action.icon() : action.icon;
+        const faicon = getFontAwesomeIcon(iconkey);
+        return `<button type="button" class="btn fa fa-${faicon} ml-2 p-0 sensorcentral-size-1_5x float-right" aria-hidden="true" rel="${action.rel}"></button>`
     }).join("");
 
     return `<div class="col-lg-4 col-md-4 col-sm-12" id="${ID_ACTION_ITEMS}">${html}</div>`;
 }
 
-export const htmlDataTable = (input = {}) => {
-        const ctx = Object.assign({}, input);
+export const htmlDataTable = (input : any = {}) => {
+        const ctx : any = Object.assign({}, input);
         if (!ctx.hasOwnProperty("headers")) ctx.headers = [];
         if (!ctx.hasOwnProperty("rows")) ctx.rows = [];
         if (!ctx.hasOwnProperty("actions")) ctx.actions = undefined;
@@ -130,7 +133,7 @@ export const htmlDataTable = (input = {}) => {
     return html;
 }
 
-export const appendTitleRow = (elem, title, actions = [], args) => {
+export const appendTitleRow = (elem, title, actions : Array<RouteAction<any|void>> = [], args?) => {
     const html = htmlTitleRow(title, actions, args && args.tag ? args.tag : "h3");
     elem.append(html);
 
@@ -138,9 +141,9 @@ export const appendTitleRow = (elem, title, actions = [], args) => {
     if (!actions || !actions.length) return;
     $(`#${args && args.actionItemsId ? args.actionItemsId  : ID_ACTION_ITEMS}`).on("click", (ev) => {
         const rel = ev.target.getAttribute("rel");
-        const filteredActions = actions.filter((action) => action.rel === rel);
+        const filteredActions = actions.filter((action: any) => action.rel === rel);
         if (!filteredActions.length) return;
-        const action = filteredActions[0];
+        const action : any = filteredActions[0];
         if (action.hasOwnProperty("click") && typeof action.click === "function") {
             action.click.call(ev.target, action);
         }
@@ -151,18 +154,18 @@ export const appendSectionTitle = (elem, title) => {
     elem.append(htmlSectionTitle(title));
 }
 
-export const appendDataTable = (elem, input = {}) => {
+export const appendDataTable = (elem, input : any = {}) => {
     // append html table to page
     const html = htmlDataTable(input);
     elem.append(html);
 
     // add click handler
     $("tbody").on("click", ev => {
-        let elem = ev.target.parentElement;
+        let elem : HTMLElement | null = ev.target.parentElement as HTMLElement;
         let id = elem.id;
         while (!id) {
-            elem = elem.parentElement;
-            id = elem.id;
+            elem = elem!.parentElement;
+            id = elem!.id;
         }
 
         // get data object for row

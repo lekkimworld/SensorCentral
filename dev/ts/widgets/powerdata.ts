@@ -1,105 +1,55 @@
-import {post, graphql} from "../fetch-util";
-import {DateSelectForm} from "../forms/date-select";
-import {DataEvent} from "../forms-util";
-import { addChartContainer } from "../../js/charts-util";
+import {graphql} from "../fetch-util";
+import {PowerDataDownloadOptions, addChartContainer} from "../charting/charting";
 import moment, { Moment } from "moment";
+import DateAction from "../charting/actions/date-action";
+import PowerdataSaveAction from "../charting/actions/powerdata-save-action";
+import { DataSet } from "../ui-helper";
 
 // declarations
 let visibleDates : any[] = [];
 
 export default async (elem: JQuery<HTMLElement>) => {
-    const chartCtx = addChartContainer(elem, {
+    const powerpriceChart1 = addChartContainer(elem, {
         title: "Power Prices (kr/kWh)",
-        actions: [{
-            "id": "save",
-            "icon": "fa-save",
-            "callback": () => {
-                post(`/api/v1/data/power`, {
-                    "dates": visibleDates,
-                    "type": "csv"
-                }).then(obj => {
-                    window.open(`/download/power/${obj.downloadKey}/attachment`, "_new");
-                })
+        type: "bar",
+        actions: [
+            new DateAction(),
+            new (class extends PowerdataSaveAction {
+                protected getDownloadOptions(containerData: any): PowerDataDownloadOptions {
+                    const m = containerData.date as Moment;
+                    return {
+                        output: "excel",
+                        type: "power",
+                        dates: [m],
+                    };
+                }
+            })(),
+        ],
+        data: async (containerData) => {
+            if (!containerData.date) {
+                // set initial dates (today and tomorrow)
+                const today = moment
+                    .utc()
+                    .set("hour", 0)
+                    .set("minute", 0)
+                    .set("second", 0)
+                    .set("millisecond", 0);
+                const tomorrow = today.clone().add(1, "day");
+                containerData.dates = [today, tomorrow];
             }
+
+            // format date and get data
+            const strdates = (containerData.dates as Array<Moment>).map(m => m.format("YYYY-MM-DD"));
+            const powerqueries = `{
+                qToday: powerPriceQuery(filter: {date: "${strdates[0]}"}){id,name,fromCache,data{x,y}}
+                qTomorrow: powerPriceQuery(filter: {date: "${strdates[1]}"}){id,name,fromCache,data{x,y}}
+            }`;
+            const response = await graphql(powerqueries);
+
+            // return
+            const data = [response.qToday as DataSet];
+            if (response.qTomorrow.data.length) data.push(response.qTomorrow as DataSet);
+            return data;
         },
-        {
-            "id": "calendar",
-            "icon": "fa-calendar",
-            "callback": () => {
-                selectDateAndLoadPowerData();
-            }
-        }
-        ]
-    })
-
-    const selectDateAndLoadPowerData = () => {
-        new DateSelectForm().addEventListener("data", e => {
-            const ev = e as DataEvent;
-            loadAndShowPowerdata(ev.data.moment);
-        }).show();
-    };
-
-    // load power data
-    const loadAndShowPowerdata = input => {
-        // construct query
-        const moments = (Array.isArray(input) ? input : [input]);
-        let powerquery = "query {";
-        (Array.isArray(moments) ? moments : [moments]).forEach((m, idx) => {
-            powerquery += `query${idx}: powerPriceQuery(filter: {date: "${m.format("YYYY-MM-DD")}"}){id,name,fromCache,data{x,y}}\n`;
-        })
-        powerquery += "}";
-
-        // clear chart
-        chartCtx.addSkeleton({
-            "clearContainer": true
-        });
-
-        // get data
-        graphql(powerquery, { "noSpinner": true }).then(result => {
-            // build labels and datasets
-            const labels = result[Object.keys(result)[0]].data.map(v => v.x);
-            const datasets = Object.keys(result).reduce((prev, key) => {
-                if (!result[key] || !result[key].data || !result[key].data.length) return prev;
-                prev.push({
-                    label: result[key].name,
-                    data: result[key].data.map((v) => v.y),
-                });
-                return prev;
-            }, [] as Record<string, string>[]);
-
-            // do chart
-            chartCtx.barChart(
-                labels, {
-                datasets
-            }
-            )
-
-            // store dates
-            visibleDates = moments.map(m => m.format("YYYY-MM-DD"));
-        })
-    }
-
-    // build query from today and tomorrow (if available)
-    const m = moment().subtract(0, "days");
-    let dates : Moment[] = [];
-    Array(2).fill(undefined).forEach(d => {
-        dates.push(moment(m));
-        m.add(1, "day");
-    })
-    loadAndShowPowerdata(dates);
-
-    // event handler to export data
-    $("#powerdata-save").on("click", () => {
-        post(`/api/v1/data/power`, {
-            "dates": visibleDates,
-            "type": "csv"
-        }).then(obj => {
-            window.open(`/download/power/${obj.downloadKey}/attachment`, "_new");
-        })
-    })
-
-    // event handler to change date
-    $("#powerdata-calendar").on("click", () => {
-        selectDateAndLoadPowerData();
-    })
+    });
 }

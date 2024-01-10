@@ -1,16 +1,18 @@
-import * as uiutils from "../../js/ui-utils";
-import { addChartContainer } from "../../js/charts-util";
+import * as uiutils from "../ui-utils";
+import moment, { Moment } from "moment";
+import { addChartContainer } from "../charting/charting";
 import { graphql } from "../fetch-util";
 import * as formsutil from "../forms-util";
-import {ICONS, RouteAction, createBreadcrumbHeader, createContainers} from "../ui-helper";
+import { DataSet, RouteAction, createBreadcrumbHeader, createContainers } from "../ui-helper";
 import { SensorType, Device, House, Sensor } from "../clientside-types";
 import { addAlertsTable } from "../alerts-helper";
-import {DeleteForm} from "../forms/delete";
-import {DeviceForm} from "../forms/create-edit-device";
+import { DeleteForm } from "../forms/delete";
+import { DeviceForm } from "../forms/create-edit-device";
 import { DeviceJWTForm } from "../forms/device-jwt";
 import { SensorForm } from "../forms/create-edit-sensor";
 import { DeviceData } from "../forms/device-data";
-
+import RefreshAction from "../charting/actions/refresh-action";
+import DateIntervalAction from "../charting/actions/date-interval-action";
 
 // create type for data and request it
 type RequestedHouse = Required<Pick<House, "id" | "name">>;
@@ -31,17 +33,17 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
         const elemSensorsTitle = sensorsContainer.children!.title.elem;
 
         // define actions
-        const actions: RouteAction[] = [
+        const actions: RouteAction<any | void>[] = [
             {
                 rel: "create",
-                icon: ICONS.plus,
-                click: () => {
+                icon: "plus",
+                click: async () => {
                     new SensorForm(device).addEventListener("data", document.location.reload).show();
                 },
             },
             {
                 rel: "refresh",
-                icon: ICONS.refresh,
+                icon: "refresh",
                 click: async () => {
                     const data = await graphql(`{device(id: "${deviceId}") {
                             sensors {
@@ -49,27 +51,27 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
                             }
                         }}`);
                     const sensors = data.device.sensors as Array<RequestedSensor>;
-                    updateUISensors(sensors);
+                    return updateUISensors(sensors);
                 },
             },
             {
                 rel: "davicedata",
-                icon: ICONS.info,
-                click: () => {
+                icon: "info",
+                click: async () => {
                     new DeviceData(device).show();
                 },
             },
             {
                 rel: "edit",
-                icon: ICONS.pencil,
-                click: function () {
+                icon: "pencil",
+                click: async () => {
                     new DeviceForm(device.house, device).show();
                 },
             },
             {
                 rel: "trash",
-                icon: ICONS.trash,
-                click: function () {
+                icon: "trash",
+                click: async () => {
                     new DeleteForm({
                         title: "Delete Device",
                         message:
@@ -88,22 +90,17 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
             },
             {
                 rel: "jwt",
-                icon: ICONS.key,
-                click: function () {
+                icon: "key",
+                click: async () => {
                     new DeviceJWTForm(device).show();
                 },
             },
         ];
 
         // add title
-        uiutils.appendTitleRow(
-            elemSensorsTitle,
-            device.name,
-            actions,
-            {
-                actionItemsId: "sensors-title",
-            }
-        );
+        uiutils.appendTitleRow(elemSensorsTitle, device.name, actions, {
+            actionItemsId: "sensors-title",
+        });
 
         // add initial content
         updateUISensors(device.sensors);
@@ -119,17 +116,46 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
         sensors!.sort((a, b) => a.name.localeCompare(b.name));
 
         // create context for chart and create it
-        const gaugeBinarySensors = sensors!.filter((s) => [SensorType.gauge, SensorType.binary].includes(s.type));
+        const gaugeBinarySensors = sensors!.filter((s) => [SensorType.counter, SensorType.gauge, SensorType.binary].includes(s.type));
         if (gaugeBinarySensors.length) {
-            const chartContainer = document.createElement("div");
-            elemSensorsContent.append(chartContainer);
-            const chartCtx = addChartContainer($(chartContainer), {
-                append: true,
-                actions: ["INTERVAL", "DOWNLOAD"],
-            });
-            chartCtx.gaugeChart({
-                deviceId,
-            });
+            addChartContainer(elemSensorsContent, {
+                title: "Binary, guage or counter sensor data",
+                type: "line",
+                timeseries: true, 
+                actions: [
+                    new RefreshAction(),
+                    new DateIntervalAction()
+                ],
+                async data(containerData) {
+                    let start : Moment;
+                    let end: Moment;
+                    if (!containerData.start) {
+                        end = moment();
+                        start = moment().subtract(1, "day");
+                        containerData.start = start;
+                        containerData.end = end;
+                    } else {
+                        start = containerData.start as Moment;
+                        end = containerData.end as Moment;
+                    }
+                    const data = await graphql(`{
+                        dataUngroupedDateQuery(
+                            filter: { sensorIds: ["${gaugeBinarySensors.map((s) => s.id).join('","')}"],
+                            start: "${start.toISOString()}",
+                            end: "${end.toISOString()}" }
+                        ) {
+                            id
+                            name
+                            data {
+                                x
+                                y
+                            }
+                        }
+                    }
+                    `);
+                    return data.dataUngroupedDateQuery as Array<DataSet>;
+                },
+            })
         }
 
         uiutils.appendDataTable(elemSensorsContent, {
@@ -174,5 +200,4 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
         addAlertsTable(elemRoot, device);
     };
     updateUI();
-    
-}
+};

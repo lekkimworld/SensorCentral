@@ -1,11 +1,11 @@
 import { Device, House, Sensor } from "./clientside-types";
-import * as uiutils from "../js/ui-utils";
+import * as uiutils from "./ui-utils";
 import { ObjectValues } from "./helpers";
 
 /**
  * Type of icons we support for RouteActions.
  */
-export const ICONS = {
+const ICONS = {
     plus: "plus",
     refresh: "refresh",
     star_empty: "star-o",
@@ -14,21 +14,44 @@ export const ICONS = {
     trash: "trash",
     key: "key",
     info: "info",
-    download: "download"
-} as const;
-export type ActionIcon = ObjectValues<typeof ICONS>;
+    download: "download",
+    lock: "lock",
+    calendar: "calendar",
+    save: "save"
+};
+export const getFontAwesomeIcon = (icon: ActionIcon) : string => {
+    const result = ICONS[icon];
+    return result;
+}
+export type ActionIcon =  keyof typeof ICONS;
 
 /**
- * Handler type for a RouteAction.
+ * Click handler type for a RouteAction.
  */
-export type RouteActionHandler = () => void;
+export type RouteActionHandler<T> = () => Promise<T>;
+/**
+ * Visibility handler type for a RouteAction.
+ */
+export type VisibilityActionHandler = () => boolean;
 /**
  * A RouteAction is an action on a page.
  */
-export type RouteAction = {
+export type RouteAction<T> = {
     rel: string;
-    icon: string;
-    click: RouteActionHandler;
+    icon: ActionIcon | (() => ActionIcon);
+    click: RouteActionHandler<T>;
+    visible?: VisibilityActionHandler;
+};
+
+export type DataSet = {
+    id: string;
+    name: string | undefined;
+    fromCache: boolean;
+    data: DataElement[];
+};
+export type DataElement = {
+    x: string;
+    y: number;
 }
 
 /**

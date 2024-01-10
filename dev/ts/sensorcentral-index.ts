@@ -1,5 +1,5 @@
 import * as pckg from "../../package.json";
-import * as uiutils from "../js/ui-utils";
+import * as uiutils from "./ui-utils";
 import {ErrorForm} from "./forms-util";
 import * as storage from "./storage-utils";
 import {get} from "./fetch-util";
@@ -15,6 +15,7 @@ import loginChooseRoute from "./routes/login-choose";
 import powerChartsRoute from "./routes/powermeter-charts";
 import powerConfigRoute from "./routes/powermeter-config";
 import endpointsRoute from "./routes/endpoints";
+import endpointTestChart from "./routes/testchart";
 
 const log = {
     debug: (s:string) => {
@@ -130,6 +131,8 @@ const navigationChange = async () => {
             log.debug(`Rendering sensorcentral-sensordetails with parts <${parts.join()}>`);
             sensordetailsRoute(elemRoot, parts[6]);
         }
+    } else if (hash === "#testchart") {
+        endpointTestChart(elemRoot);
     } else {
         elemRoot.html(`<h1>Oh no!!</h1>
         <p>

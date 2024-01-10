@@ -1,23 +1,22 @@
-import * as uiutils from "../../js/ui-utils";
-import { graphql } from "../fetch-util";
+import * as uiutils from "../ui-utils";
+import { graphql, post } from "../fetch-util";
 import detailsGauge from "./sensordetails-gauge";
-import detailsCounter from "./sensordetails-counter";
 import detailsDelta from "./sensordetails-delta";
 import { SensorDetails } from "./sensordetails-base";
-import { Device, House, Sensor } from "../clientside-types";
-import { RouteAction, ActionIcon, createBreadcrumbHeader, createContainers, ICONS } from "../ui-helper";
+import { Device, House, Sensor, SensorType } from "../clientside-types";
+import { RouteAction, createBreadcrumbHeader, createContainers } from "../ui-helper";
 import { addAlertsTable } from "../alerts-helper";
 import { addEventsTable } from "../events-helper";
 import { ManualSampleForm } from "../forms/manual-sample";
 import { DeleteForm } from "../forms/delete";
 import { SensorForm } from "../forms/create-edit-sensor";
 import { DownloadForm } from "../forms/download";
+import { DataEvent } from "../forms-util";
+import { Moment } from "moment";
 
 type RequestedHouse = Required<Readonly<Pick<House, "id"|"name">>>;
 type RequestedDevice = Required<Readonly<Pick<Device, "id"|"name">>>;
 type RequestedSensor = Required<Readonly<Pick<Sensor, "id"|"type"|"name"|"label"|"icon"|"favorite"|"scaleFactor">>> & {device: RequestedDevice & {house: RequestedHouse}};
-
-
 
 export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
     // fetch sensor
@@ -35,41 +34,41 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
 
     // build ui based on sensor type
     let module: SensorDetails;
-    if (["gauge", "binary"].includes(sensor.type)) {
+    if ([SensorType.gauge, SensorType.binary, SensorType.counter].includes(sensor.type)) {
         module = detailsGauge;
-    } else if (sensor.type === "counter") {
-        module = detailsCounter;
-    } else if (sensor.type === "delta") {
+    } else if (SensorType.delta === sensor.type) {
         module = detailsDelta;
     } else {
         elemRoot.append(`Unknown sensor type: ${sensor.type}`);
         return;
     }
-    const actions: RouteAction[] = [];
+    const actions: RouteAction<any>[] = [];
     if (module.actionManualSample) {
         actions.push({
             rel: "create",
-            icon: ICONS.plus,
+            icon: "plus",
             click: async () => {
                 new ManualSampleForm(sensor)
                     .addEventListener("postdata", () => {
                         actions.find((a) => a.rel === "refresh")!.click();
                     })
                     .show();
+                    return Promise.resolve();
             },
         });
     }
     actions.push({
         rel: "refresh",
-        icon: ICONS.refresh,
+        icon: "refresh",
         click: () => {
             sensorsContainer.children!.content.elem.html("");
             module.buildUI(sensorsContainer.children!.content.elem, sensor);
+            return Promise.resolve();
         },
     });
     actions.push({
         rel: "favorite",
-        icon: sensor.favorite ? ICONS.star_filled : ICONS.star_empty,
+        icon: sensor.favorite ? "star_filled" : "star_empty",
         click: () => {
             const btn = $('button[rel="favorite"]');
             btn.toggleClass("fa-star");
@@ -79,18 +78,20 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
             } else {
                 graphql(`mutation {removeFavoriteSensor(id: \"${sensor.id}\")}`);
             }
+            return Promise.resolve();
         },
     });
     actions.push({
         rel: "edit",
-        icon: ICONS.pencil,
+        icon: "pencil",
         click: () => {
             new SensorForm(sensor.device, sensor).show();
+            return Promise.resolve();
         },
     });
     actions.push({
         rel: "trash",
-        icon: ICONS.trash,
+        icon: "trash",
         click: () => {
             new DeleteForm({
                 id: sensor.id,
@@ -104,13 +105,39 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
                     document.location.hash = `#configuration/house/${sensor.device.house.id}/device/${sensor.device.id}`;
                 })
                 .show();
+                return Promise.resolve();
         },
     });
     actions.push({
         rel: "download",
-        icon: ICONS.download,
+        icon: "download",
         click: () => {
-            new DownloadForm(sensor).show();
+            const input = {
+                supportsGrouping: sensor.type === "delta" || sensor.type === "counter",
+            };
+            new DownloadForm(input).addEventListener("data", async e => {
+                const dataEvent = e as DataEvent;
+                const data = dataEvent.data;
+                const start = (data.start as Moment).toISOString();
+                const end = (data.end as Moment).toISOString();
+                const applyScaleFactor = data.scaleFactor as boolean;
+                const options = {
+                    start, end, scaleFactor: applyScaleFactor, type: data.grouped ? "grouped" : "ungrouped", output: "excel", sensorIds: [sensorId]
+                };
+                
+                // post
+                const blob = await post("/api/v1/export", options);
+
+                // create link for download
+                const file = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.download = `${sensor.id}_${start.replace(/:/g, "")}_${end.replace(/:/g, "")}.xlsx`;
+                a.href = file;
+                document.querySelector("body")?.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(file);
+            }).show();
+            return Promise.resolve();
         },
     });
 

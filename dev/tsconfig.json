@@ -11,5 +11,5 @@
       "types": ["jquery"]
   },
   "exclude": ["../node_modules"],
-  "include": ["./ts/**/*.ts", "./js/**/*.js"]
+  "include": ["./ts/**/*.ts", "./js/**/*.js", "ts/date-utils.js", "js/constants.js"]
 }

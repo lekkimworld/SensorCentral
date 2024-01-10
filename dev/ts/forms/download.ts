@@ -1,43 +1,26 @@
 import { Sensor } from "../clientside-types";
-import { DataEvent, DateControl, Form, ToggleButtonControl, UICatalog, buttonClose, buttonPerformAction } from "../forms-util";
-import {get} from "../fetch-util";
-import { Moment } from "moment";
+import { DateControl, Form, ToggleButtonControl, UICatalog, buttonClose, buttonPerformAction } from "../forms-util";
 
-export class DownloadForm extends Form<Sensor> {
-    constructor(sensor: Sensor) {
-        super("download", "Download", sensor);
-        this.addEventListener("data", async (e) => {
-            const dataEvent = e as DataEvent;
-            const data = dataEvent.data;
-            const startDate = (data.startDate as Moment).toISOString();
-            const endDate = (data.endDate as Moment).toISOString();
-            const scaleFactor = data.scaleFactor as boolean;
-            if (data.grouped) {
-                var url = `/api/v1/excel/grouped/range/${this.ctx!.id}/${startDate}/${endDate}/${scaleFactor}`;
-            } else {
-                var url = `/api/v1/excel/ungrouped/range/${
-                    this.ctx!.id
-                }/${startDate}/${endDate}`;
-            }
-            const blob = await get(url);
-            const file = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.download = `${this.ctx!.id}_${startDate.replace(/:/g, "")}_${endDate.replace(/:/g, "")}.xlsx`;
-            a.href = file;
-            document.querySelector("body")?.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(file);
-        });
+export type DownloadFormInput = {
+    supportsGrouping: boolean;
+};
+
+/**
+ * Data from the form is returned through the `data` event with the following 
+ * fields:
+ * startDate (Moment)
+ * endDate (Moment)
+ * scaleFactor (boolean)
+ * grouped (boolean)
+ */
+export class DownloadForm extends Form<DownloadFormInput> {
+    constructor(input: DownloadFormInput) {
+        super("download", "Download", input);
     }
 
     body(catalog: UICatalog): string {
         return `<form id="downloadForm">
-            ${catalog.disabledTextField({
-                name: "sensorName",
-                label: "Sensor",
-                value: this.ctx!.name,
-            })}
-            ${catalog.datepicker(
+           ${catalog.datepicker(
                 {
                     label: "Start date",
                     required: true,
@@ -83,20 +66,20 @@ export class DownloadForm extends Form<Sensor> {
     }
 
     async getData(catalog: UICatalog) {
-        const startDate = (catalog.get("startDate") as DateControl).moment;
-        const endDate = (catalog.get("endDate") as DateControl).moment;
+        const start = (catalog.get("startDate") as DateControl).moment;
+        const end = (catalog.get("endDate") as DateControl).moment;
         const grouped = this.doGroupedAndScaled() ? (catalog.get("grouped") as ToggleButtonControl).checked : false;
         const scaleFactor =
             this.doGroupedAndScaled() ? (catalog.get("scaleFactor") as ToggleButtonControl).checked : false;
         return {
-            startDate,
-            endDate,
+            start,
+            end,
             grouped,
             scaleFactor
         };
     }
 
     private doGroupedAndScaled() : boolean {
-        return this.ctx!.type === "delta" || this.ctx!.type === "counter";
+        return this.ctx!.supportsGrouping;
     }
 }

@@ -1,7 +1,30 @@
-const webpackConfig = require("./webpack.config.js");
+const { web } = require("webpack");
+const webpackConfigFile = require("./webpack.config.js");
 const path = require("path");
 
+let webpackAddonConfig = {
+    entry: ["./dev/sw/sensorcentral-sw.js"],
+    resolve: {
+        extensions: [".js"],
+    },
+    output: {
+        filename: "sw.js",
+        path: path.resolve(__dirname, "public"),
+    },
+}
+let webpackConfig;
+
 module.exports = function (grunt) {
+    const firsttask = grunt.cli.tasks[0];
+    if (firsttask === "clientside") {
+        webpackConfig = Object.assign({}, webpackConfigFile, {optimization: {minimize: false}});
+        webpackAddonConfig = Object.assign(webpackAddonConfig, { mode: "development" });
+    } else {
+        webpackConfig = Object.assign({}, webpackConfigFile);
+        webpackAddonConfig = Object.assign(webpackAddonConfig, { mode: "production" });
+    }
+    console.log(`Set mode to <${webpackAddonConfig.mode}>`);
+
     grunt.initConfig({
         clean: {
             all: ["public", "server-dist", "tscommand-*.tmp.txt"],
@@ -87,16 +110,7 @@ module.exports = function (grunt) {
         },
         webpack: [
             webpackConfig,
-            {
-                entry: ["./dev/sw/sensorcentral-sw.js"],
-                resolve: {
-                    extensions: [".js"],
-                },
-                output: {
-                    filename: "sw.js",
-                    path: path.resolve(__dirname, "public"),
-                },
-            },
+            webpackAddonConfig,
         ],
         ts: {
             serverside: {

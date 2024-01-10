@@ -1,9 +1,9 @@
-import * as uiutils from "../../js/ui-utils";
+import * as uiutils from "../ui-utils";
 import { graphql } from "../fetch-util";
 import moment from "moment-timezone";
-import Chart from "chart.js";
+import {Chart, ChartConfiguration} from "chart.js";
 import { datetimepicker, dropdown, initDateTimePicker } from "../forms-util";
-import { TIMEZONE, DATETIME_DATETIME_SHORT } from "../../js/date-utils";
+import { TIMEZONE, DATETIME_DATETIME_SHORT } from "../date-utils";
 
 const ISO8601 = "YYYY-MM-DDTHH:mm:ss.SSS[Z]";
 
@@ -83,7 +83,7 @@ const buildLineChartWithDataset = async (elemChart, datasets) => {
         labels: [],
         datasets: [] as any[],
     };
-    const chartConfig = {
+    const chartConfig : ChartConfiguration = {
         type: "line",
         data: chartData,
         options: {
@@ -127,7 +127,7 @@ const buildBarChartWithDataset = async (elemChart, dataset) => {
         labels: [],
         datasets: [] as any[],
     };
-    const chartConfig = {
+    const chartConfig: ChartConfiguration = {
         type: "bar",
         data: chartData,
         options: {
@@ -287,7 +287,7 @@ const buildBaseUI = (elemRoot, houses) => {
         {
             rel: "refresh",
             icon: "refresh",
-            click: function () {
+            click: async function () {
                 rebuildChartHandler();
             },
         },

@@ -1,4 +1,4 @@
-import * as  uiutils from "../../js/ui-utils";
+import * as  uiutils from "../ui-utils";
 import {HouseForm} from "../forms/create-edit-house";
 import {graphql} from "../fetch-util";
 import { House, HouseUser } from "../clientside-types";
@@ -21,14 +21,14 @@ export default (elemRoot: JQuery<HTMLElement>) => {
             {
                 rel: "create",
                 icon: "plus",
-                click: function () {
+                click: async function () {
                     new HouseForm().show();
                 },
             },
             {
                 rel: "refresh",
                 icon: "refresh",
-                click: function () {
+                click: async function () {
                     updateUI();
                 },
             },

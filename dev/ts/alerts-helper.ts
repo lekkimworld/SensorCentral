@@ -1,5 +1,5 @@
 import {Container, createContainers} from "./ui-helper";
-import * as uiutils from "../js/ui-utils";
+import * as uiutils from "./ui-utils";
 import { Alert, Device, Sensor } from "./clientside-types";
 import { graphql } from "./fetch-util";
 import { AlertForm } from "./forms/create-edit-alert";
@@ -31,7 +31,7 @@ const createUIAlerts = (ctx: UIContext<Device|Sensor, Alert>) => {
             {
                 rel: "refresh",
                 icon: "refresh",
-                click: () => {
+                click: async () => {
                     updateUIAlerts(ctx);
                 },
             },

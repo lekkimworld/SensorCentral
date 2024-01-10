@@ -1,8 +1,6 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
 const {lookupService} = require('../../../configure-services');
-import {formatDate} from "../../../utils";
-import moment from 'moment';
 
 const router = express.Router();
 
@@ -16,7 +14,7 @@ router.get("/:filename/:downloadKey/:as", async (req, res) => {
 
     if (!asType || asType === "attachment") {
         res.type("application/octet-stream");
-        res.setHeader("Content-Disposition", `attachment; filename="sensorcentral_${filename}_dataexport_${formatDate(moment(), "YYYYMMDD_HHmm")}.csv"`);
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     } else {
         res.type("json");
     }

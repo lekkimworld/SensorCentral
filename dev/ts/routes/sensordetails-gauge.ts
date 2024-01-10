@@ -1,60 +1,65 @@
-import * as uiutils from "../../js/ui-utils";
-import { addChartContainer } from "../../js/charts-util";
-import { SensorDetails, samplesTable } from "./sensordetails-base";
+import { addChartContainer } from "../charting/charting";
+import { SensorDetails, samplesTable, createSamplesTable } from "./sensordetails-base";
+import moment, { Moment } from "moment";
+import { graphql } from "../fetch-util";
+import { DataSet } from "../ui-helper";
+import RefreshAction from "../charting/actions/refresh-action";
+import DateIntervalAction from "../charting/actions/date-interval-action";
 
-const ID_SAMPLES_DIV = "samples";
-const ID_SAMPLES_TABLE = "samples_table";
-
-let chartCtx;
-let lastSamplesQueryCount = undefined;
-
-const buildChartAndTable = (sensor) => {
-    chartCtx.gaugeChart({ "sensors": [sensor] }).then(sensorSamples => {
-        if (!sensorSamples) return;
-        const samples = Array.isArray(sensorSamples) ? sensorSamples[0] : sensorSamples;
-        samplesTable(sensor, samples.data);
-    })
-}
 
 export default {
-    actionManualSample: true,
-    buildUI: (elemRoot, sensor) => {
-        // clear page
-        lastSamplesQueryCount = undefined;
+    actionManualSample: true, 
+    buildUI(elemRoot, sensor) {
+        // add chart
+        addChartContainer(elemRoot, {
+            title: "Sensor data",
+            type: "line",
+            timeseries: true, 
+            actions: [
+                new RefreshAction(),
+                new DateIntervalAction()
+            ],
+            async data(containerData) {
+                let start: Moment;
+                let end: Moment;
+                if (!containerData.start) {
+                    end = moment();
+                    start = moment().subtract(1, "day");
+                    containerData.start = start;
+                    containerData.end = end;
+                } else {
+                    start = containerData.start as Moment;
+                    end = containerData.end as Moment;
+                }
+                const data = await graphql(`{
+                        dataUngroupedDateQuery(
+                            filter: { sensorIds: ["${sensor.id}"],
+                            start: "${start.toISOString()}",
+                            end: "${end.toISOString()}" }
+                        ) {
+                            id
+                            name
+                            data {
+                                x
+                                y
+                            }
+                        }
+                    }
+                    `);
+                
+                // get datasets
+                const datasets = data.dataUngroupedDateQuery as Array<DataSet>;
 
-        // create div for graph
-        chartCtx = addChartContainer(elemRoot, {
-            actions: ["INTERVAL", "DOWNLOAD"],
-            callback: async (action, data) => {
-                if ("INTERVAL" !== action) return;
-
-                // get dates
-                const start_dt = data.start_dt;
-                const end_dt = data.end_dt;
-
-                // reload
-                const samples = await chartCtx.reload({
-                    start_dt, end_dt
-                })
-
-                // show samples
-                samplesTable(sensor, samples.data);
+                // build samples table
+                samplesTable(sensor, datasets[0].data);
+                
+                // return data for chart
+                return datasets;
             },
-        });
-
+        })
+        
         // create div's for samples table and load samples
-        elemRoot.append(uiutils.htmlSectionTitle("Samples"));
-        elemRoot.append(`<div id="${ID_SAMPLES_DIV}"><div id="${ID_SAMPLES_TABLE}"></div></div>`);
+        createSamplesTable(elemRoot);
 
-        // show chart and table
-        buildChartAndTable(sensor);
-    },
-
-    updateUI: (sensor) => {
-        buildChartAndTable(sensor);
     },
 } as SensorDetails;
-
-
-
-
