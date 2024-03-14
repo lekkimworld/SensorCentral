@@ -17,7 +17,8 @@ const ICONS = {
     download: "download",
     lock: "lock",
     calendar: "calendar",
-    save: "save"
+    date: "calendar-o",
+    save: "save",
 };
 export const getFontAwesomeIcon = (icon: ActionIcon) : string => {
     const result = ICONS[icon];

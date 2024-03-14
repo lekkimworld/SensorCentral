@@ -4,6 +4,7 @@ import moment, { Moment } from "moment";
 import DateAction from "../charting/actions/date-action";
 import PowerdataSaveAction from "../charting/actions/powerdata-save-action";
 import { DataSet } from "../ui-helper";
+import DateIntervalAction from "../charting/actions/date-interval-action";
 
 // declarations
 let visibleDates : any[] = [];
@@ -14,19 +15,35 @@ export default async (elem: JQuery<HTMLElement>) => {
         type: "bar",
         actions: [
             new DateAction(),
+            new DateIntervalAction(),
             new (class extends PowerdataSaveAction {
                 protected getDownloadOptions(containerData: any): PowerDataDownloadOptions {
-                    const m = containerData.date as Moment;
+                    const moments = containerData.dates as Array<Moment>;
                     return {
                         output: "excel",
                         type: "power",
-                        dates: [m],
+                        dates: moments,
                     };
                 }
             })(),
         ],
         data: async (containerData) => {
-            if (!containerData.date) {
+            if (containerData.date) {
+                // single date selection
+                containerData.dates = [containerData.date];
+                delete containerData.date;
+            } else if (containerData.start) {
+                // date interval selection
+                let d = containerData.start as Moment;
+                containerData.dates = [];
+                do {
+                    containerData.dates.push(d);
+                    d = d.clone().add(1, "day");
+                    
+                } while (d.isBefore(containerData.end));
+                delete containerData.start;
+                delete containerData.end;
+            } else if (!containerData.dates) {
                 // set initial dates (today and tomorrow)
                 const today = moment
                     .utc()
@@ -40,15 +57,17 @@ export default async (elem: JQuery<HTMLElement>) => {
 
             // format date and get data
             const strdates = (containerData.dates as Array<Moment>).map(m => m.format("YYYY-MM-DD"));
-            const powerqueries = `{
-                qToday: powerPriceQuery(filter: {date: "${strdates[0]}"}){id,name,fromCache,data{x,y}}
-                qTomorrow: powerPriceQuery(filter: {date: "${strdates[1]}"}){id,name,fromCache,data{x,y}}
-            }`;
+            let powerqueries = "{";
+            strdates.forEach((strdate, idx) => {
+                powerqueries += `q${idx}: powerPriceQuery(filter: {date: "${strdate}"}){id,name,fromCache,data{x,y}}`;
+            });
+            powerqueries += "}";
             const response = await graphql(powerqueries);
 
             // return
-            const data = [response.qToday as DataSet];
-            if (response.qTomorrow.data.length) data.push(response.qTomorrow as DataSet);
+            const data = strdates.map((_strdate, idx) => {
+                return response[`q${idx}`] as DataSet;
+            });
             return data;
         },
     });

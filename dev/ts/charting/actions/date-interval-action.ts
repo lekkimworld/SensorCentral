@@ -11,8 +11,8 @@ export default class DateIntervalAction extends ChartAction {
         new DateIntervalSelectForm()
             .addEventListener("data", async (e) => {
                 const data = (e as DataEvent).data as DateIntervalSelectFormData;
-                container.data.start = data.start;
-                container.data.end = data.end;
+                container.data.start = data.moment.start;
+                container.data.end = data.moment.end;
                 container.reload();
             })
             .show();
