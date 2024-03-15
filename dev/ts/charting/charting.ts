@@ -1,4 +1,4 @@
-import { BarController, BarElement, CategoryScale, Chart, ChartDataset, LineController, LineElement, LinearScale, PointElement, TimeScale } from "chart.js";
+import { BarController, BarElement, CategoryScale, Chart, ChartDataset, Legend, LegendElement, LineController, LineElement, LinearScale, PointElement, TimeScale } from "chart.js";
 import "chartjs-adapter-date-fns";
 import { da } from "date-fns/locale";
 import moment, { ISO_8601, Moment } from "moment";
@@ -7,7 +7,7 @@ import constants from "../../js/constants";
 import { post } from "../fetch-util";
 import { ActionIcon, DataElement, DataSet, getFontAwesomeIcon } from "../ui-helper";
 import * as uiutils from "../ui-utils";
-Chart.register(BarController, BarElement, LineController, CategoryScale, TimeScale, LinearScale, PointElement, LineElement );
+Chart.register(Legend, BarController, BarElement, LineController, CategoryScale, TimeScale, LinearScale, PointElement, LineElement );
 
 const ID_CHART_BASE = "sensorChart";
 const ID_CHART_CONTAINER = `${ID_CHART_BASE}_container`;
@@ -40,7 +40,7 @@ const getChartDatasetsLabels = (options: ChartContainerOptions, datasets: Array<
 const getChartDatasets = (options: ChartContainerOptions, datasets: Array<DataSet>): Array<ChartDataset> => {
     return datasets.map((ds, idx): ChartDataset => {
         return {
-            label: ds.id,
+            label: ds.name || ds.id,
             borderColor: colorMap[Object.keys(colorMap)[idx]],
             backgroundColor: colorMap[Object.keys(colorMap)[idx]],
             data: ds.data.map((elem) => elem.y),
@@ -53,6 +53,11 @@ const getChartOptions = (options: ChartContainerOptions, datasets: Array<DataSet
         x: {},
         y: {}
     }
+    const result : any = {
+        responsive: true,
+        plugins: {},
+        scales
+    };
     if (options.type === "stacked-bar") {
         scales.x.stacked = true;
         scales.y.stacked = true;
@@ -80,11 +85,17 @@ const getChartOptions = (options: ChartContainerOptions, datasets: Array<DataSet
         scales.y.max = getMaximumDatasetsValue(datasets, options.adjustMaximumY);
     }
 
-    // return
-    return {
-        responsive: true,
-        scales
+    // legends
+    result.plugins.legend = {
+        position: "top",
+        display: options.legend || false
     };
+    result.plugins.title = {
+        display: true,
+    }
+    
+    // return
+    return result;
 }
 export const getMinimumDatasetsValue = (datasets: Array<DataSet>, adjust: number = -2) : number => {
     const min = Math.floor(
@@ -196,6 +207,11 @@ export type ChartContainerOptions = {
      * Should we replace html in the element - default is to append.
      */
     replaceHtml?: boolean;
+
+    /**
+     * Should we show legends.
+     */
+    legend?: boolean;
 
     /**
      * Actions to show either custom or standard.

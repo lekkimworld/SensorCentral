@@ -15,6 +15,7 @@ export default async (elem: JQuery<HTMLElement>) => {
     addChartContainer(elem, {
         title: "Stacked Delta Sensors (this week)",
         type: "stacked-bar",
+        legend: true,
         actions: [
             new RefreshAction()
         ],

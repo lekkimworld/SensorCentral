@@ -13,6 +13,7 @@ export default async (elem: JQuery<HTMLElement>) => {
     const powerpriceChart1 = addChartContainer(elem, {
         title: "Power Prices (kr/kWh)",
         type: "bar",
+        legend: true,
         actions: [
             new DateAction(),
             new DateIntervalAction(),
@@ -65,8 +66,9 @@ export default async (elem: JQuery<HTMLElement>) => {
             const response = await graphql(powerqueries);
 
             // return
-            const data = strdates.map((_strdate, idx) => {
-                return response[`q${idx}`] as DataSet;
+            const data = strdates.map((strdate, idx) => {
+                const ds = response[`q${idx}`] as DataSet;
+                return ds;
             });
             return data;
         },

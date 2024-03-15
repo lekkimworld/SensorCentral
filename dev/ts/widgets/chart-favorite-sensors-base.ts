@@ -8,6 +8,7 @@ export default (elem: JQuery<HTMLElement>, title: string, type: string) => {
         title,
         type: "line",
         timeseries: true,
+        legend: true,
         actions: [
             new RefreshAction()
         ],
