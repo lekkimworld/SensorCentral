@@ -3,7 +3,14 @@ import {addChartContainer} from "../charting/charting";
 import { DataElement, DataSet } from "../ui-helper";
 import RefreshAction from "../charting/actions/refresh-action";
 
-export default (elem: JQuery<HTMLElement>, title: string, type: string) => {
+export default async (elem: JQuery<HTMLElement>, title: string, type: string) => {
+    const sensors = await graphql(`{sensors(data: {favorite: yes, type: ${type}}){id,name,type}}`, { noSpinner: true });
+    if (!sensors.sensors.length) {
+        // no sensors
+        return;
+    }
+
+    // add chart
     addChartContainer(elem, {
         title,
         type: "line",
@@ -13,7 +20,7 @@ export default (elem: JQuery<HTMLElement>, title: string, type: string) => {
             new RefreshAction()
         ],
         async data(containerData) {
-            const sensors = await graphql(`{sensors(data: {favorite: yes, type: ${type}}){id,name,type}}`, {"noSpinner": true});
+            
             const data = await graphql(`
                 {
                     dataUngroupedCountQuery(

@@ -47,6 +47,7 @@ export type RouteAction<T> = {
 export type DataSet = {
     id: string;
     name: string | undefined;
+    group?: string;
     fromCache: boolean;
     data: DataElement[];
 };

@@ -1,10 +1,9 @@
-import { BarController, BarElement, CategoryScale, Chart, ChartDataset, Legend, LegendElement, LineController, LineElement, LinearScale, PointElement, TimeScale } from "chart.js";
+import { BarController, BarElement, CategoryScale, Chart, ChartDataset, Legend, LineController, LineElement, LinearScale, PointElement, TimeScale } from "chart.js";
 import "chartjs-adapter-date-fns";
 import { da } from "date-fns/locale";
 import moment, { ISO_8601, Moment } from "moment";
 import { v4 as uuid } from "uuid";
 import constants from "../constants";
-import { post } from "../fetch-util";
 import { ActionIcon, DataElement, DataSet, getFontAwesomeIcon } from "../ui-helper";
 import * as uiutils from "../ui-utils";
 Chart.register(Legend, BarController, BarElement, LineController, CategoryScale, TimeScale, LinearScale, PointElement, LineElement );
@@ -45,6 +44,7 @@ const getChartDatasets = (options: ChartContainerOptions, datasets: Array<DataSe
             backgroundColor: colorMap[Object.keys(colorMap)[idx]],
             data: ds.data.map((elem) => elem.y),
             pointRadius: 0,
+            stack: ds.group || uuid()
         };
     });
 };
