@@ -1,7 +1,6 @@
 import moment, {Moment} from 'moment-timezone';
 import constants from "./constants";
 import semaphore, { Semaphore } from "semaphore";
-const pckg = require('../package.json');
 
 export const formatDate = function(date? : any, format? : string) : string {
     // see if already a "moment" instance
@@ -36,11 +35,11 @@ export const objectHasOwnProperty_Falseish = (obj: any, prop: string): boolean =
 export const buildBaseHandlebarsContext = () : any => {
     return {
         app_name: constants.APP.NAME,
-        app_version: pckg.version,
+        app_version: constants.APP.VERSION,
         app_current_year: new Date().getFullYear(),
         app_gitcommit: constants.APP.GITCOMMIT,
         app_gitcommit_url: `https://github.com/lekkimworld/SensorCentral/commit/${constants.APP.GITCOMMIT}`,
-        app_title: constants.APP.TITLE
+        app_title: constants.APP.TITLE,
     };
 }
 

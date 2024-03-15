@@ -71,6 +71,9 @@ terminateListener(() => {
 
 // start app
 const main = async () => {
+	// show node_env
+	logger.info(`Starting app - NODE_ENV <${process.env.NODE_ENV}> APP_GITCOMMIT <${constants.APP.GITCOMMIT}> APP_VERSION <${constants.APP.VERSION}> APP_TITLE <${constants.APP.TITLE}>`);
+	
 	// configure express
 	const app = await (await services.lookupService(ExpressService.NAME) as ExpressService).configureExpress();
 

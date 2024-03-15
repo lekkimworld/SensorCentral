@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION=`cat package.json| jq ".version" -r`
+VERSION=`cat package.json | jq ".version" -r`
 IFS="." read -a VERSION_SPLIT <<< "$VERSION"
 echo "Version, full: $VERSION"
 echo "Version, major: ${VERSION_SPLIT[0]}"

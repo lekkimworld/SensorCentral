@@ -1,6 +1,6 @@
 {
     "name": "sensorcentral",
-    "version": "1.13.5",
+    "version": "1.13.6",
     "description": "",
     "main": "src/workers/worker_web.ts",
     "scripts": {
@@ -8,7 +8,7 @@
         "watch-serverside": "npx nodemon --watch 'src/**' --ext 'ts' --ignore 'src/**/*.spec.ts' --exec 'ts-node src/workers/worker_web.ts'",
         "watch-clientside": "npx nodemon --watch 'dev/**' --ext 'js,ts' --ignore 'dev/**/*.spec.ts' --exec 'grunt clientside'",
         "powerdata-loader": "node server-dist/workers/worker_powerdata.js",
-        "web-serve": "node server-dist/workers/worker_web.js",
+        "web-serve": "export $(cat .env | xargs) && node server-dist/workers/worker_web.js",
         "test": "npx mocha tests/*.js tests/**/*.js --reporter spec --no-timeouts",
         "build": "npx grunt",
         "clean": "npx grunt clean"

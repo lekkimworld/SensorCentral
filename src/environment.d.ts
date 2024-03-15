@@ -36,11 +36,6 @@ declare global {
             DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE: string;
 
             /**
-             * URL for rabbitmq
-             */
-            CLOUDAMQP_URL: string;
-
-            /**
              * URL for Redis
              */
             REDIS_URL: string;
@@ -81,7 +76,7 @@ declare global {
 
             /**
              * Admin password.
-             * 
+             *
              */
             ADMIN_PASSWORD: string;
 
@@ -101,9 +96,14 @@ declare global {
             APP_PROTOCOL: "http" | "https";
 
             /**
-             * The commit the build was made from if any
+             * The commit the build was made from if any (from build)
              */
             APP_GITCOMMIT: string;
+
+            /**
+             * The app version (from build)
+             */
+            APP_VERSION: string;
 
             /**
              * The app title show in the browser. Defaults to SensorCentral.
