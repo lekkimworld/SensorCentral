@@ -121,6 +121,7 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
             addChartContainer(elemSensorsContent, {
                 title: "Binary, guage or counter sensor data",
                 type: "line",
+                legend: true, 
                 timeseries: true, 
                 actions: [
                     new RefreshAction(),
