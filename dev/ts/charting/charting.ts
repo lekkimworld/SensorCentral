@@ -38,14 +38,15 @@ const getChartDatasetsLabels = (options: ChartContainerOptions, datasets: Array<
 }
 const getChartDatasets = (options: ChartContainerOptions, datasets: Array<DataSet>): Array<ChartDataset> => {
     return datasets.map((ds, idx): ChartDataset => {
-        return {
+        const chartDs = {
             label: ds.name || ds.id,
             borderColor: colorMap[Object.keys(colorMap)[idx]],
             backgroundColor: colorMap[Object.keys(colorMap)[idx]],
             data: ds.data.map((elem) => elem.y),
-            pointRadius: 0,
-            stack: ds.group || uuid()
-        };
+            pointRadius: 0
+        } as ChartDataset;
+        if (ds.group) chartDs.stack = ds.group;
+        return chartDs;
     });
 };
 const getChartOptions = (options: ChartContainerOptions, datasets: Array<DataSet>) => {
