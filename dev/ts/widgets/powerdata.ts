@@ -69,7 +69,11 @@ export default async (elem: JQuery<HTMLElement>) => {
             const data = strdates.map((strdate, idx) => {
                 const ds = response[`q${idx}`] as DataSet;
                 return ds;
-            });
+            }).reduce((prev, ds) => {
+                if (ds.data.length) prev.push(ds);
+                return prev;
+            }, [] as Array<DataSet>);
+            
             return data;
         },
     });

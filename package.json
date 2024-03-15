@@ -1,6 +1,6 @@
 {
     "name": "sensorcentral",
-    "version": "1.13.6",
+    "version": "1.13.7",
     "description": "",
     "main": "src/workers/worker_web.ts",
     "scripts": {
