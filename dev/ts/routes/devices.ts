@@ -107,7 +107,7 @@ export default (elemRoot: JQuery<HTMLElement>, houseId: string) => {
                             maxDiff: 12,
                             scale: "minutes",
                             defaultVale: "N/A",
-                        };
+                        } as dateutils.TimeDiffereceOptions;
                         const status = `Last ping: ${dateutils.timeDifferenceAsString(
                             device.last_ping,
                             diff_options

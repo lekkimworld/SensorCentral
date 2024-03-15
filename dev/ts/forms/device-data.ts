@@ -13,7 +13,7 @@ export class DeviceData extends Form<Device> {
             };
             const catalog = (ev as InitEvent).catalog;
             catalog.get("ip").value = data.deviceData.ip;
-            catalog.get("dt").value = dateutils.formatWithFormat(data.deviceData.dt);
+            catalog.get("dt").value = dateutils.formatDMYTime(data.deviceData.dt);
         })
     }
 

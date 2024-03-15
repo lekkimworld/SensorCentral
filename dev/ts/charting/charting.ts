@@ -3,7 +3,7 @@ import "chartjs-adapter-date-fns";
 import { da } from "date-fns/locale";
 import moment, { ISO_8601, Moment } from "moment";
 import { v4 as uuid } from "uuid";
-import constants from "../../js/constants";
+import constants from "../constants";
 import { post } from "../fetch-util";
 import { ActionIcon, DataElement, DataSet, getFontAwesomeIcon } from "../ui-helper";
 import * as uiutils from "../ui-utils";

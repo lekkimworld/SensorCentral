@@ -1,12 +1,12 @@
 import * as moment from "moment";
 import "moment-timezone";
-import constants from "../js/constants";
+import constants from "./constants";
 
 export const TIMEZONE = constants.TIMEZONE;
 export const DATETIME_DATETIME_SHORT = "D/M HH:mm";
 const DATETIME_FORMAT = "D-M-YYYY [kl.] k:mm";
 
-export const formatWithFormat = (date, format, defaultValue) => {
+export const formatWithFormat = (date: string | Date, format: string, defaultValue?: string) => {
     let use_date;
     if (!date && defaultValue) {
         return defaultValue;
@@ -24,16 +24,22 @@ export const formatWithFormat = (date, format, defaultValue) => {
     return use_date.tz(constants.TIMEZONE).format(format || "DD-MM-YYYY kk:mm");
 }
 
-export const formatDMYTime = (date, defaultValue) => {
+export const formatDMYTime = (date, defaultValue?) => {
     return formatWithFormat(date, DATETIME_FORMAT, defaultValue);
 }
 
-export const timeDifference = (date, options = {}) => {
+export type TimeDiffereceOptions = {
+    scale?: "seconds" | "hours" | "minutes";
+    defaultValue?: string;
+    format?: string;
+    maxDiff?: number;
+};
+export const timeDifference = (date, options : TimeDiffereceOptions = {}) => {
     if (!date) return undefined;
     let use_date = typeof date === "string" ? moment.utc(date) : moment(date);
     const moment_diff = moment.duration(moment().diff(use_date));
     let diff;
-    if (options.hasOwnProperty("scale") && typeof options.scale === "string") {
+    if ("scale" in options) {
         switch (options.scale) {
             case "seconds": 
                 diff = moment_diff.asSeconds();
@@ -53,17 +59,19 @@ export const timeDifference = (date, options = {}) => {
 
 }
 
-export const timeDifferenceAsString = (date, options = {}) => {
+export const timeDifferenceAsString = (date, options : TimeDiffereceOptions = {}) => {
     const diff = timeDifference(date, options);
     if (undefined === diff) return options.defaultValue || "N/A";
     
-    if (options.hasOwnProperty("maxDiff") && diff > options.maxDiff) {
+    if (options.maxDiff && diff > options.maxDiff) {
         return formatDMYTime(date, options.format);
     }
-    if (options.hasOwnProperty("scale")) {
+    if ("scale" in options) {
         switch (options.scale) {
             case "seconds": 
                 return `${diff} sek.`;
+            case "minutes":
+                return `${diff} min.`;
             case "hours":
                 return `${diff} time(r)`;
         }
