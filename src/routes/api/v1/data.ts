@@ -4,8 +4,7 @@ import { ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage,
 import { Logger } from '../../../logger';
 import { LAST_N_SAMPLES, StorageService } from '../../../services/storage-service';
 const {lookupService} = require('../../../configure-services');
-import constants from "../../../constants";
-import {formatDate} from "../../../utils";
+import constants, { ISO8601_DATETIME_FORMAT } from "../../../constants";
 import moment from 'moment';
 import { ensureScopeFactory, hasScope } from '../../../middleware/ensureScope';
 import {v4 as uuid} from 'uuid';
@@ -93,6 +92,12 @@ router.post("/samples", async (req, res, next) => {
         // set duration but devide by 1000 as S0 sends duration in milliseconds
         // but we track duration in seconds
         queueObj.duration = body.duration / 1000;
+
+		// if duration is negative we adjust the supplied dt and take the absolute value of duration instead
+		if (queueObj.duration < 0) {
+			queueObj.dt = moment.utc(str_dt, ISO8601_DATETIME_FORMAT).subtract(Math.abs(queueObj.duration), "seconds").toISOString();
+			queueObj.duration = Math.abs(queueObj.duration);
+		}
     }
 
 	try {
@@ -107,8 +112,7 @@ router.post("/samples", async (req, res, next) => {
 		const objResult = {
             id,
             value,
-            dt: str_dt,
-            dt_string: formatDate(moment.utc(str_dt))
+            dt: str_dt
         } as any;
 		if (queueObj.duration) objResult.duration = body.duration;
 		return res.status(201).send(objResult);
@@ -236,10 +240,20 @@ router.post("/", async (req, res, next) => {
 					"deviceId": deviceId
 				}
 				if (element.sensorDuration) {
-					// set duration but devide by 1000 as S0 sends duration in milliseconds 
-					// but we track duration in seconds
-					payload.duration = element.sensorDuration / 1000;
-				}
+                    // set duration but devide by 1000 as S0 sends duration in milliseconds
+                    // but we track duration in seconds
+                    payload.duration = element.sensorDuration / 1000;
+
+                    // if duration is negative we set dt to be now and adjust by the duration 
+					// and set the absolute value of duration instead
+                    if (payload.duration < 0) {
+                        payload.dt = moment
+                            .utc()
+                            .subtract(Math.abs(payload.duration), "seconds")
+                            .toISOString();
+                        payload.duration = Math.abs(payload.duration);
+                    }
+                }
 				
 				eventService.publish(constants.QUEUES.SENSOR, payload).then(() => {
 					logger.debug(`Published message to ${constants.QUEUES.SENSOR}`);
