@@ -1,4 +1,4 @@
-import { BarController, BarElement, CategoryScale, Chart, ChartDataset, Legend, LineController, LineElement, LinearScale, PointElement, TimeScale } from "chart.js";
+import { Legend as LegendType, LegendItem, BarController, BarElement, CategoryScale, Chart, ChartDataset, LineController, LineElement, LinearScale, PointElement, TimeScale } from "chart.js";
 import "chartjs-adapter-date-fns";
 import { da } from "date-fns/locale";
 import moment, { ISO_8601, Moment } from "moment";
@@ -6,7 +6,8 @@ import { v4 as uuid } from "uuid";
 import constants from "../constants";
 import { ActionIcon, DataElement, DataSet, getFontAwesomeIcon } from "../ui-helper";
 import * as uiutils from "../ui-utils";
-Chart.register(Legend, BarController, BarElement, LineController, CategoryScale, TimeScale, LinearScale, PointElement, LineElement );
+import { Legend } from "chart.js/dist/plugins/plugin.legend";
+Chart.register(LegendType, BarController, BarElement, LineController, CategoryScale, TimeScale, LinearScale, PointElement, LineElement );
 
 const ID_CHART_BASE = "sensorChart";
 const ID_CHART_CONTAINER = `${ID_CHART_BASE}_container`;
@@ -49,7 +50,7 @@ const getChartDatasets = (options: ChartContainerOptions, datasets: Array<DataSe
         return chartDs;
     });
 };
-const getChartOptions = (options: ChartContainerOptions, datasets: Array<DataSet>) => {
+const getChartOptions = (state: ChartState, options: ChartContainerOptions, datasets: Array<DataSet>) => {
     const scales : any = {
         x: {},
         y: {}
@@ -89,7 +90,18 @@ const getChartOptions = (options: ChartContainerOptions, datasets: Array<DataSet
     // legends
     result.plugins.legend = {
         position: "top",
-        display: options.legend || false
+        display: options.legend || false,
+        onClick: (event, legendItem: LegendItem, legend: Legend) => {
+            console.log(event);
+            console.log(legendItem);
+            console.log(legend);
+            console.log(datasets);
+            
+            const datasetIndex = legendItem.datasetIndex!;
+            const dataset = state.chart?.getDatasetMeta(datasetIndex)!;
+            dataset.hidden = !dataset.hidden
+            legend.chart.update();
+        }
     };
     result.plugins.title = {
         display: true,
@@ -327,7 +339,7 @@ export const addChartContainer = (elemRoot: JQuery<HTMLElement>, options : Chart
             // update chart
             state.chart.data.labels = getChartDatasetsLabels(options, datasets);
             state.chart.data.datasets = getChartDatasets(options, datasets);
-            state.chart.options = getChartOptions(options, datasets) as any;
+            state.chart.options = getChartOptions(state, options, datasets) as any;
             state.chart.update();
         } else {
             // build chart
@@ -339,7 +351,7 @@ export const addChartContainer = (elemRoot: JQuery<HTMLElement>, options : Chart
                     labels: getChartDatasetsLabels(options, datasets),
                     datasets: getChartDatasets(options, datasets),
                 },
-                options: getChartOptions(options, datasets) as any,
+                options: getChartOptions(state, options, datasets) as any,
             });
         }
 

@@ -87,6 +87,14 @@ router.post("/samples", async (req, res, next) => {
 		deviceId,
 		dt: str_dt
 	} as IngestedSensorMessage;
+
+	// set duration if supplied
+	if (body.duration) {
+        // set duration but devide by 1000 as S0 sends duration in milliseconds
+        // but we track duration in seconds
+        queueObj.duration = body.duration / 1000;
+    }
+
 	try {
 		// ensure we know the device still (device may have an JWT for a deleted device)
 		await storageService.getDevice(user, deviceId);
@@ -96,12 +104,14 @@ router.post("/samples", async (req, res, next) => {
 		logger.debug(`Posted message (<${JSON.stringify(queueObj)}>) to queue <${constants.QUEUES.SENSOR}>`);
 
 		// return
-		return res.status(201).send({
-			id, 
-			value, 
-			"dt": str_dt,
-			"dt_string": formatDate(moment.utc(str_dt))
-		});
+		const objResult = {
+            id,
+            value,
+            dt: str_dt,
+            dt_string: formatDate(moment.utc(str_dt))
+        } as any;
+		if (queueObj.duration) objResult.duration = body.duration;
+		return res.status(201).send(objResult);
 
 	} catch (err) {
 		logger.warn(`Unable to send sample for sensor with ID <${id}> to queue...`);
