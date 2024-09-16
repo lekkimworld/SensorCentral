@@ -8,7 +8,7 @@ import { CreateSensorType, DeleteSensorType, FavoriteSensorsInput, UpdateSensorT
 import { UpdatePushoverSettingsInput } from "../resolvers/settings";
 import {
     BackendIdentity, BaseService, DataElement, Device, DeviceData, Endpoint, getHttpMethod, HouseUser, HttpMethod, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Sensor,
-    SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, UserPrincipal
+    SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, TokenIssuerInformation, UserPrincipal
 } from "../types";
 import { DatabaseService } from "./database-service";
 import { PubsubService } from "./pubsub-service";
@@ -373,7 +373,8 @@ export class StorageService extends BaseService {
         }
 
         // insert house row
-        return this.dbService.query("BEGIN")
+        return this.dbService
+            .query("BEGIN")
             .then(() => {
                 return this.dbService.query("insert into house (id, name) values ($1, $2)", house_id, use_name);
             })
@@ -508,7 +509,8 @@ export class StorageService extends BaseService {
      * @param data
      */
     async setFavoriteHouse(user: BackendIdentity, { id }: FavoriteHouseInput): Promise<House> {
-        return this.dbService.query(`BEGIN;`)
+        return this.dbService
+            .query(`BEGIN;`)
             .then(() => {
                 return this.dbService.query(
                     "select userId, houseId, is_default from user_house_access where userId=$1 and houseId=$2",
@@ -565,7 +567,8 @@ export class StorageService extends BaseService {
         // get house to ensure access
         const house = await this.getHouse(user, houseId);
 
-        return this.dbService.query("BEGIN")
+        return this.dbService
+            .query("BEGIN")
             .then(() => {
                 return serial(
                     (Array.isArray(userId) ? userId : [userId]).map((uid) => () => {
@@ -593,7 +596,8 @@ export class StorageService extends BaseService {
     async revokeHouseAccess(user: BackendIdentity, houseId: string, userId: string | Array<string>): Promise<boolean> {
         // get house to ensure access
         const house = await this.getHouse(user, houseId);
-        return this.dbService.query("BEGIN")
+        return this.dbService
+            .query("BEGIN")
             .then(() => {
                 return serial(
                     (Array.isArray(userId) ? userId : [userId]).map((uid) => () => {
@@ -1518,18 +1522,20 @@ export class StorageService extends BaseService {
         await this.getSensor(user, sensorId);
 
         // get data
-        return this.dbService.query(
-            `select sd.value as value, sd.dt dt, case when s.scalefactor is null then 1 else s.scalefactor end from sensor_data sd left outer join sensor s on sd.id=s.id where sd.id='${sensorId}' order by dt desc limit ${samples}`
-        ).then((result) => {
-            const arr = result.rows.map((row) => {
-                return {
-                    id: sensorId,
-                    dt: row.dt,
-                    value: applyScaleFactor ? row.value * row.scalefactor : row.value,
-                } as SensorSample;
+        return this.dbService
+            .query(
+                `select sd.value as value, sd.dt dt, case when s.scalefactor is null then 1 else s.scalefactor end from sensor_data sd left outer join sensor s on sd.id=s.id where sd.id='${sensorId}' order by dt desc limit ${samples}`
+            )
+            .then((result) => {
+                const arr = result.rows.map((row) => {
+                    return {
+                        id: sensorId,
+                        dt: row.dt,
+                        value: applyScaleFactor ? row.value * row.scalefactor : row.value,
+                    } as SensorSample;
+                });
+                return Promise.resolve(arr);
             });
-            return Promise.resolve(arr);
-        });
     }
 
     /**
@@ -1804,9 +1810,7 @@ export class StorageService extends BaseService {
                 bearerToken:
                     !row.bearertoken || row.bearertoken.length <= 15
                         ? "xxxxx"
-                        : `...${row.bearertoken.substring(
-                              row.bearertoken.length - 5
-                          )}`,
+                        : `...${row.bearertoken.substring(row.bearertoken.length - 5)}`,
             } as Endpoint;
         });
     }
@@ -1966,7 +1970,10 @@ export class StorageService extends BaseService {
         return (await this.getUserOnSensorSampleEvents(user, input.sensorId)).find((e) => e.id === id)!;
     }
 
-    async updateOnSensorSampleEvent(user: BackendIdentity, input: UpdateOnSensorSampleEventInput): Promise<OnSensorSampleEvent> {
+    async updateOnSensorSampleEvent(
+        user: BackendIdentity,
+        input: UpdateOnSensorSampleEventInput
+    ): Promise<OnSensorSampleEvent> {
         const userid = user.identity.callerId;
 
         let queryFields = [];
@@ -2017,6 +2024,28 @@ export class StorageService extends BaseService {
             logger.error(`Unable to delete event_onsensorsample record with id <${input.id}> for user <${userid}>`);
             throw new Error(`Unable to delete event_onsensorsample record with id <${input.id}> for user <${userid}>`);
         }
+    }
+
+    async getTokenIssuerInformationByKid(kid: string) : Promise<TokenIssuerInformation> {
+        const result = await this.dbService.query("select id, public_key, issuer, houseid from jwt_issuers where id=$1", kid);
+        if (result.rowCount !== 1) {
+            logger.error(`Unable to find JWT issuer with kid <${kid}>`);
+            throw new Error(`Unable to find JWT issuer with kid <${kid}>`);
+        }
+
+        // get the users for the house
+        const houseId = result.rows[0].houseid;
+        const users = await this.dbService.query("select userid from USER_HOUSE_ACCESS where houseid=$1", houseId);
+        const subjects = users.rows.map(u => u.userid as string);
+
+        // return
+        return {
+            issuer: result.rows[0].issuer,
+            publicKey: Buffer.from(result.rows[0].public_key, "base64"),
+            subjects,
+            houseId
+        } as TokenIssuerInformation
+
     }
 
     private buildSmartmeSubscriptionsFromRows(result: QueryResult<any>): SmartmeSubscription[] {

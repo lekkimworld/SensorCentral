@@ -70,17 +70,68 @@ export class IdentityService extends BaseService {
     }
 
     async verifyJWT(token: string): Promise<BackendIdentity> {
-        const secret = process.env.API_JWT_SECRET as string;
+        // ensure format
+        if (!token || !token.match(/[a-z0-9]+\.[0-9a-z]+\.[0-9a-z]+/i)) {
+            throw Error('Token does not look like a JWT');
+        }
+        const tokenParts = token.split(".");
+        const tokenHeader : Record<string,string> = JSON.parse(Buffer.from(tokenParts[0], "base64").toString());
+        const tokenBody : Record<string,string|number> = JSON.parse(Buffer.from(tokenParts[1], "base64").toString());
+
+        // verify the audience is correct
+        const tokenAudience = tokenBody.aud;
+        if (tokenAudience !== constants.JWT.AUDIENCE) {
+            throw Error(`Audience in JWT is set incorrectly <${tokenAudience}> - expected <${constants.JWT.AUDIENCE}>`);
+        }
+
+        // look at the issuer of the token
+        const tokenIssuer = tokenBody.iss;
         let decoded: any;
-        try {
+        let tokenScopes = [constants.JWT.SCOPE_API, constants.JWT.SCOPE_READ];
+        let tokenHouseId;
+        if (tokenIssuer !== constants.JWT.OUR_ISSUER) {
+            // token was issued by someone else than us - get the kid and lookup the key
+            const kid = tokenHeader.kid;
+            logger.debug(`Received a token not issued by us - getting the kid <${kid}>`);
+            if (!kid) throw Error("JWT is not issued by us and there is no kid in the header");
+            const tokenIssuerInfo = await this.storage.getTokenIssuerInformationByKid(kid);
+            logger.debug(`Retrieved token issuer info <${JSON.stringify(tokenIssuerInfo)}> by kid <${kid}>`);
+
             // verify token
-            decoded = await jwt.verify(token, secret, {
-                algorithms: ["HS256"],
+            decoded = await jwt.verify(token, tokenIssuerInfo.publicKey, {
+                algorithms: ["RS256"],
                 audience: constants.JWT.AUDIENCE,
-                issuer: constants.JWT.ISSUERS,
-            });
-        } catch (err) {
-            throw Error(`Unable to verify JWT: ${err.message}`);
+                issuer: tokenIssuerInfo.issuer
+            })
+
+            // ensure there is no claims there should not be
+            if (Object.keys(tokenBody).includes("imp")) {
+                throw Error("You may not supply the imp claim");
+            }
+            
+            // ensure the subject of the token is a user from the house the key belongs to
+            if (!tokenIssuerInfo.subjects.includes(decoded.sub)) {
+                throw Error("The supplied subject is not valid for the signer kid");
+            }
+
+            // we now have the house id
+            tokenHouseId = tokenIssuerInfo.houseId;
+
+        } else {
+            // we issued the token
+            const secret = process.env.API_JWT_SECRET as string;
+            try {
+                // verify token
+                decoded = await jwt.verify(token, secret, {
+                    algorithms: ["HS256"],
+                    audience: constants.JWT.AUDIENCE,
+                    issuer: constants.JWT.OUR_ISSUER,
+                });
+                tokenScopes = decoded.scopes.split(" ");
+                tokenHouseId = decoded.houseid;
+            } catch (err) {
+                throw Error(`Unable to verify JWT: ${err.message}`);
+            }
         }
 
         // if there is no impersonation id see if it's a whitelisted device id
@@ -109,20 +160,20 @@ export class IdentityService extends BaseService {
                 identity: {
                     callerId: decoded.sub,
                     impersonationId: decoded.imp,
-                    houseId: decoded.houseid,
+                    houseId: tokenHouseId,
                 } as Identity,
                 principal: new DevicePrincipal(device.name),
-                scopes: decoded.scopes.split(" "),
+                scopes: tokenScopes,
             } as BackendIdentity;
         } else if (decoded.sub === "*") {
             ident = {
                 identity: {
                     callerId: decoded.sub,
                     impersonationId: undefined,
-                    houseId: decoded.houseId,
+                    houseId: tokenHouseId,
                 } as Identity,
                 principal: new SystemPrincipal("God"),
-                scopes: decoded.scopes.split(" "),
+                scopes: tokenScopes,
             } as BackendIdentity;
         } else {
             // lookup user
@@ -131,10 +182,10 @@ export class IdentityService extends BaseService {
                 identity: {
                     callerId: decoded.sub,
                     impersonationId: undefined,
-                    houseId: decoded.houseid,
+                    houseId: tokenHouseId,
                 } as Identity,
                 principal: user,
-                scopes: decoded.scopes.split(" "),
+                scopes: tokenScopes,
             } as BackendIdentity;
         }
 

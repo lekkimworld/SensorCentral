@@ -5,7 +5,6 @@ export const ISO8601_DATETIME_FORMAT = "YYYY-MM-DDTHH:mm:ss.SSS[Z]";
 
 const JWT = {
     "OUR_ISSUER": "https://sensorcentral.heisterberg.dk",
-    "ISSUERS": process.env.API_JWT_ISSUER ? [process.env.API_JWT_ISSUER] : ["https://sensorcentral.heisterberg.dk"],
     "AUDIENCE": process.env.API_JWT_AUDIENCE ? process.env.API_JWT_AUDIENCE : "https://sensorcentral.heisterberg.dk",
     "SCOPE_API": "api",                 // base access, required for any access
     "SCOPE_SENSORDATA": "sensordata",   // post sensordata, required to post sensor data

@@ -531,3 +531,10 @@ export interface DataElement {
     x: string;
     y: number;
 }
+
+export type TokenIssuerInformation = {
+    publicKey: Buffer;
+    houseId: string;
+    issuer: string;
+    subjects: Array<string>;
+}

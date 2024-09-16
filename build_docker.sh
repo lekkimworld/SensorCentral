@@ -25,6 +25,7 @@ docker build \
     --build-arg APP_NODE_ENV="$NODE_ENV" \
     --tag lekkim/sensorcentral:$VERSION \
     .
+echo "Built image and tagged as ${VERSION}"
 
 if [ "$NODE_ENV" == "production" ]; then
     # add additional tags
