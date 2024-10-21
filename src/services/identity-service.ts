@@ -10,6 +10,17 @@ import { RedisService } from "./redis-service";
 
 const logger = new Logger("identity-service");
 
+type TokenHeader = {
+    kid: string;
+};
+
+type TokenBody = {
+    sub: string;
+    aud: string;
+    iss: string;
+    imp: string|undefined;
+}
+
 export interface CreateLoginUserInput {
     source: LoginSource;
     oidc_sub: string;
@@ -65,18 +76,29 @@ export class IdentityService extends BaseService {
         callback();
     }
 
-    private getRedisKey(userId: string, impId: string): string {
+    private getRedisKey(userId: string, impId?: string): string {
         return `${LOGIN_KEY_PREFIX}${userId}_${impId ? impId : userId}`;
     }
 
+    /**
+     * Passed a JWT token this method will verify that it was issued by this service 
+     * or from another service and signed by a valid key matching the kid in the 
+     * JWT header.
+     * 
+     * @param token JWT token to verify
+     * @returns 
+     */
     async verifyJWT(token: string): Promise<BackendIdentity> {
         // ensure format
-        if (!token || !token.match(/[a-z0-9]+\.[0-9a-z]+\.[0-9a-z]+/i)) {
-            throw Error('Token does not look like a JWT');
+        if (!token) {
+            throw Error("No token supplied");
         }
-        const tokenParts = token.split(".");
-        const tokenHeader : Record<string,string> = JSON.parse(Buffer.from(tokenParts[0], "base64").toString());
-        const tokenBody : Record<string,string|number> = JSON.parse(Buffer.from(tokenParts[1], "base64").toString());
+        const matcher = token.match(/(ey[_+/=a-z0-9]+)\.(ey[_+/=0-9a-z]+)\.([_+/=0-9a-z]+)/i);
+        if (!matcher) {
+            throw Error("Token does not look like a JWT");
+        }
+        const tokenHeader = JSON.parse(Buffer.from(matcher[1], "base64").toString()) as TokenHeader;
+        const tokenBody = JSON.parse(Buffer.from(matcher[2], "base64").toString()) as TokenBody;
 
         // verify the audience is correct
         const tokenAudience = tokenBody.aud;
@@ -86,7 +108,6 @@ export class IdentityService extends BaseService {
 
         // look at the issuer of the token
         const tokenIssuer = tokenBody.iss;
-        let decoded: any;
         let tokenScopes = [constants.JWT.SCOPE_API, constants.JWT.SCOPE_READ];
         let tokenHouseId;
         if (tokenIssuer !== constants.JWT.OUR_ISSUER) {
@@ -98,7 +119,7 @@ export class IdentityService extends BaseService {
             logger.debug(`Retrieved token issuer info <${JSON.stringify(tokenIssuerInfo)}> by kid <${kid}>`);
 
             // verify token
-            decoded = await jwt.verify(token, tokenIssuerInfo.publicKey, {
+            await jwt.verify(token, tokenIssuerInfo.publicKey, {
                 algorithms: ["RS256"],
                 audience: constants.JWT.AUDIENCE,
                 issuer: tokenIssuerInfo.issuer
@@ -110,7 +131,7 @@ export class IdentityService extends BaseService {
             }
             
             // ensure the subject of the token is a user from the house the key belongs to
-            if (!tokenIssuerInfo.subjects.includes(decoded.sub)) {
+            if (!tokenIssuerInfo.subjects.includes(tokenBody.sub)) {
                 throw Error("The supplied subject is not valid for the signer kid");
             }
 
@@ -118,11 +139,11 @@ export class IdentityService extends BaseService {
             tokenHouseId = tokenIssuerInfo.houseId;
 
         } else {
-            // we issued the token
+            // we issued the token - get our secret to verify the signature
             const secret = process.env.API_JWT_SECRET as string;
             try {
                 // verify token
-                decoded = await jwt.verify(token, secret, {
+                const decoded : any = await jwt.verify(token, secret, {
                     algorithms: ["HS256"],
                     audience: constants.JWT.AUDIENCE,
                     issuer: constants.JWT.OUR_ISSUER,
@@ -134,41 +155,46 @@ export class IdentityService extends BaseService {
             }
         }
 
+        // 2024-09-20 removed as I'm not sure this is used anymore...
+        /*
         // if there is no impersonation id see if it's a whitelisted device id
         const whitelistedDeviceIds = process.env.WHITELISTED_DEVICE_IDS
             ? process.env.WHITELISTED_DEVICE_IDS.split(",")
             : [];
         const whitelistedImpId = process.env.WHITELISTED_IMPERSONATION_ID;
-        if (whitelistedImpId && !decoded.imp && whitelistedDeviceIds.includes(decoded.sub)) {
-            decoded.imp = whitelistedImpId;
+        if (whitelistedImpId && !tokenBody.imp && whitelistedDeviceIds.includes(tokenBody.sub)) {
+            tokenBody.imp = whitelistedImpId;
         }
+        */
 
         // we verified the token - now see if we have a BackendIdentity cached
-        const redis_key = this.getRedisKey(decoded.sub, decoded.imp);
+        const redis_key = this.getRedisKey(tokenBody.sub, tokenBody.imp);
         const str_user = await this.redis.get(redis_key);
         if (str_user) {
+            // found backend identity - decode and return it
             const user_obj = JSON.parse(str_user) as BackendIdentity;
             return user_obj;
         }
 
         // backend identity not found - create
         let ident: BackendIdentity;
-        if (decoded.imp) {
+        if (tokenBody.imp) {
             // there is an impersonation id in the token so it's for a non-user
-            const device = await this.storage.getDevice(this.authUser, decoded.sub);
+            const device = await this.storage.getDevice(this.authUser, tokenBody.sub);
             ident = {
                 identity: {
-                    callerId: decoded.sub,
-                    impersonationId: decoded.imp,
+                    callerId: tokenBody.sub,
+                    impersonationId: tokenBody.imp,
                     houseId: tokenHouseId,
                 } as Identity,
                 principal: new DevicePrincipal(device.name),
                 scopes: tokenScopes,
             } as BackendIdentity;
-        } else if (decoded.sub === "*") {
+        } else if (tokenBody.sub === "*") {
+            // subject is set to * so the token is good for any user
             ident = {
                 identity: {
-                    callerId: decoded.sub,
+                    callerId: tokenBody.sub,
                     impersonationId: undefined,
                     houseId: tokenHouseId,
                 } as Identity,
@@ -177,10 +203,10 @@ export class IdentityService extends BaseService {
             } as BackendIdentity;
         } else {
             // lookup user
-            const user = await this.storage.getUser(this.authUser, decoded.sub);
+            const user = await this.storage.getUser(this.authUser, tokenBody.sub);
             ident = {
                 identity: {
-                    callerId: decoded.sub,
+                    callerId: tokenBody.sub,
                     impersonationId: undefined,
                     houseId: tokenHouseId,
                 } as Identity,

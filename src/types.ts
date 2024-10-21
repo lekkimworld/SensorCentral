@@ -27,8 +27,8 @@ export interface Identity {
     readonly callerId : string;
 
     /**
-     * The id of the user being impersonated if a 
-     * device is contacting the service.
+     * The id of the user being impersonated or undefined if a user 
+     * is not being impersonated.
      */
     readonly impersonationId : string | undefined;
 
@@ -39,6 +39,9 @@ export interface Identity {
     readonly houseId : string | undefined;
 }
 
+/**
+ * 
+ */
 export interface NamedPrincipal {
     toString() : string;
     isUser() : boolean;
@@ -71,7 +74,7 @@ export class UserPrincipal implements NamedPrincipal {
     }
 
     public toString() {
-        return `USER - ${this.fn} ${this.ln} (${this.id}, ${this.email})`;
+        return `USER - ${this.fn} ${this.ln}, (${this.id}, ${this.email})`;
     }
 }
 export class DevicePrincipal implements NamedPrincipal {
@@ -129,12 +132,24 @@ export class HouseUser extends UserPrincipal {
     }
 }
 
+/**
+ * Describes a user logging into a browser.
+ */
 export interface BrowserUser {
+    /**
+     * Id of the user.
+     */
     readonly id : string;
     readonly fn : string;
     readonly ln : string;
     readonly email : string | undefined;
+    /**
+     * Currently active house or undefined if no active house.
+     */
     readonly houseId : string | undefined;
+    /**
+     * Houses the the user has access to.
+     */
     readonly houses : House[] | undefined;
 }
 /**
