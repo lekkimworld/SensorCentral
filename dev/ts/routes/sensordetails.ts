@@ -126,7 +126,7 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
                 };
                 
                 // post
-                const blob = await post("/api/v1/export", options);
+                const blob = await post("/api/v1/export/sensordata", options);
 
                 // create link for download
                 const file = window.URL.createObjectURL(blob);
