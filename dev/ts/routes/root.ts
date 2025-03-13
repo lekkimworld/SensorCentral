@@ -25,7 +25,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
     elemRoot.html(`
         <div class="row">
             <div class="col-lg-6 col-md-12 col-sm-12">
-                <div class="w-100" id="sensorcentral_powerdata"></div>
+                <!-- <div class="w-100" id="sensorcentral_powerdata"></div> -->
                 <div class="w-100" id="sensorcentral_favorites"></div>
             </div>
             <div class="col-lg-6 col-md-12 col-sm-12">
@@ -37,7 +37,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
     `);
     favoriteSensorWidget($("#sensorcentral_favorites"));
     stackedDeltaSensorsWidget($("#sensorcentral_stackeddelta"));
-    powerdataWidget($("#sensorcentral_powerdata"));
+    //powerdataWidget($("#sensorcentral_powerdata"));
     favBinarySensorsWidget($("#sensorcentral_favbinary"));
     favGaugeSensorsWidget($("#sensorcentral_favgauges"));
 }
