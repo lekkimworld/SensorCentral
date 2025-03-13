@@ -122,20 +122,25 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
                 const end = (data.end as Moment).toISOString();
                 const applyScaleFactor = data.scaleFactor as boolean;
                 const options = {
-                    start, end, scaleFactor: applyScaleFactor, type: data.grouped ? "grouped" : "ungrouped", output: "excel", sensorIds: [sensorId]
+                    start,
+                    end,
+                    scaleFactor: applyScaleFactor,
+                    type: data.grouped ? "grouped" : "ungrouped",
+                    output: "excel",
+                    sensorIds: [sensorId],
                 };
-                
+
                 // post
-                const blob = await post("/api/v1/export/sensordata", options);
+                const obj = await post("/api/v1/export/sensordata", options);
 
                 // create link for download
-                const file = window.URL.createObjectURL(blob);
                 const a = document.createElement("a");
-                a.download = `${sensor.id}_${start.replace(/:/g, "")}_${end.replace(/:/g, "")}.xlsx`;
-                a.href = file;
+                a.download = obj.filename;
+                a.href = `/download/${obj.filename}/${obj.downloadKey}/attachment`;
                 document.querySelector("body")?.appendChild(a);
                 a.click();
-                window.URL.revokeObjectURL(file);
+                document.removeChild(a);
+                
             }).show();
             return Promise.resolve();
         },
