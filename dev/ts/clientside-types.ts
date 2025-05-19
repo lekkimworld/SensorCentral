@@ -36,6 +36,11 @@ export const HTTP_METHODS = {
     GET: "GET"
 };
 export type HttpMethod = ObjectValues<typeof HTTP_METHODS>;
+export const CONTENT_TYPES = {
+    JSON: "JSON",
+    FORM: "FORM"
+};
+export type ContentType = ObjectValues<typeof CONTENT_TYPES>;
 export type OnSensorSampleEvent = Readonly<
     Partial<{
         id: string;
@@ -43,6 +48,7 @@ export type OnSensorSampleEvent = Readonly<
         bodyTemplate?: string;
         method: HttpMethod;
         endpoint: Required<Pick<Endpoint, "id">>;
+        contentType: ContentType;
     }>
 >;
 

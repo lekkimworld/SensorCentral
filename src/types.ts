@@ -515,8 +515,16 @@ export enum HttpMethod {
     POST = "POST"
 }
 
+export enum ContentType {
+    JSON = "JSON",
+    FORM = "FORM"
+}
+
 export const getHttpMethod = (method: string) : HttpMethod => {
     return (method.toLowerCase() === "post" ? HttpMethod.POST : HttpMethod.GET);
+}
+export const getContentType = (ct: string) : ContentType => {
+    return (ct.toLowerCase() === "json" ? ContentType.JSON : ContentType.FORM);
 }
 
 export type Endpoint = {
@@ -532,6 +540,7 @@ export type OnSensorSampleEvent = {
     endpoint: Endpoint;
     method: HttpMethod;
     path?: string;
+    contenttype: ContentType;
     bodyTemplate?: string;
 }
 

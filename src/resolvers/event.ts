@@ -20,6 +20,10 @@ registerEnumType(types.HttpMethod, {
     name: "HttpMethod",
     description: "Different HTTP verbs supported for outbound calls",
 });
+registerEnumType(types.ContentType, {
+    name: "ContentType",
+    description: "Different HTTP Content-Types supported for outbound calls",
+});
 
 @ObjectType()
 export class OnSensorSampleEvent {
@@ -29,6 +33,7 @@ export class OnSensorSampleEvent {
         this.path = e.path;
         this.bodyTemplate = e.bodyTemplate;
         this.endpointId = e.endpoint.id;
+        this.contentType = e.contenttype;
     }
 
     @Field(() => ID)
@@ -42,6 +47,9 @@ export class OnSensorSampleEvent {
     @Field({nullable: true})
     @Length(0, 128)
     path?: string;
+
+    @Field(() => types.ContentType)
+    contentType: types.ContentType;
 
     @Field({nullable: true})
     @Length(0, 1024)
@@ -84,6 +92,9 @@ export class CreateOnSensorSampleEventInput {
 
     @Field()
     endpointId: string;
+
+    @Field(() => types.ContentType)
+    contentType: types.ContentType;
 }
 
 @InputType()
@@ -100,6 +111,9 @@ export class UpdateOnSensorSampleEventInput {
 
     @Field({ nullable: true })
     bodyTemplate: string;
+
+    @Field(() => types.ContentType, { nullable: true })
+    contentType: types.ContentType;
 }
 
 @Resolver((_of) => OnSensorSampleEvent)

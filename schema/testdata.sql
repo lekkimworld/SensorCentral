@@ -1,4 +1,6 @@
-insert into LOGIN_USER (id, google_sub, email,fn,ln) values ('mikkel_user_id', '110104280470632570110', 'lekkim@heisterberg.dk','Mikkel','Flindt Heisterberg');
+insert into LOGIN_USER (id, email,fn,ln) values ('mikkel_user_id', 'lekkim@heisterberg.dk','Mikkel','Flindt Heisterberg');
+insert into login_oidc_mapping (userid, provider, sub, verified) values ('mikkel_user_id', 'github', '46fde620-34f2-11f0-8976-9126aba08b99', true);
+
 insert into house (id, name) values ('mikkel_house_1', 'My House');
 insert into device (id, name, houseid) values ('mydevice_1', 'My Device 1', 'mikkel_house_1');
 insert into device (id, name, houseid) values ('mydevice_2', 'My Device 2', 'mikkel_house_1');
@@ -10,8 +12,6 @@ insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_2-2', 'M
 insert into sensor (id,name,label,type,icon,scalefactor,deviceid) values ('mysensor_3-1', 'My Delta Sensor 3-1', 'mycounter_3-1', 'delta', 'battery-4', 0.001, 'mydevice_3');
 insert into sensor (id,name,label,type,icon,scalefactor,deviceid) values ('mysensor_3-2', 'My Delta Sensor 3-2', 'mycounter_3-2', 'delta', 'battery-4', 0.001, 'mydevice_3');
 insert into sensor (id,name,label,type,icon,deviceid) values ('mysensor_5-1', 'My Gauge Sensor 5-1', 'mycounter_5-1', 'gauge', 'thermometer-empty', 'mydevice_3');
-insert into device_watchdog (userId, deviceId, notify, muted_until) values ('mikkel_user_id', 'mydevice_2', 'yes', null);
-insert into device_watchdog (userId, deviceId, notify, muted_until) values ('mikkel_user_id', 'mydevice_3', 'muted', current_timestamp + interval '7 days');
 insert into USER_HOUSE_ACCESS (userId, houseId, is_default, owner) values ('mikkel_user_id', 'mikkel_house_1', true, true);
 
 insert into house (id, name) values ('mikkel_house_2', 'Your House');

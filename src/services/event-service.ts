@@ -7,7 +7,15 @@ import { StorageService } from "./storage-service";
 import { IdentityService } from "./identity-service";
 
 const logger = new Logger("event-service");
-const MIMETYPE_JSON = "application/json";
+const MimeTypes = {
+    "JSON": "JSON",
+    "FORM": "FORM"
+} as const;
+type MimeType = keyof typeof MimeTypes;
+const MIMETYPES : Record<MimeType,string> = {
+    "JSON": "application/json",
+    "FORM": "application/x-www-form-urlencoded/json"
+}
 
 type RequestData = {
     /**
@@ -19,6 +27,7 @@ type RequestData = {
     endpoint: Endpoint,
     body: string | undefined,
     path: string,
+    mimetype: string;
     url: string
 }
 
@@ -86,6 +95,7 @@ export class EventService extends BaseService {
             replacement = replacement === "{{" ? "}}" : "{{";
         }
         logger.trace(`Event definition <${id}> - after compiling template <${template}> with context <${JSON.stringify(ctx)}>`);
+        Handlebars.registerHelper("base64encode", s => Buffer.from(s).toString("base64"));
         const body = Handlebars.compile(result)(ctx);
         logger.trace(`Event definition <${id}> - after substitution the result is <${body}>`);
         return body;
@@ -110,6 +120,7 @@ export class EventService extends BaseService {
             endpoint: ev.endpoint,
             url: `${ev.endpoint.baseUrl}${path}`,
             path: path!,
+            mimetype: MIMETYPES[ev.contenttype as MimeType],
             body,
             headers: {},
         };
@@ -128,7 +139,7 @@ export class EventService extends BaseService {
         const resp = await fetch(data.url, {
             method: "GET",
             headers: Object.assign({}, data.headers, {
-                "accept": MIMETYPE_JSON,
+                "accept": MIMETYPES["JSON"]
             }),
         });
 
@@ -139,8 +150,8 @@ export class EventService extends BaseService {
                 `Unexpected status <${resp.status}> (${resp.statusText}) returned from endpoint (${await resp.text()})`
             );
         }
-        const result = await resp.json();
-        logger.debug(`Event definition <${data.id}> result <${JSON.stringify(result)}>`);
+        const result = await resp.text();
+        logger.debug(`Event definition <${data.id}> result <${result}>`);
     }
 
     private async processEventDefinitionPOST(data: RequestData) : Promise<void> {
@@ -149,8 +160,8 @@ export class EventService extends BaseService {
             method: "POST",
             body: data.body,
             headers: Object.assign({}, data.headers, {
-                "content-type": MIMETYPE_JSON,
-                "accept": MIMETYPE_JSON,
+                "content-type": data.mimetype,
+                "accept": MIMETYPES["JSON"],
             }),
         });
         
@@ -159,7 +170,7 @@ export class EventService extends BaseService {
         } else {
             throw new Error(`Unexpected status <${resp.status}> (${resp.statusText}) returned from endpoint (${await resp.text()})`);
         }
-        const result = await resp.json();
-        logger.debug(`Event definition <${data.id}> result <${JSON.stringify(result)}>`);
+        const result = await resp.text();
+        logger.debug(`Event definition <${data.id}> result <${result}>`);
     }
 }

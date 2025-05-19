@@ -7,7 +7,7 @@ import { CreateHouseInput, DeleteHouseInput, FavoriteHouseInput, House, UpdateHo
 import { CreateSensorType, DeleteSensorType, FavoriteSensorsInput, UpdateSensorType } from "../resolvers/sensor";
 import { UpdatePushoverSettingsInput } from "../resolvers/settings";
 import {
-    BackendIdentity, BaseService, DataElement, Device, DeviceData, Endpoint, getHttpMethod, HouseUser, HttpMethod, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Sensor,
+    BackendIdentity, BaseService, DataElement, Device, DeviceData, Endpoint, getContentType, getHttpMethod, HouseUser, HttpMethod, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Sensor,
     SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, TokenIssuerInformation, UserPrincipal
 } from "../types";
 import { DatabaseService } from "./database-service";
@@ -1921,13 +1921,13 @@ export class StorageService extends BaseService {
         let result;
         if (sensorId) {
             result = await this.dbService.query(
-                "select event_onsensorsample.id id, endpointid, endpoint.name endpointname, endpoint.baseurl, method, path, body from event_onsensorsample, endpoint where event_onsensorsample.endpointid=endpoint.id and sensorid=$2 and event_onsensorsample.userid=$1",
+                "select event_onsensorsample.id id, endpointid, endpoint.name endpointname, endpoint.baseurl, method, contenttype, path, body from event_onsensorsample, endpoint where event_onsensorsample.endpointid=endpoint.id and sensorid=$2 and event_onsensorsample.userid=$1",
                 user.identity.callerId,
                 sensorId
             );
         } else {
             result = await this.dbService.query(
-                "select event_onsensorsample.id id, endpointid, endpoint.name endpointname, endpoint.baseurl, method, path, body from event_onsensorsample, endpoint where event_onsensorsample.endpointid=endpoint.id and event_onsensorsample.userid=$1",
+                "select event_onsensorsample.id id, endpointid, endpoint.name endpointname, endpoint.baseurl, method, contenttype, path, body from event_onsensorsample, endpoint where event_onsensorsample.endpointid=endpoint.id and event_onsensorsample.userid=$1",
                 user.identity.callerId
             );
         }
@@ -1936,6 +1936,7 @@ export class StorageService extends BaseService {
                 id: row.id,
                 path: row.path,
                 method: getHttpMethod(row.method),
+                contenttype: getContentType(row.contenttype),
                 bodyTemplate: row.body,
                 endpoint: {
                     baseUrl: row.baseurl,
@@ -1955,14 +1956,15 @@ export class StorageService extends BaseService {
         const id = uuid();
         logger.debug(`Creating event_onsensorsample record with id <${id}> for user <${userid}>`);
         await this.dbService.query(
-            "insert into event_onsensorsample (id, path, body, method, endpointid, sensorid, userid) values ($1, $2, $3,$4,$5,$6,$7)",
+            "insert into event_onsensorsample (id, path, body, method, endpointid, sensorid, userid, contenttype) values ($1, $2, $3,$4,$5,$6,$7,$8)",
             id,
             input.path,
             input.bodyTemplate,
             input.method === HttpMethod.POST ? "POST" : "GET",
             input.endpointId,
             input.sensorId,
-            userid
+            userid,
+            input.contentType
         );
         logger.trace(`Created event_onsensorsample record with id <${id}> for user <${userid}>`);
 
@@ -1989,6 +1991,10 @@ export class StorageService extends BaseService {
         if (input.method) {
             queryFields.push(`method=\$${queryData.length + 1}`);
             queryData.push(input.method == HttpMethod.POST ? "POST" : "GET");
+        }
+        if (input.contentType) {
+            queryFields.push(`contenttype=\$${queryData.length + 1}`);
+            queryData.push(input.contentType);
         }
         logger.debug(`Updating event_onsensorsample record with id <${input.id}> for user <${userid}>`);
         const result = await this.dbService.query(

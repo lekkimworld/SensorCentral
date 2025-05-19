@@ -39,6 +39,7 @@ export class OnSensorSampleEventForm extends Form<OnSensorSampleEvent> {
                         id: "${data.id}"
                         method: ${data.method}
                         path: "${data.path}"
+                        contentType: ${data.contentType}
                         ${bodyTemplate}
                     }){id}}`
                 );
@@ -50,6 +51,7 @@ export class OnSensorSampleEventForm extends Form<OnSensorSampleEvent> {
                         endpointId: "${data.endpointId}"
                         method: ${data.method}
                         path: "${data.path}"
+                        contentType: ${data.contentType}
                         ${bodyTemplate}
                     }){id}}`
                 );
@@ -64,6 +66,7 @@ export class OnSensorSampleEventForm extends Form<OnSensorSampleEvent> {
                 catalog.get("method").value = this.ctx.method!;
                 catalog.get("path").value = this.ctx.path!;
                 catalog.get("bodyTemplate").value = this.ctx.bodyTemplate || "";
+                catalog.get("contentType").value = this.ctx.contentType!;
             }
         });
     }
@@ -109,6 +112,14 @@ export class OnSensorSampleEventForm extends Form<OnSensorSampleEvent> {
                 dropdownOptions: {"POST": "POST", "GET": "GET"},
                 fieldExplanation: "Select the method to use for the request",
             })}
+            ${catalog.dropdown({
+                name: "contentType",
+                label: "Content-Type",
+                addBlank: false,
+                required: true,
+                dropdownOptions: {"JSON": "application/json", "FORM": "application/x-www-form-urlencoded"},
+                fieldExplanation: "Select the content-type to use for the request",
+            })}
             ${catalog.textField({
                 name: "path",
                 label: "Path",
@@ -138,7 +149,8 @@ export class OnSensorSampleEventForm extends Form<OnSensorSampleEvent> {
             path: catalog.value("path"),
             bodyTemplate: catalog.value("bodyTemplate"),
             endpointId: catalog.value("endpoint"),
-            method: catalog.value("method")
+            method: catalog.value("method"),
+            contentType: catalog.value("contentType")
         };
     }
 }

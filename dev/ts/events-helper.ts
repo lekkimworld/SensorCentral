@@ -107,7 +107,7 @@ export const addEventsTable = (parentElem: JQuery<HTMLElement>, target: Sensor) 
                 sensor(id: "${target.id}") {
                     id,
                     events {
-                        id, path, bodyTemplate, method, endpoint {id}
+                        id, path, bodyTemplate, method, contentType, endpoint {id}
                     }
                 }
             }`);
