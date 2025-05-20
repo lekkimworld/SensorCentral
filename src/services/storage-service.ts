@@ -7,7 +7,7 @@ import { CreateHouseInput, DeleteHouseInput, FavoriteHouseInput, House, UpdateHo
 import { CreateSensorType, DeleteSensorType, FavoriteSensorsInput, UpdateSensorType } from "../resolvers/sensor";
 import { UpdatePushoverSettingsInput } from "../resolvers/settings";
 import {
-    BackendIdentity, BaseService, DataElement, Device, DeviceData, Endpoint, getContentType, getHttpMethod, HouseUser, HttpMethod, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Sensor,
+    BackendIdentity, BaseService, DataElement, Device, DeviceData, Endpoint, getContentType, getHttpMethod, HouseUser, HttpMethod, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Secret, Sensor,
     SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, TokenIssuerInformation, UserPrincipal
 } from "../types";
 import { DatabaseService } from "./database-service";
@@ -25,6 +25,7 @@ import { IdentityService } from "./identity-service";
 import { CreateAlertInput, DeleteAlertInput } from "../resolvers/alert";
 import { CreateEndpointInput, UpdateEndpointInput, DeleteEndpointInput } from "../resolvers/endpoint";
 import { CreateOnSensorSampleEventInput, DeleteOnSensorSampleEventInput, UpdateOnSensorSampleEventInput } from "../resolvers/event";
+import { CreateSecretInput, DeleteSecretInput, UpdateSecretInput } from "../resolvers/secret";
 
 const DEVICE_DATA_KEY_PREFIX = "device_data:";
 const HOUSE_COLUMNS = "h.id houseid, h.name housename";
@@ -1793,10 +1794,10 @@ export class StorageService extends BaseService {
     async getEndpoints(user: BackendIdentity): Promise<Endpoint[]> {
         let result;
         if (this.isAllDataAccessUser(user)) {
-            result = await this.dbService.query("select id, name, baseurl, bearertoken, userid from endpoint");
+            result = await this.dbService.query("select id, name, baseurl, userid from endpoint");
         } else {
             result = await this.dbService.query(
-                "select id, name, baseurl, bearertoken, userid from endpoint where userid=$1",
+                "select id, name, baseurl, userid from endpoint where userid=$1",
                 user.identity.callerId
             );
         }
@@ -1806,11 +1807,7 @@ export class StorageService extends BaseService {
             return {
                 id: row.id,
                 name: row.name,
-                baseUrl: row.baseurl,
-                bearerToken:
-                    !row.bearertoken || row.bearertoken.length <= 15
-                        ? "xxxxx"
-                        : `...${row.bearertoken.substring(row.bearertoken.length - 5)}`,
+                baseUrl: row.baseurl
             } as Endpoint;
         });
     }
@@ -1820,11 +1817,10 @@ export class StorageService extends BaseService {
         const id = uuid();
         logger.debug(`Creating endpoint record with id <${id}> for user <${userid}>`);
         await this.dbService.query(
-            "insert into endpoint (id, name, baseurl, bearertoken, userid) values ($1,$2,$3,$4,$5)",
+            "insert into endpoint (id, name, baseurl, userid) values ($1,$2,$3,$4)",
             id,
             input.name,
             input.baseUrl,
-            input.bearerToken,
             userid
         );
         logger.trace(`Created endpoint record with id <${id}> for user <${userid}>`);
@@ -1838,10 +1834,6 @@ export class StorageService extends BaseService {
 
         let queryFields = [];
         let queryData = [userid, input.id];
-        if (input.bearerToken && input.bearerToken.length) {
-            queryFields.push(`bearertoken=\$${queryData.length + 1}`);
-            queryData.push(input.bearerToken);
-        }
         if (input.name && input.name.length) {
             queryFields.push(`name=\$${queryData.length + 1}`);
             queryData.push(input.name);
@@ -2029,6 +2021,94 @@ export class StorageService extends BaseService {
         } else {
             logger.error(`Unable to delete event_onsensorsample record with id <${input.id}> for user <${userid}>`);
             throw new Error(`Unable to delete event_onsensorsample record with id <${input.id}> for user <${userid}>`);
+        }
+    }
+
+    async getUserSecrets(user: BackendIdentity) : Promise<Array<Secret>> {
+        if (this.isAllDataAccessUser(user)) throw new Error("Cannot get secrets from users");
+        let result = await this.dbService.query(
+            "select id, name, value from secret where userid=$1",
+            user.identity.callerId
+        );
+        return result.rows.map(row => {
+            const s = {
+                id: row.id,
+                name: row.name,
+                value: row.value
+            } as Secret;
+            return s;
+        });
+    }
+
+    async createSecret(
+        user: BackendIdentity,
+        input: CreateSecretInput
+    ): Promise<Secret> {
+        const userid = user.identity.callerId;
+        const id = uuid();
+        logger.debug(`Creating secret record with id <${id}> for user <${userid}>`);
+        await this.dbService.query(
+            "insert into secret (id, userid, name, value) values ($1, $2, $3, $4)",
+            id,
+            userid,
+            input.name,
+            input.value
+        );
+        logger.trace(`Created secret record with id <${id}> for user <${userid}>`);
+
+        // return
+        return (await this.getUserSecrets(user)).find(s => s.id === id)!;
+    }
+
+    async updateSecret(
+        user: BackendIdentity,
+        input: UpdateSecretInput
+    ): Promise<Secret> {
+        const userid = user.identity.callerId;
+
+        let queryFields = [];
+        let queryData = [userid, input.id];
+        if (input.name) {
+            queryFields.push(`name=\$${queryData.length + 1}`);
+            queryData.push(input.name);
+        }
+        if (input.value) {
+            queryFields.push(`value=\$${queryData.length + 1}`);
+            queryData.push(input.value);
+        }
+        logger.debug(`Updating secret record with id <${input.id}> for user <${userid}>`);
+        const result = await this.dbService.query(
+            `update secret set ${queryFields.join(",")} where userid=$1 and id=$2`,
+            ...queryData
+        );
+
+        if (result.rowCount === 1) {
+            logger.trace(`Updated secret record with id <${input.id}> for user <${userid}>`);
+        } else {
+            throw new Error(
+                `Unable to update secret - expected 1 as rowCount but was ${result.rowCount}`
+            );
+        }
+
+        // return
+        return (await this.getUserSecrets(user)).find(s => s.id === input.id)!;
+    }
+
+    async deleteSecret(user: BackendIdentity, input: DeleteSecretInput): Promise<boolean> {
+        const userid = user.identity.callerId;
+
+        logger.debug(`Deleting secret record with id <${input.id}> for user <${userid}>`);
+        const result = await this.dbService.query(
+            "delete from secret where userid=$1 and id=$2",
+            userid,
+            input.id
+        );
+        if (result.rowCount === 1) {
+            logger.trace(`Deleted secret record with id <${input.id}> for user <${userid}>`);
+            return true;
+        } else {
+            logger.error(`Unable to delete secret record with id <${input.id}> for user <${userid}>`);
+            throw new Error(`Unable to delete secret record with id <${input.id}> for user <${userid}>`);
         }
     }
 

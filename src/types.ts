@@ -544,6 +544,13 @@ export type OnSensorSampleEvent = {
     bodyTemplate?: string;
 }
 
+export type Secret = {
+    id: string;
+    user?: UserPrincipal;
+    name: string;
+    value: string;
+}
+
 export interface Dataset {
     id: string;
     name: string | undefined;

@@ -1,35 +1,17 @@
 import Handlebars from "handlebars";
 import constants from "../constants";
-import { BackendIdentity, BaseService, HttpMethod, OnSensorSampleEvent, TopicSensorMessage, Endpoint, Sensor } from "../types";
 import { Logger } from "../logger";
+import { BackendIdentity, BaseService, HttpMethod, OnSensorSampleEvent, Sensor, TopicSensorMessage } from "../types";
+import { RequestData } from "./callout-service";
+import { IdentityService } from "./identity-service";
 import { PubsubService, TopicMessage } from "./pubsub-service";
 import { StorageService } from "./storage-service";
-import { IdentityService } from "./identity-service";
 
 const logger = new Logger("event-service");
-const MimeTypes = {
-    "JSON": "JSON",
-    "FORM": "FORM"
-} as const;
-type MimeType = keyof typeof MimeTypes;
-const MIMETYPES : Record<MimeType,string> = {
-    "JSON": "application/json",
-    "FORM": "application/x-www-form-urlencoded/json"
-}
 
-type RequestData = {
-    /**
-     * Event id
-     */
-    id: string;
-
-    headers: Record<string,string>,
-    endpoint: Endpoint,
-    body: string | undefined,
-    path: string,
-    mimetype: string;
-    url: string
-}
+/**
+ * 
+ */
 
 type TemplateContext = {
     id: string;
@@ -120,7 +102,7 @@ export class EventService extends BaseService {
             endpoint: ev.endpoint,
             url: `${ev.endpoint.baseUrl}${path}`,
             path: path!,
-            mimetype: MIMETYPES[ev.contenttype as MimeType],
+            contentType: ev.contenttype,
             body,
             headers: {},
         };
@@ -128,49 +110,11 @@ export class EventService extends BaseService {
 
         // look at method and forward call
         if (ev.method === HttpMethod.POST) {
-            await this.processEventDefinitionPOST(requestData);
+            //await this.processEventDefinitionPOST(requestData);
         } else if (ev.method === HttpMethod.GET) {
-            await this.processEventDefinitionGET(requestData);
+            //await this.processEventDefinitionGET(requestData);
         }
     }
 
-    private async processEventDefinitionGET(data: RequestData) : Promise<void> {
-        logger.debug(`Event definition <${data.id}> - sending GET request to <${data.url}>`);
-        const resp = await fetch(data.url, {
-            method: "GET",
-            headers: Object.assign({}, data.headers, {
-                "accept": MIMETYPES["JSON"]
-            }),
-        });
-
-        if (resp.status < 300 && resp.status >= 200) {
-            logger.debug(`Received success response - status <${resp.status}>`);
-        } else {
-            throw new Error(
-                `Unexpected status <${resp.status}> (${resp.statusText}) returned from endpoint (${await resp.text()})`
-            );
-        }
-        const result = await resp.text();
-        logger.debug(`Event definition <${data.id}> result <${result}>`);
-    }
-
-    private async processEventDefinitionPOST(data: RequestData) : Promise<void> {
-        logger.debug(`Event definition <${data.id}> - sending POST request to <${data.url}> with body <${data.body}>`);
-        const resp = await fetch(data.url, {
-            method: "POST",
-            body: data.body,
-            headers: Object.assign({}, data.headers, {
-                "content-type": data.mimetype,
-                "accept": MIMETYPES["JSON"],
-            }),
-        });
-        
-        if (resp.status < 300 && resp.status >= 200) {
-            logger.debug(`Received success response - status <${resp.status}>`);
-        } else {
-            throw new Error(`Unexpected status <${resp.status}> (${resp.statusText}) returned from endpoint (${await resp.text()})`);
-        }
-        const result = await resp.text();
-        logger.debug(`Event definition <${data.id}> result <${result}>`);
-    }
+    
 }

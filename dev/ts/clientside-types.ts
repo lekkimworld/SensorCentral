@@ -61,6 +61,15 @@ export type Endpoint = Readonly<
     }>
 >;
 
+export type Secret = Readonly<
+    Partial<{
+        id: string;
+        name: string;
+        value: string;
+    }>
+>;
+
+
 export type House = Readonly<
     Partial<{
         id: string;

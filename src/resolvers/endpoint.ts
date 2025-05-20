@@ -18,7 +18,6 @@ export class Endpoint {
         this.id = e.id;
         this.name = e.name;
         this.baseUrl = e.baseUrl;
-        this.bearerToken = e.bearerToken;
     }
 
     @Field(() => ID)
@@ -31,10 +30,6 @@ export class Endpoint {
     @Field()
     @Length(15, 128)
     baseUrl: string;
-
-    @Field()
-    @Length(1, 1024)
-    bearerToken?: string;
 }
 
 @InputType()
@@ -53,10 +48,6 @@ export class CreateEndpointInput {
     @Field(() => String, { nullable: false })
     @Length(15, 128)
     baseUrl: string;
-
-    @Field(() => String, { nullable: true })
-    @Length(0, 1024)
-    bearerToken: string;
 }
 
 @InputType()
@@ -70,9 +61,6 @@ export class UpdateEndpointInput {
 
     @Field({ nullable: true})
     baseUrl: string;
-
-    @Field({ nullable: true })
-    bearerToken: string;
 }
 
 @Resolver((_of) => Endpoint)

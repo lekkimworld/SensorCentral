@@ -1,12 +1,13 @@
-import { Endpoint } from "../clientside-types";
+import { Secret } from "../clientside-types";
 import { graphql } from "../fetch-util";
 import { createContainers } from "../ui-helper";
 import * as uiutils from "../ui-utils";
-import {EndpointForm} from "../forms/create-edit-endpoint";
+import { SecretForm } from "../forms/create-edit-secret";
 
 // create type for endpoints
-type RequestedEndpoint = Required<Pick<Endpoint, "id" | "name" | "baseUrl" | "bearerToken">>;
+type RequestedSecret = Required<Pick<Secret, "id" | "name" | "value">>;
         
+
 export default (elemRoot: JQuery<HTMLElement>) => {
     const updateUI = async () => {
         elemRoot.html("");
@@ -14,24 +15,24 @@ export default (elemRoot: JQuery<HTMLElement>) => {
         // get data
         const data = await graphql(`
             {
-                endpoints {
+                secrets {
                     id
                     name
-                    baseUrl
+                    value
                 }
             }
         `);
 
         // create containers
-        const container = createContainers(elemRoot, "endpoints", "title", "content");
+        const container = createContainers(elemRoot, "secrets", "title", "content");
 
         // do title row
-        uiutils.appendTitleRow(container.children!.title.elem, "Endpoints", [
+        uiutils.appendTitleRow(container.children!.title.elem, "Secrets", [
             {
                 rel: "create",
                 icon: "plus",
                 click: async function () {
-                    new EndpointForm().show();
+                    new SecretForm().show();
                 },
             },
             {
@@ -43,24 +44,24 @@ export default (elemRoot: JQuery<HTMLElement>) => {
             },
         ]);
         
-        const endpoints = data.endpoints as Array<RequestedEndpoint>;
-        if (endpoints.length) {
+        const secrets = data.secrets as Array<RequestedSecret>;
+        if (secrets.length) {
             uiutils.appendDataTable(container.children!.content.elem, {
-                headers: ["NAME", "BASEURL"],
+                headers: ["NAME", "VALUE"],
                 classes: ["", ""],
-                rows: endpoints.map((endpoint) => {
+                rows: secrets.map((s) => {
                     return {
-                        id: endpoint.id,
-                        data: endpoint,
-                        columns: [endpoint.name, endpoint.baseUrl],
+                        id: s.id,
+                        data: s,
+                        columns: [s.name, s.value],
                         click: function () {
-                            new EndpointForm(endpoint).show();
+                            new SecretForm(s).show();
                         },
                     };
                 }),
             });
         } else {
-            container.children!.content.elem.append("You do not have any endpoints defined.");
+            container.children!.content.elem.append("You do not have any secrets defined.");
         }
     };
 

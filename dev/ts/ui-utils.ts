@@ -35,6 +35,7 @@ export const fillMenus = () => {
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
                 <a class="dropdown-item" href="/#powermeter/config">Powermeter Setup</a>
                 <a class="dropdown-item" href="/#endpoints">Endpoints</a>
+                <a class="dropdown-item" href="/#secrets">Secrets</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="settings">Settings</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="logout">Logout</a>`;
         user.houses.forEach(house => {

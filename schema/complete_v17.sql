@@ -55,8 +55,7 @@ create table endpoint (
     id character varying(36) not null primary key default uuid_generate_v4(), 
     name character varying(128) not null,
     userId character varying(36) not null, 
-    baseurl character varying(128) not null,
-    bearertoken character varying(1024)
+    baseurl character varying(128) not null
 );
 alter table endpoint ADD FOREIGN KEY (userId) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
 
@@ -91,3 +90,12 @@ create table jwt_issuers (
     public_key character varying(5120) not null
 );
 alter table jwt_issuers ADD FOREIGN KEY (houseid) REFERENCES HOUSE(id) ON DELETE CASCADE;
+
+create table secret (
+    id character varying(36) not null primary key default uuid_generate_v4(), 
+    userid  character varying(36) not null,
+    name character varying(36) not null,
+    value  character varying(1024) not null
+);
+alter table secret add constraint SECRET_NAME_UNIQUE_PER_USER UNIQUE (userid, name);
+alter table secret ADD FOREIGN KEY (userid) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;

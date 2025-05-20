@@ -25,6 +25,7 @@ import { AlertService } from "../services/alert/alert-service";
 import { EventService } from "../services/event-service";
 import { PowerpriceService } from "../services/powerprice-service";
 import { QueueService } from "../services/queue-service";
+import CalloutService from "../services/callout-service";
 import { ExpressService } from "../services/express-service";
 
 // number of workers we should create
@@ -61,6 +62,7 @@ services.registerService(new DataQueryService());
 services.registerService(new AlertService());
 services.registerService(new EventService());
 services.registerService(new PowerpriceService());
+services.registerService(new CalloutService());
 
 // setup termination listener
 terminateListener(() => {

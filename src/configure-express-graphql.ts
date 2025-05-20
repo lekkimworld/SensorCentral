@@ -20,6 +20,7 @@ import { Logger } from "./logger";
 import { AlertResolver } from "./resolvers/alert";
 import { EventResolver } from "./resolvers/event";
 import { EndpointResolver } from "./resolvers/endpoint";
+import { SecretResolver } from "./resolvers/secret";
 import { PowerPriceResolver } from "./resolvers/powerprice";
 import constants from "./constants";
 
@@ -46,7 +47,8 @@ export default  async (app : Application) => {
             AlertResolver,
             EventResolver,
             EndpointResolver,
-            PowerPriceResolver
+            PowerPriceResolver,
+            SecretResolver
         ],
         dateScalarMode: "isoDate"
     })
