@@ -1,4 +1,4 @@
-import {BaseService} from "../types";
+import {BaseService, InitCallback} from "../types";
 import { Queue, Worker } from "bullmq";
 import { RedisService } from "./redis-service";
 import { Redis } from "ioredis";
@@ -85,7 +85,7 @@ export class QueueService extends BaseService {
         this.dependencies = [RedisService.NAME, ExpressService.NAME];
     }
 
-    async init(callback: (err?: Error) => {}, services: BaseService[]) {
+    async init(callback: InitCallback, services: BaseService[]) {
         this.redis = services[0] as RedisService;
         this.express = services[1] as ExpressService;
 

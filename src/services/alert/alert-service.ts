@@ -1,7 +1,7 @@
 import moment from "moment-timezone";
 import constants from "../../constants";
 import { Logger } from "../../logger";
-import { BackendIdentity, BaseService, ControlMessageTypes, Device, QueueNotifyMessage, Sensor, SensorType, TopicControlMessage, TopicSensorMessage } from "../../types";
+import { BackendIdentity, BaseService, ControlMessageTypes, Device, InitCallback, QueueNotifyMessage, Sensor, SensorType, TopicControlMessage, TopicSensorMessage } from "../../types";
 import { PromisifiedSemaphore, objectHasOwnProperty_Trueish } from "../../utils";
 import { PubsubService, TopicMessage } from "../pubsub-service";
 import { IdentityService } from "../identity-service";
@@ -44,7 +44,7 @@ export class AlertService extends BaseService {
         logger.info(`ALERT.TIMEOUT_BINARY_SENSOR=${constants.ALERT.TIMEOUT_BINARY_SENSOR}`);
     }
 
-    async init(callback: (err?: Error) => {}, services: BaseService[]) {
+    async init(callback: InitCallback, services: BaseService[]) {
         // get user
         const identity = services[1] as IdentityService;
         this.serviceUser = identity.getServiceBackendIdentity(AlertService.NAME);

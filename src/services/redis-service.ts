@@ -1,4 +1,4 @@
-import { BaseService } from "../types";
+import { BaseService, InitCallback } from "../types";
 import { URL } from "url";
 import { Logger } from "../logger";
 import { Redis, RedisOptions } from "ioredis";
@@ -18,7 +18,7 @@ export class RedisService extends BaseService {
         super(RedisService.NAME);
     }
 
-    async init(callback: (err?: Error) => {}) {
+    async init(callback: InitCallback) {
         this.client = this.createClient();
         const dummyKey = `foo_${Date.now()}`;
         logger.info(`Querying redis for dummy key (${dummyKey})`);

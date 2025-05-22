@@ -4,6 +4,7 @@ import {
     BaseService,
     IngestedDeviceMessage,
     IngestedSensorMessage,
+    InitCallback,
 
 } from "../types";
 import {smartmeGetDevices, PowerUnit, Cloudflare524Error} from "../resolvers/smartme";
@@ -38,7 +39,7 @@ export class PowermeterService extends BaseService {
         ];
     }
 
-    async init(callback: (err?: Error) => {}, services: BaseService[]) {
+    async init(callback: InitCallback, services: BaseService[]) {
         this.pubsub = services[0] as PubsubService;
         this.storageService = services[1] as StorageService;
         this.security = services[2] as IdentityService;

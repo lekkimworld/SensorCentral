@@ -7,7 +7,7 @@ import { CreateHouseInput, DeleteHouseInput, FavoriteHouseInput, House, UpdateHo
 import { CreateSensorType, DeleteSensorType, FavoriteSensorsInput, UpdateSensorType } from "../resolvers/sensor";
 import { UpdatePushoverSettingsInput } from "../resolvers/settings";
 import {
-    BackendIdentity, BaseService, DataElement, Device, DeviceData, Endpoint, getContentType, getHttpMethod, HouseUser, HttpMethod, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Secret, Sensor,
+    BackendIdentity, BaseService, DataElement, Device, DeviceData, Endpoint, getContentType, getHttpMethod, HouseUser, HttpMethod, InitCallback, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Secret, Sensor,
     SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, TokenIssuerInformation, UserPrincipal
 } from "../types";
 import { DatabaseService } from "./database-service";
@@ -112,7 +112,7 @@ export class StorageService extends BaseService {
         this.dependencies = [DatabaseService.NAME, PubsubService.NAME, RedisService.NAME];
     }
 
-    init(callback: (err?: Error) => {}, services: BaseService[]) {
+    init(callback: InitCallback, services: BaseService[]) {
         this.dbService = services[0] as unknown as DatabaseService;
         this.eventService = services[1] as unknown as PubsubService;
         this.redisService = services[2] as unknown as RedisService;
@@ -1880,12 +1880,16 @@ export class StorageService extends BaseService {
      * @param sensorId
      * @returns
      */
-    async getAllOnSensorSampleEvents(user: BackendIdentity, sensorId: string): Promise<OnSensorSampleEvent[]> {
+    async getAllOnSensorSampleEvents(user: BackendIdentity, _sensorId: string): Promise<OnSensorSampleEvent[]> {
         if (!this.isAllDataAccessUser(user)) throw new Error("Must have all data access");
+        /*
         const result = await this.dbService.query(
             "select event_onsensorsample.id as eventid, sensorid, event_onsensorsample.userid as userid, endpointid, method, path, body, baseurl, bearertoken, fn, ln, email from event_onsensorsample, endpoint, login_user where sensorid=$1 and event_onsensorsample.endpointid=endpoint.id and login_user.id=event_onsensorsample.userid",
             sensorId
         );
+        */
+        return [];
+        /*
         return result.rows.map((row) => {
             const e = {
                 id: row.eventid,
@@ -1906,6 +1910,7 @@ export class StorageService extends BaseService {
             } as OnSensorSampleEvent;
             return e;
         });
+        */
     }
 
     async getUserOnSensorSampleEvents(user: BackendIdentity, sensorId?: string): Promise<OnSensorSampleEvent[]> {

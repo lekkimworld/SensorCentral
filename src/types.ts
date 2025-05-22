@@ -238,6 +238,7 @@ export interface NotificationSettings {
     user: UserPrincipal;
 }
 
+export type InitCallback = (err?: Error | undefined) => void
 export abstract class BaseService {
     public readonly name : string;
     dependencies : string[] = [];
@@ -256,7 +257,7 @@ export abstract class BaseService {
      * of the service in INIT_RETRY_SECONDS seconds.
      */
     //@ts-ignore
-    init(callback : (err? : Error) => {}, services : BaseService[]) {
+    init(callback : InitCallback, services : BaseService[]) {
         callback();
     }
 }
@@ -512,7 +513,9 @@ export class HttpException extends Error {
 
 export enum HttpMethod {
     GET = "GET",
-    POST = "POST"
+    POST = "POST",
+    PUT = "PUT",
+    DELETE = "DELETE"
 }
 
 export enum ContentType {
@@ -521,7 +524,13 @@ export enum ContentType {
 }
 
 export const getHttpMethod = (method: string) : HttpMethod => {
-    return (method.toLowerCase() === "post" ? HttpMethod.POST : HttpMethod.GET);
+    switch (method.toLowerCase()) {
+        case "post": return HttpMethod.POST;
+        case "get": return HttpMethod.GET;
+        case "put": return HttpMethod.PUT;
+        case "delete": return HttpMethod.DELETE;
+    }
+    throw new Error(`Invalid or unknown HTTP method supplied <${method}>`);
 }
 export const getContentType = (ct: string) : ContentType => {
     return (ct.toLowerCase() === "json" ? ContentType.JSON : ContentType.FORM);
@@ -531,7 +540,36 @@ export type Endpoint = {
     id: string;
     name: string;
     baseUrl: string;
-    bearerToken?: string;
+}
+
+export type Secret = {
+    id: string;
+    name: string;
+    value: string;
+}
+
+export type CalloutAuthenticatorTemplateExecutor = (secrets: Array<Secret>, templateMappings: Record<string,string>, endpoint: Endpoint) => Promise<Record<string,string>>;
+export type CalloutAuthenticatorTemplate = {
+    name: string;
+    placeholders: Record<string, string>;
+    executor: CalloutAuthenticatorTemplateExecutor;
+}
+
+export type CalloutAuthenticator = {
+    id: string;
+    endpoint: Endpoint;
+    template: CalloutAuthenticatorTemplate;
+    templateMappings: Record<string ,string>
+}
+
+export type Callout = {
+    id: string;
+    endpoint: Endpoint;
+    authenticator?: CalloutAuthenticator;
+    headers?: Record<string,string>;
+    method: "GET" | "POST" | "PUT";
+    pathTemplate: string;
+    bodyTemplate?: string
 }
 
 export type OnSensorSampleEvent = {
@@ -542,13 +580,6 @@ export type OnSensorSampleEvent = {
     path?: string;
     contenttype: ContentType;
     bodyTemplate?: string;
-}
-
-export type Secret = {
-    id: string;
-    user?: UserPrincipal;
-    name: string;
-    value: string;
 }
 
 export interface Dataset {

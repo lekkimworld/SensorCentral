@@ -7,11 +7,12 @@
     "strictNullChecks": true,
     "strictFunctionTypes": true,
     "noImplicitThis": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "noUnusedParameters": true,
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "esModuleInterop": true
   },
   "exclude": ["node_modules"]
 }

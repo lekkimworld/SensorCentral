@@ -1,5 +1,5 @@
 import { Redis } from "ioredis";
-import {BaseService} from "../types";
+import {BaseService, InitCallback} from "../types";
 import { RedisService } from "./redis-service";
 import { Logger } from "../logger";
 import { minimatch } from "minimatch";
@@ -34,9 +34,9 @@ export class PubsubService extends BaseService {
         this.dependencies = [RedisService.NAME];
     }
 
-    async init(callback: (err?: Error) => {}, services: BaseService[]) {
+    async init(callback: InitCallback, services: BaseService[]) {
         logger.info(`Initializing service`);
-        this.redis = services[0] as RedisService;
+        this.redis = services[0] as unknown as RedisService;
         this.clientPub = this.redis.createClient({});
         this.clientSub = this.redis.createClient({});
         this.clientSub.on("message", (channel, strdata) => {

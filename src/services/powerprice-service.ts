@@ -2,7 +2,7 @@
 import services from "../configure-services";
 import { StorageService } from "../services/storage-service";
 import moment, { Moment } from "moment-timezone";
-import { BaseService, DataElement, Dataset } from "../types";
+import { BaseService, DataElement, Dataset, InitCallback } from "../types";
 import constants from "../constants";
 import { Logger } from "../logger";
 import { Prices } from "nordpool";
@@ -18,7 +18,7 @@ export class PowerpriceService extends BaseService {
         this.dependencies = [StorageService.NAME];
     }
 
-    init(callback: (err?: Error) => {}, services: BaseService[]) {
+    async init(callback: InitCallback, services: BaseService[]) {
         this.storageService = services[0] as StorageService;
 
         // did init

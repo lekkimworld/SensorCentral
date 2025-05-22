@@ -2,7 +2,7 @@ import Handlebars from "handlebars";
 import constants from "../constants";
 import { Logger } from "../logger";
 import pushover from "../pushover";
-import { BackendIdentity, BaseService, Device, NotifyUsing, PushoverSettings, QueueNotifyMessage, Sensor } from "../types";
+import { BackendIdentity, BaseService, Device, InitCallback, NotifyUsing, PushoverSettings, QueueNotifyMessage, Sensor } from "../types";
 import { objectHasOwnProperty_Trueish } from "../utils";
 import { AlertEventType } from "./alert/alert-types";
 import { EmailMessage, EmailService, RFC822Address } from "./email-service";
@@ -30,7 +30,7 @@ export class NotifyService extends BaseService {
         this.dependencies = [QueueService.NAME, StorageService.NAME, EmailService.NAME, IdentityService.NAME];
     }
 
-    init(callback: (err?: Error) => {}, services: BaseService[]) {
+    async init(callback: InitCallback, services: BaseService[]) {
         this.queueService = services[0] as QueueService;
         this.storage = services[1] as StorageService;
         this.email = services[2] as EmailService;

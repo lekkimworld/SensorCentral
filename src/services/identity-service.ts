@@ -1,7 +1,7 @@
 import constants from "../constants";
 import jwt from "jsonwebtoken";
 import { Logger } from "../logger";
-import { BackendIdentity, BaseService, BrowserLoginResponse, BrowserUser, DevicePrincipal, Identity, LoginSource, SystemPrincipal } from "../types";
+import { BackendIdentity, BaseService, BrowserLoginResponse, BrowserUser, DevicePrincipal, Identity, InitCallback, LoginSource, SystemPrincipal } from "../types";
 import { DatabaseService } from "./database-service";
 import { StorageService } from "./storage-service";
 import { QueryResult } from "pg";
@@ -68,7 +68,7 @@ export class IdentityService extends BaseService {
         this.dependencies = [DatabaseService.NAME, StorageService.NAME, RedisService.NAME];
     }
 
-    async init(callback: (err?: Error) => {}, services: BaseService[]) {
+    async init(callback: InitCallback, services: BaseService[]) {
         this.db = services[0] as DatabaseService;
         this.storage = services[1] as StorageService;
         this.redis = services[2] as RedisService;

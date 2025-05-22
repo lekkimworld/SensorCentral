@@ -454,7 +454,7 @@ export class DataQueryService extends types.BaseService {
         this.dependencies = [StorageService.NAME];
     }
 
-    async init(callback: (err?: Error) => {}, services: types.BaseService[]) {
+    async init(callback: types.InitCallback, services: types.BaseService[]) {
         logger.info(`Initializing ${DataQueryService.NAME}-service`);
         this.storage = services[0] as StorageService;
         callback();

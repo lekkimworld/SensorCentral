@@ -1,5 +1,5 @@
 import { Pool, QueryResult, PoolConfig } from "pg";
-import { BaseService } from "../types";
+import { BaseService, InitCallback } from "../types";
 import { Logger } from "../logger";
 import { URL } from "url";
 //@ts-ignore
@@ -33,28 +33,6 @@ if (Object.hasOwnProperty.call(config_clone, "password")) {
     }
 }
 
-const dbpool: Promise<Pool> = new Promise(async (resolve, reject) => {
-    let retries = 5;
-
-    while (retries) {
-        try {
-            logger.info(`Attempting to create a database pool`);
-            logger.debug(`Database pool config <${JSON.stringify(config_clone)}>`);
-            const p = new Pool(config);
-            logger.info("Created database pool - attempting querying via pool");
-            await p.query("select count(*) from user", []);
-            logger.info("Completed query - acquired database connection");
-            resolve(p);
-            break;
-        } catch (err) {
-            retries -= 1;
-            logger.warn(`Unable to get database pool - retries left: ${retries}`);
-            await new Promise((res) => setTimeout(res, 5000));
-        }
-    }
-    reject(new Error("Unable to get database connection within 5 retries"));
-});
-
 export class DatabaseService extends BaseService {
     public static NAME = "db";
 
@@ -64,10 +42,30 @@ export class DatabaseService extends BaseService {
         super(DatabaseService.NAME);
     }
 
-    async init(callback: (err?: Error) => {}) {
+    async init(callback: InitCallback) {
         try {
             // wait for database pool
-            this._pool = await dbpool;
+            this._pool = await new Promise<Pool>(async (resolve, reject) => {
+                let retries = 5;
+
+                while (retries) {
+                    try {
+                        logger.info(`Attempting to create a database pool`);
+                        logger.debug(`Database pool config <${JSON.stringify(config_clone)}>`);
+                        const p = new Pool(config);
+                        logger.info("Created database pool - attempting querying via pool");
+                        await p.query("select count(*) from user", []);
+                        logger.info("Completed query - acquired database connection");
+                        resolve(p);
+                        break;
+                    } catch (err) {
+                        retries -= 1;
+                        logger.warn(`Unable to get database pool - retries left: ${retries}`);
+                        await new Promise((res) => setTimeout(res, 5000));
+                    }
+                }
+                reject(new Error("Unable to get database connection within 5 retries"));
+            });;
 
             // see if database is initialized
             logger.info("Looking for DATABASE_ALLOW_SCHEMA_UPGRADE environment variable");

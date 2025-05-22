@@ -17,7 +17,7 @@ export class Secret {
     constructor(e: types.Secret) {
         this.id = e.id;
         this.name = e.name
-        this.value = e.value;
+        this.value = e.value.length < 10 ? "xxxxxxxxxx" : `${e.value.substring(0, e.value.length / 5)}...`;
     }
 
     @Field(() => ID)

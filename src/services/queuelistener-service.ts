@@ -8,7 +8,8 @@ import {BaseService, Device, Sensor, TopicSensorMessage, RedisSensorMessage,
     IngestedSensorMessage, IngestedDeviceMessage, IngestedControlMessage, 
     RedisDeviceMessage, 
     BackendIdentity,
-    SensorType} from "../types";
+    SensorType,
+    InitCallback} from "../types";
 import moment, {Moment} from "moment";
 import { IdentityService } from "./identity-service";
 import { StorageService } from "./storage-service";
@@ -46,7 +47,7 @@ export class QueueListenerService extends BaseService {
         ];
     }
 
-    async init(callback: (err?: Error) => {}, services: BaseService[]) {
+    async init(callback: InitCallback, services: BaseService[]) {
         this.dbService = services[0] as DatabaseService;
         this.pubsub = services[1] as PubsubService;
         this.redisService = services[2] as RedisService;

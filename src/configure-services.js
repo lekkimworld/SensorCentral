@@ -164,6 +164,7 @@ const lookupService = (name, timeoutService = constants.DEFAULTS.SERVICE.LOOKUP_
 }
 
 module.exports = {
+    _services,
     BaseService, 
     registerService, 
     lookupService,

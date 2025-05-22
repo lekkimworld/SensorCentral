@@ -1,8 +1,7 @@
 import Handlebars from "handlebars";
 import constants from "../constants";
 import { Logger } from "../logger";
-import { BackendIdentity, BaseService, HttpMethod, OnSensorSampleEvent, Sensor, TopicSensorMessage } from "../types";
-import { RequestData } from "./callout-service";
+import { BackendIdentity, BaseService, HttpMethod, InitCallback, OnSensorSampleEvent, Sensor, TopicSensorMessage } from "../types";
 import { IdentityService } from "./identity-service";
 import { PubsubService, TopicMessage } from "./pubsub-service";
 import { StorageService } from "./storage-service";
@@ -29,7 +28,7 @@ export class EventService extends BaseService {
         this.dependencies = [PubsubService.NAME, StorageService.NAME, IdentityService.NAME];
     }
 
-    async init(callback: (err?: Error) => {}, services: BaseService[]) {
+    async init(callback: InitCallback, services: BaseService[]) {
         const pubsub = services[0] as PubsubService;
         this.storage = services[1] as StorageService;
         this.identity = (services[2] as IdentityService).getServiceBackendIdentity(EventService.NAME);
@@ -63,6 +62,7 @@ export class EventService extends BaseService {
         });
     }
 
+    //@ts-ignore
     private substituteFromContext(id: string, template: string|undefined, ctx: TemplateContext) : string|undefined {
         if (!template) return undefined;
 
@@ -88,6 +88,7 @@ export class EventService extends BaseService {
 
         // build context
         const sensor = await this.storage.getSensor(this.identity, msg.sensorId);
+        //@ts-ignore
         const ctx = {
             id: msg.sensorId,
             value: msg.value,
@@ -95,19 +96,19 @@ export class EventService extends BaseService {
         };
 
         // replace in body if any
+        /*
         const body = this.substituteFromContext(ev.id, ev.bodyTemplate, ctx);
         const path = this.substituteFromContext(ev.id, ev.path, ctx);
-        const requestData: RequestData = {
-            id: ev.id,
-            endpoint: ev.endpoint,
-            url: `${ev.endpoint.baseUrl}${path}`,
-            path: path!,
-            contentType: ev.contenttype,
-            body,
-            headers: {},
-        };
-        if (ev.endpoint.bearerToken && ev.endpoint.bearerToken != null) requestData.headers.authorization = `Bearer ${ev.endpoint.bearerToken}`; 
 
+        const _requestData: RequestData = {
+            method: ev.method === HttpMethod.POST ? "POST" : "GET",
+            url: `${ev.endpoint.baseUrl}${path}`,
+            headers: {
+                "content-type": ev.contenttype
+            },
+            body
+        };
+        */
         // look at method and forward call
         if (ev.method === HttpMethod.POST) {
             //await this.processEventDefinitionPOST(requestData);

@@ -1,5 +1,6 @@
 import {
     BaseService,
+    InitCallback,
 } from "../types";
 import { Logger } from "../logger";
 import {CronJob} from "cron";
@@ -15,7 +16,7 @@ export class CronService extends BaseService {
         super(CronService.NAME);
     }
 
-    async init(callback: (err?: Error) => {}) {
+    async init(callback: InitCallback, _services: BaseService[]) {
         // callback
         callback();
     }
