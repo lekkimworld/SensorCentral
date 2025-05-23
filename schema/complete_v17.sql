@@ -11,7 +11,12 @@ alter table DEVICE add foreign key (houseid) references house (id) on delete cas
 
 create type NOTIFY_METHOD as ENUM ('email','pushover');
 
-create table LOGIN_USER (id character varying(36) not null primary key, email character varying(128), fn character varying(128) not null, ln character varying(128) not null);
+create table LOGIN_USER (
+    id character varying(36) not null primary key, 
+    email character varying(128), 
+    fn character varying(128) not null, 
+    ln character varying(128) not null
+);
 
 create table login_oidc_mapping (
     userid character varying(36) not null, 
@@ -51,14 +56,6 @@ ALTER TABLE POWERMETER_SUBSCRIPTION ADD PRIMARY KEY (houseid, sensorid);
 ALTER TABLE POWERMETER_SUBSCRIPTION ADD FOREIGN KEY (houseid) REFERENCES HOUSE(id) ON DELETE CASCADE;
 ALTER TABLE POWERMETER_SUBSCRIPTION ADD FOREIGN KEY (sensorid) REFERENCES SENSOR(id) ON DELETE CASCADE;
 
-create table endpoint (
-    id character varying(36) not null primary key default uuid_generate_v4(), 
-    name character varying(128) not null,
-    userId character varying(36) not null, 
-    baseurl character varying(128) not null
-);
-alter table endpoint ADD FOREIGN KEY (userId) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
-
 create type HTTP_METHOD as ENUM (
     'GET',
     'POST'
@@ -69,19 +66,74 @@ create type HTTP_CONTENTTYPE as ENUM (
     'JSON'
 );
 
+create type CALLOUT_AUTHENTICATOR_TEMPLATE as ENUM (
+    'STATIC-BEARERTOKEN',
+    'DATACLOUD-CLIENTCREDENTIALS'
+);
+
+create table callout_secret (
+    id character varying(36) not null primary key default uuid_generate_v4(), 
+    userid  character varying(36) not null,
+    name character varying(36) not null,
+    value  character varying(1024) not null
+);
+alter table callout_secret add constraint SECRET_NAME_UNIQUE_PER_USER UNIQUE (userid, name);
+alter table callout_secret ADD FOREIGN KEY (userid) REFERENCES LOGIN_USER (id) ON DELETE CASCADE;
+
+create table callout_endpoint (
+    id character varying(36) not null primary key default uuid_generate_v4(), 
+    name character varying(128) not null,
+    userid character varying(36) not null, 
+    baseurl character varying(128) not null
+);
+alter table callout_endpoint ADD FOREIGN KEY (userid) REFERENCES LOGIN_USER (id) ON DELETE CASCADE;
+
+create table callout_authenticator (
+    id character varying(36) not null primary key default uuid_generate_v4(), 
+    userid  character varying(36) not null,
+    name character varying(36) not null,
+    endpointid character varying(36) not null,
+    template CALLOUT_AUTHENTICATOR_TEMPLATE not null
+);
+alter table callout_authenticator add foreign key (endpointid) references callout_endpoint (id) on delete cascade;
+alter table callout_authenticator add foreign key (userid) references login_user (id) on delete cascade;
+alter table callout_authenticator add constraint CALLOUT_AUTHNAME_UNIQUE_PER_USER UNIQUE (userid, name);
+
+create table callout_authenticator_replacement (
+    id character varying(36) not null primary key default uuid_generate_v4(), 
+    name  character varying(36) not null,
+    secretid character varying(36) not null,
+    authenticatorid character varying(36) not null
+);
+alter table callout_authenticator_replacement add foreign key (secretid) references callout_secret (id) on delete cascade;
+alter table callout_authenticator_replacement add foreign key (secretid) references callout_secret (id) on delete cascade;
+alter table callout_authenticator_replacement add foreign key (authenticatorid) references callout_authenticator (id) on delete cascade;
+alter table callout_authenticator_replacement add constraint CALLOUT_AUTH_PLACEMENT_NAME_UNIQUE UNIQUE (authenticatorid, name);
+
+create table callout (
+    id character varying(36) not null primary key default uuid_generate_v4(), 
+    userid  character varying(36) not null,
+    name character varying(36) not null,
+    endpointid character varying(36) not null,
+    method HTTP_METHOD not null,
+    authenticatorid character varying(36),
+    path_template character varying(128) not null,
+    body_template character varying(1024)
+);
+alter table callout add foreign key (userid) references login_user (id) on delete cascade;
+alter table callout add foreign key (endpointid) references callout_endpoint (id) on delete cascade;
+alter table callout add foreign key (authenticatorid) references callout_authenticator (id) on delete cascade;
+alter table callout add constraint CALLOUT_NAME_UNIQUE_PER_USER UNIQUE (userid, name);
+
 create table event_onsensorsample (
     id character varying(36) not null primary key default uuid_generate_v4(), 
     sensorid character varying(36) not null,
     userid  character varying(36) not null,
-    endpointid character varying(36) not null,
-    method HTTP_METHOD not null,
-    path character varying(128),
-    body character varying(1024),
-    contenttype HTTP_CONTENTTYPE not null
+    calloutid character varying(36) not null
 );
-alter table event_onsensorsample ADD FOREIGN KEY (userId) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
+alter table event_onsensorsample ADD FOREIGN KEY (userid) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
 alter table event_onsensorsample ADD FOREIGN KEY (sensorid) REFERENCES sensor(id) ON DELETE CASCADE;
-alter table event_onsensorsample ADD FOREIGN KEY (endpointid) REFERENCES endpoint(id) ON DELETE CASCADE;
+alter table event_onsensorsample ADD FOREIGN KEY (calloutid) REFERENCES callout(id) ON DELETE CASCADE;
 
 create table jwt_issuers (
     id character varying(36) not null primary key default uuid_generate_v4(),
@@ -91,11 +143,7 @@ create table jwt_issuers (
 );
 alter table jwt_issuers ADD FOREIGN KEY (houseid) REFERENCES HOUSE(id) ON DELETE CASCADE;
 
-create table secret (
-    id character varying(36) not null primary key default uuid_generate_v4(), 
-    userid  character varying(36) not null,
-    name character varying(36) not null,
-    value  character varying(1024) not null
-);
-alter table secret add constraint SECRET_NAME_UNIQUE_PER_USER UNIQUE (userid, name);
-alter table secret ADD FOREIGN KEY (userid) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
+
+
+
+

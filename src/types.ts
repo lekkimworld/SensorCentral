@@ -557,6 +557,7 @@ export type CalloutAuthenticatorTemplate = {
 
 export type CalloutAuthenticator = {
     id: string;
+    name: string;
     endpoint: Endpoint;
     template: CalloutAuthenticatorTemplate;
     templateMappings: Record<string ,string>
@@ -564,6 +565,7 @@ export type CalloutAuthenticator = {
 
 export type Callout = {
     id: string;
+    name: string;
     endpoint: Endpoint;
     authenticator?: CalloutAuthenticator;
     headers?: Record<string,string>;

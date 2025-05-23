@@ -1794,10 +1794,10 @@ export class StorageService extends BaseService {
     async getEndpoints(user: BackendIdentity): Promise<Endpoint[]> {
         let result;
         if (this.isAllDataAccessUser(user)) {
-            result = await this.dbService.query("select id, name, baseurl, userid from endpoint");
+            result = await this.dbService.query("select id, name, baseurl, userid from callout_endpoint");
         } else {
             result = await this.dbService.query(
-                "select id, name, baseurl, userid from endpoint where userid=$1",
+                "select id, name, baseurl, userid from callout_endpoint where userid=$1",
                 user.identity.callerId
             );
         }
@@ -1817,7 +1817,7 @@ export class StorageService extends BaseService {
         const id = uuid();
         logger.debug(`Creating endpoint record with id <${id}> for user <${userid}>`);
         await this.dbService.query(
-            "insert into endpoint (id, name, baseurl, userid) values ($1,$2,$3,$4)",
+            "insert into callout_endpoint (id, name, baseurl, userid) values ($1,$2,$3,$4)",
             id,
             input.name,
             input.baseUrl,
@@ -1844,7 +1844,7 @@ export class StorageService extends BaseService {
         }
         logger.debug(`Updating endpoint record with id <${input.id}> for user <${userid}>`);
         const result = await this.dbService.query(
-            `update endpoint set ${queryFields.join(",")} where userid=$1 and id=$2`,
+            `update callout_endpoint set ${queryFields.join(",")} where userid=$1 and id=$2`,
             ...queryData
         );
 
@@ -1864,7 +1864,7 @@ export class StorageService extends BaseService {
         logger.debug(`Deleting endpoint record with id <${input.id}> for user <${userid}>`);
         const result = await this.dbService.query("delete from endpoint where userid=$1 and id=$2", userid, input.id);
         if (result.rowCount === 1) {
-            logger.trace(`Deleted endpoint record with id <${input.id}> for user <${userid}>`);
+            logger.trace(`Deleted callout_endpoint record with id <${input.id}> for user <${userid}>`);
             return true;
         } else {
             logger.error(`Unable to delete endpoint record with id <${input.id}> for user <${userid}>`);
@@ -2053,7 +2053,7 @@ export class StorageService extends BaseService {
         const id = uuid();
         logger.debug(`Creating secret record with id <${id}> for user <${userid}>`);
         await this.dbService.query(
-            "insert into secret (id, userid, name, value) values ($1, $2, $3, $4)",
+            "insert into callout_secret (id, userid, name, value) values ($1, $2, $3, $4)",
             id,
             userid,
             input.name,
@@ -2083,7 +2083,7 @@ export class StorageService extends BaseService {
         }
         logger.debug(`Updating secret record with id <${input.id}> for user <${userid}>`);
         const result = await this.dbService.query(
-            `update secret set ${queryFields.join(",")} where userid=$1 and id=$2`,
+            `update callout_secret set ${queryFields.join(",")} where userid=$1 and id=$2`,
             ...queryData
         );
 
@@ -2104,7 +2104,7 @@ export class StorageService extends BaseService {
 
         logger.debug(`Deleting secret record with id <${input.id}> for user <${userid}>`);
         const result = await this.dbService.query(
-            "delete from secret where userid=$1 and id=$2",
+            "delete from callout_secret where userid=$1 and id=$2",
             userid,
             input.id
         );
