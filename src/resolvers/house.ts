@@ -3,6 +3,7 @@ import { Arg, Ctx, Field, FieldResolver, ID, InputType, Mutation, ObjectType, Qu
 import * as types from "../types";
 import { Device } from "./device";
 import { User } from "./user";
+import { DeleteInput } from "./common";
 
 registerEnumType(types.NullableBoolean, {
     name: "NullableBoolean",
@@ -75,13 +76,6 @@ export class UpdateHouseInput extends CreateHouseInput {
     id : string
 }
 
-@InputType()
-export class DeleteHouseInput {
-    @Field(() => ID)
-    @Length(1,36)
-    id : string
-}
-
 @Resolver((_of) => House)
 export class HouseResolver {
     @Query((_returns) => [House], { description: "Returns all Houses the user has access to", nullable: false })
@@ -138,7 +132,7 @@ export class HouseResolver {
     }
 
     @Mutation(() => Boolean, { description: "Deletes the supplied House" })
-    async deleteHouse(@Arg("data") data: DeleteHouseInput, @Ctx() ctx: types.GraphQLResolverContext) {
+    async deleteHouse(@Arg("data") data: DeleteInput, @Ctx() ctx: types.GraphQLResolverContext) {
         await ctx.storage.deleteHouse(ctx.user, data);
         return true;
     }

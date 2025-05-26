@@ -1,8 +1,8 @@
 import fetch from "node-fetch";
+import { AuthenticatorTemplate } from "../../src/callout-authenticator-templates/templates";
 import CalloutService, { RequestData } from "../../src/services/callout-service";
 import { StorageService } from "../../src/services/storage-service";
-import { BackendIdentity, Identity, Secret } from "../../src/types";
-import { templates } from "../../src/callout-authenticator-templates/templates";
+import { BackendIdentity, CalloutSecret, Identity } from "../../src/types";
 
 jest.mock("node-fetch");
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>
@@ -116,13 +116,13 @@ describe ("callout-service.request", () => {
 describe ("callout-service.callout", () => {
     const callback = jest.fn();
     let mockStorage : StorageService|undefined = undefined;
-    let secrets : Array<Secret> = [];
+    let secrets : Array<CalloutSecret> = [];
     let c : CalloutService | undefined = undefined; 
 
     beforeEach(async () => {
         callback.mockReset();
         mockStorage = new StorageService();
-        jest.spyOn(mockStorage, "getUserSecrets").mockImplementation(() => {
+        jest.spyOn(mockStorage, "getUserCalloutSecrets").mockImplementation(() => {
             return Promise.resolve(secrets)
         });
         c = new CalloutService();
@@ -142,6 +142,7 @@ describe ("callout-service.callout", () => {
 
         await calloutSvc.callout(ident, {
             id: "id",
+            name: "myname",
             method: "GET",
             endpoint: {
                 id: "emdpoint_id", name: "foo", baseUrl: "https://example.com"
@@ -150,7 +151,7 @@ describe ("callout-service.callout", () => {
             bodyTemplate: undefined
         }, {});
         
-        expect(storage.getUserSecrets).toHaveBeenCalledTimes(1);
+        expect(storage.getUserCalloutSecrets).toHaveBeenCalledTimes(1);
         expect(calloutSvc.request).toHaveBeenCalledTimes(1);
         expect(calloutSvc.request).toHaveBeenCalledWith({
             method: "GET",
@@ -166,6 +167,7 @@ describe ("callout-service.callout", () => {
 
         await calloutSvc.callout(ident, {
             id: "id",
+            name: "myname",
             method: "POST",
             endpoint: {
                 id: "emdpoint_id", name: "foo", baseUrl: "https://example.com"
@@ -177,7 +179,7 @@ describe ("callout-service.callout", () => {
             bodyTemplate: "{{b}}-{{a}}"
         }, {"a": "1", "b": "2"});
         
-        expect(storage.getUserSecrets).toHaveBeenCalledTimes(1);
+        expect(storage.getUserCalloutSecrets).toHaveBeenCalledTimes(1);
         expect(calloutSvc.request).toHaveBeenCalledTimes(1);
         expect(calloutSvc.request).toHaveBeenCalledWith({
             method: "POST",
@@ -190,21 +192,26 @@ describe ("callout-service.callout", () => {
 
     it("test authenticator", async () => {
         const calloutSvc = c!;
-        secrets.push({id: "1", name: "foo-secret", value: "bar"})
-
+        
         const endpoint = {
             id: "endpoint_id", name: "foo", baseUrl: "xxx://example.com"
         }
         await calloutSvc.callout(ident, {
             id: "id",
+            name: "myname",
             method: "GET",
             endpoint,
             pathTemplate: "",
             authenticator: {
                 endpoint, 
                 id: "foo",
-                template: templates["static-bearertoken"],
-                templateMappings: {"token": "foo-secret"}
+                name: "myauth",
+                template: AuthenticatorTemplate["STATIC-BEARERTOKEN"],
+                templateMappings: {
+                    "token": {
+                        name: "foo-secret", id: "xyz123", value: "shhhhh...."
+                    }
+                }
             }
         }, {});
         
@@ -212,7 +219,7 @@ describe ("callout-service.callout", () => {
             method: "GET",
             url: "xxx://example.com",
             headers: {
-                "Authorization": "Bearer bar"
+                "Authorization": "Bearer shhhhh...."
             }
         } as RequestData)
 

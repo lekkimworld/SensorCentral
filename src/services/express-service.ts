@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import { BaseService, HttpException } from "../types";
 import { middleware as httpContextMiddleware, set as setToHttpContext } from "express-http-context";
 import express, { Express, Response, Send } from "express";

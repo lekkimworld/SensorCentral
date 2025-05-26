@@ -79,6 +79,22 @@ export const put = async (url:string, body: FetchBodyType) => {
 export const del = async (url:string, body: FetchBodyType) => {
     return doFetch(url, buildContext("DELETE", undefined, body));
 }
+export type GraphQLErrorLocation = {
+    line: number;
+    column: number;
+}
+export type GraphQLError = {
+    message: string;
+    locations: Array<GraphQLErrorLocation>
+}
+export type GraphQLPayload<T> = {
+    data?: T
+    errors?: Array<GraphQLError>
+}
+export const graphqlTyped = async <T>(query: string, options?: FetchOptions) : Promise<GraphQLPayload<T>> => {
+    const result = await graphql(query, options);
+    return {data: result} as GraphQLPayload<T>;
+}
 export const graphql = async (query: string, options?: FetchOptions) : Promise<any> => {
     const payload = await post(`/graphql`, {
         "query": query

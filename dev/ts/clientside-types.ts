@@ -47,12 +47,12 @@ export type OnSensorSampleEvent = Readonly<
         path?: string;
         bodyTemplate?: string;
         method: HttpMethod;
-        endpoint: Required<Pick<Endpoint, "id">>;
+        endpoint: Required<Pick<CalloutEndpoint, "id">>;
         contentType: ContentType;
     }>
 >;
 
-export type Endpoint = Readonly<
+export type CalloutEndpoint = Readonly<
     Partial<{
         id: string;
         name: string;
@@ -61,7 +61,7 @@ export type Endpoint = Readonly<
     }>
 >;
 
-export type Secret = Readonly<
+export type CalloutSecret = Readonly<
     Partial<{
         id: string;
         name: string;

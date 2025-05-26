@@ -1,3 +1,5 @@
+import { BackendIdentity } from "types";
+
 declare global {
     namespace NodeJS {
         interface ProcessEnv {

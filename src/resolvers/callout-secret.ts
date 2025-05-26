@@ -13,8 +13,8 @@ import {
 import * as types from "../types";
 
 @ObjectType()
-export class Secret {
-    constructor(e: types.Secret) {
+export class CalloutSecret {
+    constructor(e: types.CalloutSecret) {
         this.id = e.id;
         this.name = e.name
         this.value = e.value.length < 10 ? "xxxxxxxxxx" : `${e.value.substring(0, e.value.length / 5)}...`;
@@ -33,14 +33,14 @@ export class Secret {
 }
 
 @InputType()
-export class DeleteSecretInput {
+export class DeleteCalloutSecretInput {
     @Field(() => ID)
     @Length(1, 36)
     id: string;
 }
 
 @InputType()
-export class CreateSecretInput {
+export class CreateCalloutSecretInput {
     @Field(() => String, {
         description: "The name of the secret",
     })
@@ -55,7 +55,7 @@ export class CreateSecretInput {
 }
 
 @InputType()
-export class UpdateSecretInput {
+export class UpdateCalloutSecretInput {
     @Field(() => ID)
     @Length(1, 36)
     id: string;
@@ -69,38 +69,38 @@ export class UpdateSecretInput {
     value: string;
 }
 
-@Resolver((_of) => Secret)
-export class SecretResolver {
-    @Query(() => [Secret], {description: "Returns the secrets for the user"})
-    async secrets(@Ctx() ctx: types.GraphQLResolverContext) {
-        const secrets = await ctx.storage.getUserSecrets(ctx.user);
-        return secrets.map(s => new Secret(s));
+@Resolver((_of) => CalloutSecret)
+export class CalloutSecretResolver {
+    @Query(() => [CalloutSecret], {description: "Returns the secrets for the user"})
+    async calloutSecrets(@Ctx() ctx: types.GraphQLResolverContext) {
+        const secrets = await ctx.storage.getUserCalloutSecrets(ctx.user);
+        return secrets.map(s => new CalloutSecret(s));
     }
 
-    @Mutation(() => Secret)
-    async createSecret(
+    @Mutation(() => CalloutSecret)
+    async createCalloutSecret(
         @Ctx() ctx: types.GraphQLResolverContext,
-        @Arg("data") input: CreateSecretInput
-    ): Promise<Secret> {
-        const s = await ctx.storage.createSecret(ctx.user, input);
-        return new Secret(s);
+        @Arg("data") input: CreateCalloutSecretInput
+    ): Promise<CalloutSecret> {
+        const s = await ctx.storage.createCalloutSecret(ctx.user, input);
+        return new CalloutSecret(s);
     }
 
-    @Mutation(() => Secret)
-    async updateSecret(
+    @Mutation(() => CalloutSecret)
+    async updateCalloutSecret(
         @Ctx() ctx: types.GraphQLResolverContext,
-        @Arg("data") input: UpdateSecretInput
-    ): Promise<Secret> {
-        const s = await ctx.storage.updateSecret(ctx.user, input);
-        return new Secret(s);
+        @Arg("data") input: UpdateCalloutSecretInput
+    ): Promise<CalloutSecret> {
+        const s = await ctx.storage.updateCalloutSecret(ctx.user, input);
+        return new CalloutSecret(s);
     }
 
     @Mutation(() => Boolean)
-    async deleteSecret(
+    async deleteCalloutSecret(
         @Ctx() ctx: types.GraphQLResolverContext,
-        @Arg("data") input: DeleteSecretInput
+        @Arg("data") input: DeleteCalloutSecretInput
     ): Promise<boolean> {
-        await ctx.storage.deleteSecret(ctx.user, input);
+        await ctx.storage.deleteCalloutSecret(ctx.user, input);
         return true;
     }
 }

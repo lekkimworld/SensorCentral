@@ -3,22 +3,26 @@ import staticBearerToken from "./static-bearertoken";
 import datacloudClientCredentials from "./datacloud-clientcredentials-oauth";
 import datacloudAnonWebSDK from "./datacloud-anonymous-websdk";
 
-const Templates = {
-    "DATACLOUD-CLIENTCREDENTIALS":"DATACLOUD-CLIENTCREDENTIALS",
-    "STATIC-BEARERTOKEN":"STATIC-BEARERTOKEN",
-    "DATACLOUD-WEBSDK": "DATACLOUD-WEBSDK"
-} as const;
-export type AuthenticatorTemplate = keyof typeof Templates;
+export const DATACLOUD_CLIENTCREDENTIALS = "DATACLOUD_CLIENTCREDENTIALS";
+export const STATIC_BEARERTOKEN = "STATIC_BEARERTOKEN";
+export const DATACLOUD_WEBSDK = "DATACLOUD_WEBSDK";
+export enum AuthenticatorTemplate {
+    "DATACLOUD_CLIENTCREDENTIALS" = "DATACLOUD_CLIENTCREDENTIALS",
+    "STATIC_BEARERTOKEN" = "STATIC_BEARERTOKEN",
+    "DATACLOUD_WEBSDK" = "DATACLOUD_WEBSDK"
+}
 
 export const templates : Record<AuthenticatorTemplate, CalloutAuthenticatorTemplate> = {
-    "STATIC-BEARERTOKEN": {
+    "STATIC_BEARERTOKEN": {
+        id: "STATIC_BEARERTOKEN",
         name: "Static Bearer Token",
         placeholders: {
             "token": "This is the token to use"
         },
         executor: staticBearerToken
     },
-    "DATACLOUD-CLIENTCREDENTIALS" : {
+    "DATACLOUD_CLIENTCREDENTIALS" : {
+        id: "DATACLOUD_CLIENTCREDENTIALS",
         name: "Salesforce Data Cloud clientcredentials OAuth Flow",
         placeholders: {
             "client_id": "The client_id (consumer key) as configured in Salesforce",
@@ -26,7 +30,8 @@ export const templates : Record<AuthenticatorTemplate, CalloutAuthenticatorTempl
         },
         executor: datacloudClientCredentials
     },
-    "DATACLOUD-WEBSDK": {
+    "DATACLOUD_WEBSDK": {
+        id: "DATACLOUD_WEBSDK",
         name: "Salesforce Data Cloud WebSDK",
         placeholders: {
             "app_source_id": "The app source id as supplied in the connector setup",

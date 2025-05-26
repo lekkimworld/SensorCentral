@@ -1,5 +1,5 @@
 import CalloutService, { MIMETYPE_FORM, MIMETYPE_JSON } from "../services/callout-service";
-import { CalloutAuthenticatorTemplateExecutor, Endpoint, Secret } from "../types";
+import { CalloutAuthenticatorTemplateExecutor, CalloutEndpoint, CalloutSecret } from "../types";
 import getService from "../services/service-locator";
 
 type AuthResponse = {
@@ -8,11 +8,11 @@ type AuthResponse = {
 
 export const APP_SOURCE_ID = "app_source_id";
 export const DEVICE_ID = "device_id";
-const authenticator : CalloutAuthenticatorTemplateExecutor = async (secrets: Array<Secret>, templateMappings: Record<string,string>, endpoint: Endpoint) : Promise<Record<string,string>> => {
+const authenticator : CalloutAuthenticatorTemplateExecutor = async (templateMappings: Record<string,CalloutSecret>, endpoint: CalloutEndpoint) : Promise<Record<string,string>> => {
     // build auth payload
     const payloadObj = {
-        "appSourceId": secrets.find(s => s.name === templateMappings[APP_SOURCE_ID])?.value,
-        "deviceId": secrets.find(s => s.name === templateMappings[APP_SOURCE_ID])?.value
+        "appSourceId": templateMappings[APP_SOURCE_ID]?.value,
+        "deviceId": templateMappings[APP_SOURCE_ID]?.value
     }
     const authJsonPayloadBase64 = Buffer.from(JSON.stringify(payloadObj)).toString("base64");
 

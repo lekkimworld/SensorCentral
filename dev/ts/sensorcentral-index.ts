@@ -14,8 +14,7 @@ import aboutRoute from "./routes/about";
 import loginChooseRoute from "./routes/login-choose";
 import powerChartsRoute from "./routes/powermeter-charts";
 import powerConfigRoute from "./routes/powermeter-config";
-import endpointsRoute from "./routes/endpoints";
-import secretsRoute from "./routes/secrets";
+import calloutsRoute from "./routes/callouts";
 import endpointTestChart from "./routes/testchart";
 
 const log = {
@@ -102,12 +101,9 @@ const navigationChange = async () => {
         loggedoutRoute(elemRoot);
     } else if ("#about" === hash) {
         aboutRoute(elemRoot);
-    } else if (hash === "#endpoints") {
-        // user is switching to see endpoints
-        endpointsRoute(elemRoot);
-    } else if (hash === "#secrets") {
-        // user is switching to see secrets
-        secretsRoute(elemRoot);
+    } else if (hash === "#callouts") {
+        // user is switching to see callouts etc.
+        calloutsRoute(elemRoot);
 
     } else if (hash.indexOf("#powermeter") === 0) {
         const parts = hash.split("/");

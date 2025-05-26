@@ -2,13 +2,15 @@ import { QueryResult } from "pg";
 import { v1 as uuid } from "uuid";
 import constants from "../constants";
 import { Logger } from "../logger";
-import { CreateDeviceInput, DeleteDeviceInput, UpdateDeviceInput } from "../resolvers/device";
-import { CreateHouseInput, DeleteHouseInput, FavoriteHouseInput, House, UpdateHouseInput } from "../resolvers/house";
+import { CreateDeviceInput, UpdateDeviceInput } from "../resolvers/device";
+import { CreateHouseInput, FavoriteHouseInput, House, UpdateHouseInput } from "../resolvers/house";
 import { CreateSensorType, DeleteSensorType, FavoriteSensorsInput, UpdateSensorType } from "../resolvers/sensor";
 import { UpdatePushoverSettingsInput } from "../resolvers/settings";
 import {
-    BackendIdentity, BaseService, DataElement, Device, DeviceData, Endpoint, getContentType, getHttpMethod, HouseUser, HttpMethod, InitCallback, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, Secret, Sensor,
-    SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, TokenIssuerInformation, UserPrincipal
+    BackendIdentity, BaseService, DataElement, Device, DeviceData, CalloutEndpoint, getContentType, getHttpMethod, HouseUser, HttpMethod, InitCallback, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, CalloutSecret, Sensor,
+    SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, TokenIssuerInformation, UserPrincipal,
+    CalloutAuthenticator,
+    Callout
 } from "../types";
 import { DatabaseService } from "./database-service";
 import { PubsubService } from "./pubsub-service";
@@ -23,9 +25,12 @@ import { ISO8601_DATETIME_FORMAT } from "../constants";
 import { Alert, DeviceTimeoutAlert, SensorTimeoutAlert, SensorValueAlert, SensorValueEventData, stringToAlertValueTest, TimeoutAlertEventData } from "./alert/alert-types";
 import { IdentityService } from "./identity-service";
 import { CreateAlertInput, DeleteAlertInput } from "../resolvers/alert";
-import { CreateEndpointInput, UpdateEndpointInput, DeleteEndpointInput } from "../resolvers/endpoint";
-import { CreateOnSensorSampleEventInput, DeleteOnSensorSampleEventInput, UpdateOnSensorSampleEventInput } from "../resolvers/event";
-import { CreateSecretInput, DeleteSecretInput, UpdateSecretInput } from "../resolvers/secret";
+import { CreateCalloutEndpointInput, UpdateCalloutEndpointInput, DeleteCalloutEndpointInput } from "../resolvers/callout-endpoint";
+import { CreateOnSensorSampleEventInput, UpdateOnSensorSampleEventInput } from "../resolvers/event";
+import { CreateCalloutSecretInput, DeleteCalloutSecretInput, UpdateCalloutSecretInput } from "../resolvers/callout-secret";
+import { DeleteInput } from "../resolvers/common";
+import { AuthenticatorTemplate, DATACLOUD_CLIENTCREDENTIALS, DATACLOUD_WEBSDK, STATIC_BEARERTOKEN, templates } from "../callout-authenticator-templates/templates";
+import { CreateCalloutAuthenticatorInput, UpdateCalloutAuthenticatorInput } from "../resolvers/callout-authenticator";
 
 const DEVICE_DATA_KEY_PREFIX = "device_data:";
 const HOUSE_COLUMNS = "h.id houseid, h.name housename";
@@ -637,7 +642,7 @@ export class StorageService extends BaseService {
      * @param id
      * @throws Error is the house cannot be found if user do not have access to the house
      */
-    async deleteHouse(user: BackendIdentity, { id }: DeleteHouseInput) {
+    async deleteHouse(user: BackendIdentity, { id }: DeleteInput) {
         // validate
         const use_id = id.trim();
 
@@ -843,7 +848,7 @@ export class StorageService extends BaseService {
      * @param data Data for device deletion
      * @throws Error if device cannot be deleted
      */
-    async deleteDevice(user: BackendIdentity, { id }: DeleteDeviceInput): Promise<void> {
+    async deleteDevice(user: BackendIdentity, { id }: DeleteInput): Promise<void> {
         // validate
         const use_id = id.trim();
 
@@ -1791,7 +1796,7 @@ export class StorageService extends BaseService {
      * @param user
      * @returns
      */
-    async getEndpoints(user: BackendIdentity): Promise<Endpoint[]> {
+    async getCalloutEndpoints(user: BackendIdentity): Promise<CalloutEndpoint[]> {
         let result;
         if (this.isAllDataAccessUser(user)) {
             result = await this.dbService.query("select id, name, baseurl, userid from callout_endpoint");
@@ -1808,11 +1813,42 @@ export class StorageService extends BaseService {
                 id: row.id,
                 name: row.name,
                 baseUrl: row.baseurl
-            } as Endpoint;
+            } as CalloutEndpoint;
         });
     }
 
-    async createEndpoint(user: BackendIdentity, input: CreateEndpointInput): Promise<Endpoint> {
+    async getUserCallout(user: BackendIdentity, id: string) : Promise<Callout | undefined> {
+        const callouts = await this.getUserCallouts(user);
+        return callouts.find(c => c.id === id);
+    }
+
+    async getUserCallouts(user: BackendIdentity) : Promise<Array<Callout>> {
+        // issue query
+        const calloutResult = await this.dbService.query("select c.id c_id, c.name c_name, c.method c_method, c.path_template c_path_template, c.body_template c_body_template, c.authenticatorid c_authenticatorid, e.id e_id, e.name e_name, e.baseurl e_baseurl from callout c, callout_endpoint e where c.endpointid=e.id and c.userid=$1", user.identity.callerId);
+        if (calloutResult.rowCount === 0) return [];
+
+        // get authenticator
+        const authenticators = await this.getCalloutAuthenticators(user);
+
+        // map
+        return calloutResult.rows.map(row => {
+            return {
+                id: row.c_id, 
+                name: row.c_name,
+                endpoint: {
+                    id: row.e_id,
+                    name: row.e_name,
+                    baseUrl: row.e_baseurl
+                },
+                method: row.c_method as HttpMethod,
+                pathTemplate: row.c_path_template,
+                bodyTemplate: row.c_body_template,
+                authenticator: authenticators.find(a => a.id === row.c_authenticatorid)
+            } as Callout;
+        })
+    }
+
+    async createCalloutEndpoint(user: BackendIdentity, input: CreateCalloutEndpointInput): Promise<CalloutEndpoint> {
         const userid = user.identity.callerId;
         const id = uuid();
         logger.debug(`Creating endpoint record with id <${id}> for user <${userid}>`);
@@ -1826,10 +1862,10 @@ export class StorageService extends BaseService {
         logger.trace(`Created endpoint record with id <${id}> for user <${userid}>`);
 
         // return
-        return (await this.getEndpoints(user)).find((e) => e.id === id)!;
+        return (await this.getCalloutEndpoints(user)).find((e) => e.id === id)!;
     }
 
-    async updateEndpoint(user: BackendIdentity, input: UpdateEndpointInput): Promise<Endpoint> {
+    async updateCalloutEndpoint(user: BackendIdentity, input: UpdateCalloutEndpointInput): Promise<CalloutEndpoint> {
         const userid = user.identity.callerId;
 
         let queryFields = [];
@@ -1855,20 +1891,177 @@ export class StorageService extends BaseService {
         }
 
         // return
-        return (await this.getEndpoints(user)).find((e) => e.id === input.id)!;
+        return (await this.getCalloutEndpoints(user)).find((e) => e.id === input.id)!;
     }
 
-    async deleteEndpoint(user: BackendIdentity, input: DeleteEndpointInput): Promise<boolean> {
+    async deleteCalloutEndpoint(user: BackendIdentity, input: DeleteCalloutEndpointInput): Promise<boolean> {
         const userid = user.identity.callerId;
 
-        logger.debug(`Deleting endpoint record with id <${input.id}> for user <${userid}>`);
-        const result = await this.dbService.query("delete from endpoint where userid=$1 and id=$2", userid, input.id);
+        logger.debug(`Deleting callout endpoint record with id <${input.id}> for user <${userid}>`);
+        const result = await this.dbService.query("delete from callout_endpoint where userid=$1 and id=$2", userid, input.id);
         if (result.rowCount === 1) {
             logger.trace(`Deleted callout_endpoint record with id <${input.id}> for user <${userid}>`);
             return true;
         } else {
             logger.error(`Unable to delete endpoint record with id <${input.id}> for user <${userid}>`);
             throw new Error(`Unable to delete endpoint record with id <${input.id}> for user <${userid}>`);
+        }
+    }
+
+    /**
+     * Returns the callout authenticators for the supplied user or for all users if an 
+     * all-access-user is supplied. 
+     *
+     * @param user
+     * @returns
+     */
+    async getCalloutAuthenticators(user: BackendIdentity): Promise<CalloutAuthenticator[]> {
+        let query = "select a.id as auth_id, a.name as auth_name, template as auth_template, e.id as ep_id, e.name as ep_name, e.baseurl as ep_baseurl from callout_authenticator a, callout_endpoint e where a.endpointid=e.id";
+        query = `${query} and a.userid=$1`;
+        
+        const result = await this.dbService.query(
+            query,
+            user.identity.callerId
+        );
+
+        // get replaceents
+        const authenticatorIds = result.rows.map(row => row.auth_id);
+        const resultReplacements = await this.dbService.query("select * from callout_authenticator_replacement where authenticatorid IN ($1)", 
+            authenticatorIds.join()
+        );
+
+        // get secrets
+        const secrets = await this.getUserCalloutSecrets(user);
+
+        // loop and return
+        return result.rows.map((row) => {
+            const authenticatorId = row.auth_id;
+            let template = AuthenticatorTemplate["DATACLOUD_CLIENTCREDENTIALS"];
+            switch (row.auth_template) {
+                case DATACLOUD_CLIENTCREDENTIALS:
+                    template = AuthenticatorTemplate["DATACLOUD_CLIENTCREDENTIALS"];
+                    break;
+                case DATACLOUD_WEBSDK:
+                    template = AuthenticatorTemplate["DATACLOUD_WEBSDK"];
+                    break;
+                case STATIC_BEARERTOKEN:
+                    template = AuthenticatorTemplate["STATIC_BEARERTOKEN"];
+                    break;
+            }
+
+            // get replacements
+            const replacements : Record<string,CalloutSecret> = {};
+            resultReplacements.rows.forEach(row => {
+                if (row.authenticatorid === authenticatorId) {
+                    const s = secrets.find(s => s.id === row.secretid)!;
+                    replacements[row.name] = s;
+                }
+            })
+
+            const auth = {
+                id: authenticatorId,
+                name: row.auth_name,
+                template,
+                endpoint: {
+                    id: row.ep_id,
+                    name: row.ep_name,
+                    baseUrl: row.ep_baseurl
+                },
+                templateMappings: replacements
+            } as CalloutAuthenticator;
+            return auth;
+        });
+    }
+
+    async createCalloutAuthenticator(user: BackendIdentity, input: CreateCalloutAuthenticatorInput): Promise<CalloutAuthenticator> {
+        const userid = user.identity.callerId;
+
+        // get secrets for user and ensure there is a mapping for each replacement required
+        const secrets = await this.getUserCalloutSecrets(user);
+        const authTempl = templates[input.template];
+        Object.keys(authTempl.placeholders).forEach(placeholder => {
+            // look for mapping in the input
+            const mapping = input.templateMappings.find(mapping => mapping.name === placeholder);
+            if (!mapping) {
+                throw new Error(`Missing mapping for replacement <${placeholder}>`);
+            }
+        })
+
+        // create authenticator
+        const id = uuid();
+        logger.debug(`Creating callout_authenticator record with id <${id}> for user <${userid}>`);
+        try {
+            await this.dbService.query(
+                "insert into callout_authenticator (id, name, endpointid, template, userid) values ($1,$2,$3,$4,$5)",
+                id,
+                input.name,
+                input.endpointId,
+                input.template,
+                userid
+            );
+            const replacementRows = await Promise.all(input.templateMappings.map(async (mapping) => {
+                // get secret
+                const replacementId = uuid();
+                return this.dbService.query("insert into callout_authenticator_replacement (id, name, secretid, authenticatorid) values ($1, $2, $3, $4)",
+                    replacementId, mapping.name, mapping.secretId, id
+                );
+            }));
+            await this.dbService.query("commit");
+            logger.debug(`Committed callout authenticator <${id}> and replacements into database`);
+        } catch (err) {
+            await this.dbService.query("rollback");
+            const msg = "Unable to insert callout authenticator and replacements into database - rolling back";
+            logger.warn(msg);
+            throw new Error(msg)
+        }
+        
+        // return
+        return (await this.getCalloutAuthenticators(user)).find((e) => e.id === id)!;
+    }
+
+    async updateCalloutAuthenticator(user: BackendIdentity, input: UpdateCalloutAuthenticatorInput): Promise<CalloutAuthenticator> {
+        const userid = user.identity.callerId;
+
+        /*
+        let queryFields = [];
+        let queryData = [userid, input.id];
+        if (input.name && input.name.length) {
+            queryFields.push(`name=\$${queryData.length + 1}`);
+            queryData.push(input.name);
+        }
+        if (input.baseUrl && input.baseUrl.length) {
+            queryFields.push(`baseurl=\$${queryData.length + 1}`);
+            queryData.push(input.baseUrl);
+        }
+        logger.debug(`Updating endpoint record with id <${input.id}> for user <${userid}>`);
+        const result = await this.dbService.query(
+            `update callout_endpoint set ${queryFields.join(",")} where userid=$1 and id=$2`,
+            ...queryData
+        );
+
+        if (result.rowCount === 1) {
+            logger.trace(`Updated endpoint record with id <${input.id}> for user <${userid}>`);
+        } else {
+            throw new Error(`Unable to update endpoint - expected 1 as rowCount but was ${result.rowCount}`);
+        }
+        */
+
+        // return
+        return (await this.getCalloutAuthenticators(user)).find((e) => e.id === input.id)!;
+    }
+
+    async deleteCalloutAuthenticator(user: BackendIdentity, input: DeleteInput): Promise<boolean> {
+        const userid = user.identity.callerId;
+
+        logger.debug(`Deleting callout authenticator record with id <${input.id}> for user <${userid}>`);
+        const result = await this.dbService.query("delete from callout_authenticator where userid=$1 and id=$2", userid, input.id);
+        if (result.rowCount === 1) {
+            logger.trace(`Deleted callout_authenticator record with id <${input.id}> for user <${userid}>`);
+            return true;
+        } else {
+            const msg = `Unable to delete callout authenticator record with id <${input.id}> for user <${userid}>`;
+            logger.error(msg);
+            throw new Error(msg);
         }
     }
 
@@ -2011,7 +2204,7 @@ export class StorageService extends BaseService {
         return (await this.getUserOnSensorSampleEvents(user)).find((e) => e.id === input.id)!;
     }
 
-    async deleteOnSensorSampleEvent(user: BackendIdentity, input: DeleteOnSensorSampleEventInput): Promise<boolean> {
+    async deleteOnSensorSampleEvent(user: BackendIdentity, input: DeleteInput): Promise<boolean> {
         const userid = user.identity.callerId;
 
         logger.debug(`Deleting event_onsensorsample record with id <${input.id}> for user <${userid}>`);
@@ -2029,26 +2222,29 @@ export class StorageService extends BaseService {
         }
     }
 
-    async getUserSecrets(user: BackendIdentity) : Promise<Array<Secret>> {
-        if (this.isAllDataAccessUser(user)) throw new Error("Cannot get secrets from users");
+    async getUserCalloutSecrets(user: BackendIdentity) : Promise<Array<CalloutSecret>> {
         let result = await this.dbService.query(
-            "select id, name, value from secret where userid=$1",
+            "select id, name, value from callout_secret where userid=$1",
             user.identity.callerId
         );
         return result.rows.map(row => {
+            let value = row.value;
+            if (user.identity.impersonationId  !== "*") {
+                value = value.length < 10 ? "xxxxxxxxxx" : `${value.substring(0, value.length / 5)}...`;
+            }
             const s = {
                 id: row.id,
                 name: row.name,
-                value: row.value
-            } as Secret;
+                value: value
+            } as CalloutSecret;
             return s;
         });
     }
 
-    async createSecret(
+    async createCalloutSecret(
         user: BackendIdentity,
-        input: CreateSecretInput
-    ): Promise<Secret> {
+        input: CreateCalloutSecretInput
+    ): Promise<CalloutSecret> {
         const userid = user.identity.callerId;
         const id = uuid();
         logger.debug(`Creating secret record with id <${id}> for user <${userid}>`);
@@ -2062,13 +2258,13 @@ export class StorageService extends BaseService {
         logger.trace(`Created secret record with id <${id}> for user <${userid}>`);
 
         // return
-        return (await this.getUserSecrets(user)).find(s => s.id === id)!;
+        return (await this.getUserCalloutSecrets(user)).find(s => s.id === id)!;
     }
 
-    async updateSecret(
+    async updateCalloutSecret(
         user: BackendIdentity,
-        input: UpdateSecretInput
-    ): Promise<Secret> {
+        input: UpdateCalloutSecretInput
+    ): Promise<CalloutSecret> {
         const userid = user.identity.callerId;
 
         let queryFields = [];
@@ -2096,10 +2292,10 @@ export class StorageService extends BaseService {
         }
 
         // return
-        return (await this.getUserSecrets(user)).find(s => s.id === input.id)!;
+        return (await this.getUserCalloutSecrets(user)).find(s => s.id === input.id)!;
     }
 
-    async deleteSecret(user: BackendIdentity, input: DeleteSecretInput): Promise<boolean> {
+    async deleteCalloutSecret(user: BackendIdentity, input: DeleteCalloutSecretInput): Promise<boolean> {
         const userid = user.identity.callerId;
 
         logger.debug(`Deleting secret record with id <${input.id}> for user <${userid}>`);

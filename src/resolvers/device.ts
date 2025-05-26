@@ -5,6 +5,7 @@ import { Alert } from "./alert";
 import { House } from "./house";
 import { Sensor } from "./sensor";
 import * as alert_types from "../services/alert/alert-types";
+import { DeleteInput } from "./common";
 
 registerEnumType(types.NullableBoolean, {
     name: "NullableBoolean",
@@ -69,14 +70,7 @@ class DeviceData {
 }
 
 @InputType()
-export class DeleteDeviceInput {
-    @Field(() => ID)
-    @Length(1, 36)
-    id: string;
-}
-
-@InputType()
-export class UpdateDeviceInput extends DeleteDeviceInput {
+export class UpdateDeviceInput extends DeleteInput {
     @Field()
     @Length(2, 128)
     name : string
@@ -146,7 +140,7 @@ export class DeviceResolver {
     }
 
     @Mutation(() => Boolean)
-    async deleteDevice(@Arg("data") data: DeleteDeviceInput, @Ctx() ctx: types.GraphQLResolverContext) {
+    async deleteDevice(@Arg("data") data: DeleteInput, @Ctx() ctx: types.GraphQLResolverContext) {
         await ctx.storage.deleteDevice(ctx.user, data);
         return true;
     }

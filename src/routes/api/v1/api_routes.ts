@@ -44,4 +44,10 @@ router.use("/export", exportRoutes);
 import watchdogRoutes from "./watchdog";
 router.use("/watchdog", watchdogRoutes);
 
+// *****************************************
+// WATCHDOG
+// *****************************************
+import calloutRoutes from "./callout";
+router.use("/callout", calloutRoutes);
+
 export default router;

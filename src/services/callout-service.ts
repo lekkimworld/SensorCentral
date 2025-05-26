@@ -1,8 +1,11 @@
 import Handlebars from "handlebars";
 import fetch, { RequestInit } from "node-fetch";
 import { Logger } from "../logger";
-import { BackendIdentity, BaseService, Callout, InitCallback } from "../types";
+import { BackendIdentity, BaseService, Callout, InitCallback, CalloutSecret, HttpMethod } from "../types";
 import { StorageService } from "./storage-service";
+import { templates } from "../callout-authenticator-templates/templates";
+import { IdentityService } from "./identity-service";
+import constants from "../constants";
 
 const logger = new Logger("callout-service");
 
@@ -17,7 +20,7 @@ export const MIMETYPE_JSON = "application/json";
  */
 export type RequestData = {
     url: string;
-    method: "GET" | "POST" | "PUT",
+    method: "GET" | "POST" | "PUT" | "DELETE",
     body?: string | undefined,
     headers: Record<string,string>
 }
@@ -25,29 +28,61 @@ export type RequestData = {
 class CalloutService extends BaseService {
     public static NAME = "callout";
     private storage: StorageService;
+    private identity: IdentityService;
     
     constructor() {
         super(CalloutService.NAME);
-        this.dependencies = [StorageService.NAME];
+        this.dependencies = [StorageService.NAME, IdentityService.NAME];
     }
 
     init(callback: InitCallback, services: BaseService[]): void {
         logger.info("Initialized CalloutService");
         this.storage = services[0] as StorageService;
+        this.identity = services[1] as IdentityService;
         callback();
     }
 
+    public async calloutById<T>(user: BackendIdentity, calloutId: string, ctx: any | undefined) : Promise<T> {
+        // get a service identity and impersonate the caller so we can get secrets
+        const svcIdentity = this.identity.getServiceBackendIdentity(CalloutService.NAME);
+        const impUser = this.identity.getImpersonationIdentity(svcIdentity, user.identity.callerId);
+
+        // get callout
+        const callout = await this.storage.getUserCallout(impUser, calloutId);
+        if (!callout) throw new Error(`Unable to find callout with id <${calloutId}> for user`);
+        return this.callout(user, callout, ctx);
+    }
+
     public async callout<T>(user: BackendIdentity, c: Callout, ctx: any | undefined) : Promise<T> {
+        // get a service identity and impersonate the caller so we can get secrets
+        const svcIdentity = this.identity.getServiceBackendIdentity(CalloutService.NAME);
+        const impUser = user.identity.callerId === "*" ? user : this.identity.getImpersonationIdentity(svcIdentity, user.identity.callerId);
+
         // define headers
         const headers : Record<string,string> = {};
 
         // get secrets for user
-        const secrets = await this.storage.getUserSecrets(user);
+        const secrets = await this.storage.getUserCalloutSecrets(impUser);
 
         // execute the authenticator if supplied
         if (c.authenticator) {
-            const authTempl = c.authenticator.template;
-            const authHeaders = await authTempl.executor(secrets, c.authenticator.templateMappings, c.authenticator.endpoint);
+            // get actual template
+            const authTempl = templates[c.authenticator.template];
+
+            // map required replacements to secrets
+            const templateMappings : Record<string,CalloutSecret> = {};
+            Object.keys(authTempl.placeholders).forEach(keyReplacement => {
+                // get the secret to replace with
+                const secret = c.authenticator!.templateMappings[keyReplacement];
+                if (!secret) {
+                    // unable to find required secret
+                    throw new Error(`Unable to find required secret for authenticator <${keyReplacement}>`);
+                }
+                templateMappings[keyReplacement] = secret;
+            })
+            
+            // run it
+            const authHeaders = await authTempl.executor(templateMappings, c.authenticator.endpoint);
             Object.keys(authHeaders).forEach(key => headers[key] = authHeaders[key]);
         }
 
@@ -71,7 +106,7 @@ class CalloutService extends BaseService {
 
         // run callout
         const resp = await this.request<T>({
-            method: c.method,
+            method: c.method === "GET" ? HttpMethod.GET : c.method === "POST" ? HttpMethod.POST : c.method === "PUT" ? HttpMethod.PUT : HttpMethod.DELETE,
             url,
             body,
             headers
@@ -94,6 +129,9 @@ class CalloutService extends BaseService {
             }
             headers[key] = value;
         })
+
+        // set useragent
+        headers["user-agent"] = `${constants.APP.NAME} CalloutService/${constants.APP.VERSION} (${constants.APP.GITCOMMIT})`;
 
         // make request info
         const requestInfo : RequestInit = {

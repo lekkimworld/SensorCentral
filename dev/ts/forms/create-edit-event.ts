@@ -1,8 +1,8 @@
-import { Endpoint, OnSensorSampleEvent, Sensor } from "../clientside-types";
+import { CalloutEndpoint, OnSensorSampleEvent, Sensor } from "../clientside-types";
 import { graphql } from "../fetch-util";
 import { buttonClose, buttonPerformAction, Form, EVENTS, DataEvent, UICatalog, InitEvent, buttonPerformDestructiveAction, DropdownControl, ClickEvent } from "../forms-util";
 
-type RequestedEndpointType = Readonly<Pick<Endpoint, "id" | "name">>;
+type RequestedEndpointType = Readonly<Pick<CalloutEndpoint, "id" | "name">>;
 
 export class OnSensorSampleEventForm extends Form<OnSensorSampleEvent> {
     endpoints : Array<RequestedEndpointType>;

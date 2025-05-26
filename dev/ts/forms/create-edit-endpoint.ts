@@ -1,9 +1,9 @@
-import { Endpoint } from "../clientside-types";
+import { CalloutEndpoint } from "../clientside-types";
 import { graphql } from "../fetch-util";
 import { buttonClose, buttonPerformAction, Form, EVENTS, DataEvent, UICatalog, InitEvent, ToggleButtonControl, TextControl, buttonPerformDestructiveAction, ClickEvent } from "../forms-util";
 
-export class EndpointForm extends Form<Endpoint> {
-    constructor(endpoint?: Endpoint) {
+export class EndpointForm extends Form<CalloutEndpoint> {
+    constructor(endpoint?: CalloutEndpoint) {
         super("createEndpoint", endpoint ? "Edit Endpoint" : "Create Endpoint", endpoint);
         this.addEventListener("click", async e => {
             const ev = e as ClickEvent;

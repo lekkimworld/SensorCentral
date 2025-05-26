@@ -17,19 +17,19 @@ describe('Testing data cloud clientcredentials flow', () => {
   test('missing mappings should fail', async () => {
     
     try {
-        await auth([], {}, endpoint);
+        await auth({}, endpoint);
         fail("Should fail");
     } catch (err) {}
     try {
-        await auth([clientId, clientSecret], {"client_id": "my_clientid"}, endpoint)
+        await auth({"client_id": clientId}, endpoint)
         fail("Should fail");
     } catch (err) {}
     try {
-        await auth([clientId, clientSecret], {"client_secret": "my_clientsecret"}, endpoint)
+        await auth({"client_secret": clientSecret}, endpoint)
         fail("Should fail");
     } catch (err) {}
     try {
-        await auth([clientId, clientSecret], {"client_id_xxx": "my_clientid", "client_secret": "my_clientsecret"}, endpoint)
+        await auth({"client_id_xxx": clientId, "client_secret": clientSecret}, endpoint)
         fail("Should fail");
     } catch (err) {}
     
@@ -49,7 +49,7 @@ describe('Testing data cloud clientcredentials flow', () => {
       };
     })
     try {
-      await auth([clientId, clientSecret], {"client_id": "my_clientid", "client_secret": "my_clientsecret"}, endpoint)
+      await auth({"client_id": clientId, "client_secret": clientSecret}, endpoint)
       fail("should fail");
     } catch (err) {}
   });
@@ -74,7 +74,7 @@ describe('Testing data cloud clientcredentials flow', () => {
       };
     })
     try {
-      await auth([clientId, clientSecret], {"client_id": "my_clientid", "client_secret": "my_clientsecret"}, endpoint)
+      await auth({"client_id": clientId, "client_secret": clientSecret}, endpoint)
       fail("should fail");
     } catch (err) {}
   });
@@ -99,7 +99,7 @@ describe('Testing data cloud clientcredentials flow', () => {
         },
       };
     })
-    const resp = await auth([clientId, clientSecret], {"client_id": "my_clientid", "client_secret": "my_clientsecret"}, endpoint)
+    const resp = await auth({"client_id": clientId, "client_secret": clientSecret}, endpoint)
     expect(resp["Authorization"]).toBe(`Bearer ${uuid}`);
   });
 

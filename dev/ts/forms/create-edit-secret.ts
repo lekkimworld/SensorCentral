@@ -1,9 +1,9 @@
-import { Secret } from "../clientside-types";
+import { CalloutSecret } from "../clientside-types";
 import { graphql } from "../fetch-util";
 import { buttonClose, buttonPerformAction, Form, EVENTS, DataEvent, UICatalog, InitEvent, ToggleButtonControl, TextControl, buttonPerformDestructiveAction, ClickEvent } from "../forms-util";
 
-export class SecretForm extends Form<Secret> {
-    constructor(s?: Secret) {
+export class SecretForm extends Form<CalloutSecret> {
+    constructor(s?: CalloutSecret) {
         super("createSecret", s ? "Edit Secret" : "Create Secret", s);
         this.addEventListener("click", async e => {
             const ev = e as ClickEvent;

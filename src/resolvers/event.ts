@@ -14,7 +14,8 @@ import {
     registerEnumType
 } from "type-graphql";
 import * as types from "../types";
-import { Endpoint } from "./endpoint";
+import { CalloutEndpoint } from "./callout-endpoint";
+import { DeleteInput } from "./common";
 
 registerEnumType(types.HttpMethod, {
     name: "HttpMethod",
@@ -56,14 +57,7 @@ export class OnSensorSampleEvent {
     bodyTemplate?: string;
 
     @Field()
-    endpoint: Endpoint;
-}
-
-@InputType()
-export class DeleteOnSensorSampleEventInput {
-    @Field(() => ID)
-    @Length(1, 36)
-    id: string;
+    endpoint: CalloutEndpoint;
 }
 
 @InputType()
@@ -125,8 +119,8 @@ export class EventResolver {
     }
 
     @FieldResolver()
-    async endpoint(@Root() event: OnSensorSampleEvent, @Ctx() ctx: types.GraphQLResolverContext): Promise<Endpoint> {
-        return (await ctx.storage.getEndpoints(ctx.user)).find((e) => e.id === event.endpointId)!;
+    async endpoint(@Root() event: OnSensorSampleEvent, @Ctx() ctx: types.GraphQLResolverContext): Promise<CalloutEndpoint> {
+        return (await ctx.storage.getCalloutEndpoints(ctx.user)).find((e) => e.id === event.endpointId)!;
     }
 
     @Mutation(() => OnSensorSampleEvent)
@@ -150,7 +144,7 @@ export class EventResolver {
     @Mutation(() => Boolean)
     async deleteEvent(
         @Ctx() ctx: types.GraphQLResolverContext,
-        @Arg("data") input: DeleteOnSensorSampleEventInput
+        @Arg("data") input: DeleteInput
     ): Promise<boolean> {
         await ctx.storage.deleteOnSensorSampleEvent(ctx.user, input);
         return true;

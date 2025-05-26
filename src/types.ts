@@ -1,6 +1,7 @@
 import { Moment } from "moment";
 import { AlertEventType } from "./services/alert/alert-types";
 import { StorageService } from "./services/storage-service";
+import { AuthenticatorTemplate } from "./callout-authenticator-templates/templates";
 
 export interface GraphQLResolverContext {
     readonly storage : StorageService;
@@ -536,20 +537,21 @@ export const getContentType = (ct: string) : ContentType => {
     return (ct.toLowerCase() === "json" ? ContentType.JSON : ContentType.FORM);
 }
 
-export type Endpoint = {
+export type CalloutEndpoint = {
     id: string;
     name: string;
     baseUrl: string;
 }
 
-export type Secret = {
+export type CalloutSecret = {
     id: string;
     name: string;
     value: string;
 }
 
-export type CalloutAuthenticatorTemplateExecutor = (secrets: Array<Secret>, templateMappings: Record<string,string>, endpoint: Endpoint) => Promise<Record<string,string>>;
+export type CalloutAuthenticatorTemplateExecutor = (templateMappings: Record<string,CalloutSecret>, endpoint: CalloutEndpoint) => Promise<Record<string,string>>;
 export type CalloutAuthenticatorTemplate = {
+    id: string;
     name: string;
     placeholders: Record<string, string>;
     executor: CalloutAuthenticatorTemplateExecutor;
@@ -558,18 +560,18 @@ export type CalloutAuthenticatorTemplate = {
 export type CalloutAuthenticator = {
     id: string;
     name: string;
-    endpoint: Endpoint;
-    template: CalloutAuthenticatorTemplate;
-    templateMappings: Record<string ,string>
+    endpoint: CalloutEndpoint;
+    template: AuthenticatorTemplate;
+    templateMappings: Record<string,CalloutSecret>
 }
 
 export type Callout = {
     id: string;
     name: string;
-    endpoint: Endpoint;
+    endpoint: CalloutEndpoint;
     authenticator?: CalloutAuthenticator;
     headers?: Record<string,string>;
-    method: "GET" | "POST" | "PUT";
+    method: HttpMethod;
     pathTemplate: string;
     bodyTemplate?: string
 }
@@ -577,7 +579,7 @@ export type Callout = {
 export type OnSensorSampleEvent = {
     id: string;
     user?: UserPrincipal;
-    endpoint: Endpoint;
+    endpoint: CalloutEndpoint;
     method: HttpMethod;
     path?: string;
     contenttype: ContentType;

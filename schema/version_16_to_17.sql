@@ -13,8 +13,8 @@ alter table callout_secret add constraint SECRET_NAME_UNIQUE_PER_USER UNIQUE (us
 alter table callout_secret ADD FOREIGN KEY (userid) REFERENCES LOGIN_USER(id) ON DELETE CASCADE;
 
 create type CALLOUT_AUTHENTICATOR_TEMPLATE as ENUM (
-    'STATIC-BEARERTOKEN',
-    'DATACLOUD-CLIENTCREDENTIALS'
+    'STATIC_BEARERTOKEN',
+    'DATACLOUD_CLIENTCREDENTIALS'
 );
 
 create table callout_authenticator (
