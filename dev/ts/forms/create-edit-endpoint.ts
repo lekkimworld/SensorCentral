@@ -11,7 +11,7 @@ export class EndpointForm extends Form<CalloutEndpoint> {
             if ("delete" === rel) {
                 if (!confirm("Are you sure?")) return;
                 await graphql(`mutation {
-                    deleteEndpoint(data: {id: "${endpoint?.id}"})
+                    deleteCalloutEndpoint(data: {id: "${endpoint?.id}"})
                 }`)
                 document.location.reload();
             }
@@ -23,14 +23,14 @@ export class EndpointForm extends Form<CalloutEndpoint> {
             if (id) {
                 // update
                 await graphql(`mutation {
-                    updateEndpoint(data: {
+                    updateCalloutEndpoint(data: {
                         id: "${data.id}" 
                         name: "${data.name}"  
                         baseUrl: "${data.baseUrl}" 
                     }) {id}}`);
             } else {
                 // create
-                await graphql(`mutation {createEndpoint(data: {
+                await graphql(`mutation {createCalloutEndpoint(data: {
                     name: "${data.name}" 
                     baseUrl: "${data.baseUrl}"  
                 }){id}}`);

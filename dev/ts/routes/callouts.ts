@@ -51,14 +51,14 @@ export default (elemRoot: JQuery<HTMLElement>) => {
         // do title row
         uiutils.appendTitleRow(container.children!.title.elem, "Endpoints", [
             {
-                rel: "create",
+                rel: "create-endpoint",
                 icon: "plus",
                 click: async function () {
                     new EndpointForm().show();
                 },
             },
             {
-                rel: "refresh",
+                rel: "refresh-endpoint",
                 icon: "refresh",
                 click: async function () {
                     updateUI();
@@ -93,14 +93,14 @@ export default (elemRoot: JQuery<HTMLElement>) => {
         // do title row
         uiutils.appendTitleRow(container.children!.title.elem, "Secrets", [
             {
-                rel: "create",
+                rel: "create-secret",
                 icon: "plus",
                 click: async function () {
                     new SecretForm().show();
                 },
             },
             {
-                rel: "refresh",
+                rel: "refresh-secret",
                 icon: "refresh",
                 click: async function () {
                     updateUI();

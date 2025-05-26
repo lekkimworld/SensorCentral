@@ -11,7 +11,7 @@ export class SecretForm extends Form<CalloutSecret> {
             if ("delete" === rel) {
                 if (!confirm("Are you sure?")) return;
                 await graphql(`mutation {
-                    deleteSecret(data: {id: "${s?.id}"})
+                    deleteCalloutSecret(data: {id: "${s?.id}"})
                 }`)
                 document.location.reload();
             }
@@ -23,14 +23,14 @@ export class SecretForm extends Form<CalloutSecret> {
             if (id) {
                 // update
                 await graphql(`mutation {
-                    updateSecret(data: {
+                    updateCalloutSecret(data: {
                         id: "${data.id}" 
                         name: "${data.name}"  
                         ${data.value ? `value: "${data.value}"` : ""}
                     }) {id}}`);
             } else {
                 // create
-                await graphql(`mutation {createSecret(data: {
+                await graphql(`mutation {createCalloutSecret(data: {
                     name: "${data.name}" 
                     ${data.value ? `value: "${data.value}"` : ""}
                 }){id}}`);
