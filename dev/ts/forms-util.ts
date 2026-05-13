@@ -40,7 +40,12 @@ export type FieldOptionsRowsAndCols = {
     rows?: number;
     cols?: number;
 }
-export type FieldOptionsTextInput = FieldOptionsBasic & FieldOptionsLabel & FieldOptionsPlaceholder & FieldOptionsRequired & FieldOptionsValue & FieldOptionsDisabled;
+export type FieldOptionsTextInput = FieldOptionsBasic & 
+    FieldOptionsLabel & 
+    FieldOptionsPlaceholder & 
+    FieldOptionsRequired & 
+    FieldOptionsValue & 
+    FieldOptionsDisabled;
 export type FieldOptionsTextArea = FieldOptionsBasic &
     FieldOptionsLabel &
     FieldOptionsRequired &

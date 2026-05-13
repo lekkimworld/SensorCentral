@@ -1,4 +1,3 @@
-//@ts-ignore
 import services from "../configure-services";
 import moment, {Moment} from "moment-timezone";
 import constants from "../constants";

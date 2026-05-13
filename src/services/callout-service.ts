@@ -1,5 +1,4 @@
 import Handlebars from "handlebars";
-import fetch, { RequestInit } from "node-fetch";
 import { Logger } from "../logger";
 import { BackendIdentity, BaseService, Callout, InitCallback, CalloutSecret, HttpMethod } from "../types";
 import { StorageService } from "./storage-service";
@@ -42,14 +41,17 @@ class CalloutService extends BaseService {
         callback();
     }
 
-    public async calloutById<T>(user: BackendIdentity, calloutId: string, ctx: any | undefined) : Promise<T> {
+    public async calloutById<T>(user: BackendIdentity, calloutId: string, ctx: any | undefined, extraHeaders?: Record<string,string>) : Promise<T> {
         // get a service identity and impersonate the caller so we can get secrets
         const svcIdentity = this.identity.getServiceBackendIdentity(CalloutService.NAME);
-        const impUser = this.identity.getImpersonationIdentity(svcIdentity, user.identity.callerId);
+        const impUser = user.identity.callerId === "*" ? user : this.identity.getImpersonationIdentity(svcIdentity, user.identity.callerId);
 
         // get callout
         const callout = await this.storage.getUserCallout(impUser, calloutId);
         if (!callout) throw new Error(`Unable to find callout with id <${calloutId}> for user`);
+        if (extraHeaders) {
+            callout.headers = Object.assign({}, callout.headers, extraHeaders);
+        }
         return this.callout(user, callout, ctx);
     }
 
@@ -154,7 +156,7 @@ class CalloutService extends BaseService {
 
             // parse response
             if (jsonResponse) {
-                const obj = await resp.json();
+                const obj = await resp.json() as T;
                 return obj;
             } else {
                 const txt = await resp.text();

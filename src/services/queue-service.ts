@@ -9,7 +9,7 @@ import { ExpressService } from "./express-service";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
-import { BaseAdapter } from "@bull-board/api/dist/src/queueAdapters/base";
+import { BaseAdapter } from "@bull-board/api/baseAdapter";
 
 const logger = new Logger("queue-service");
 

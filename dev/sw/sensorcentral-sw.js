@@ -1,4 +1,5 @@
-const package = require('../../package.json');
+const APP_NAME = "__APP_NAME__";
+const APP_VERSION = "__APP_VERSION__";
 const filesToCache = [
     "/",
     "/manifest.json",
@@ -15,10 +16,10 @@ const filesToCache = [
     "/js/bootstrap.bundle.min.js",
     "/js/moment-with-locales.min.js",
     "/js/bootstrap-datetimepicker.min.js",
-    "/css/styles.css",
+    "/css/bundle.css",
     "/js/bundle.js"
 ];
-const nameVersion = `${package.name}-${package.version}-${Date.now()}`;
+const nameVersion = `${APP_NAME}-${APP_VERSION}-${Date.now()}`;
 
 self.addEventListener('install', function(e) {
     console.log(`[ServiceWorker] Install (${nameVersion})`)

@@ -1,3 +1,4 @@
+import "./styles";
 import * as pckg from "../../package.json";
 import * as uiutils from "./ui-utils";
 import {ErrorForm} from "./forms-util";
@@ -82,7 +83,7 @@ const navigationChange = async () => {
     elemRoot.html("");
 
     if ("#login" === hash) {
-        loginChooseRoute(elemRoot);
+        await loginChooseRoute(elemRoot);
     } else if (hash.startsWith("#login-")) {
         // get provider
         const provider = hash.substring(7);

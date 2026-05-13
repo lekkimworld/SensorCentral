@@ -35,10 +35,7 @@ const createUIAlerts = (ctx: UIContext<Device|Sensor, Alert>) => {
                     updateUIAlerts(ctx);
                 },
             },
-        ],
-        {
-            actionItemsId: "alerts-title",
-        }
+        ]
     );
 
     // add content

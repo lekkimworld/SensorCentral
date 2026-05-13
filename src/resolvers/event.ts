@@ -45,18 +45,18 @@ export class OnSensorSampleEvent {
     @Field(() => types.HttpMethod)
     method: types.HttpMethod;
 
-    @Field({nullable: true})
+    @Field(() => String, {nullable: true})
     @Length(0, 128)
     path?: string;
 
     @Field(() => types.ContentType)
     contentType: types.ContentType;
 
-    @Field({nullable: true})
+    @Field(() => String, {nullable: true})
     @Length(0, 1024)
     bodyTemplate?: string;
 
-    @Field()
+    @Field(() => CalloutEndpoint)
     endpoint: CalloutEndpoint;
 }
 
@@ -81,10 +81,10 @@ export class CreateOnSensorSampleEventInput {
     @Field(() => types.HttpMethod)
     method: types.HttpMethod;
 
-    @Field()
+    @Field(() => String)
     sensorId: string;
 
-    @Field()
+    @Field(() => String)
     endpointId: string;
 
     @Field(() => types.ContentType)
@@ -100,10 +100,10 @@ export class UpdateOnSensorSampleEventInput {
     @Field(() => types.HttpMethod, { nullable: true })
     method: types.HttpMethod;
 
-    @Field({ nullable: true })
+    @Field(() => String, { nullable: true })
     path: string;
 
-    @Field({ nullable: true })
+    @Field(() => String, { nullable: true })
     bodyTemplate: string;
 
     @Field(() => types.ContentType, { nullable: true })

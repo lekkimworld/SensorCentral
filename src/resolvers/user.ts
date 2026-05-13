@@ -12,10 +12,10 @@ export class User {
     @Field(() => ID)
     id : string;
 
-    @Field()
+    @Field(() => String)
     fn : string;
 
-    @Field()
+    @Field(() => String)
     ln : string;
 
     @Field(() => String)

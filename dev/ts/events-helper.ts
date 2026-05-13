@@ -35,10 +35,7 @@ const createUIEvents = (ctx: UIContext<Sensor, OnSensorSampleEvent>) => {
                     updateUIEvents(ctx);
                 },
             },
-        ],
-        {
-            actionItemsId: "events-title",
-        }
+        ]
     );
 
     // add content

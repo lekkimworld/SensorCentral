@@ -12,7 +12,7 @@ registerEnumType(types.NullableBoolean, {
 
 @ObjectType()
 class HouseUser extends User {
-    @Field()
+    @Field(() => Boolean)
     owner : boolean;
 
     constructor(u : types.UserPrincipal, owner : boolean) {
@@ -30,13 +30,13 @@ export class House implements types.House {
     @Field(() => ID)
     id: string;
 
-    @Field()
+    @Field(() => String)
     name: string;
 
-    @Field()
+    @Field(() => Boolean)
     favorite: boolean;
 
-    @Field()
+    @Field(() => Boolean)
     owner: boolean;
 
     @Field(() => [Device])
@@ -58,13 +58,13 @@ export class HouseUsersInput {
     @Field(() => [String])
     ids : []
 
-    @Field()
+    @Field(() => String)
     houseId : string
 }
 
 @InputType()
 export class CreateHouseInput {
-    @Field()
+    @Field(() => String)
     @Length(1, 128)
     name : string
 }

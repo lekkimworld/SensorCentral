@@ -47,7 +47,7 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
                 click: async () => {
                     const data = await graphql(`{device(id: "${deviceId}") {
                             sensors {
-                                id,name,favorite,icon,type,scaleFactor
+                                id,name,favorite,icon,type,scaleFactor,timeoutSeconds
                             }
                         }}`);
                     const sensors = data.device.sensors as Array<RequestedSensor>;
@@ -98,9 +98,7 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
         ];
 
         // add title
-        uiutils.appendTitleRow(elemSensorsTitle, device.name, actions, {
-            actionItemsId: "sensors-title",
-        });
+        uiutils.appendTitleRow(elemSensorsTitle, device.name, actions);
 
         // add initial content
         updateUISensors(device.sensors);
@@ -183,9 +181,10 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
                     id,
                     name,
                     active,
-                    house{id,name}, 
+                    timeoutSeconds,
+                    house{id,name},
                     sensors {
-                        id,name,favorite,icon,type,scaleFactor
+                        id,name,favorite,icon,type,scaleFactor,timeoutSeconds
                     }
                 }}`
         );
@@ -198,7 +197,7 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
         createUISensors(device);
 
         // build UI for alerts
-        addAlertsTable(elemRoot, device);
+        //addAlertsTable(elemRoot, device);
     };
     updateUI();
 };

@@ -4,7 +4,7 @@ import { Logger } from "../logger";
 import pushover from "../pushover";
 import { BackendIdentity, BaseService, Device, InitCallback, NotifyUsing, PushoverSettings, QueueNotifyMessage, Sensor } from "../types";
 import { objectHasOwnProperty_Trueish } from "../utils";
-import { AlertEventType } from "./alert/alert-types";
+import { AlertEventType } from "./watchdog/alert-types";
 import { EmailMessage, EmailService, RFC822Address } from "./email-service";
 import { IdentityService } from "./identity-service";
 import { StorageService } from "./storage-service";

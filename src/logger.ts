@@ -18,7 +18,6 @@ export const WARN: Level = new LevelImpl("WARN", 1000);
 export const ERROR: Level = new LevelImpl("ERROR", 10000);
 
 import { get as getFromHttpContext } from "express-http-context";
-import constants from "./constants";
 
 export type LogMessage = string | Record<string,string|number|boolean|any>;
 
@@ -29,10 +28,12 @@ export class Logger {
 
     constructor(name: string, systemLogger: boolean = false) {
         this._name = name;
+        const constants = require("./constants").default;
         this._level = constants.APP.LOG_LEVEL(name);
         this._system = systemLogger;
     }
     protected getLogMessage(level: Level, msg: LogMessage, err?: Error) {
+        const constants = require("./constants").default;
         const reqId = getFromHttpContext(constants.HTTP_CONTEXT.REQUEST_ID);
         const prefix = `[${reqId || ""}] [${this._name}] [${level.name}]`;
 

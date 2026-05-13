@@ -1,5 +1,6 @@
 insert into LOGIN_USER (id, email,fn,ln) values ('mikkel_user_id', 'lekkim@heisterberg.dk','Mikkel','Flindt Heisterberg');
 insert into login_oidc_mapping (userid, provider, sub, verified) values ('mikkel_user_id', 'github', '46fde620-34f2-11f0-8976-9126aba08b99', true);
+insert into login_oidc_mapping (userid, provider, sub, verified) values ('mikkel_user_id', 'local', 'local-test-user-001', true);
 
 insert into house (id, name) values ('mikkel_house_1', 'My House');
 insert into device (id, name, houseid) values ('mydevice_1', 'My Device 1', 'mikkel_house_1');
@@ -22,6 +23,9 @@ insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_1-2', 
 insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_2-1', 'Your Sensor 2-1', 'yoursensor_2-1', 'gauge', 'thermometer-empty', 'yourdevice_2');
 insert into sensor (id,name,label,type,icon,deviceid) values ('yoursensor_2-2', 'Your Sensor 2-2', 'yoursensor_2-2', 'gauge', 'tint', 'yourdevice_2');
 insert into sensor (id,name,label,type,icon,scalefactor,deviceid) values ('94f7a0f4-d85b-4815-9c77-833be7c28779', 'My Smartme 4-1', 'mysmartme_4-1', 'counter', 'battery-4', 0.002, 'mydevice_3');
+insert into sensor (id,name,label,type,icon,deviceid,timeout_seconds) values ('binary_sensor_with_timeout', 'Binary With Timeout', 'binary_with_timeout', 'binary', 'toggle-on', 'mydevice_1', 600);
+insert into sensor (id,name,label,type,icon,deviceid) values ('binary_sensor_no_timeout', 'Binary No Timeout', 'binary_no_timeout', 'binary', 'toggle-off', 'mydevice_1');
+insert into event_definition (sensorid, trigger_type, action_type, action_config) values ('binary_sensor_with_timeout', 'onSensorTimeout', 'persist_value', '{"value": 0}');
 insert into USER_HOUSE_ACCESS (userId, houseId, is_default, owner) values ('mikkel_user_id', 'mikkel_house_2', false, true);
 
 

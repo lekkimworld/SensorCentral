@@ -17,7 +17,6 @@ const secret = (function () {
     }
 })();
 logger.info(`Read session timeout in sesconds as <${constants.DEFAULTS.SESSION_TIMEOUT_SECONDS}>`);
-const redisStoreInstance = RedisStore(session);
 
 export default (redisClient: Redis) => {
     // create session options
@@ -25,7 +24,7 @@ export default (redisClient: Redis) => {
         saveUninitialized: false,
         resave: false,
         secret: secret,
-        store: new redisStoreInstance({
+        store: new RedisStore({
             client: redisClient,
             prefix: "session:",
             ttl: constants.DEFAULTS.SESSION_TIMEOUT_SECONDS,

@@ -1,6 +1,6 @@
 import { Device, Sensor } from "../clientside-types";
 import { graphql } from "../fetch-util";
-import { buttonClose, buttonPerformAction, DataEvent, DropdownControl, Form, InitEvent, UICatalog } from "../forms-util";
+import { buttonClose, buttonPerformAction, DataEvent, DropdownControl, Form, InitEvent, NumberControl, ToggleButtonControl, UICatalog } from "../forms-util";
 
 export class SensorForm extends Form<Sensor> {
     private readonly device!: Device;
@@ -11,15 +11,16 @@ export class SensorForm extends Form<Sensor> {
         this.addEventListener("data", async e => {
             const dataEvent = e as DataEvent;
             const data = dataEvent.data;
+            const timeoutValue = data.timeoutSeconds === "null" ? "null" : data.timeoutSeconds;
             if (this.ctx) {
                 // update
                 await graphql(
-                    `mutation {updateSensor(data: {id: "${data.id}", name: "${data.name}", label: "${data.label}", type: "${data.type}", icon: "${data.icon}", scaleFactor: ${data.scaleFactor}}){id}}`
+                    `mutation {updateSensor(data: {id: "${data.id}", name: "${data.name}", label: "${data.label}", type: ${data.type}, icon: "${data.icon}", scaleFactor: ${data.scaleFactor}, timeoutSeconds: ${timeoutValue}}){id}}`
                 );
             } else {
                 // create
                 await graphql(
-                    `mutation {createSensor(data: {deviceId: "${this.device.id}", id: "${data.id}", name: "${data.name}", label: "${data.label}", type: "${data.type}", icon: "${data.icon}", scaleFactor: ${data.scaleFactor}}){id}}`
+                    `mutation {createSensor(data: {deviceId: "${this.device.id}", id: "${data.id}", name: "${data.name}", label: "${data.label}", type: ${data.type}, icon: "${data.icon}", scaleFactor: ${data.scaleFactor}, timeoutSeconds: ${timeoutValue}}){id}}`
                 );
             }
             document.location.reload();
@@ -40,6 +41,17 @@ export class SensorForm extends Form<Sensor> {
                 });
             });
 
+            // timeout toggle
+            const timeoutToggle = catalog.get("enableTimeout") as ToggleButtonControl;
+            timeoutToggle.onChange(() => {
+                const section = document.getElementById("timeout-section")!;
+                if (timeoutToggle.checked) {
+                    section.classList.remove("hidden");
+                } else {
+                    section.classList.add("hidden");
+                }
+            });
+
             // exit if a new sensor is being created
             if (!this.ctx) return;
             sensorType.value = this.ctx!.type!;
@@ -48,6 +60,11 @@ export class SensorForm extends Form<Sensor> {
             catalog.get("label").value = this.ctx!.label!;
             catalog.get("icon").value = this.ctx!.icon!;
             catalog.get("scalefactor").value = `${this.ctx!.scaleFactor!}`;
+            if (this.ctx!.timeoutSeconds) {
+                timeoutToggle.checked = true;
+                catalog.get("timeoutSeconds").value = `${this.ctx!.timeoutSeconds}`;
+                document.getElementById("timeout-section")!.classList.remove("hidden");
+            }
         })
     }
 
@@ -122,15 +139,30 @@ export class SensorForm extends Form<Sensor> {
                         fieldExplanation: "Specify the label of the sensor (maximum 128 characters).",
                         required: false,
                     })}
+                    ${catalog.toggleButton({
+                        name: "enableTimeout",
+                        label: "Enable Timeout",
+                        fieldExplanation: "Enable watchdog monitoring for this sensor. A timeout event fires if no data is received within the specified period.",
+                    })}
+                    <div id="timeout-section" class="hideable-section hidden">
+                    ${catalog.numberField({
+                        name: "timeoutSeconds",
+                        label: "Timeout (seconds)",
+                        value: "600",
+                        required: true,
+                        fieldExplanation: "Number of seconds of inactivity before a timeout event is raised.",
+                    })}
+                    </div>
                 </form>`;
     }
 
     footer() {
-        return `${buttonPerformAction("Yes")}
-                ${buttonClose("No")}`;
+        return `${buttonPerformAction()}
+                ${buttonClose()}`;
     }
     
     async getData(catalog: UICatalog): Promise<Record<string, string>> {
+        const enableTimeout = (catalog.get("enableTimeout") as ToggleButtonControl).checked;
         return {
             id: catalog.value("id"),
             name: catalog.value("name"),
@@ -138,6 +170,7 @@ export class SensorForm extends Form<Sensor> {
             type: catalog.value("type"),
             icon: catalog.value("icon"),
             scaleFactor: catalog.value("scalefactor"),
+            timeoutSeconds: enableTimeout ? (catalog.get("timeoutSeconds") as NumberControl).int.toString() : "null",
         };
     }
 }

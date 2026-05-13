@@ -39,14 +39,14 @@ export class Callout {
     @Field(() => ID)
     id: string;
 
-    @Field()
+    @Field(() => String)
     @Length(0, 128)
     name: string;
 
-    @Field()
+    @Field(() => types.HttpMethod)
     method: types.HttpMethod;
 
-    @Field()
+    @Field(() => String)
     @Length(0, 128)
     pathTemplate: string;
 
@@ -71,7 +71,7 @@ export class UpdateCalloutInput {
     @Length(1, 36)
     id: string;
 
-    @Field()
+    @Field(() => String)
     @Length(0, 36)
     name: string;
 }

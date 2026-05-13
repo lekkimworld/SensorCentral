@@ -227,7 +227,7 @@ export class IdentityService extends BaseService {
     }
 
     async generateUserJWT(user: BackendIdentity, houseId: string | undefined) {
-        logger.info(`Issuing JWT for user <${user}> for house <${houseId}>`);
+        logger.info(`Issuing JWT for user <${JSON.stringify(user)}> for house <${houseId}>`);
 
         // get house
         if (houseId) {
@@ -288,7 +288,7 @@ export class IdentityService extends BaseService {
     async addOidcMapping(id: string, sub: string, provider: LoginSource) : Promise<void> {
         logger.debug(`Attemping to add login provider for <${id}> to sub <${sub}> / <${provider}>`);
         let result = await this.db!.query("select userid from login_oidc_mapping where sub=$1 and provider=$2", sub, provider);
-        if (result.rowCount > 0) throw new Error(`Found ${result.rowCount} rows for sub ${sub} - expected 0`);
+        if ((result.rowCount ?? 0) > 0) throw new Error(`Found ${result.rowCount} rows for sub ${sub} - expected 0`);
 
         // add row
         await this.db!.query(
@@ -319,6 +319,7 @@ export class IdentityService extends BaseService {
             case LoginSource.microsoft:
             case LoginSource.google:
             case LoginSource.github:
+            case LoginSource.local:
                 result = await this.db!.query(
                     "select id, email, fn, ln from login_user join login_oidc_mapping on id=userid and provider=$1 and sub=$2",
                     source,

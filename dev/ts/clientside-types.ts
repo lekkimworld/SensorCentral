@@ -87,6 +87,7 @@ export type Device = Readonly<Partial<{
     last_ping: Date;
     last_restart: Date;
     active: boolean;
+    timeoutSeconds: number;
     sensors: Sensor[];
     house: House;
     alerts: Alert[];
@@ -104,6 +105,7 @@ export type Sensor = Readonly<Partial<{
     icon: string;
     type: string;
     scaleFactor: number;
+    timeoutSeconds: number;
     device: Device;
     favorite: Boolean;
     last_reading: SensorSample;

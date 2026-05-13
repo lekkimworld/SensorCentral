@@ -1,4 +1,3 @@
-import 'express-async-errors';
 import { BaseService, HttpException } from "../types";
 import { middleware as httpContextMiddleware, set as setToHttpContext } from "express-http-context";
 import express, { Express, Response, Send } from "express";
@@ -6,7 +5,6 @@ import { json as bp_json, raw as bp_raw } from "body-parser";
 import path from "path";
 import attachApplicationRoutes from "../configure-express-routes";
 import configureSessionWithRedis from "../configure-express-session";
-//@ts-ignore
 import { lookupService } from "../configure-services";
 import { RedisService } from "../services/redis-service";
 import configureHandlebars from "../configure-express-handlebars";

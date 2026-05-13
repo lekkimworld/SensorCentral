@@ -1,6 +1,6 @@
 import { IsEnum, Length } from "class-validator";
 import { Arg, Ctx, Field, FieldResolver, ID, InputType, Mutation, ObjectType, Query, registerEnumType, Resolver, Root } from "type-graphql";
-import * as alert_types from "../services/alert/alert-types";
+import * as alert_types from "../services/watchdog/alert-types";
 import { SensorQueryData } from "../services/storage-service";
 import * as types from "../types";
 import { Alert } from "./alert";
@@ -24,10 +24,10 @@ class SensorSample {
         this.dt = s.dt;
     }
 
-    @Field()
+    @Field(() => Number)
     value : number;
 
-    @Field()
+    @Field(() => Date)
     dt : Date;
 }
 
@@ -45,34 +45,38 @@ export class Sensor {
         this.type = s.type;
         this.icon = s.icon;
         this.scaleFactor = s.scaleFactor;
+        this.timeoutSeconds = s.timeoutSeconds;
     }
 
     @Field(() => ID)
     id: string;
 
-    @Field()
+    @Field(() => String)
     name: string;
 
-    @Field({ nullable: true })
+    @Field(() => String, { nullable: true })
     label?: string;
 
-    @Field()
+    @Field(() => String)
     icon: string;
 
     @Field(() => types.SensorType)
     @IsEnum(types.SensorType)
     type: types.SensorType | undefined;
 
-    @Field()
+    @Field(() => Number)
     scaleFactor: number;
+
+    @Field(() => Number, { nullable: true })
+    timeoutSeconds?: number;
 
     @Field(() => Device)
     device: types.Device;
 
-    @Field()
+    @Field(() => Boolean)
     favorite: Boolean;
 
-    @Field({ nullable: true })
+    @Field(() => SensorSample, { nullable: true })
     last_reading: SensorSample;
 
     @Field(() => [Alert])
@@ -91,23 +95,26 @@ export class DeleteSensorType {
 
 @InputType()
 export class UpdateSensorType extends DeleteSensorType {
-    @Field({nullable: true})
+    @Field(() => String, {nullable: true})
     @Length(0, 128)
     label : string;
 
-    @Field()
+    @Field(() => String)
     @Length(2, 128)
     name : string;
 
-    @Field()
+    @Field(() => types.SensorType)
     @IsEnum(types.SensorType)
     type : types.SensorType;
 
-    @Field()
+    @Field(() => String)
     icon : string;
 
-    @Field()
+    @Field(() => Number)
     scaleFactor : number;
+
+    @Field(() => Number, { nullable: true })
+    timeoutSeconds?: number;
 }
 
 @InputType()
@@ -119,11 +126,11 @@ export class CreateSensorType extends UpdateSensorType {
 
 @InputType()
 class SensorsQuery {
-    @Field({nullable: true})
+    @Field(() => String, {nullable: true})
     @Length(2, 36)
     deviceId : string;
 
-    @Field({nullable: true})
+    @Field(() => String, {nullable: true})
     @Length(2, 36)
     houseId : string;
 
@@ -141,7 +148,7 @@ class SensorsQuery {
 
 @InputType()
 export class FavoriteSensorsInput {
-    @Field()
+    @Field(() => types.SensorType)
     @IsEnum(types.SensorType)
     type: types.SensorType;
 }

@@ -84,9 +84,6 @@ export default {
     },
     SMARTME: {
         CUTOFF_YEAR: process.env.SMARTME_CUTOFF_YEAR || 2015,
-        PAYLOAD_SEPARATOR: ":",
-        SIGNATURE_ALGORITHM: "sha256",
-        ENCRYPTION_KEY: process.env.SMARTME_KEY as string,
         PROTOCOL: process.env.SMARTME_PROTOCOL || "https",
         DOMAIN: process.env.SMARTME_DOMAIN || "api.smart-me.com",
     },
@@ -169,13 +166,6 @@ export default {
         },
     },
     JWT,
-    GOOGLE: {
-        PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY as string,
-        SCOPES: ["https://www.googleapis.com/auth/gmail.send"],
-        JWT_EXPIRATION_MINUTES: 5,
-        TOKEN_URI: process.env.GOOGLE_TOKEN_URI as string,
-        SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL as string,
-    },
     QUEUES: {
         SENSOR: "rawSensorReading",
         DEVICE: "rawDeviceReading",

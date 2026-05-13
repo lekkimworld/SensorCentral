@@ -31,10 +31,10 @@ export class CalloutAuthenticatorTemplateMapping {
         this.secret = secret;
     }
 
-    @Field()
+    @Field(() => String)
     name: string;
 
-    @Field()
+    @Field(() => CalloutSecret)
     secret: CalloutSecret;
 
 }
@@ -46,10 +46,10 @@ export class CalloutAuthenticatorTemplateMappingInput {
         this.secretId = secretId;
     }
 
-    @Field()
+    @Field(() => String)
     name: string;
 
-    @Field()
+    @Field(() => String)
     secretId: string;
 
 }
@@ -69,11 +69,11 @@ export class CalloutAuthenticator {
     @Field(() => ID)
     id: string;
 
-    @Field()
+    @Field(() => String)
     @Length(0, 128)
     name: string;
 
-    @Field()
+    @Field(() => AuthenticatorTemplate)
     template: AuthenticatorTemplate;
 
     @Field(() => [CalloutAuthenticatorTemplateMapping])
@@ -86,10 +86,10 @@ export class CreateCalloutAuthenticatorInput {
     @Length(0, 36)
     name: string;
 
-    @Field()
+    @Field(() => String)
     endpointId: string;
 
-    @Field()
+    @Field(() => AuthenticatorTemplate)
     template: AuthenticatorTemplate;
 
     @Field(() => [CalloutAuthenticatorTemplateMappingInput])
@@ -102,7 +102,7 @@ export class UpdateCalloutAuthenticatorInput {
     @Length(1, 36)
     id: string;
 
-    @Field()
+    @Field(() => String)
     @Length(0, 36)
     name: string;
 }

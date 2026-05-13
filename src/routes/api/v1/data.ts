@@ -3,7 +3,7 @@ import { ControlMessageTypes, IngestedControlMessage, IngestedDeviceMessage,
 	IngestedSensorMessage, SensorSample, HttpException, BackendIdentity, ControlMessageTarget } from '../../../types';
 import { Logger } from '../../../logger';
 import { LAST_N_SAMPLES, StorageService } from '../../../services/storage-service';
-const {lookupService} = require('../../../configure-services');
+import { lookupService } from '../../../configure-services';
 import constants, { ISO8601_DATETIME_FORMAT } from "../../../constants";
 import moment from 'moment';
 import { ensureScopeFactory, hasScope } from '../../../middleware/ensureScope';
@@ -39,9 +39,10 @@ interface SensorDataObject {
 router.get("/samples/:sensorId/:samples", (req, res) => {	
 	const user = res.locals.user;
 	const samples = Number.parseInt(req.params.samples, 10) ? Number.parseInt(req.params.samples, 10) : 100
-	lookupService(StorageService.NAME).then((storageService : StorageService) => {
+	lookupService(StorageService.NAME).then((svc) => {
+		const storageService = svc as StorageService;
 		return storageService.getLastNSamplesForSensor(user, req.params.sensorId, samples);
-	}).then((samples : SensorSample[]) => {
+	}).then((samples) => {
 		res.send(samples);
 	}).catch((err : Error) => {
 		res.status(404).send({"error": true, "message": `Unable to find sensor (${err.message})`});

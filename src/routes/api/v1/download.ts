@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { StorageService } from '../../../services/storage-service';
-const {lookupService} = require('../../../configure-services');
+import { lookupService } from '../../../configure-services';
 
 const router = express.Router();
 

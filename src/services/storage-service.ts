@@ -7,7 +7,7 @@ import { CreateHouseInput, FavoriteHouseInput, House, UpdateHouseInput } from ".
 import { CreateSensorType, DeleteSensorType, FavoriteSensorsInput, UpdateSensorType } from "../resolvers/sensor";
 import { UpdatePushoverSettingsInput } from "../resolvers/settings";
 import {
-    BackendIdentity, BaseService, DataElement, Device, DeviceData, CalloutEndpoint, getContentType, getHttpMethod, HouseUser, HttpMethod, InitCallback, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, CalloutSecret, Sensor,
+    BackendIdentity, BaseService, DataElement, Device, DeviceData, CalloutEndpoint, EventActionType, EventDefinition, EventTriggerType, getContentType, getHttpMethod, HouseUser, HttpMethod, InitCallback, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, CalloutSecret, Sensor,
     SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, TokenIssuerInformation, UserPrincipal,
     CalloutAuthenticator,
     Callout
@@ -22,21 +22,21 @@ import { SmartmeDeviceWithDataType } from "../resolvers/smartme";
 //@ts-ignore
 import { lookupService } from "../configure-services";
 import { ISO8601_DATETIME_FORMAT } from "../constants";
-import { Alert, DeviceTimeoutAlert, SensorTimeoutAlert, SensorValueAlert, SensorValueEventData, stringToAlertValueTest, TimeoutAlertEventData } from "./alert/alert-types";
+import { Alert, DeviceTimeoutAlert, SensorTimeoutAlert, SensorValueAlert, SensorValueEventData, stringToAlertValueTest, TimeoutAlertEventData } from "./watchdog/alert-types";
 import { IdentityService } from "./identity-service";
 import { CreateAlertInput, DeleteAlertInput } from "../resolvers/alert";
 import { CreateCalloutEndpointInput, UpdateCalloutEndpointInput, DeleteCalloutEndpointInput } from "../resolvers/callout-endpoint";
 import { CreateOnSensorSampleEventInput, UpdateOnSensorSampleEventInput } from "../resolvers/event";
 import { CreateCalloutSecretInput, DeleteCalloutSecretInput, UpdateCalloutSecretInput } from "../resolvers/callout-secret";
 import { DeleteInput } from "../resolvers/common";
-import { AuthenticatorTemplate, DATACLOUD_CLIENTCREDENTIALS, DATACLOUD_WEBSDK, STATIC_BEARERTOKEN, templates } from "../callout-authenticator-templates/templates";
+import { AuthenticatorTemplate, DATACLOUD_CLIENTCREDENTIALS, DATACLOUD_WEBSDK, STATIC_BEARERTOKEN, SMARTME_CLIENTCREDENTIALS, templates } from "../callout-authenticator-templates/templates";
 import { CreateCalloutAuthenticatorInput, UpdateCalloutAuthenticatorInput } from "../resolvers/callout-authenticator";
 
 const DEVICE_DATA_KEY_PREFIX = "device_data:";
 const HOUSE_COLUMNS = "h.id houseid, h.name housename";
-const DEVICE_COLUMNS = "d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping";
+const DEVICE_COLUMNS = "d.id deviceid, d.name devicename, d.active deviceactive, d.last_restart, d.last_ping, d.timeout_seconds device_timeout_seconds";
 const SENSOR_COLUMNS =
-    "s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor";
+    "s.id sensorid, s.name sensorname, s.type sensortype, s.icon sensoricon, s.label sensorlabel, s.scalefactor sensorscalefactor, s.timeout_seconds sensor_timeout_seconds";
 const logger = new Logger("storage-service");
 
 /**
@@ -62,11 +62,13 @@ const convertRowsToSensors = (result : QueryResult) => {
     return result.rows.map(row => {
         return {
             "id": row.sensorid,
+            "deviceId": row.deviceid,
             "name": row.sensorname,
             "label": row.sensorlabel,
             "type": row.sensortype as string,
             "icon": row.sensoricon,
             "scaleFactor": row.sensorscalefactor,
+            "timeoutSeconds": row.sensor_timeout_seconds || undefined,
             "device": {
                 "id": row.deviceid,
                 "name": row.devicename,
@@ -86,6 +88,7 @@ const convertRowsToDevices = (result : QueryResult) => {
             lastPing: row.last_ping,
             lastRestart: row.last_restart,
             active: row.deviceactive,
+            timeoutSeconds: row.device_timeout_seconds || undefined,
             house: {
                 id: row.houseid,
                 name: row.housename,
@@ -803,7 +806,7 @@ export class StorageService extends BaseService {
      * @param data Data for device update
      * @throws Error if device not found or user do not have access to enclosing house
      */
-    async updateDevice(user: BackendIdentity, { id, name, active }: UpdateDeviceInput) {
+    async updateDevice(user: BackendIdentity, { id, name, active, timeoutSeconds }: UpdateDeviceInput) {
         // validate
         const use_name = name.trim();
         const use_id = id.trim();
@@ -813,10 +816,11 @@ export class StorageService extends BaseService {
 
         // attempt to update the device
         const result = await this.dbService.query(
-            "update device set name=$1, active=$3 where id=$2",
+            "update device set name=$1, active=$3, timeout_seconds=$4 where id=$2",
             use_name,
             use_id,
-            active
+            active,
+            timeoutSeconds !== undefined ? timeoutSeconds : null
         );
         if (!result || result.rowCount !== 1) {
             throw Error(`Unable to update device with ID <${use_id}>`);
@@ -828,11 +832,13 @@ export class StorageService extends BaseService {
                 id: use_id,
                 name: use_name,
                 active: active,
+                timeoutSeconds: timeoutSeconds,
             },
             old: {
                 id: use_id,
                 name: device.name,
                 active: device.active,
+                timeoutSeconds: device.timeoutSeconds,
             },
             user: user,
         });
@@ -1027,7 +1033,7 @@ export class StorageService extends BaseService {
      */
     async updateSensor(
         user: BackendIdentity,
-        { id, name, label, type, icon, scaleFactor }: UpdateSensorType
+        { id, name, label, type, icon, scaleFactor, timeoutSeconds }: UpdateSensorType
     ): Promise<Sensor> {
         // validate
         const use_id = id.trim();
@@ -1039,13 +1045,14 @@ export class StorageService extends BaseService {
 
         // update sensor
         const result = await this.dbService.query(
-            "update sensor set name=$1, label=$2, type=$3, icon=$5, scalefactor=$6 where id=$4",
+            "update sensor set name=$1, label=$2, type=$3, icon=$5, scalefactor=$6, timeout_seconds=$7 where id=$4",
             use_name,
             use_label,
             type,
             use_id,
             icon,
-            scaleFactor
+            scaleFactor,
+            timeoutSeconds !== undefined ? timeoutSeconds : null
         );
         if (!result || result.rowCount !== 1) {
             throw Error(`Unable to update sensor with ID <${use_id}>`);
@@ -1061,6 +1068,7 @@ export class StorageService extends BaseService {
                 type: type,
                 icon: icon,
                 scaleFactor: scaleFactor,
+                timeoutSeconds: timeoutSeconds,
             },
             old: {
                 deviceId: sensor.deviceId,
@@ -1070,6 +1078,7 @@ export class StorageService extends BaseService {
                 type: sensor.type,
                 icon: sensor.icon,
                 scaleFactor: sensor.scaleFactor,
+                timeoutSeconds: sensor.timeoutSeconds,
             },
             user: user,
         });
@@ -1719,7 +1728,7 @@ export class StorageService extends BaseService {
         houseId: string,
         sensorId: string,
         frequency: number,
-        cipherText: string
+        calloutId: string
     ) {
         // get house to ensure access
         logger.debug(
@@ -1739,18 +1748,18 @@ export class StorageService extends BaseService {
                 deviceId: sensor.device!.id,
                 sensorId: sensor.id,
                 frequency: frequency,
-                cipherText,
+                calloutId,
             },
             user: user,
         });
 
         // insert subscriptions into db
         this.dbService.query(
-            "insert into powermeter_subscription (houseid, sensorid, frequency, ciphertext) values ($1, $2, $3, $4)",
+            "insert into powermeter_subscription (houseid, sensorid, frequency, calloutid) values ($1, $2, $3, $4)",
             sensor.device!.house.id,
             sensor.id,
             frequency,
-            cipherText
+            calloutId
         );
     }
 
@@ -1765,7 +1774,7 @@ export class StorageService extends BaseService {
         if (!this.isAllDataAccessUser(user))
             throw Error("You must have all data access to get all powermeter subscriptions");
         const result = await this.dbService.query(
-            "select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, d.name device_name, d.active device_active, s.label sensor_label, frequency, ciphertext from powermeter_subscription p, house h, sensor s, device d where p.houseid=h.id and p.sensorid=s.id and s.deviceid=d.id;"
+            "select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, d.name device_name, d.active device_active, s.label sensor_label, frequency, calloutid from powermeter_subscription p, house h, sensor s, device d where p.houseid=h.id and p.sensorid=s.id and s.deviceid=d.id;"
         );
         const subscription_results = this.buildSmartmeSubscriptionsFromRows(result);
         return subscription_results;
@@ -1781,7 +1790,7 @@ export class StorageService extends BaseService {
         const houses = await this.getHouses(user);
         const houseIds = houses.map((h) => h.id);
         const result = await this.dbService.query(
-            `select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, d.name device_name, d.active device_active, s.label sensor_label, frequency, ciphertext from powermeter_subscription p, house h, sensor s, device d where p.houseid=h.id and p.sensorid=s.id and s.deviceid=d.id and h.id IN ('${houseIds.join(
+            `select h.id house_id, h.name house_name, s.id sensor_id, s.name sensor_name, s.deviceid device_id, d.name device_name, d.active device_active, s.label sensor_label, frequency, calloutid from powermeter_subscription p, house h, sensor s, device d where p.houseid=h.id and p.sensorid=s.id and s.deviceid=d.id and h.id IN ('${houseIds.join(
                 "','"
             )}');`
         );
@@ -1817,7 +1826,52 @@ export class StorageService extends BaseService {
         });
     }
 
+    async createUserCallout(user: BackendIdentity, input: {
+        id: string;
+        name: string;
+        endpointId: string;
+        authenticatorId?: string;
+        method: HttpMethod;
+        pathTemplate: string;
+        bodyTemplate?: string;
+        headers?: Record<string, string>;
+    }): Promise<Callout> {
+        const userid = user.identity.callerId;
+        logger.debug(`Creating callout record with id <${input.id}> for user <${userid}>`);
+        await this.dbService.query(
+            "insert into callout (id, userid, name, endpointid, method, authenticatorid, path_template, body_template) values ($1,$2,$3,$4,$5,$6,$7,$8)",
+            input.id,
+            userid,
+            input.name,
+            input.endpointId,
+            input.method,
+            input.authenticatorId || null,
+            input.pathTemplate,
+            input.bodyTemplate || null
+        );
+        return (await this.getUserCallout(user, input.id))!;
+    }
+
     async getUserCallout(user: BackendIdentity, id: string) : Promise<Callout | undefined> {
+        if (this.isAllDataAccessUser(user)) {
+            // all-data-access user can look up any callout by id
+            const calloutResult = await this.dbService.query(
+                "select c.id c_id, c.name c_name, c.method c_method, c.path_template c_path_template, c.body_template c_body_template, c.authenticatorid c_authenticatorid, c.userid c_userid, e.id e_id, e.name e_name, e.baseurl e_baseurl from callout c, callout_endpoint e where c.endpointid=e.id and c.id=$1",
+                id
+            );
+            if (calloutResult.rowCount === 0) return undefined;
+            const row = calloutResult.rows[0];
+            const authenticators = await this.getAllCalloutAuthenticators();
+            return {
+                id: row.c_id,
+                name: row.c_name,
+                endpoint: { id: row.e_id, name: row.e_name, baseUrl: row.e_baseurl },
+                method: row.c_method as HttpMethod,
+                pathTemplate: row.c_path_template,
+                bodyTemplate: row.c_body_template,
+                authenticator: authenticators.find(a => a.id === row.c_authenticatorid)
+            } as Callout;
+        }
         const callouts = await this.getUserCallouts(user);
         return callouts.find(c => c.id === id);
     }
@@ -1916,19 +1970,23 @@ export class StorageService extends BaseService {
      * @returns
      */
     async getCalloutAuthenticators(user: BackendIdentity): Promise<CalloutAuthenticator[]> {
-        let query = "select a.id as auth_id, a.name as auth_name, template as auth_template, e.id as ep_id, e.name as ep_name, e.baseurl as ep_baseurl from callout_authenticator a, callout_endpoint e where a.endpointid=e.id";
-        query = `${query} and a.userid=$1`;
-        
-        const result = await this.dbService.query(
-            query,
-            user.identity.callerId
-        );
+        let result;
+        if (this.isAllDataAccessUser(user)) {
+            result = await this.dbService.query(
+                "select a.id as auth_id, a.name as auth_name, template as auth_template, e.id as ep_id, e.name as ep_name, e.baseurl as ep_baseurl from callout_authenticator a, callout_endpoint e where a.endpointid=e.id"
+            );
+        } else {
+            result = await this.dbService.query(
+                "select a.id as auth_id, a.name as auth_name, template as auth_template, e.id as ep_id, e.name as ep_name, e.baseurl as ep_baseurl from callout_authenticator a, callout_endpoint e where a.endpointid=e.id and a.userid=$1",
+                user.identity.callerId
+            );
+        }
 
-        // get replaceents
+        // get replacements
         const authenticatorIds = result.rows.map(row => row.auth_id);
-        const resultReplacements = await this.dbService.query("select * from callout_authenticator_replacement where authenticatorid IN ($1)", 
+        const resultReplacements = authenticatorIds.length > 0 ? await this.dbService.query("select * from callout_authenticator_replacement where authenticatorid IN ($1)",
             authenticatorIds.join()
-        );
+        ) : { rows: [] };
 
         // get secrets
         const secrets = await this.getUserCalloutSecrets(user);
@@ -1936,18 +1994,7 @@ export class StorageService extends BaseService {
         // loop and return
         return result.rows.map((row) => {
             const authenticatorId = row.auth_id;
-            let template = AuthenticatorTemplate["DATACLOUD_CLIENTCREDENTIALS"];
-            switch (row.auth_template) {
-                case DATACLOUD_CLIENTCREDENTIALS:
-                    template = AuthenticatorTemplate["DATACLOUD_CLIENTCREDENTIALS"];
-                    break;
-                case DATACLOUD_WEBSDK:
-                    template = AuthenticatorTemplate["DATACLOUD_WEBSDK"];
-                    break;
-                case STATIC_BEARERTOKEN:
-                    template = AuthenticatorTemplate["STATIC_BEARERTOKEN"];
-                    break;
-            }
+            const template = this.parseAuthenticatorTemplate(row.auth_template);
 
             // get replacements
             const replacements : Record<string,CalloutSecret> = {};
@@ -1970,6 +2017,51 @@ export class StorageService extends BaseService {
                 templateMappings: replacements
             } as CalloutAuthenticator;
             return auth;
+        });
+    }
+
+    private parseAuthenticatorTemplate(value: string): AuthenticatorTemplate {
+        switch (value) {
+            case DATACLOUD_CLIENTCREDENTIALS: return AuthenticatorTemplate.DATACLOUD_CLIENTCREDENTIALS;
+            case DATACLOUD_WEBSDK: return AuthenticatorTemplate.DATACLOUD_WEBSDK;
+            case STATIC_BEARERTOKEN: return AuthenticatorTemplate.STATIC_BEARERTOKEN;
+            case SMARTME_CLIENTCREDENTIALS: return AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS;
+            default: return AuthenticatorTemplate.DATACLOUD_CLIENTCREDENTIALS;
+        }
+    }
+
+    private async getAllCalloutAuthenticators(): Promise<CalloutAuthenticator[]> {
+        const result = await this.dbService.query(
+            "select a.id as auth_id, a.name as auth_name, template as auth_template, a.userid as auth_userid, e.id as ep_id, e.name as ep_name, e.baseurl as ep_baseurl from callout_authenticator a, callout_endpoint e where a.endpointid=e.id"
+        );
+
+        const authenticatorIds = result.rows.map(row => row.auth_id);
+        const resultReplacements = authenticatorIds.length > 0 ? await this.dbService.query("select * from callout_authenticator_replacement where authenticatorid IN ($1)",
+            authenticatorIds.join()
+        ) : { rows: [] };
+
+        // get all secrets (unmasked) for service use
+        const allSecrets = await this.dbService.query("select id, name, value from callout_secret");
+
+        return result.rows.map((row) => {
+            const authenticatorId = row.auth_id;
+            const template = this.parseAuthenticatorTemplate(row.auth_template);
+
+            const replacements: Record<string, CalloutSecret> = {};
+            resultReplacements.rows.forEach(repRow => {
+                if (repRow.authenticatorid === authenticatorId) {
+                    const s = allSecrets.rows.find(s => s.id === repRow.secretid);
+                    if (s) replacements[repRow.name] = { id: s.id, name: s.name, value: s.value };
+                }
+            });
+
+            return {
+                id: authenticatorId,
+                name: row.auth_name,
+                template,
+                endpoint: { id: row.ep_id, name: row.ep_name, baseUrl: row.ep_baseurl },
+                templateMappings: replacements,
+            } as CalloutAuthenticator;
         });
     }
 
@@ -2223,13 +2315,18 @@ export class StorageService extends BaseService {
     }
 
     async getUserCalloutSecrets(user: BackendIdentity) : Promise<Array<CalloutSecret>> {
-        let result = await this.dbService.query(
-            "select id, name, value from callout_secret where userid=$1",
-            user.identity.callerId
-        );
+        let result;
+        if (this.isAllDataAccessUser(user)) {
+            result = await this.dbService.query("select id, name, value from callout_secret");
+        } else {
+            result = await this.dbService.query(
+                "select id, name, value from callout_secret where userid=$1",
+                user.identity.callerId
+            );
+        }
         return result.rows.map(row => {
             let value = row.value;
-            if (user.identity.impersonationId  !== "*") {
+            if (user.identity.impersonationId  !== "*" && !this.isAllDataAccessUser(user)) {
                 value = value.length < 10 ? "xxxxxxxxxx" : `${value.substring(0, value.length / 5)}...`;
             }
             const s = {
@@ -2354,7 +2451,7 @@ export class StorageService extends BaseService {
                     },
                 },
                 frequency: r.frequency,
-                encryptedCredentials: r.ciphertext,
+                calloutId: r.calloutid,
             } as SmartmeSubscription;
         });
         return subscription_results;
@@ -2372,6 +2469,93 @@ export class StorageService extends BaseService {
         if (!user) throw Error("Must supply a user object");
         if (user.identity.impersonationId) return user.identity.impersonationId;
         return user.identity.callerId;
+    }
+
+    async getSensorsWithTimeout(_user: BackendIdentity): Promise<Sensor[]> {
+        const result = await this.dbService.query(
+            `select ${SENSOR_COLUMNS}, ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from sensor s, device d, house h where s.deviceId=d.id and d.houseId=h.id and s.timeout_seconds is not null order by s.name asc`
+        );
+        return convertRowsToSensors(result);
+    }
+
+    async getDevicesWithTimeout(_user: BackendIdentity): Promise<Device[]> {
+        const result = await this.dbService.query(
+            `select ${DEVICE_COLUMNS}, ${HOUSE_COLUMNS} from device d join house h on d.houseid=h.id where d.timeout_seconds is not null order by d.name asc`
+        );
+        return convertRowsToDevices(result);
+    }
+
+    async getEventDefinitions(_user: BackendIdentity, targetId: string, triggerType?: EventTriggerType): Promise<EventDefinition[]> {
+        let sql = "select id, userid, sensorid, deviceid, active, trigger_type, action_type, action_config from event_definition where (sensorid=$1 or deviceid=$1)";
+        const params: any[] = [targetId];
+        if (triggerType) {
+            sql += " and trigger_type=$2";
+            params.push(triggerType);
+        }
+        const result = await this.dbService.query(sql, ...params);
+        return result.rows.map(row => ({
+            id: row.id,
+            userId: row.userid,
+            sensorId: row.sensorid,
+            deviceId: row.deviceid,
+            active: row.active,
+            triggerType: row.trigger_type as EventTriggerType,
+            actionType: row.action_type as EventActionType,
+            actionConfig: row.action_config,
+        } as EventDefinition));
+    }
+
+    async getActiveEventDefinitions(targetId: string, triggerType: EventTriggerType): Promise<EventDefinition[]> {
+        const result = await this.dbService.query(
+            "select id, userid, sensorid, deviceid, active, trigger_type, action_type, action_config from event_definition where (sensorid=$1 or deviceid=$1) and trigger_type=$2 and active=true",
+            targetId,
+            triggerType
+        );
+        return result.rows.map(row => ({
+            id: row.id,
+            userId: row.userid,
+            sensorId: row.sensorid,
+            deviceId: row.deviceid,
+            active: row.active,
+            triggerType: row.trigger_type as EventTriggerType,
+            actionType: row.action_type as EventActionType,
+            actionConfig: row.action_config,
+        } as EventDefinition));
+    }
+
+    async createEventDefinition(user: BackendIdentity, input: { sensorId?: string; deviceId?: string; triggerType: EventTriggerType; actionType: EventActionType; actionConfig: Record<string, any> }): Promise<EventDefinition> {
+        const userid = this.isAllDataAccessUser(user) ? null : user.identity.callerId;
+        const id = uuid();
+        await this.dbService.query(
+            "insert into event_definition (id, userid, sensorid, deviceid, trigger_type, action_type, action_config) values ($1, $2, $3, $4, $5, $6, $7)",
+            id,
+            userid,
+            input.sensorId || null,
+            input.deviceId || null,
+            input.triggerType,
+            input.actionType,
+            JSON.stringify(input.actionConfig)
+        );
+        return {
+            id,
+            userId: userid || undefined,
+            sensorId: input.sensorId,
+            deviceId: input.deviceId,
+            active: true,
+            triggerType: input.triggerType,
+            actionType: input.actionType,
+            actionConfig: input.actionConfig,
+        };
+    }
+
+    async deleteEventDefinition(user: BackendIdentity, id: string): Promise<boolean> {
+        let result;
+        if (this.isAllDataAccessUser(user)) {
+            result = await this.dbService.query("delete from event_definition where id=$1", id);
+        } else {
+            result = await this.dbService.query("delete from event_definition where id=$1 and userid=$2", id, user.identity.callerId);
+        }
+        return result.rowCount === 1;
     }
 
     private ensureScope(user: BackendIdentity, scope: string): boolean {

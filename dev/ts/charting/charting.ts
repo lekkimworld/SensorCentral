@@ -1,13 +1,12 @@
-import { Legend as LegendType, LegendItem, BarController, BarElement, CategoryScale, Chart, ChartDataset, LineController, LineElement, LinearScale, PointElement, TimeScale } from "chart.js";
+import { Legend, LegendItem, BarController, BarElement, CategoryScale, Chart, ChartDataset, LineController, LineElement, LinearScale, PointElement, TimeScale } from "chart.js";
 import "chartjs-adapter-date-fns";
 import { da } from "date-fns/locale";
-import moment, { ISO_8601, Moment } from "moment";
+import moment, { Moment } from "moment";
 import { v4 as uuid } from "uuid";
 import constants from "../constants";
 import { ActionIcon, DataElement, DataSet, getFontAwesomeIcon } from "../ui-helper";
 import * as uiutils from "../ui-utils";
-import { Legend } from "chart.js/dist/plugins/plugin.legend";
-Chart.register(LegendType, BarController, BarElement, LineController, CategoryScale, TimeScale, LinearScale, PointElement, LineElement );
+Chart.register(Legend, BarController, BarElement, LineController, CategoryScale, TimeScale, LinearScale, PointElement, LineElement );
 
 const ID_CHART_BASE = "sensorChart";
 const ID_CHART_CONTAINER = `${ID_CHART_BASE}_container`;
@@ -30,7 +29,7 @@ const colorMap = {
 const getChartDatasetsLabels = (options: ChartContainerOptions, datasets: Array<DataSet>) : Array<string|Date> => {
     if (options.timeseries) {
         return datasets[0].data.map((elem) => {
-            const m = moment.utc(elem.x, ISO_8601).tz(constants.TIMEZONE);
+            const m = moment.utc(elem.x, moment.ISO_8601).tz(constants.TIMEZONE);
             return m.toDate();
         });
     } else {
@@ -91,7 +90,7 @@ const getChartOptions = (state: ChartState, options: ChartContainerOptions, data
     result.plugins.legend = {
         position: "top",
         display: options.legend || false,
-        onClick: (event, legendItem: LegendItem, legend: Legend) => {
+        onClick: (event, legendItem: LegendItem, legend) => {
             console.log(event);
             console.log(legendItem);
             console.log(legend);

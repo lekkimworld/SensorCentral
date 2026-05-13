@@ -128,19 +128,34 @@ declare global {
             API_JWT_AUDIENCE: string | undefined;
 
             /**
-             * Private key used to sign JWT's used when sending email through gmail
+             * SMTP server hostname
              */
-            GOOGLE_PRIVATE_KEY: string;
+            SMTP_HOST: string;
 
             /**
-             * Service account used when sending email through gmail
+             * SMTP server port (defaults to 587)
              */
-            GOOGLE_SERVICE_ACCOUNT_EMAIL: string;
+            SMTP_PORT: string;
 
             /**
-             * Token URI for Google services
+             * Set to "true" to use TLS for SMTP connection
              */
-            GOOGLE_TOKEN_URI: string;
+            SMTP_SECURE: string;
+
+            /**
+             * SMTP authentication username (omit for unauthenticated relay)
+             */
+            SMTP_USER: string;
+
+            /**
+             * SMTP authentication password
+             */
+            SMTP_PASS: string;
+
+            /**
+             * From address for outgoing emails (overrides message-level from)
+             */
+            SMTP_FROM: string;
 
             // OIDC providers
             OIDC_CLIENT_ID_GOOGLE: string;
@@ -151,6 +166,10 @@ declare global {
             OIDC_CLIENT_SECRET_GITHUB: string;
             OIDC_PROVIDER_URL_GITHUB: string;
             OIDC_REDIRECT_URI_GITHUB: string;
+            OIDC_CLIENT_ID_LOCAL: string;
+            OIDC_CLIENT_SECRET_LOCAL: string;
+            OIDC_PROVIDER_URL_LOCAL: string;
+            OIDC_REDIRECT_URI_LOCAL: string;
 
             /**
              * Session secret
@@ -162,10 +181,6 @@ declare global {
              */
             SESSION_TIMEOUT_SECONDS: string;
 
-            /**
-             * Key used to encrypt smart-me data in the database.
-             */
-            SMARTME_KEY: !string;
             /**
              * Domain for smart-me api (defaults to api.smart-me.com)
              */

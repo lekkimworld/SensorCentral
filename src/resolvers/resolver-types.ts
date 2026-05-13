@@ -30,9 +30,9 @@ export class GraphQLDataElement implements DataElement {
         this.y = y;
     }
 
-    @Field()
+    @Field(() => String)
     x: string;
 
-    @Field()
+    @Field(() => Number)
     y: number;
 }

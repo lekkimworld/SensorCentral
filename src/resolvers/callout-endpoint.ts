@@ -23,11 +23,11 @@ export class CalloutEndpoint {
     @Field(() => ID)
     id: string;
 
-    @Field()
+    @Field(() => String)
     @Length(1, 128)
     name: string;
 
-    @Field()
+    @Field(() => String)
     @Length(15, 128)
     baseUrl: string;
 }
@@ -41,7 +41,7 @@ export class DeleteCalloutEndpointInput {
 
 @InputType()
 export class CreateCalloutEndpointInput {
-    @Field({ nullable: false })
+    @Field(() => String, { nullable: false })
     @Length(1, 128)
     name: string;
 
@@ -56,10 +56,10 @@ export class UpdateCalloutEndpointInput {
     @Length(1, 36)
     id: string;
 
-    @Field({ nullable: true})
+    @Field(() => String, { nullable: true})
     name: string;
 
-    @Field({ nullable: true})
+    @Field(() => String, { nullable: true})
     baseUrl: string;
 }
 

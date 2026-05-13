@@ -1,14 +1,14 @@
-import fetch from "node-fetch";
 import { AuthenticatorTemplate } from "../../src/callout-authenticator-templates/templates";
 import CalloutService, { RequestData } from "../../src/services/callout-service";
+import { IdentityService } from "../../src/services/identity-service";
 import { StorageService } from "../../src/services/storage-service";
-import { BackendIdentity, CalloutSecret, Identity } from "../../src/types";
+import { BackendIdentity, CalloutSecret, HttpMethod, Identity } from "../../src/types";
 
-jest.mock("node-fetch");
-const mockFetch = fetch as jest.MockedFunction<typeof fetch>
+const mockFetch = jest.fn();
+global.fetch = mockFetch as any;
 
 const ident : BackendIdentity = {
-            identity: {} as Identity,
+            identity: { callerId: "*" } as Identity,
             principal: {
                 isUser: function (): boolean {
                     throw new Error("Function not implemented.");
@@ -22,6 +22,11 @@ const ident : BackendIdentity = {
             },
             scopes: []
         }
+
+const mockIdentity = {
+    getServiceBackendIdentity: () => ident,
+    getImpersonationIdentity: () => ident,
+} as unknown as IdentityService;
 
 describe ("callout-service.request", () => {
 
@@ -37,13 +42,13 @@ describe ("callout-service.request", () => {
             }
         })
         await new CalloutService().request({
-            method: "GET",
+            method: HttpMethod.GET,
             url: "https://example.com",
             body: undefined,
             headers: {}
         })
         expect(mockFetch).toHaveBeenCalledTimes(1);
-        expect(mockFetch).toHaveBeenCalledWith("https://example.com", {headers: {}, method: "GET"});
+        expect(mockFetch).toHaveBeenCalledWith("https://example.com", expect.objectContaining({method: "GET"}));
     })
     it("should use POST if instructed", async () => {
         mockFetch.mockImplementation(() : any => {
@@ -53,13 +58,13 @@ describe ("callout-service.request", () => {
             }
         })
         await new CalloutService().request({
-            method: "POST",
+            method: HttpMethod.POST,
             url: "https://example.com",
             body: "abc123",
             headers: {}
         })
         expect(mockFetch).toHaveBeenCalledTimes(1);
-        expect(mockFetch).toHaveBeenCalledWith("https://example.com", {headers: {}, body: "abc123", method: "POST"});
+        expect(mockFetch).toHaveBeenCalledWith("https://example.com", expect.objectContaining({body: "abc123", method: "POST"}));
     })
     it("undefined body on POST should be empty string", async () => {
         mockFetch.mockImplementation(() : any => {
@@ -69,13 +74,13 @@ describe ("callout-service.request", () => {
             }
         })
         await new CalloutService().request({
-            method: "POST",
+            method: HttpMethod.POST,
             url: "https://example.com",
             body: undefined,
             headers: {}
         })
         expect(mockFetch).toHaveBeenCalledTimes(1);
-        expect(mockFetch).toHaveBeenCalledWith("https://example.com", {headers: {}, body: "", method: "POST"});
+        expect(mockFetch).toHaveBeenCalledWith("https://example.com", expect.objectContaining({body: "", method: "POST"}));
     })
     it("should use supplied headers and return as json is accept is set to json", async () => {
         mockFetch.mockImplementation(() : any => {
@@ -85,12 +90,15 @@ describe ("callout-service.request", () => {
             }
         })
         await new CalloutService().request({
-            method: "GET",
+            method: HttpMethod.GET,
             url: "https://example.com",
             headers: {"foo": "bar", "accept": "application/json"}
         })
         expect(mockFetch).toHaveBeenCalledTimes(1);
-        expect(mockFetch).toHaveBeenCalledWith("https://example.com", {headers: {"foo": "bar", "accept": "application/json"}, method: "GET"});
+        expect(mockFetch).toHaveBeenCalledWith("https://example.com", expect.objectContaining({
+            headers: expect.objectContaining({"foo": "bar", "accept": "application/json"}),
+            method: "GET"
+        }));
     })
     it("should throw exception on non-ok", async () => {
         mockFetch.mockImplementation(() : any => {
@@ -101,7 +109,7 @@ describe ("callout-service.request", () => {
         const c = new CalloutService();
         try {
             await c.request({
-                method: "GET",
+                method: HttpMethod.GET,
                 url: "https://example.com",
                 body: undefined,
                 headers: {}
@@ -109,7 +117,7 @@ describe ("callout-service.request", () => {
             fail("Should fail");
         } catch (err) {}
         expect(mockFetch).toHaveBeenCalledTimes(1);
-        expect(mockFetch).toHaveBeenCalledWith("https://example.com", {headers: {}, method: "GET"});
+        expect(mockFetch).toHaveBeenCalledWith("https://example.com", expect.objectContaining({method: "GET"}));
     })
 })
 
@@ -129,7 +137,7 @@ describe ("callout-service.callout", () => {
         jest.spyOn(c, "request").mockImplementation(() => {
             return Promise.resolve();
         });
-        c.init(callback, [ mockStorage ]);
+        c.init(callback, [ mockStorage, mockIdentity ]);
     })
 
     afterEach(() => {
@@ -143,7 +151,7 @@ describe ("callout-service.callout", () => {
         await calloutSvc.callout(ident, {
             id: "id",
             name: "myname",
-            method: "GET",
+            method: HttpMethod.GET,
             endpoint: {
                 id: "emdpoint_id", name: "foo", baseUrl: "https://example.com"
             },
@@ -154,7 +162,7 @@ describe ("callout-service.callout", () => {
         expect(storage.getUserCalloutSecrets).toHaveBeenCalledTimes(1);
         expect(calloutSvc.request).toHaveBeenCalledTimes(1);
         expect(calloutSvc.request).toHaveBeenCalledWith({
-            method: "GET",
+            method: HttpMethod.GET,
             url: "https://example.com",
             headers: {}
         } as RequestData)
@@ -168,7 +176,7 @@ describe ("callout-service.callout", () => {
         await calloutSvc.callout(ident, {
             id: "id",
             name: "myname",
-            method: "POST",
+            method: HttpMethod.POST,
             endpoint: {
                 id: "emdpoint_id", name: "foo", baseUrl: "https://example.com"
             },
@@ -182,7 +190,7 @@ describe ("callout-service.callout", () => {
         expect(storage.getUserCalloutSecrets).toHaveBeenCalledTimes(1);
         expect(calloutSvc.request).toHaveBeenCalledTimes(1);
         expect(calloutSvc.request).toHaveBeenCalledWith({
-            method: "POST",
+            method: HttpMethod.POST,
             url: "https://example.com/1/2",
             body: "2-1",
             headers: {"x-foo": "bar"}
@@ -199,14 +207,14 @@ describe ("callout-service.callout", () => {
         await calloutSvc.callout(ident, {
             id: "id",
             name: "myname",
-            method: "GET",
+            method: HttpMethod.GET,
             endpoint,
             pathTemplate: "",
             authenticator: {
                 endpoint, 
                 id: "foo",
                 name: "myauth",
-                template: AuthenticatorTemplate["STATIC-BEARERTOKEN"],
+                template: AuthenticatorTemplate.STATIC_BEARERTOKEN,
                 templateMappings: {
                     "token": {
                         name: "foo-secret", id: "xyz123", value: "shhhhh...."
@@ -216,7 +224,7 @@ describe ("callout-service.callout", () => {
         }, {});
         
         expect(calloutSvc.request).toHaveBeenCalledWith({
-            method: "GET",
+            method: HttpMethod.GET,
             url: "xxx://example.com",
             headers: {
                 "Authorization": "Bearer shhhhh...."

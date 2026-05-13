@@ -1,0 +1,14 @@
+ALTER TABLE sensor ADD COLUMN timeout_seconds integer;
+ALTER TABLE device ADD COLUMN timeout_seconds integer;
+CREATE TYPE event_trigger_type AS ENUM ('onSensorSample', 'onSensorTimeout', 'onDeviceTimeout');
+CREATE TYPE event_action_type AS ENUM ('persist_value');
+CREATE TABLE event_definition (id character varying(36) NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(), userid character varying(36), sensorid character varying(36), deviceid character varying(36), active boolean NOT NULL DEFAULT true, trigger_type event_trigger_type NOT NULL, action_type event_action_type NOT NULL, action_config jsonb NOT NULL DEFAULT '{}', CONSTRAINT event_target_check CHECK ((sensorid IS NOT NULL AND deviceid IS NULL) OR (sensorid IS NULL AND deviceid IS NOT NULL)));
+ALTER TABLE event_definition ADD FOREIGN KEY (userid) REFERENCES login_user(id) ON DELETE CASCADE;
+ALTER TABLE event_definition ADD FOREIGN KEY (sensorid) REFERENCES sensor(id) ON DELETE CASCADE;
+ALTER TABLE event_definition ADD FOREIGN KEY (deviceid) REFERENCES device(id) ON DELETE CASCADE;
+CREATE INDEX idx_event_def_sensor_trigger ON event_definition(sensorid, trigger_type) WHERE sensorid IS NOT NULL;
+CREATE INDEX idx_event_def_device_trigger ON event_definition(deviceid, trigger_type) WHERE deviceid IS NOT NULL;
+UPDATE sensor SET timeout_seconds = 600 WHERE type = 'binary';
+INSERT INTO event_definition (sensorid, trigger_type, action_type, action_config, active) SELECT s.id, 'onSensorTimeout'::event_trigger_type, 'persist_value'::event_action_type, '{"value": 0}'::jsonb, true FROM sensor s WHERE s.type = 'binary';
+DROP TABLE event_onsensorsample;
+UPDATE database_version SET version = 19;

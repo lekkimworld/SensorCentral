@@ -6,15 +6,15 @@ import {v4 as uuid} from "uuid";
 export default (elemRoot: JQuery<HTMLElement>) => {
     const updateUI = () => {
         elemRoot.html("");
-    
+
         // do title row
         uiutils.appendTitleRow(
-            elemRoot, 
-            "Powermeter Setup", 
+            elemRoot,
+            "Powermeter Setup",
             [
                 {rel: "create", icon: "plus", "click": async function() {
-                    
-                }}, 
+
+                }},
                 {rel: "refresh", icon: "refresh", click: async function() {
                     updateUI();
                 }}
@@ -25,17 +25,17 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 prev[h.id] = h.name;
                 return prev;
             }, {})
-            elemRoot.append(`<p>Use this page to configure the connection between SensorCentral 
-                and <a href="https://web.smart-me.com" target="_new">smart.me</a> for continuous 
-                data from your powermeter. 
+            elemRoot.append(`<p>Use this page to configure the connection between SensorCentral
+                and <a href="https://web.smart-me.com" target="_new">smart.me</a> for continuous
+                data from your powermeter.
                 </p>
                 <div class="sensorcentral-section">
                     <div class="header">1. Install Kamstrup powermeter module</div>
                     <div class="p-2">
                         <ol>
                         <li>Install a smart.me module in your Kamstrup powermeter</li>
-                        <li>Configure the smart.me module using the smartphone app including setting up a username and password</li>
-                        <li>Note down the username, password</li>
+                        <li>Configure the smart.me module using the smartphone app</li>
+                        <li>Create an OAuth application at <a href="https://web.smart-me.com" target="_new">smart-me.com</a> and note down the Client ID and Client Secret</li>
                         </ol>
                         ${dropdown({
                             name: "house",
@@ -48,14 +48,14 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                     </div>
                 </div>
                 <div class="sensorcentral-section mt-3">
-                    <div class="header">2. Specify smart.me account details</div>
+                    <div class="header">2. Specify smart.me OAuth credentials</div>
                     <div class="p-2">
-                        Specify your smart-me username and password below and click "Verify" to verify the 
-                        credentials. Upon click "Verify" we will fetch the registered devices from smart-me 
+                        Specify your smart-me OAuth Client ID and Client Secret below and click "Verify" to verify the
+                        credentials. Upon click "Verify" we will fetch the registered devices from smart-me
                         together with the current reading in kWh. Pick the device to the house to continue.
                         <form>
-                            ${textField({name: "username", label: "smart.me username", fieldExplanation: "Specify the smart.me username"})}
-                            ${textField({name: "password", label: "smart.me password", fieldExplanation: "Specify the smart.me password"})}
+                            ${textField({name: "clientId", label: "Client ID", fieldExplanation: "Specify the smart.me OAuth Client ID"})}
+                            ${textField({name: "clientSecret", label: "Client Secret", fieldExplanation: "Specify the smart.me OAuth Client Secret"})}
                             <p class="text-center">
                                 ${buttonPerformAction("Verify", "verify")}
                             </p>
@@ -66,10 +66,10 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 <div class="sensorcentral-section mt-3">
                     <div class="header">3. Create powermeter device and sensor</div>
                     <div class="p-2">
-                        The powermeter device is a standard SensorCentral device registration 
-                        but the sensor is created with the same ID as the powermeter registered 
-                        with smart.me. To make the creation easier click the button below to 
-                        ensure a sensor has been created. 
+                        The powermeter device is a standard SensorCentral device registration
+                        but the sensor is created with the same ID as the powermeter registered
+                        with smart.me. To make the creation easier click the button below to
+                        ensure a sensor has been created.
                         <form class="mt-3">
                             ${textField({
                                 name: "powermeter4CreateSensor",
@@ -129,9 +129,9 @@ export default (elemRoot: JQuery<HTMLElement>) => {
     updateUI();
 
     const getSmartmeCredentials = () => {
-        const username = $("#usernameInput").val();
-        const password = $("#passwordInput").val();
-        return {username, password};
+        const clientId = $("#clientIdInput").val();
+        const clientSecret = $("#clientSecretInput").val();
+        return {clientId, clientSecret};
     }
     const messageShow = (id, msg, color) => {
         const holder = $(`#${id}`);
@@ -160,7 +160,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 .then(() => {
                     const creds = getSmartmeCredentials();
                     return graphql(
-                        `{smartmeGetDevices(data: {username: "${creds.username}", password: "${creds.password}"}){id, name, counterReading, counterReadingUnit}}`
+                        `{smartmeGetDevices(data: {clientId: "${creds.clientId}", clientSecret: "${creds.clientSecret}"}){id, name, counterReading, counterReadingUnit}}`
                     );
                 })
                 .then((validationResult) => {
@@ -214,7 +214,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                         )
                         .then(() => {
                             return graphql(
-                                `mutation {createSensor(data: {deviceId: "${deviceId}", id: "${sensorId}", name: "Powermeter", label: "powermeter-${houseId}", type: "counter", icon: "battery-4", scaleFactor: 0.001}){id}}`
+                                `mutation {createSensor(data: {deviceId: "${deviceId}", id: "${sensorId}", name: "Powermeter", label: "powermeter-${houseId}", type: counter, icon: "battery-4", scaleFactor: 0.001}){id}}`
                             );
                         })
                         .then(() => {
@@ -233,9 +233,8 @@ export default (elemRoot: JQuery<HTMLElement>) => {
 
             errorClear(resultsId)
                 .then(() => {
-                    // get specified id (if any) and ensure it's valid
-                    if (!creds || !creds.username || !creds.password)
-                        throw Error("Please ensure the credentials are specified");
+                    if (!creds || !creds.clientId || !creds.clientSecret)
+                        throw Error("Please ensure the OAuth credentials are specified");
                     if (!houseId) throw Error("Please select the house for the Powermeter to subscribe for");
                     if (!sensorId) throw Error("Please specify the ID of the Powermeter to subscribe for");
                     if (!frequency) throw Error("Please specify the frequency for the powermeter query");
@@ -245,10 +244,9 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 })
                 .then(() => {
                     return graphql(
-                            `mutation{smartmeEnsureSubscription(credentials: {username: "${creds.username}", password: "${creds.password}"} subscription: {frequency: ${frequency}, houseId: "${houseId}", sensorId: "${sensorId}"}){house{id,name},sensor{id,name},frequency}}`
+                            `mutation{smartmeEnsureSubscription(credentials: {clientId: "${creds.clientId}", clientSecret: "${creds.clientSecret}"} subscription: {frequency: ${frequency}, houseId: "${houseId}", sensorId: "${sensorId}"}){house{id,name},sensor{id,name},frequency}}`
                         )
                         .then((data) => {
-                            // coming here means we could create the subscription
                             messageShow(resultsId, "Subscription created!", "green");
                         });
                 })
@@ -263,7 +261,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 .then(() => {
                     // get specified id (if any) and ensure it's valid
                     if (!houseId) throw Error("Please select the house for the Powermeter to subscribe for");
-                    
+
                     // really sure
                     if (!confirm("Are you sure?")) throw Error("Aborted");
                 })

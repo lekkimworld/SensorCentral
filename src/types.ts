@@ -1,5 +1,5 @@
 import { Moment } from "moment";
-import { AlertEventType } from "./services/alert/alert-types";
+import { AlertEventType } from "./services/watchdog/alert-types";
 import { StorageService } from "./services/storage-service";
 import { AuthenticatorTemplate } from "./callout-authenticator-templates/templates";
 
@@ -14,7 +14,8 @@ export interface GraphQLResolverContext {
 export enum LoginSource {
     google = "google",
     github = "github",
-    microsoft = "microsoft"
+    microsoft = "microsoft",
+    local = "local"
 }
 
 /**
@@ -367,9 +368,9 @@ export interface Device {
     readonly id : string;
     readonly name : string;
     readonly lastRestart : Date;
-    readonly lastWatchdogReset : Date;
     readonly lastPing : Date;
     readonly active : boolean;
+    readonly timeoutSeconds : number | undefined;
 }
 
 /**
@@ -394,6 +395,7 @@ export interface Sensor {
     readonly type : SensorType | undefined;
     readonly icon : string;
     readonly scaleFactor : number;
+    readonly timeoutSeconds : number | undefined;
 }
 
 /**
@@ -509,7 +511,7 @@ export class HttpException extends Error {
     house : House;
     sensor : Sensor;
     frequency : number;
-    encryptedCredentials : string;
+    calloutId : string;
   }
 
 export enum HttpMethod {
@@ -584,6 +586,27 @@ export type OnSensorSampleEvent = {
     path?: string;
     contenttype: ContentType;
     bodyTemplate?: string;
+}
+
+export enum EventTriggerType {
+    onSensorSample = "onSensorSample",
+    onSensorTimeout = "onSensorTimeout",
+    onDeviceTimeout = "onDeviceTimeout",
+}
+
+export enum EventActionType {
+    persist_value = "persist_value",
+}
+
+export interface EventDefinition {
+    readonly id: string;
+    readonly userId?: string;
+    readonly sensorId?: string;
+    readonly deviceId?: string;
+    readonly active: boolean;
+    readonly triggerType: EventTriggerType;
+    readonly actionType: EventActionType;
+    readonly actionConfig: Record<string, any>;
 }
 
 export interface Dataset {

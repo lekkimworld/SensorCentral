@@ -1,6 +1,6 @@
 import { CalloutEndpoint } from "../clientside-types";
 import { graphql } from "../fetch-util";
-import { buttonClose, buttonPerformAction, Form, EVENTS, DataEvent, UICatalog, InitEvent, ToggleButtonControl, TextControl, buttonPerformDestructiveAction, ClickEvent } from "../forms-util";
+import { buttonClose, buttonPerformAction, Form, EVENTS, DataEvent, UICatalog, InitEvent, buttonPerformDestructiveAction, ClickEvent } from "../forms-util";
 
 export class EndpointForm extends Form<CalloutEndpoint> {
     constructor(endpoint?: CalloutEndpoint) {

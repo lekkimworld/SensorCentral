@@ -2,7 +2,7 @@ import * as storage from "./storage-utils";
 import {SettingsForm} from "./forms/settings";
 import { getFontAwesomeIcon, RouteAction } from "./ui-helper";
 
-const ID_ACTION_ITEMS = "action-icons";
+const ACTION_ITEMS_CLASS = "sensorcentral-action-icons";
 
 export const fillMenus = () => {
     const user = storage.getUser();
@@ -111,7 +111,7 @@ export const htmlActionBar = (actions: Array<RouteAction<any|void>> | undefined)
         return `<button type="button" class="btn fa fa-${faicon} ml-2 p-0 sensorcentral-size-1_5x float-right" aria-hidden="true" rel="${action.rel}"></button>`
     }).join("");
 
-    return `<div class="col-lg-4 col-md-4 col-sm-12" id="${ID_ACTION_ITEMS}">${html}</div>`;
+    return `<div class="col-lg-4 col-md-4 col-sm-12 ${ACTION_ITEMS_CLASS}">${html}</div>`;
 }
 
 export const htmlDataTable = (input : any = {}) => {
@@ -139,7 +139,7 @@ export const appendTitleRow = (elem, title, actions : Array<RouteAction<any|void
 
     // add click handler
     if (!actions || !actions.length) return;
-    $(`#${args && args.actionItemsId ? args.actionItemsId  : ID_ACTION_ITEMS}`).on("click", (ev) => {
+    elem.find(`.${ACTION_ITEMS_CLASS}`).last().on("click", (ev) => {
         const rel = ev.target.getAttribute("rel");
         const filteredActions = actions.filter((action: any) => action.rel === rel);
         if (!filteredActions.length) return;

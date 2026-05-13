@@ -5,7 +5,6 @@ dotenv_config();
 // require
 import "reflect-metadata";
 import terminateListener from '../terminate-listener';
-//@ts-ignore
 import services from '../configure-services';
 import { DatabaseService } from "../services/database-service";
 import { PubsubService } from "../services/pubsub-service";
@@ -21,7 +20,7 @@ import { IdentityService } from '../services/identity-service';
 import { PowermeterService } from "../services/powermeter-service";
 import { CronService } from "../services/cron-service";
 import cronjobPowerdata  from "./cronjob_powerdata";
-import { AlertService } from "../services/alert/alert-service";
+import { WatchdogService } from "../services/watchdog/watchdog-service";
 import { EventService } from "../services/event-service";
 import { PowerpriceService } from "../services/powerprice-service";
 import { QueueService } from "../services/queue-service";
@@ -40,11 +39,6 @@ if (!APP_DOMAIN) {
 	process.exit(1);
 }
 logger.info(`APP_DOMAIN set to ${APP_DOMAIN}`);
-if (!process.env.SMARTME_KEY) {
-	logger.info("SMARTME_KEY environment variable not set - cannot start!");
-	process.exit(1);
-}
-
 // add services
 services.registerService(new ExpressService());
 services.registerService(new RedisService());
@@ -56,13 +50,13 @@ services.registerService(new QueueListenerService());
 services.registerService(new StorageService());
 services.registerService(new NotifyService());
 services.registerService(new EmailService());
+services.registerService(new CalloutService());
 services.registerService(new PowermeterService());
 services.registerService(new CronService());
 services.registerService(new DataQueryService());
-services.registerService(new AlertService());
+services.registerService(new WatchdogService());
 services.registerService(new EventService());
 services.registerService(new PowerpriceService());
-services.registerService(new CalloutService());
 
 // setup termination listener
 terminateListener(() => {

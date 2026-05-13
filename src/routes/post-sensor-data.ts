@@ -1,5 +1,5 @@
 import * as express from 'express';
-const services = require('../configure-services');
+import services from '../configure-services';
 import constants from "../constants";
 import { Logger } from '../logger';
 import { BaseService, IngestedControlMessage, IngestedDeviceMessage, IngestedSensorMessage, ControlMessageTypes, HttpException, ControlMessageTarget } from '../types';

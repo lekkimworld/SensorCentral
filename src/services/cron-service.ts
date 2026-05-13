@@ -26,8 +26,12 @@ export class CronService extends BaseService {
         if (Object.keys(this.jobs).includes(name)) {
             this.jobs[name].stop();
         }
-        const job = new CronJob(cronTime, callback, null, true, constants.DEFAULTS.TIMEZONE);
-        job.start();
+        const job = CronJob.from({
+            cronTime,
+            onTick: callback,
+            start: true,
+            timeZone: constants.DEFAULTS.TIMEZONE
+        });
         this.jobs[name] = job;
 
         if (runImmediately) {

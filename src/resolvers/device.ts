@@ -4,7 +4,7 @@ import * as types from "../types";
 import { Alert } from "./alert";
 import { House } from "./house";
 import { Sensor } from "./sensor";
-import * as alert_types from "../services/alert/alert-types";
+import * as alert_types from "../services/watchdog/alert-types";
 import { DeleteInput } from "./common";
 
 registerEnumType(types.NullableBoolean, {
@@ -24,22 +24,26 @@ export class Device {
         this.active = d.active;
         this.last_ping = d.lastPing;
         this.last_restart = d.lastRestart;
+        this.timeoutSeconds = d.timeoutSeconds;
     }
 
     @Field(() => ID)
     id: string;
 
-    @Field()
+    @Field(() => String)
     name: string;
 
-    @Field({ nullable: true })
+    @Field(() => Date, { nullable: true })
     last_ping: Date;
 
-    @Field({ nullable: true })
+    @Field(() => Date, { nullable: true })
     last_restart: Date;
 
-    @Field()
+    @Field(() => Boolean)
     active: boolean;
+
+    @Field(() => Number, { nullable: true })
+    timeoutSeconds?: number;
 
     @Field(() => [Sensor])
     sensors: types.Sensor[];
@@ -55,9 +59,9 @@ export class Device {
 class DeviceData {
     @Field(() => ID)
     id: string;
-    @Field({ nullable: true })
+    @Field(() => String, { nullable: true })
     dt?: string;
-    @Field({ nullable: true })
+    @Field(() => String, { nullable: true })
     ip?: string;
 
     constructor(id: string, data?: types.DeviceData) {
@@ -71,12 +75,15 @@ class DeviceData {
 
 @InputType()
 export class UpdateDeviceInput extends DeleteInput {
-    @Field()
+    @Field(() => String)
     @Length(2, 128)
     name : string
 
-    @Field()
+    @Field(() => Boolean)
     active : boolean
+
+    @Field(() => Number, { nullable: true })
+    timeoutSeconds?: number
 }
 
 @InputType()

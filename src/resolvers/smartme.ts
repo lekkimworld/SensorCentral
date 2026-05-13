@@ -3,12 +3,15 @@ import { Length } from "class-validator";
 import * as types from "../types";
 import constants from "../constants";
 import moment from "moment-timezone";
-import {generatePayload} from "../smartme-signature";
 import { House } from "./house";
 import { Sensor } from "./sensor";
+import CalloutService, { MIMETYPE_JSON } from "../services/callout-service";
+import getService from "../services/service-locator";
+import { AuthenticatorTemplate } from "../callout-authenticator-templates/templates";
+import { v4 as uuid } from "uuid";
 
 export class Cloudflare524Error extends Error {
-    constructor(msg : string) {
+    constructor(msg: string) {
         super(`Cloud Flare specific status 524 error - ${msg}`);
     }
 }
@@ -16,96 +19,37 @@ export class Cloudflare524Error extends Error {
 export enum PowerUnit {
     "kW",
     "kWh",
-    "Unknown"
+    "Unknown",
 }
-const parsePowerUnit = (str : string) : PowerUnit => {
-    return str === "kW" ? PowerUnit.kW : str === "kWh" ? PowerUnit.kWh : PowerUnit.Unknown
-}
-const smartmeGetApiUrl = (path:string) : string => {
-    const url = `${constants.SMARTME.PROTOCOL}://${constants.SMARTME.DOMAIN}/api${path}`;
-    return url;
-}
-const smartmeGetFetchAttributes = (data : SmartmeCredentialsType) : RequestInit => {
-    // calc auth header
-    const basic_auth = Buffer.from(`${data.username}:${data.password}`).toString("base64");
-    const headers = {
-        Authorization: `Basic ${basic_auth}`,
-        Accept: "application/json",
-    };
-    const fetch_attrs = {
-        method: "get",
-        headers,
-    };
-    return fetch_attrs;
-}
-export const smartmeVerifyCredentials = async (username:string, password: string) : Promise<boolean> => {
-    // get attributes
-    const fetch_attrs = smartmeGetFetchAttributes({
-        username, password
-    });
+const parsePowerUnit = (str: string): PowerUnit => {
+    return str === "kW" ? PowerUnit.kW : str === "kWh" ? PowerUnit.kWh : PowerUnit.Unknown;
+};
 
-    // verify the username / password
-    let res = await fetch(smartmeGetApiUrl("/User"), fetch_attrs);
-    if (res.status === 524) throw new Cloudflare524Error("Error logging in to smart-me");
-    if (res.status !== 200) throw new Error("Unable to verify smart-me credentials");
-    return true;
-}
-
-/**
- * 
- * @param username 
- * @param password 
- * @param sensorId 
- * @returns 
- */
-export const smartmeGetDevices = async (username: string, password: string, sensorId? : string) : Promise<undefined | SmartmeDeviceWithDataType[] | SmartmeDeviceWithDataType> => {
-        // get attributes
-        const fetch_attrs = smartmeGetFetchAttributes({username, password});
-
-        // verify
-        await smartmeVerifyCredentials(username, password);
-
-        // get device info
-        const url = smartmeGetApiUrl(sensorId ? `/Devices/${sensorId}` : "/Devices");
-        const res = await fetch(url, fetch_attrs);
-        if (res.status === 524) throw new Cloudflare524Error("Error getting information about a specific smart-me device");
-        if (res.status != 200) throw Error(`Unexpected non-200 status code (${res.status})`);
-        const resultData = await res.json();
-        if (!resultData) {
-            return undefined;
-        } else if (Array.isArray(resultData)) {
-            return resultData.map((d: any) => {
-                return new SmartmeDeviceWithDataType(d);
-            });
-        } else {
-            return new SmartmeDeviceWithDataType(resultData);
-        }
-        
-    }
+const SMARTME_BASE_URL = `${constants.SMARTME.PROTOCOL}://${constants.SMARTME.DOMAIN}`;
 
 @ObjectType()
 export class SmartmeDeviceWithDataType {
-    @Field() id: string;
-    @Field() name: string;
-    @Field() serial: number;
-    @Field() deviceEnergyType: number;
-    @Field() activePower: number;
-    @Field() activePowerUnit: PowerUnit;
-    @Field() counterReading: number;
-    @Field() counterReadingUnit: PowerUnit;
-    @Field() counterReadingT1: number;
-    @Field() counterReadingT2: number;
-    @Field() counterReadingT3: number;
-    @Field() counterReadingT4: number;
-    @Field() counterReadingImport: number;
-    @Field() counterReadingExport: number;
-    @Field() voltageL1: number;
-    @Field() voltageL2: number;
-    @Field() voltageL3: number;
-    @Field() currentL1: number;
-    @Field() currentL2: number;
-    @Field() currentL3: number;
-    @Field() valueDate: Date;
+    @Field(() => String) id: string;
+    @Field(() => String) name: string;
+    @Field(() => Number) serial: number;
+    @Field(() => Number) deviceEnergyType: number;
+    @Field(() => Number) activePower: number;
+    @Field(() => Number) activePowerUnit: PowerUnit;
+    @Field(() => Number) counterReading: number;
+    @Field(() => Number) counterReadingUnit: PowerUnit;
+    @Field(() => Number) counterReadingT1: number;
+    @Field(() => Number) counterReadingT2: number;
+    @Field(() => Number) counterReadingT3: number;
+    @Field(() => Number) counterReadingT4: number;
+    @Field(() => Number) counterReadingImport: number;
+    @Field(() => Number) counterReadingExport: number;
+    @Field(() => Number) voltageL1: number;
+    @Field(() => Number) voltageL2: number;
+    @Field(() => Number) voltageL3: number;
+    @Field(() => Number) currentL1: number;
+    @Field(() => Number) currentL2: number;
+    @Field(() => Number) currentL3: number;
+    @Field(() => Date) valueDate: Date;
 
     constructor(data: any) {
         this.id = data.Id;
@@ -134,78 +78,229 @@ export class SmartmeDeviceWithDataType {
 
 @ObjectType()
 export class SmartmeEnsureSubscriptionOutputType {
-    @Field() houseId: string;
-    @Field() sensorId: string;
-    @Field({ nullable: true, defaultValue: 1 }) frequency: number;
+    @Field(() => String) houseId: string;
+    @Field(() => String) sensorId: string;
+    @Field(() => Number, { nullable: true, defaultValue: 1 }) frequency: number;
 }
 
 @InputType()
 export class SmartmeEnsureSubscriptionInputType {
-    @Field() houseId: string;
-    @Field() sensorId: string;
-    @Field({nullable: true, defaultValue: 1}) frequency: number;
+    @Field(() => String) houseId: string;
+    @Field(() => String) sensorId: string;
+    @Field(() => Number, { nullable: true, defaultValue: 1 }) frequency: number;
 }
 
 @ObjectType()
-export class SmartmeSubscriptionType implements types.SmartmeSubscription {
-    @Field() house : House;
-    @Field() sensor : Sensor;
-    @Field() frequency : number;
-    @Field() encryptedCredentials: string;
+export class SmartmeSubscriptionType {
+    @Field(() => House) house: House;
+    @Field(() => Sensor) sensor: Sensor;
+    @Field(() => Number) frequency: number;
+    @Field(() => String) calloutId: string;
 }
 
 @InputType()
 export class SmartmeCredentialsType {
-    @Field()
+    @Field(() => String)
     @Length(2, 128)
-    username: string;
+    clientId: string;
 
-    @Field()
+    @Field(() => String)
     @Length(2, 128)
-    password: string;
+    clientSecret: string;
 }
 
 @Resolver()
 export class SmartmeResolver {
     @Query(() => Boolean, {})
-    async smartmeVerifyCredentials(@Arg("data") data: SmartmeCredentialsType): Promise<Boolean> {
-        return smartmeVerifyCredentials(data.username, data.password);
+    async smartmeVerifyCredentials(
+        @Arg("data") data: SmartmeCredentialsType,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ): Promise<Boolean> {
+        const calloutSvc = getService<CalloutService>(CalloutService.NAME);
+
+        // create temporary secrets/endpoint/authenticator to test credentials
+        const endpoint = await ctx.storage.createCalloutEndpoint(ctx.user, {
+            name: `smartme-verify-${uuid().substring(0, 8)}`,
+            baseUrl: SMARTME_BASE_URL,
+        });
+        const clientIdSecret = await ctx.storage.createCalloutSecret(ctx.user, {
+            name: `smartme-cid-${uuid().substring(0, 8)}`,
+            value: data.clientId,
+        });
+        const clientSecretSecret = await ctx.storage.createCalloutSecret(ctx.user, {
+            name: `smartme-cs-${uuid().substring(0, 8)}`,
+            value: data.clientSecret,
+        });
+        const authenticator = await ctx.storage.createCalloutAuthenticator(ctx.user, {
+            name: `smartme-auth-${uuid().substring(0, 8)}`,
+            endpointId: endpoint.id,
+            template: AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS,
+            templateMappings: [
+                { name: "client_id", secretId: clientIdSecret.id },
+                { name: "client_secret", secretId: clientSecretSecret.id },
+            ],
+        });
+
+        try {
+            // try fetching /api/User to verify credentials work
+            await calloutSvc.callout(ctx.user, {
+                id: "verify-temp",
+                name: "verify-temp",
+                endpoint,
+                authenticator: {
+                    id: authenticator.id,
+                    name: authenticator.name,
+                    endpoint,
+                    template: AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS,
+                    templateMappings: {
+                        client_id: clientIdSecret,
+                        client_secret: clientSecretSecret,
+                    },
+                },
+                method: types.HttpMethod.GET,
+                pathTemplate: "/api/User",
+                headers: { accept: "application/json" },
+            }, undefined);
+            return true;
+        } catch {
+            return false;
+        } finally {
+            // clean up temporary objects — deleting endpoint cascades to authenticator
+            await ctx.storage.deleteCalloutEndpoint(ctx.user, { id: endpoint.id });
+            await ctx.storage.deleteCalloutSecret(ctx.user, { id: clientIdSecret.id });
+            await ctx.storage.deleteCalloutSecret(ctx.user, { id: clientSecretSecret.id });
+        }
     }
 
     @Query(() => [SmartmeDeviceWithDataType], { nullable: false })
-    async smartmeGetDevices(@Arg("data") data: SmartmeCredentialsType) {
-        return smartmeGetDevices(data.username, data.password);
+    async smartmeGetDevices(
+        @Arg("data") data: SmartmeCredentialsType,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ) {
+        const calloutSvc = getService<CalloutService>(CalloutService.NAME);
+
+        // create temporary objects to make the callout
+        const endpoint = await ctx.storage.createCalloutEndpoint(ctx.user, {
+            name: `smartme-disc-${uuid().substring(0, 8)}`,
+            baseUrl: SMARTME_BASE_URL,
+        });
+        const clientIdSecret = await ctx.storage.createCalloutSecret(ctx.user, {
+            name: `smartme-cid-${uuid().substring(0, 8)}`,
+            value: data.clientId,
+        });
+        const clientSecretSecret = await ctx.storage.createCalloutSecret(ctx.user, {
+            name: `smartme-cs-${uuid().substring(0, 8)}`,
+            value: data.clientSecret,
+        });
+        const authenticator = await ctx.storage.createCalloutAuthenticator(ctx.user, {
+            name: `smartme-auth-${uuid().substring(0, 8)}`,
+            endpointId: endpoint.id,
+            template: AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS,
+            templateMappings: [
+                { name: "client_id", secretId: clientIdSecret.id },
+                { name: "client_secret", secretId: clientSecretSecret.id },
+            ],
+        });
+
+        try {
+            const resultData = await calloutSvc.callout<any[]>(ctx.user, {
+                id: "discover-temp",
+                name: "discover-temp",
+                endpoint,
+                authenticator: {
+                    id: authenticator.id,
+                    name: authenticator.name,
+                    endpoint,
+                    template: AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS,
+                    templateMappings: {
+                        client_id: clientIdSecret,
+                        client_secret: clientSecretSecret,
+                    },
+                },
+                method: types.HttpMethod.GET,
+                pathTemplate: "/api/Devices",
+                headers: { accept: "application/json" },
+            }, undefined);
+
+            if (!resultData) return [];
+            if (Array.isArray(resultData)) {
+                return resultData.map((d: any) => new SmartmeDeviceWithDataType(d));
+            }
+            return [new SmartmeDeviceWithDataType(resultData)];
+        } finally {
+            await ctx.storage.deleteCalloutEndpoint(ctx.user, { id: endpoint.id });
+            await ctx.storage.deleteCalloutSecret(ctx.user, { id: clientIdSecret.id });
+            await ctx.storage.deleteCalloutSecret(ctx.user, { id: clientSecretSecret.id });
+        }
     }
 
     @Mutation(() => SmartmeSubscriptionType, {
         description:
-            "Given a house ID will verify the caller has access to the house, then delete all subscriptions for that house, verify that a sensor with the specified ID exists and then create a subscription for the sensor ID with the specified credentials",
+            "Creates callout secrets/endpoint/authenticator/callout for Smart-Me OAuth, then creates a powermeter subscription",
     })
     async smartmeEnsureSubscription(
         @Arg("credentials") creds: SmartmeCredentialsType,
         @Arg("subscription") subscription: SmartmeEnsureSubscriptionInputType,
         @Ctx() ctx: types.GraphQLResolverContext
     ) {
-        // get house and sensor (throws error if sensor cannot be found) to ensure access
+        // get sensor (throws error if sensor cannot be found) to ensure access
         const sensor = await ctx.storage.getSensor(ctx.user, subscription.sensorId);
+        const houseId = sensor.device!.house.id;
 
         // remove existing subscriptions if any
-        await ctx.storage.removePowermeterSubscriptions(ctx.user, sensor.device!.house.id);
+        await ctx.storage.removePowermeterSubscriptions(ctx.user, houseId);
 
-        // encrypt credentials
-        const payload = generatePayload(creds.username, creds.password, sensor.device!.id, sensor.id);
+        // create persistent callout infrastructure
+        const endpoint = await ctx.storage.createCalloutEndpoint(ctx.user, {
+            name: `smartme-${houseId.substring(0, 8)}`,
+            baseUrl: SMARTME_BASE_URL,
+        });
+
+        const clientIdSecret = await ctx.storage.createCalloutSecret(ctx.user, {
+            name: `smartme-cid-${houseId.substring(0, 8)}`,
+            value: creds.clientId,
+        });
+        const clientSecretSecret = await ctx.storage.createCalloutSecret(ctx.user, {
+            name: `smartme-cs-${houseId.substring(0, 8)}`,
+            value: creds.clientSecret,
+        });
+
+        const authenticator = await ctx.storage.createCalloutAuthenticator(ctx.user, {
+            name: `smartme-auth-${houseId.substring(0, 8)}`,
+            endpointId: endpoint.id,
+            template: AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS,
+            templateMappings: [
+                { name: "client_id", secretId: clientIdSecret.id },
+                { name: "client_secret", secretId: clientSecretSecret.id },
+            ],
+        });
+
+        // create the callout that fetches a specific device by sensorId
+        const calloutId = uuid();
+        await ctx.storage.createUserCallout(ctx.user, {
+            id: calloutId,
+            name: `smartme-poll-${houseId.substring(0, 8)}`,
+            endpointId: endpoint.id,
+            authenticatorId: authenticator.id,
+            method: types.HttpMethod.GET,
+            pathTemplate: "/api/Devices/{{sensorId}}",
+            headers: { accept: "application/json" },
+        });
+
+        // create the subscription
         await ctx.storage.createPowermeterSubscription(
             ctx.user,
-            sensor.device!.house.id,
+            houseId,
             sensor.id,
             subscription.frequency,
-            payload
+            calloutId
         );
+
         return {
             house: sensor.device!.house,
             sensor,
             frequency: subscription.frequency,
-            encryptedCredentials: payload,
+            calloutId,
         } as SmartmeSubscriptionType;
     }
 
@@ -219,16 +314,15 @@ export class SmartmeResolver {
     }
 
     @Query(() => [SmartmeEnsureSubscriptionOutputType], {
-        description: "Returns the current subscriptions we have for powermeter data for the houses the user has access to"
+        description: "Returns the current subscriptions we have for powermeter data for the houses the user has access to",
     })
-    async smartmeGetSubscriptions(@Ctx() ctx : types.GraphQLResolverContext) {
+    async smartmeGetSubscriptions(@Ctx() ctx: types.GraphQLResolverContext) {
         return (await ctx.storage.getPowermeterSubscriptions(ctx.user)).map((sub) => {
             return {
                 sensorId: sub.sensor.id,
                 houseId: sub.house.id,
-                frequency: sub.frequency
+                frequency: sub.frequency,
             } as SmartmeEnsureSubscriptionOutputType;
         });
     }
-
 }

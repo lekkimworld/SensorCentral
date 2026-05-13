@@ -23,11 +23,11 @@ export class CalloutSecret {
     @Field(() => ID)
     id: string;
 
-    @Field()
+    @Field(() => String)
     @Length(0, 128)
     name: string;
 
-    @Field()
+    @Field(() => String)
     @Length(0, 1024)
     value: string;
 }
@@ -60,11 +60,11 @@ export class UpdateCalloutSecretInput {
     @Length(1, 36)
     id: string;
 
-    @Field()
+    @Field(() => String)
     @Length(0, 36)
     name: string;
 
-    @Field()
+    @Field(() => String)
     @Length(0, 1024)
     value: string;
 }

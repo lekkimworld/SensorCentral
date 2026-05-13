@@ -1,5 +1,5 @@
 import { ApolloServer } from "@apollo/server";
-import { expressMiddleware } from "@apollo/server/express4";
+import { expressMiddleware } from "@as-integrations/express5";
 import { InMemoryLRUCache } from "@apollo/utils.keyvaluecache";
 import cors from "cors";
 import { Application } from "express";
@@ -9,12 +9,11 @@ import { DeviceResolver } from "./resolvers/device";
 import { HouseResolver } from "./resolvers/house";
 import { SensorResolver } from "./resolvers/sensor";
 import { SettingsResolver } from "./resolvers/settings";
-//@ts-ignore
 import { lookupService } from "./configure-services";
 import { CalloutAuthenticatorTemplateResolver } from "./resolvers/callout-authenticator-templates";
 import constants from "./constants";
 import { Logger } from "./logger";
-import { AlertResolver } from "./resolvers/alert";
+import { EventDefinitionResolver } from "./resolvers/event-definition";
 import { CalloutEndpointResolver } from "./resolvers/callout-endpoint";
 import { CalloutSecretResolver } from "./resolvers/callout-secret";
 import { DataQueryResolver } from "./resolvers/data";
@@ -40,15 +39,15 @@ export default  async (app : Application) => {
 
     // define schema
     const schema = await buildSchema({
-        resolvers: [HouseResolver, 
-            DeviceResolver, 
-            SensorResolver, 
-            SettingsResolver, 
+        resolvers: [HouseResolver,
+            DeviceResolver,
+            SensorResolver,
+            SettingsResolver,
             DataQueryResolver,
             SmartmeResolver,
             UsersResolver,
-            AlertResolver,
             EventResolver,
+            EventDefinitionResolver,
             PowerPriceResolver,
             CalloutResolver,
             CalloutAuthenticatorResolver,

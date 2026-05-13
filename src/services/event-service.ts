@@ -1,22 +1,12 @@
-import Handlebars from "handlebars";
+import moment from "moment-timezone";
 import constants from "../constants";
 import { Logger } from "../logger";
-import { BackendIdentity, BaseService, HttpMethod, InitCallback, OnSensorSampleEvent, Sensor, TopicSensorMessage } from "../types";
+import { BackendIdentity, BaseService, EventActionType, EventDefinition, EventTriggerType, InitCallback, Sensor, TopicControlMessage, TopicSensorMessage } from "../types";
 import { IdentityService } from "./identity-service";
 import { PubsubService, TopicMessage } from "./pubsub-service";
 import { StorageService } from "./storage-service";
 
 const logger = new Logger("event-service");
-
-/**
- * 
- */
-
-type TemplateContext = {
-    id: string;
-    value: number;
-    sensor: Sensor;
-}
 
 export class EventService extends BaseService {
     public static NAME = "event";
@@ -33,89 +23,84 @@ export class EventService extends BaseService {
         this.storage = services[1] as StorageService;
         this.identity = (services[2] as IdentityService).getServiceBackendIdentity(EventService.NAME);
 
-        // listen for known sensor messages
-        pubsub.subscribe(`${constants.TOPICS.SENSOR}.known.*`, this.sensorTopicMessages.bind(this));
+        // listen for sensor data → onSensorSample trigger
+        pubsub.subscribe(`${constants.TOPICS.SENSOR}.known.*`, this.onSensorSample.bind(this));
 
-        // callback
+        // listen for timeout events → onSensorTimeout / onDeviceTimeout triggers
+        pubsub.subscribe(`${constants.TOPICS.CONTROL}.known.sensor.timeout`, this.onSensorTimeout.bind(this));
+        pubsub.subscribe(`${constants.TOPICS.CONTROL}.known.device.timeout`, this.onDeviceTimeout.bind(this));
+
         logger.info("Initialized event-service");
         callback();
     }
 
-    private async sensorTopicMessages(result: TopicMessage) {
-        // get msg and log
+    private async onSensorSample(result: TopicMessage) {
         const msg = result.data as TopicSensorMessage;
-        logger.debug(
-            `Received message on channel <${result.channel}> for sensor id <${msg.sensorId}> value <${msg.value}>`
-        );
+        const events = await this.storage.getActiveEventDefinitions(msg.sensorId, EventTriggerType.onSensorSample);
+        if (!events.length) return;
 
-        // get events defined for this sensor (across users)
-        const events = await this.storage.getAllOnSensorSampleEvents(this.identity, msg.sensorId);
-        logger.debug(`Found <${events.length}> onSensorSample event definitions for sensor <${msg.sensorId}> after receiving event`);
-
-        // loop
-        events.forEach(async (ev) => {
+        logger.debug(`Found <${events.length}> onSensorSample event(s) for sensor <${msg.sensorId}>`);
+        for (const ev of events) {
             try {
-                await this.processEventDefinition(ev, msg);
+                await this.executeAction(ev, msg.sensorId);
             } catch (err) {
-                logger.error(`Unable to process event definition for id <${ev.id}>: ${err.message}`);
+                logger.error(`Error executing event <${ev.id}>: ${err.message}`);
             }
-        });
-    }
-
-    //@ts-ignore
-    private substituteFromContext(id: string, template: string|undefined, ctx: TemplateContext) : string|undefined {
-        if (!template) return undefined;
-
-        let result = template;
-        logger.trace(`Event definition <${id}> has result <${result}> - substututing keys`);
-        let idx1 = 0;
-        let idx2 = 0;
-        let replacement = "{{";
-        while ((idx1 = result.indexOf("%%", idx2)) >= 0) {
-            result = `${result.substring(0, idx1)}${replacement}${result.substring(idx1 + 2)}`;
-            idx2 = idx1 + 2;
-            replacement = replacement === "{{" ? "}}" : "{{";
-        }
-        logger.trace(`Event definition <${id}> - after compiling template <${template}> with context <${JSON.stringify(ctx)}>`);
-        Handlebars.registerHelper("base64encode", s => Buffer.from(s).toString("base64"));
-        const body = Handlebars.compile(result)(ctx);
-        logger.trace(`Event definition <${id}> - after substitution the result is <${body}>`);
-        return body;
-    }
-
-    private async processEventDefinition(ev: OnSensorSampleEvent, msg: TopicSensorMessage) : Promise<void> {
-        logger.debug(`Event definition <${ev.id}> for sensor id <${msg.sensorId}> - starting to process`);
-
-        // build context
-        const sensor = await this.storage.getSensor(this.identity, msg.sensorId);
-        //@ts-ignore
-        const ctx = {
-            id: msg.sensorId,
-            value: msg.value,
-            sensor
-        };
-
-        // replace in body if any
-        /*
-        const body = this.substituteFromContext(ev.id, ev.bodyTemplate, ctx);
-        const path = this.substituteFromContext(ev.id, ev.path, ctx);
-
-        const _requestData: RequestData = {
-            method: ev.method === HttpMethod.POST ? "POST" : "GET",
-            url: `${ev.endpoint.baseUrl}${path}`,
-            headers: {
-                "content-type": ev.contenttype
-            },
-            body
-        };
-        */
-        // look at method and forward call
-        if (ev.method === HttpMethod.POST) {
-            //await this.processEventDefinitionPOST(requestData);
-        } else if (ev.method === HttpMethod.GET) {
-            //await this.processEventDefinitionGET(requestData);
         }
     }
 
-    
+    private async onSensorTimeout(result: TopicMessage) {
+        const msg = result.data as TopicControlMessage;
+        if (!msg.sensorId) return;
+
+        const events = await this.storage.getActiveEventDefinitions(msg.sensorId, EventTriggerType.onSensorTimeout);
+        if (!events.length) return;
+
+        logger.debug(`Found <${events.length}> onSensorTimeout event(s) for sensor <${msg.sensorId}>`);
+        for (const ev of events) {
+            try {
+                await this.executeAction(ev, msg.sensorId);
+            } catch (err) {
+                logger.error(`Error executing event <${ev.id}>: ${err.message}`);
+            }
+        }
+    }
+
+    private async onDeviceTimeout(result: TopicMessage) {
+        const msg = result.data as TopicControlMessage;
+        if (!msg.deviceId) return;
+
+        const events = await this.storage.getActiveEventDefinitions(msg.deviceId, EventTriggerType.onDeviceTimeout);
+        if (!events.length) return;
+
+        logger.debug(`Found <${events.length}> onDeviceTimeout event(s) for device <${msg.deviceId}>`);
+        for (const ev of events) {
+            try {
+                await this.executeAction(ev, msg.deviceId);
+            } catch (err) {
+                logger.error(`Error executing event <${ev.id}>: ${err.message}`);
+            }
+        }
+    }
+
+    private async executeAction(ev: EventDefinition, targetId: string) {
+        switch (ev.actionType) {
+            case EventActionType.persist_value:
+                await this.executePersistValue(ev, targetId);
+                break;
+            default:
+                logger.warn(`Unknown action type <${ev.actionType}> for event <${ev.id}>`);
+        }
+    }
+
+    private async executePersistValue(ev: EventDefinition, targetId: string) {
+        const value = ev.actionConfig.value;
+        if (value === undefined || value === null) {
+            logger.error(`Event <${ev.id}> persist_value action has no value configured`);
+            return;
+        }
+        const sensor = await this.storage.getSensor(this.identity, targetId);
+        logger.info(`Persisting value <${value}> for sensor <${sensor.id}> (event <${ev.id}>)`);
+        await this.storage.persistSensorSample(sensor, value, moment.utc());
+    }
 }

@@ -24,7 +24,7 @@ export class CalloutAuthenticatorTemplate {
     @Field(() => ID)
     id: string;
 
-    @Field()
+    @Field(() => String)
     @Length(0, 128)
     name: string;
 
@@ -40,10 +40,10 @@ export class CalloutAuthenticatorTemplatePlaceholder {
         this.description = description;
     }
 
-    @Field()
+    @Field(() => String)
     name: string;
 
-    @Field()
+    @Field(() => String)
     description: string;
 
 }

@@ -14,7 +14,7 @@ dotenv_config();
 // get log
 const logger = new Logger("database-init-utils");
 
-const TARGET_DATABASE_VERSION = 17;
+const TARGET_DATABASE_VERSION = 19;
 
 const url = new URL(process.env.DATABASE_URL as string);
 const config: PoolConfig = {
@@ -40,6 +40,7 @@ const executeSQLFile = (filename: string): Promise<void> => {
             "input": fs.createReadStream(join(__dirname, "..", "..", "schema", filename))
         }).on("line", line => {
             if (!line || line.trim().length === 0) return;
+            if (line.trim().startsWith("--")) return;
             logger.debug(`[SQL] Adding line: ${line}`);
             lines.push(line);
 
@@ -211,17 +212,23 @@ export default (processExit: boolean) : Promise<void> => {
             logger.info("Committing...");
             return Promise.all([Promise.resolve(0), pool.query("COMMIT")]);
         })
-        .catch((err) => {
-            logger.info("!! ERRROR !!");
-            logger.info(err.message);
+        .catch(async (err) => {
+            logger.error(`Schema upgrade failed: ${err.message}`);
             logger.info("!! ROLLING BACK !!");
-            return Promise.all([Promise.resolve(1), pool.query("ROLLBACK")]);
+            await pool.query("ROLLBACK");
+            throw err;
         })
-        .finally(() => {
+        .then(() => {
+            logger.info("Schema upgrade completed successfully");
             pool.end();
+            if (processExit) process.exit(0);
         })
-        .then((data) => {
-            logger.info(`Done... (return code is ${data[0]})`);
-            if (processExit) process.exit(data[0] as number);
+        .catch((err) => {
+            pool.end();
+            if (processExit) {
+                logger.error("Exiting process due to schema upgrade failure");
+                process.exit(1);
+            }
+            throw new Error(`Database schema upgrade failed: ${err.message}`);
         });
 };

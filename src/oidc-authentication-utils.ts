@@ -1,19 +1,24 @@
-import { Issuer, IssuerMetadata, generators, custom, Client } from "openid-client";
+import * as client from "openid-client";
 import { Logger } from "./logger";
 import { LoginSource } from "./types";
 
 const logger = new Logger("oidc-authentication-utils");
 
-// extend timeout if running against dummy OIDC provider
-if (process.env.OIDC_POST_CLIENT_SECRET) {
-    logger.info("Extending HTTP Timeout for OIDC Discovery");
-    custom.setHttpOptionsDefaults({
-        "timeout": 150000
-    });
-}
+const PROVIDER_ENV_KEYS: Record<string, string[]> = {
+    [LoginSource.google]: ["OIDC_CLIENT_ID_GOOGLE", "OIDC_CLIENT_SECRET_GOOGLE", "OIDC_PROVIDER_URL_GOOGLE", "OIDC_REDIRECT_URI_GOOGLE"],
+    [LoginSource.github]: ["OIDC_CLIENT_ID_GITHUB", "OIDC_CLIENT_SECRET_GITHUB", "OIDC_PROVIDER_URL_GITHUB", "OIDC_REDIRECT_URI_GITHUB"],
+    [LoginSource.microsoft]: ["OIDC_CLIENT_ID_MICROSOFT", "OIDC_CLIENT_SECRET_MICROSOFT", "OIDC_PROVIDER_URL_MICROSOFT", "OIDC_REDIRECT_URI_MICROSOFT"],
+    [LoginSource.local]: ["OIDC_CLIENT_ID_LOCAL", "OIDC_CLIENT_SECRET_LOCAL", "OIDC_PROVIDER_URL_LOCAL", "OIDC_REDIRECT_URI_LOCAL"],
+};
+
+export const getConfiguredProviders = (): string[] => {
+    return Object.entries(PROVIDER_ENV_KEYS)
+        .filter(([_, keys]) => keys.every(k => !!process.env[k]))
+        .map(([provider]) => provider);
+};
 
 export type OidcEndpoint = {
-    loginSource: LoginSource; 
+    loginSource: LoginSource;
     providerUrl : string;
     clientId : string;
     clientSecret : string;
@@ -24,13 +29,6 @@ export type OidcEndpoint = {
     tokenEndpoint: string | undefined;
 }
 
-/**
- * Returns provider specific OIDC endpoint information. Throws an error if an 
- * unsupported provider is supplied.
- * 
- * @param provider 
- * @returns 
- */
 export const getOidcEndpoint = (provider: string) : OidcEndpoint => {
     switch (provider) {
         case LoginSource.google:
@@ -72,79 +70,95 @@ export const getOidcEndpoint = (provider: string) : OidcEndpoint => {
                 scopes: "read:user user:email",
             };
 
+        case LoginSource.local:
+            return {
+                loginSource: LoginSource.local,
+                userinfoEndpoint: undefined,
+                authorizationEndpoint: undefined,
+                tokenEndpoint: undefined,
+                providerUrl: process.env.OIDC_PROVIDER_URL_LOCAL as string,
+                clientId: process.env.OIDC_CLIENT_ID_LOCAL as string,
+                clientSecret: process.env.OIDC_CLIENT_SECRET_LOCAL as string,
+                redirectUri: process.env.OIDC_REDIRECT_URI_LOCAL as string,
+                scopes: "openid email profile",
+            };
+
         default:
             throw new Error(`Supplied provider (${provider}) is not supported`);
     }
 }
 
-// build OpenID client
-export const getOidcClient = async (provider: string) => {
-    // get data for provider
-    let oidcIssuer : Issuer<Client> | undefined;
+const configCache = new Map<string, client.Configuration>();
+
+export const getOidcConfig = async (provider: string): Promise<client.Configuration> => {
+    if (configCache.has(provider)) {
+        return configCache.get(provider)!;
+    }
+
     const oidcEndpoint = getOidcEndpoint(provider);
+    let config: client.Configuration;
+
     switch (provider) {
         case LoginSource.google:
         case LoginSource.microsoft:
-            oidcIssuer = await Issuer.discover(oidcEndpoint.providerUrl);
+            config = await client.discovery(
+                new URL(oidcEndpoint.providerUrl),
+                oidcEndpoint.clientId,
+                oidcEndpoint.clientSecret
+            );
             break;
         case LoginSource.github:
-            oidcIssuer = new Issuer({
-                issuer: "GitHub",
-                authorization_endpoint: oidcEndpoint.authorizationEndpoint,
-                token_endpoint: oidcEndpoint.tokenEndpoint,
-                userinfo_endpoint: oidcEndpoint.userinfoEndpoint,
-            } as IssuerMetadata);
+        case LoginSource.local:
+            config = await client.discovery(
+                new URL(oidcEndpoint.providerUrl),
+                oidcEndpoint.clientId,
+                oidcEndpoint.clientSecret,
+                undefined,
+                {
+                    execute: [client.allowInsecureRequests],
+                }
+            );
             break;
         default:
             throw new Error(`Supplied provider (${provider}) is not supported`);
     }
 
-    // create client
-    const client = new oidcIssuer!.Client({
-        "client_id": oidcEndpoint.clientId,
-        "client_secret": oidcEndpoint.clientSecret,
-        "redirect_uris": [oidcEndpoint.redirectUri],
-        "response_types": ["code"]
-    })
-    return client;
+    configCache.set(provider, config);
+    return config;
 }
 
-/**
- * Browser payload when browser is asking for a OpenID Connect Provider 
- * login url.
- * 
- */
 export interface AuthenticationUrlPayload {
     provider: string;
     url : string;
 }
 
-/**
- * Derivative of AuthenticationUrlPayload to extend with the nonce 
- * used during the OpenID Connect authentication flow.
- */
 export interface AuthenticationUrlWithNonce extends AuthenticationUrlPayload {
     nonce : string;
+    codeVerifier: string;
 }
 
 export const getAuthenticationUrl = async (provider: string) => {
-    // generate nonce and auth url
-    const nonce = generators.nonce();
+    const nonce = client.randomNonce();
+    const codeVerifier = client.randomPKCECodeVerifier();
+    const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
 
-    // get client
-    const client = await getOidcClient(provider);
+    const config = await getOidcConfig(provider);
     const oidcEndpoint = getOidcEndpoint(provider);
 
-    // get auth URL
-    let url = client.authorizationUrl({
-        "scope": oidcEndpoint.scopes,
-        "nonce": nonce
-    });
+    const parameters: Record<string, string> = {
+        scope: oidcEndpoint.scopes,
+        nonce,
+        redirect_uri: oidcEndpoint.redirectUri,
+        code_challenge: codeChallenge,
+        code_challenge_method: "S256",
+    };
+
+    const redirectTo = client.buildAuthorizationUrl(config, parameters);
 
     return {
         provider,
-        "url": url,
-        "nonce": nonce
+        url: redirectTo.href,
+        nonce,
+        codeVerifier,
     } as AuthenticationUrlWithNonce;
 }
-

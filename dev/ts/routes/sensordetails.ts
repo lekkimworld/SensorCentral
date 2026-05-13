@@ -21,7 +21,7 @@ type RequestedSensor = Required<Readonly<Pick<Sensor, "id"|"type"|"name"|"label"
 export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
     // fetch sensor
     const data = await graphql(
-        `{sensor(id:"${sensorId}"){id, type, name, label, icon, favorite, scaleFactor, device{id,name,house{id,name}}}}`
+        `{sensor(id:"${sensorId}"){id, type, name, label, icon, favorite, scaleFactor, timeoutSeconds, device{id,name,house{id,name}}}}`
     );
     const sensor = data.sensor as RequestedSensor;
 
@@ -153,8 +153,8 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
     module.buildUI(sensorsContainer.children!.content.elem, sensor);
 
     // add alerts
-    addAlertsTable(elemRoot, sensor);
+    //addAlertsTable(elemRoot, sensor);
 
     // add events
-    addEventsTable(elemRoot, sensor);
+    //addEventsTable(elemRoot, sensor);
 }

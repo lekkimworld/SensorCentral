@@ -1,6 +1,6 @@
 import { IsEnum, Length } from "class-validator";
 import { Arg, createUnionType, Ctx, Field, FieldResolver, ID, InputType, Mutation, ObjectType, Query, registerEnumType, Resolver, Root } from "type-graphql";
-import * as alerts from "../services/alert/alert-types";
+import * as alerts from "../services/watchdog/alert-types";
 import * as types from "../types";
 import { Device } from "./device";
 import { Sensor } from "./sensor";
@@ -45,10 +45,10 @@ export class Alert {
     @Field(() => ID)
     id: string;
 
-    @Field()
+    @Field(() => Boolean)
     active: boolean;
 
-    @Field({ nullable: true })
+    @Field(() => String, { nullable: true })
     @Length(0, 128)
     description: string;
 
@@ -79,11 +79,11 @@ export class DeleteAlertInput {
 
 @InputType()
 class BaseAlertInput {
-    @Field({ nullable: true })
+    @Field(() => String, { nullable: true })
     @Length(0, 128)
     description: string;
 
-    @Field()
+    @Field(() => Boolean)
     active: boolean;
 
     @Field(() => String)

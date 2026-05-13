@@ -38,13 +38,13 @@ class BaseQueryFilterInput {
 
 @InputType()
 export class DateQueryFilterInput extends BaseQueryFilterInput {
-    @Field({
+    @Field(() => Date, {
         nullable: false,
         description: "The start date/time",
     })
     start: Date;
 
-    @Field({
+    @Field(() => Date, {
         nullable: false,
         description: "The end date/time",
     })
@@ -59,35 +59,35 @@ export class UngroupedQueryDateFilterInput extends DateQueryFilterInput {
 
 @InputType()
 export class UngroupedQueryCountFilterInput extends BaseQueryFilterInput {
-    @Field({ nullable: true, defaultValue: 100 })
+    @Field(() => Number, { nullable: true, defaultValue: 100 })
     count: number;
 }
 
 @InputType()
 export class UngroupedQueryFormatInput implements IEnsureDefaults {
-    @Field({ nullable: true, defaultValue: true })
+    @Field(() => Boolean, { nullable: true, defaultValue: true })
     applyScaleFactor: boolean;
 
-    @Field({ nullable: true, defaultValue: "UTC" })
+    @Field(() => String, { nullable: true, defaultValue: "UTC" })
     timezone: string;
 
-    @Field({ nullable: true, defaultValue: ISO8601_DATETIME_FORMAT })
+    @Field(() => String, { nullable: true, defaultValue: ISO8601_DATETIME_FORMAT })
     format: string;
 
-    @Field({ nullable: true, defaultValue: 3 })
+    @Field(() => Number, { nullable: true, defaultValue: 3 })
     decimals: number;
 
     ensureDefaults() {
-        if (!Object.prototype.hasOwnProperty.call(this, "timezone")) {
+        if (!Object.prototype.hasOwnProperty.call(this, "timezone") || !this.timezone) {
             this.timezone = "UTC";
         }
-        if (!Object.prototype.hasOwnProperty.call(this, "format")) {
+        if (!Object.prototype.hasOwnProperty.call(this, "format") || !this.format) {
             this.format = ISO8601_DATETIME_FORMAT;
         }
-        if (!Object.prototype.hasOwnProperty.call(this, "decimals")) {
+        if (!Object.prototype.hasOwnProperty.call(this, "decimals") || (!this.decimals && this.decimals !== 0) || Number.isNaN(this.decimals) || this.decimals < 0) {
             this.decimals = 3;
         }
-        if (!Object.prototype.hasOwnProperty.call(this, "applyScaleFactor")) {
+        if (!Object.prototype.hasOwnProperty.call(this, "applyScaleFactor") || typeof this.applyScaleFactor !== "boolean") {
             this.applyScaleFactor = true;
         }
     }
@@ -104,14 +104,14 @@ export class GroupedQueryOffsetFilterInput extends BaseQueryFilterInput {
     @IsEnum(CounterQueryAdjustBy)
     adjustBy: CounterQueryAdjustBy;
 
-    @Field({
+    @Field(() => Number, {
         nullable: true,
         defaultValue: 0,
         description: "The number of units we adjust the start timestamp by using the supplied unit to adjust by",
     })
     start: number;
 
-    @Field({
+    @Field(() => Number, {
         nullable: true,
         defaultValue: 0,
         description: "The number of units we adjust the end timestamp by using the supplied unit to adjust by",
@@ -128,16 +128,16 @@ export class GroupedQueryGroupByInput {
 
 @InputType()
 export class GroupedQueryFormatInput implements IEnsureDefaults {
-    @Field({ nullable: true, defaultValue: 3 })
+    @Field(() => Number, { nullable: true, defaultValue: 3 })
     decimals: number;
 
-    @Field({ nullable: true, defaultValue: constants.DEFAULTS.TIMEZONE })
+    @Field(() => String, { nullable: true, defaultValue: constants.DEFAULTS.TIMEZONE })
     timezone: string;
 
-    @Field({ nullable: true, defaultValue: true })
+    @Field(() => Boolean, { nullable: true, defaultValue: true })
     applyScaleFactor: boolean;
 
-    @Field({
+    @Field(() => Boolean, {
         nullable: true,
         defaultValue: false,
         description: "Adds the missing time series into the result set to fill in the result in case of missing data",

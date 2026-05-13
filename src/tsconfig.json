@@ -1,7 +1,8 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "outDir": "../server-dist",
     "declaration": false,
     "composite": false,
@@ -9,10 +10,8 @@
     "allowSyntheticDefaultImports": true,
     "emitDecoratorMetadata": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
     "rootDir": ".",
-    "esModuleInterop": true,
-    "lib": ["ES2020.Promise"]
+    "esModuleInterop": true
   },
   "exclude": ["../node_modules"],
   "include": ["./**/*.ts"]
