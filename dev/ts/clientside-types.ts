@@ -86,6 +86,32 @@ export type Sensor = Readonly<Partial<{
     last_reading: SensorSample;
 }>>
 
+export type CalloutAuthenticator = Readonly<Partial<{
+    id: string;
+    name: string;
+}>>
+
+export type Callout = Readonly<Partial<{
+    id: string;
+    name: string;
+    method: string;
+    pathTemplate: string;
+    bodyTemplate: string;
+    contentType: string;
+    endpoint: { id: string };
+    authenticator: { id: string };
+}>>
+
+export type EventDefinition = Readonly<Partial<{
+    id: string;
+    sensorId: string;
+    deviceId: string;
+    active: boolean;
+    triggerType: string;
+    actionType: string;
+    actionConfig: string;
+}>>
+
 export const SensorType = {
     /**
      * A value that always represents the latest value and that may go up and down.

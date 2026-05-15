@@ -131,7 +131,7 @@ export class CalloutAuthenticatorResolver {
     }
 
     @Mutation(() => CalloutAuthenticator)
-    async updateCalloutSecret(
+    async updateCalloutAuthenticator(
         @Ctx() ctx: types.GraphQLResolverContext,
         @Arg("data") input: UpdateCalloutAuthenticatorInput
     ): Promise<CalloutAuthenticator> {

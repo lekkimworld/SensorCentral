@@ -6,6 +6,7 @@ import { SensorDetails } from "./sensordetails-base";
 import { Device, House, Sensor, SensorType } from "../clientside-types";
 import { RouteAction, createBreadcrumbHeader, createContainers } from "../ui-helper";
 import { addEventsTable } from "../events-helper";
+import { addEventDefinitionsTable } from "../event-definitions-helper";
 import { ManualSampleForm } from "../forms/manual-sample";
 import { DeleteForm } from "../forms/delete";
 import { SensorForm } from "../forms/create-edit-sensor";
@@ -150,4 +151,7 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
 
     // tell module to build ui
     module.buildUI(sensorsContainer.children!.content.elem, sensor);
+
+    // build UI for event definitions
+    addEventDefinitionsTable(elemRoot, sensor, false);
 }

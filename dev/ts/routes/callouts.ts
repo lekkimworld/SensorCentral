@@ -1,22 +1,26 @@
-import { CalloutEndpoint, CalloutSecret } from "../clientside-types";
-import { graphqlTyped } from "../fetch-util";
+import { Callout, CalloutAuthenticator, CalloutEndpoint, CalloutSecret } from "../clientside-types";
+import { graphql, graphqlTyped } from "../fetch-util";
+import { AuthenticatorForm } from "../forms/create-edit-authenticator";
 import { EndpointForm } from "../forms/create-edit-endpoint";
 import { SecretForm } from "../forms/create-edit-secret";
+import { TestResultForm } from "../forms/test-result";
 import { createContainers } from "../ui-helper";
 import * as uiutils from "../ui-utils";
 
-// create type for endpoints
 type RequestedSecret = Required<Pick<CalloutSecret, "id" | "name" | "value">>;
 type RequestedEndpoint = Required<Pick<CalloutEndpoint, "id" | "name" | "baseUrl">>;
+type RequestedAuthenticator = Required<Pick<CalloutAuthenticator, "id" | "name">> & { template: string; endpoint: { id: string }; templateMappings: Array<{ name: string; secret: { id: string } }> };
+type RequestedCallout = Required<Pick<Callout, "id" | "name" | "method" | "pathTemplate">> & Pick<Callout, "bodyTemplate" | "endpoint" | "authenticator">;
 
 export default (elemRoot: JQuery<HTMLElement>) => {
     const updateUI = async () => {
         elemRoot.html("");
 
-        // get data
         type Response = {
             secrets: Array<RequestedSecret>;
             endpoints: Array<RequestedEndpoint>;
+            authenticators: Array<RequestedAuthenticator>;
+            callouts: Array<RequestedCallout>;
         }
         const data = await graphqlTyped<Response>(`
             {
@@ -30,18 +34,134 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                     name
                     baseUrl
                 }
+                authenticators: calloutAuthenticators {
+                    id
+                    name
+                    template
+                    endpoint { id }
+                    templateMappings { name, secret { id } }
+                }
+                callouts {
+                    id
+                    name
+                    method
+                    pathTemplate
+                    bodyTemplate
+                    contentType
+                    endpoint { id }
+                    authenticator { id }
+                }
             }
         `);
         if (data.errors) {
             return;
         }
-        
-        // add secrets
-        secretsUI(elemRoot, data.data!.secrets);
 
-        // call endpoints
+        secretsUI(elemRoot, data.data!.secrets);
         endpointsUI(elemRoot, data.data!.endpoints);
-        
+        authenticatorsUI(elemRoot, data.data!.authenticators);
+        calloutsUI(elemRoot, data.data!.callouts);
+        eventLogUI(elemRoot);
+    };
+
+    const authenticatorsUI = (elemRoot: JQuery<HTMLElement>, data: Array<RequestedAuthenticator>) => {
+        const container = createContainers(elemRoot, "authenticators", "title", "content");
+
+        uiutils.appendTitleRow(container.children!.title.elem, "Authenticators", [
+            {
+                rel: "create-authenticator",
+                icon: "plus",
+                click: async function () {
+                    new AuthenticatorForm().show();
+                },
+            },
+            {
+                rel: "refresh-authenticator",
+                icon: "refresh",
+                click: async function () {
+                    updateUI();
+                },
+            },
+        ]);
+
+        if (data.length) {
+            uiutils.appendDataTable(container.children!.content.elem, {
+                actions: [
+                    {
+                        rel: "test-authenticator",
+                        icon: "play",
+                        click: async (actionCtx: any) => {
+                            const result = await graphql(`mutation { testCalloutAuthenticator(id: "${actionCtx.id}") { success, message } }`);
+                            new TestResultForm("Test Authenticator", result.testCalloutAuthenticator).show();
+                        },
+                    },
+                ],
+                headers: ["NAME", "TEMPLATE"],
+                classes: ["", ""],
+                rows: data.map((a) => {
+                    return {
+                        id: a.id,
+                        data: a,
+                        columns: [a.name, a.template],
+                        click: function () {
+                            new AuthenticatorForm(this.data).show();
+                        },
+                    };
+                }),
+            });
+        } else {
+            container.children!.content.elem.append("You do not have any authenticators defined.");
+        }
+    };
+
+    const calloutsUI = (elemRoot: JQuery<HTMLElement>, data: Array<RequestedCallout>) => {
+        const container = createContainers(elemRoot, "callouts", "title", "content");
+
+        uiutils.appendTitleRow(container.children!.title.elem, "Callouts", [
+            {
+                rel: "create-callout",
+                icon: "plus",
+                click: async function () {
+                    document.location.hash = "#callouts/create";
+                },
+            },
+            {
+                rel: "refresh-callout",
+                icon: "refresh",
+                click: async function () {
+                    updateUI();
+                },
+            },
+        ]);
+
+        if (data.length) {
+            uiutils.appendDataTable(container.children!.content.elem, {
+                actions: [
+                    {
+                        rel: "test-callout",
+                        icon: "play",
+                        click: async (actionCtx: any) => {
+                            const result = await graphql(`mutation { testCallout(id: "${actionCtx.id}") { success, message } }`);
+                            new TestResultForm("Test Callout", result.testCallout).show();
+                        },
+                    },
+                ],
+                headers: ["NAME", "METHOD"],
+                classes: ["", ""],
+                rows: data.map((c) => {
+                    return {
+                        id: c.id,
+                        data: c,
+                        columns: [c.name, c.method],
+                        click: function () {
+                            document.location.hash = `#callouts/edit/${this.data.id}`;
+                        },
+                    };
+                }),
+            });
+        } else {
+            container.children!.content.elem.append("You do not have any callouts defined.");
+        }
     };
 
     const endpointsUI = (elemRoot: JQuery<HTMLElement>, data: Array<RequestedEndpoint>) => {
@@ -127,6 +247,86 @@ export default (elemRoot: JQuery<HTMLElement>) => {
             container.children!.content.elem.append("You do not have any secrets defined.");
         }
     }
+
+    const eventLogUI = async (elemRoot: JQuery<HTMLElement>) => {
+        const container = createContainers(elemRoot, "eventlog", "title", "content");
+
+        uiutils.appendTitleRow(container.children!.title.elem, "Event Activity Log", [
+            {
+                rel: "refresh-eventlog",
+                icon: "refresh",
+                click: async function () {
+                    await loadEventLog(container.children!.content.elem);
+                },
+            },
+        ]);
+
+        await loadEventLog(container.children!.content.elem);
+    };
+
+    const loadEventLog = async (contentElem: JQuery<HTMLElement>) => {
+        contentElem.html("");
+        const data = await graphql(`{ eventLog(limit: 20) { timestamp, triggerType, targetId, targetName, targetPath, actionType, actionDetail, success, error, request, response } }`);
+        const entries = (data.eventLog || []) as Array<{
+            timestamp: string;
+            triggerType: string;
+            targetId: string;
+            targetName: string;
+            targetPath?: string;
+            actionType: string;
+            actionDetail: string;
+            success: boolean;
+            error?: string;
+            request?: string;
+            response?: string;
+        }>;
+
+        if (!entries.length) {
+            contentElem.html("No event activity recorded yet.");
+            return;
+        }
+
+        uiutils.appendDataTable(contentElem, {
+            actions: [
+                {
+                    rel: "event-details",
+                    icon: "info",
+                    click: (actionCtx: any) => {
+                        const entry = actionCtx.data;
+                        let message = "";
+                        if (entry.error) message += `Error: ${entry.error}\n\n`;
+                        if (entry.request) message += `--- Request ---\n${entry.request}\n\n`;
+                        if (entry.response) message += `--- Response ---\n${entry.response}`;
+                        if (!message) message = entry.success ? "Action completed successfully." : "No details available.";
+                        new TestResultForm(
+                            `${entry.actionType}: ${entry.actionDetail}`,
+                            { success: entry.success, message: message.trim() }
+                        ).show();
+                    },
+                },
+            ],
+            headers: ["TIME", "TRIGGER", "TARGET", "ACTION", "DETAIL", "STATUS"],
+            classes: ["", "", "d-none d-md-table-cell", "", "d-none d-md-table-cell", ""],
+            rows: entries.map((e, idx) => ({
+                id: String(idx),
+                data: e,
+                columns: [
+                    new Date(e.timestamp).toLocaleString(),
+                    e.triggerType,
+                    e.targetPath
+                        ? `<a href="${e.targetPath}">${e.targetName}</a>`
+                        : e.targetName,
+                    e.actionType,
+                    e.actionDetail,
+                    e.success
+                        ? '<span class="text-success">OK</span>'
+                        : `<span class="text-danger" title="${(e.error || "").replace(/"/g, "&quot;")}">FAIL</span>`,
+                ],
+            })),
+        });
+
+        contentElem.append(`<a href="#eventlog" class="btn btn-sm btn-outline-secondary mt-2">Show all events</a>`);
+    };
 
     // build initial ui
     updateUI();

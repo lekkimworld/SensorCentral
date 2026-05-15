@@ -66,6 +66,24 @@ export class CreateEventDefinitionInput {
     actionConfig: string;
 }
 
+@InputType()
+export class UpdateEventDefinitionInput {
+    @Field(() => ID)
+    id: string;
+
+    @Field(() => types.EventTriggerType)
+    triggerType: types.EventTriggerType;
+
+    @Field(() => types.EventActionType)
+    actionType: types.EventActionType;
+
+    @Field(() => String, { description: "JSON-encoded action configuration" })
+    actionConfig: string;
+
+    @Field(() => Boolean, { nullable: true })
+    active?: boolean;
+}
+
 const toGraphQL = (ev: types.EventDefinition): EventDefinitionType => {
     const t = new EventDefinitionType();
     t.id = ev.id;
@@ -102,6 +120,21 @@ export class EventDefinitionResolver {
             triggerType: input.triggerType,
             actionType: input.actionType,
             actionConfig: JSON.parse(input.actionConfig),
+        });
+        return toGraphQL(ev);
+    }
+
+    @Mutation(() => EventDefinitionType)
+    async updateEventDefinition(
+        @Ctx() ctx: types.GraphQLResolverContext,
+        @Arg("data") input: UpdateEventDefinitionInput
+    ): Promise<EventDefinitionType> {
+        const ev = await ctx.storage.updateEventDefinition(ctx.user, {
+            id: input.id,
+            triggerType: input.triggerType,
+            actionType: input.actionType,
+            actionConfig: JSON.parse(input.actionConfig),
+            active: input.active ?? true,
         });
         return toGraphQL(ev);
     }

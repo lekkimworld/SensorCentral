@@ -1,10 +1,12 @@
 import { Length } from "class-validator";
 import {
+    Arg,
     Ctx,
     Field,
     FieldResolver,
     ID,
     InputType,
+    Mutation,
     ObjectType,
     Query,
     registerEnumType,
@@ -12,9 +14,11 @@ import {
     Root
 } from "type-graphql";
 import * as types from "../types";
-import e from "express";
 import { CalloutEndpoint } from "./callout-endpoint";
 import { CalloutAuthenticator } from "./callout-authenticator";
+import { DeleteInput } from "./common";
+import getService from "../services/service-locator";
+import CalloutService from "../services/callout-service";
 
 registerEnumType(types.HttpMethod, {
     name: "HttpMethod",
@@ -32,6 +36,7 @@ export class Callout {
         this.method = c.method;
         this.pathTemplate = c.pathTemplate;
         this.bodyTemplate = c.bodyTemplate;
+        this.contentType = c.contentType;
         this.endpointId = c.endpoint.id;
         this.authenticatorId = c.authenticator?.id;
     }
@@ -53,27 +58,78 @@ export class Callout {
     @Field(() => String, {nullable:true})
     @Length(0, 1024)
     bodyTemplate: string | undefined;
+
+    @Field(() => String, {nullable:true})
+    @Length(0, 64)
+    contentType: string | undefined;
 }
 
 @InputType()
 export class CreateCalloutInput {
-    @Field(() => ID, {description: "The id of the callout"})
-    id: string;
-
-    @Field(() => String, {description: "The name of the callout"})
-    @Length(0, 36)
+    @Field(() => String)
+    @Length(1, 128)
     name: string;
+
+    @Field(() => ID)
+    endpointId: string;
+
+    @Field(() => types.HttpMethod)
+    method: types.HttpMethod;
+
+    @Field(() => ID, { nullable: true })
+    authenticatorId?: string;
+
+    @Field(() => String)
+    @Length(0, 128)
+    pathTemplate: string;
+
+    @Field(() => String, { nullable: true })
+    @Length(0, 1024)
+    bodyTemplate?: string;
+
+    @Field(() => String, { nullable: true })
+    @Length(0, 64)
+    contentType?: string;
 }
 
 @InputType()
 export class UpdateCalloutInput {
     @Field(() => ID)
-    @Length(1, 36)
     id: string;
 
     @Field(() => String)
-    @Length(0, 36)
+    @Length(1, 128)
     name: string;
+
+    @Field(() => ID)
+    endpointId: string;
+
+    @Field(() => types.HttpMethod)
+    method: types.HttpMethod;
+
+    @Field(() => ID, { nullable: true })
+    authenticatorId?: string;
+
+    @Field(() => String)
+    @Length(0, 128)
+    pathTemplate: string;
+
+    @Field(() => String, { nullable: true })
+    @Length(0, 1024)
+    bodyTemplate?: string;
+
+    @Field(() => String, { nullable: true })
+    @Length(0, 64)
+    contentType?: string;
+}
+
+@ObjectType()
+export class TestResult {
+    @Field(() => Boolean)
+    success: boolean;
+
+    @Field(() => String)
+    message: string;
 }
 
 @Resolver((_of) => Callout)
@@ -82,7 +138,6 @@ export class CalloutResolver {
     async callouts(@Ctx() ctx: types.GraphQLResolverContext) {
         const callouts = await ctx.storage.getUserCallouts(ctx.user);
         return callouts.map(c => new Callout(c));
-        
     }
 
     @FieldResolver(() => CalloutEndpoint)
@@ -97,14 +152,14 @@ export class CalloutResolver {
         if (auth) return new CalloutAuthenticator(auth);
         return undefined;
     }
-/*
+
     @Mutation(() => Callout)
     async createCallout(
         @Ctx() ctx: types.GraphQLResolverContext,
         @Arg("data") input: CreateCalloutInput
-    ): Promise<CalloutAuthenticator> {
-        const a = await ctx.storage.createCalloutAuthenticator(ctx.user, input);
-        return new Callout(a);
+    ): Promise<Callout> {
+        const c = await ctx.storage.createCallout(ctx.user, input);
+        return new Callout(c);
     }
 
     @Mutation(() => Callout)
@@ -112,8 +167,8 @@ export class CalloutResolver {
         @Ctx() ctx: types.GraphQLResolverContext,
         @Arg("data") input: UpdateCalloutInput
     ): Promise<Callout> {
-        const a = await ctx.storage.updateCallout(ctx.user, input);
-        return new Callout(a);
+        const c = await ctx.storage.updateCallout(ctx.user, input);
+        return new Callout(c);
     }
 
     @Mutation(() => Boolean)
@@ -124,5 +179,30 @@ export class CalloutResolver {
         await ctx.storage.deleteCallout(ctx.user, input);
         return true;
     }
-        */
+
+    @Mutation(() => TestResult)
+    async testCalloutAuthenticator(
+        @Ctx() ctx: types.GraphQLResolverContext,
+        @Arg("id") id: string
+    ): Promise<TestResult> {
+        const svc = getService<CalloutService>(CalloutService.NAME);
+        const result = await svc.testAuthenticator(ctx.user, id);
+        const t = new TestResult();
+        t.success = result.success;
+        t.message = result.message;
+        return t;
+    }
+
+    @Mutation(() => TestResult)
+    async testCallout(
+        @Ctx() ctx: types.GraphQLResolverContext,
+        @Arg("id") id: string
+    ): Promise<TestResult> {
+        const svc = getService<CalloutService>(CalloutService.NAME);
+        const result = await svc.testCallout(ctx.user, id);
+        const t = new TestResult();
+        t.success = result.success;
+        t.message = result.message;
+        return t;
+    }
 }

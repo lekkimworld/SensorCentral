@@ -25,6 +25,7 @@ import { StorageService } from "./services/storage-service";
 import { BackendIdentity, GraphQLResolverContext } from "./types";
 import { CalloutResolver } from "./resolvers/callout";
 import { CalloutAuthenticatorResolver } from "./resolvers/callout-authenticator";
+import { EventLogResolver } from "./resolvers/event-log";
 
 const logger = new Logger("configure-express-graphql");
 const path = constants.DEFAULTS.GRAPHQL.PATH;
@@ -53,7 +54,8 @@ export default  async (app : Application) => {
             CalloutAuthenticatorResolver,
             CalloutEndpointResolver,
             CalloutSecretResolver,
-            CalloutAuthenticatorTemplateResolver
+            CalloutAuthenticatorTemplateResolver,
+            EventLogResolver
         ],
         dateScalarMode: "isoDate"
     })

@@ -1574,7 +1574,7 @@ export class StorageService extends BaseService {
 
     async getUserCallouts(user: BackendIdentity) : Promise<Array<Callout>> {
         // issue query
-        const calloutResult = await this.dbService.query("select c.id c_id, c.name c_name, c.method c_method, c.path_template c_path_template, c.body_template c_body_template, c.authenticatorid c_authenticatorid, e.id e_id, e.name e_name, e.baseurl e_baseurl from callout c, callout_endpoint e where c.endpointid=e.id and c.userid=$1", user.identity.callerId);
+        const calloutResult = await this.dbService.query("select c.id c_id, c.name c_name, c.method c_method, c.path_template c_path_template, c.body_template c_body_template, c.content_type c_content_type, c.authenticatorid c_authenticatorid, e.id e_id, e.name e_name, e.baseurl e_baseurl from callout c, callout_endpoint e where c.endpointid=e.id and c.userid=$1", user.identity.callerId);
         if (calloutResult.rowCount === 0) return [];
 
         // get authenticator
@@ -1583,7 +1583,7 @@ export class StorageService extends BaseService {
         // map
         return calloutResult.rows.map(row => {
             return {
-                id: row.c_id, 
+                id: row.c_id,
                 name: row.c_name,
                 endpoint: {
                     id: row.e_id,
@@ -1593,9 +1593,57 @@ export class StorageService extends BaseService {
                 method: row.c_method as HttpMethod,
                 pathTemplate: row.c_path_template,
                 bodyTemplate: row.c_body_template,
+                contentType: row.c_content_type,
                 authenticator: authenticators.find(a => a.id === row.c_authenticatorid)
             } as Callout;
         })
+    }
+
+    async createCallout(user: BackendIdentity, input: { name: string; endpointId: string; method: HttpMethod; authenticatorId?: string; pathTemplate: string; bodyTemplate?: string; contentType?: string }): Promise<Callout> {
+        const userid = user.identity.callerId;
+        const id = uuid();
+        await this.dbService.query(
+            "insert into callout (id, userid, name, endpointid, method, authenticatorid, path_template, body_template, content_type) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            id, userid, input.name, input.endpointId, input.method, input.authenticatorId || null, input.pathTemplate, input.bodyTemplate || null, input.contentType || null
+        );
+        const endpoints = await this.getCalloutEndpoints(user);
+        const authenticators = await this.getCalloutAuthenticators(user);
+        return {
+            id,
+            name: input.name,
+            endpoint: endpoints.find(e => e.id === input.endpointId)!,
+            authenticator: authenticators.find(a => a.id === input.authenticatorId),
+            method: input.method,
+            pathTemplate: input.pathTemplate,
+            bodyTemplate: input.bodyTemplate,
+            contentType: input.contentType,
+        };
+    }
+
+    async updateCallout(user: BackendIdentity, input: { id: string; name: string; endpointId: string; method: HttpMethod; authenticatorId?: string; pathTemplate: string; bodyTemplate?: string; contentType?: string }): Promise<Callout> {
+        const userid = user.identity.callerId;
+        await this.dbService.query(
+            "update callout set name=$1, endpointid=$2, method=$3, authenticatorid=$4, path_template=$5, body_template=$6, content_type=$7 where id=$8 and userid=$9",
+            input.name, input.endpointId, input.method, input.authenticatorId || null, input.pathTemplate, input.bodyTemplate || null, input.contentType || null, input.id, userid
+        );
+        const endpoints = await this.getCalloutEndpoints(user);
+        const authenticators = await this.getCalloutAuthenticators(user);
+        return {
+            id: input.id,
+            name: input.name,
+            endpoint: endpoints.find(e => e.id === input.endpointId)!,
+            authenticator: authenticators.find(a => a.id === input.authenticatorId),
+            method: input.method,
+            pathTemplate: input.pathTemplate,
+            bodyTemplate: input.bodyTemplate,
+            contentType: input.contentType,
+        };
+    }
+
+    async deleteCallout(user: BackendIdentity, input: DeleteInput): Promise<boolean> {
+        const userid = user.identity.callerId;
+        const result = await this.dbService.query("delete from callout where id=$1 and userid=$2", input.id, userid);
+        return result.rowCount === 1;
     }
 
     async createCalloutEndpoint(user: BackendIdentity, input: CreateCalloutEndpointInput): Promise<CalloutEndpoint> {
@@ -2244,12 +2292,39 @@ export class StorageService extends BaseService {
         };
     }
 
+    async updateEventDefinition(user: BackendIdentity, input: { id: string; triggerType: EventTriggerType; actionType: EventActionType; actionConfig: Record<string, any>; active: boolean }): Promise<EventDefinition> {
+        let result;
+        if (this.isAllDataAccessUser(user)) {
+            result = await this.dbService.query(
+                "update event_definition set trigger_type=$1, action_type=$2, action_config=$3, active=$4 where id=$5 returning *",
+                input.triggerType, input.actionType, JSON.stringify(input.actionConfig), input.active, input.id
+            );
+        } else {
+            result = await this.dbService.query(
+                "update event_definition set trigger_type=$1, action_type=$2, action_config=$3, active=$4 where id=$5 and (userid=$6 or userid is null) returning *",
+                input.triggerType, input.actionType, JSON.stringify(input.actionConfig), input.active, input.id, user.identity.callerId
+            );
+        }
+        if (!result.rowCount) throw new Error(`Unable to update event definition with id <${input.id}>`);
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            userId: row.userid,
+            sensorId: row.sensorid,
+            deviceId: row.deviceid,
+            active: row.active,
+            triggerType: row.trigger_type,
+            actionType: row.action_type,
+            actionConfig: row.action_config,
+        };
+    }
+
     async deleteEventDefinition(user: BackendIdentity, id: string): Promise<boolean> {
         let result;
         if (this.isAllDataAccessUser(user)) {
             result = await this.dbService.query("delete from event_definition where id=$1", id);
         } else {
-            result = await this.dbService.query("delete from event_definition where id=$1 and userid=$2", id, user.identity.callerId);
+            result = await this.dbService.query("delete from event_definition where id=$1 and (userid=$2 or userid is null)", id, user.identity.callerId);
         }
         return result.rowCount === 1;
     }

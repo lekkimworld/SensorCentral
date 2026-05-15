@@ -15,13 +15,19 @@ export const MIMETYPE_JSON = "application/json";
 
 /**
  * Represents the actual request to be made.
- * 
+ *
  */
 export type RequestData = {
     url: string;
     method: "GET" | "POST" | "PUT" | "DELETE",
     body?: string | undefined,
     headers: Record<string,string>
+}
+
+export type CalloutResult<T> = {
+    result: T;
+    request: { method: string; url: string; body?: string; headers: Record<string, string> };
+    response: { status: number; body: string };
 }
 
 class CalloutService extends BaseService {
@@ -53,6 +59,59 @@ class CalloutService extends BaseService {
             callout.headers = Object.assign({}, callout.headers, extraHeaders);
         }
         return this.callout(user, callout, ctx);
+    }
+
+    public async calloutByIdWithDetails(user: BackendIdentity, calloutId: string, ctx: any | undefined): Promise<CalloutResult<any>> {
+        const svcIdentity = this.identity.getServiceBackendIdentity(CalloutService.NAME);
+        const impUser = user.identity.callerId === "*" ? user : this.identity.getImpersonationIdentity(svcIdentity, user.identity.callerId);
+
+        const callout = await this.storage.getUserCallout(impUser, calloutId);
+        if (!callout) throw new Error(`Unable to find callout with id <${calloutId}> for user`);
+        return this.calloutWithDetails(user, callout, ctx);
+    }
+
+    public async calloutWithDetails(user: BackendIdentity, c: Callout, ctx: any | undefined): Promise<CalloutResult<any>> {
+        const svcIdentity = this.identity.getServiceBackendIdentity(CalloutService.NAME);
+        const impUser = user.identity.callerId === "*" ? user : this.identity.getImpersonationIdentity(svcIdentity, user.identity.callerId);
+
+        const headers: Record<string, string> = {};
+        const secrets = await this.storage.getUserCalloutSecrets(impUser);
+
+        if (c.authenticator) {
+            const authTempl = templates[c.authenticator.template];
+            const templateMappings: Record<string, CalloutSecret> = {};
+            Object.keys(authTempl.placeholders).forEach(keyReplacement => {
+                const secret = c.authenticator!.templateMappings[keyReplacement];
+                if (!secret) throw new Error(`Unable to find required secret for authenticator <${keyReplacement}>`);
+                templateMappings[keyReplacement] = secret;
+            });
+            const authHeaders = await authTempl.executor(templateMappings, c.authenticator.endpoint);
+            Object.keys(authHeaders).forEach(key => headers[key] = authHeaders[key]);
+        }
+
+        if (c.headers) {
+            Object.keys(c.headers).forEach(key => headers[key] = c.headers![key]);
+        }
+        if (c.contentType) {
+            headers["content-type"] = c.contentType;
+        }
+
+        let body: string | undefined = undefined;
+        if (c.bodyTemplate && ctx) {
+            body = Handlebars.compile(c.bodyTemplate)(ctx);
+        } else if (c.bodyTemplate) {
+            body = c.bodyTemplate;
+        }
+
+        const path = Handlebars.compile(c.pathTemplate)(ctx);
+        const url = `${c.endpoint.baseUrl}${path}`;
+
+        return this.requestWithDetails<any>({
+            method: c.method === "GET" ? HttpMethod.GET : c.method === "POST" ? HttpMethod.POST : c.method === "PUT" ? HttpMethod.PUT : HttpMethod.DELETE,
+            url,
+            body,
+            headers
+        });
     }
 
     public async callout<T>(user: BackendIdentity, c: Callout, ctx: any | undefined) : Promise<T> {
@@ -94,6 +153,11 @@ class CalloutService extends BaseService {
             Object.keys(c.headers).forEach(key => headers[key] = c.headers![key]);
         }
 
+        // set content-type if specified
+        if (c.contentType) {
+            headers["content-type"] = c.contentType;
+        }
+
         // compute body
         let body: string | undefined = undefined;
         if (c.bodyTemplate && ctx) {
@@ -119,10 +183,13 @@ class CalloutService extends BaseService {
     }
 
     public async request<T>(req: RequestData) : Promise<T> {
-        // is the accept header set to indicate json?
+        const result = await this.requestWithDetails<T>(req);
+        return result.result;
+    }
+
+    public async requestWithDetails<T>(req: RequestData) : Promise<CalloutResult<T>> {
         let jsonResponse = false;
 
-        // calc headers
         const headers : Record<string,string> = {};
         Object.keys(req.headers).forEach(key => {
             const value = req.headers[key];
@@ -132,10 +199,8 @@ class CalloutService extends BaseService {
             headers[key] = value;
         })
 
-        // set useragent
         headers["user-agent"] = `${constants.APP.NAME} CalloutService/${constants.APP.VERSION} (${constants.APP.GITCOMMIT})`;
 
-        // make request info
         const requestInfo : RequestInit = {
             method: req.method,
             headers
@@ -145,68 +210,72 @@ class CalloutService extends BaseService {
         }
 
         try {
-            // make request
             const resp = await fetch(req.url, requestInfo);
-            
-            // look at response code that it's a 20x
+
             if (!resp.ok) {
-                // reponse is not ok
-                throw new Error(`Non-ok response code <${resp.status}> / <${resp.statusText}>`);
+                const errorBody = await resp.text().catch(() => "");
+                throw new Error(`Non-ok response code <${resp.status}> / <${resp.statusText}>\n${errorBody}`);
             }
 
-            // parse response
+            let result: T;
+            let responseBody: string;
             if (jsonResponse) {
-                const obj = await resp.json() as T;
-                return obj;
+                responseBody = await resp.text();
+                result = JSON.parse(responseBody) as T;
             } else {
-                const txt = await resp.text();
-                return txt as any;
+                responseBody = await resp.text();
+                result = responseBody as any;
             }
 
+            return {
+                result,
+                request: { method: req.method, url: req.url, body: req.body, headers },
+                response: { status: resp.status, body: responseBody },
+            };
         } catch (err) {
             throw new Error(`Caught error making request to <${req.url}> (${err.message})`);
         }
     }
-/*
-    private async processEventDefinitionGET(data: RequestData) : Promise<void> {
-        logger.debug(`Event definition <${data.id}> - sending GET request to <${data.url}>`);
-        const resp = await fetch(data.url, {
-            method: "GET",
-            headers: Object.assign({}, data.headers, {
-                "accept": MIMETYPES["JSON"]
-            }),
-        });
+    public async testAuthenticator(user: BackendIdentity, authenticatorId: string): Promise<{ success: boolean; message: string }> {
+        const svcIdentity = this.identity.getServiceBackendIdentity(CalloutService.NAME);
+        const impUser = user.identity.callerId === "*" ? user : this.identity.getImpersonationIdentity(svcIdentity, user.identity.callerId);
 
-        if (resp.status < 300 && resp.status >= 200) {
-            logger.debug(`Received success response - status <${resp.status}>`);
-        } else {
-            throw new Error(
-                `Unexpected status <${resp.status}> (${resp.statusText}) returned from endpoint (${await resp.text()})`
-            );
+        try {
+            const authenticators = await this.storage.getCalloutAuthenticators(impUser);
+            const auth = authenticators.find(a => a.id === authenticatorId);
+            if (!auth) return { success: false, message: "Authenticator not found" };
+
+            const authTempl = templates[auth.template];
+            if (!authTempl) return { success: false, message: `Unknown template: ${auth.template}` };
+
+            const templateMappings: Record<string, any> = {};
+            for (const key of Object.keys(authTempl.placeholders)) {
+                const secret = auth.templateMappings[key];
+                if (!secret) return { success: false, message: `Missing secret mapping for placeholder "${key}"` };
+                templateMappings[key] = secret;
+            }
+
+            const headers = await authTempl.executor(templateMappings, auth.endpoint);
+            const details = Object.keys(headers).map(k => `${k}: ${headers[k]}`).join("\n");
+            return { success: true, message: `Authentication successful.\n\n${details}` };
+        } catch (err: any) {
+            return { success: false, message: err.message || String(err) };
         }
-        const result = await resp.text();
-        logger.debug(`Event definition <${data.id}> result <${result}>`);
     }
 
-    private async processEventDefinitionPOST(data: RequestData) : Promise<void> {
-        logger.debug(`Event definition <${data.id}> - sending POST request to <${data.url}> with body <${data.body}>`);
-        const resp = await fetch(data.url, {
-            method: "POST",
-            body: data.body,
-            headers: Object.assign({}, data.headers, {
-                "content-type": data.contentType,
-                "accept": MIMETYPES["JSON"],
-            }),
-        });
-        
-        if (resp.status < 300 && resp.status >= 200) {
-            logger.debug(`Received success response - status <${resp.status}>`);
-        } else {
-            throw new Error(`Unexpected status <${resp.status}> (${resp.statusText}) returned from endpoint (${await resp.text()})`);
+    public async testCallout(user: BackendIdentity, calloutId: string): Promise<{ success: boolean; message: string }> {
+        const testCtx = {
+            targetId: "test-000-000",
+            triggerType: "manual_test",
+            timestamp: new Date().toISOString(),
+        };
+        try {
+            const result = await this.calloutById<any>(user, calloutId, testCtx);
+            const body = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+            return { success: true, message: `Callout succeeded.\n\n${body}` };
+        } catch (err: any) {
+            return { success: false, message: err.message || String(err) };
         }
-        const result = await resp.text();
-        logger.debug(`Event definition <${data.id}> result <${result}>`);
     }
-        */
 }
 export default CalloutService;

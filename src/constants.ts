@@ -123,6 +123,17 @@ export default {
         GRAPHQL: {
             PATH: process.env.GRAPHQL_PATH || "/graphql",
         },
+        EVENT_LOG: {
+            TTL_SECS: process.env.EVENT_LOG_TTL_SECS
+                ? Number.parseInt(process.env.EVENT_LOG_TTL_SECS)
+                : 7 * 24 * 60 * 60,
+            MAX_ENTRIES: process.env.EVENT_LOG_MAX_ENTRIES
+                ? Number.parseInt(process.env.EVENT_LOG_MAX_ENTRIES)
+                : 100,
+            PAGE_SIZE: process.env.EVENT_LOG_PAGE_SIZE
+                ? Number.parseInt(process.env.EVENT_LOG_PAGE_SIZE)
+                : 20,
+        },
     },
     JWT,
     QUEUES: {

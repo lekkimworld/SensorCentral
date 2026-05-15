@@ -12,6 +12,7 @@ import { SensorForm } from "../forms/create-edit-sensor";
 import { DeviceData } from "../forms/device-data";
 import RefreshAction from "../charting/actions/refresh-action";
 import DateIntervalAction from "../charting/actions/date-interval-action";
+import { addEventDefinitionsTable } from "../event-definitions-helper";
 
 // create type for data and request it
 type RequestedHouse = Required<Pick<House, "id" | "name">>;
@@ -195,6 +196,8 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
         // build UI for sensors
         createUISensors(device);
 
+        // build UI for event definitions
+        addEventDefinitionsTable(elemRoot, device, true);
     };
     updateUI();
 };

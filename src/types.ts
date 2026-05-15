@@ -562,7 +562,8 @@ export type Callout = {
     headers?: Record<string,string>;
     method: HttpMethod;
     pathTemplate: string;
-    bodyTemplate?: string
+    bodyTemplate?: string;
+    contentType?: string;
 }
 
 export type OnSensorSampleEvent = {
@@ -583,6 +584,7 @@ export enum EventTriggerType {
 
 export enum EventActionType {
     persist_value = "persist_value",
+    callout = "callout",
 }
 
 export interface EventDefinition {
