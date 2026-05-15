@@ -70,7 +70,13 @@ class CalloutService extends BaseService {
         return this.calloutWithDetails(user, callout, ctx);
     }
 
-    public async calloutWithDetails(user: BackendIdentity, c: Callout, ctx: any | undefined): Promise<CalloutResult<any>> {
+    private buildSecretsLookup(secrets: CalloutSecret[]): Record<string, string> {
+        const lookup: Record<string, string> = {};
+        secrets.forEach(s => { lookup[s.name.toLowerCase().replace(/ /g, "_")] = s.value; });
+        return lookup;
+    }
+
+    private async prepareCallout(user: BackendIdentity, c: Callout, ctx: any | undefined): Promise<RequestData> {
         const svcIdentity = this.identity.getServiceBackendIdentity(CalloutService.NAME);
         const impUser = user.identity.callerId === "*" ? user : this.identity.getImpersonationIdentity(svcIdentity, user.identity.callerId);
 
@@ -96,87 +102,34 @@ class CalloutService extends BaseService {
             headers["content-type"] = c.contentType;
         }
 
+        const templateCtx = Object.assign({}, ctx, { secrets: this.buildSecretsLookup(secrets) });
+
         let body: string | undefined = undefined;
         if (c.bodyTemplate && ctx) {
-            body = Handlebars.compile(c.bodyTemplate)(ctx);
+            body = Handlebars.compile(c.bodyTemplate)(templateCtx);
         } else if (c.bodyTemplate) {
             body = c.bodyTemplate;
         }
 
-        const path = Handlebars.compile(c.pathTemplate)(ctx);
+        const path = Handlebars.compile(c.pathTemplate)(templateCtx);
         const url = `${c.endpoint.baseUrl}${path}`;
 
-        return this.requestWithDetails<any>({
+        return {
             method: c.method === "GET" ? HttpMethod.GET : c.method === "POST" ? HttpMethod.POST : c.method === "PUT" ? HttpMethod.PUT : HttpMethod.DELETE,
             url,
             body,
             headers
-        });
+        };
+    }
+
+    public async calloutWithDetails(user: BackendIdentity, c: Callout, ctx: any | undefined): Promise<CalloutResult<any>> {
+        const req = await this.prepareCallout(user, c, ctx);
+        return this.requestWithDetails<any>(req);
     }
 
     public async callout<T>(user: BackendIdentity, c: Callout, ctx: any | undefined) : Promise<T> {
-        // get a service identity and impersonate the caller so we can get secrets
-        const svcIdentity = this.identity.getServiceBackendIdentity(CalloutService.NAME);
-        const impUser = user.identity.callerId === "*" ? user : this.identity.getImpersonationIdentity(svcIdentity, user.identity.callerId);
-
-        // define headers
-        const headers : Record<string,string> = {};
-
-        // get secrets for user
-        const secrets = await this.storage.getUserCalloutSecrets(impUser);
-
-        // execute the authenticator if supplied
-        if (c.authenticator) {
-            // get actual template
-            const authTempl = templates[c.authenticator.template];
-
-            // map required replacements to secrets
-            const templateMappings : Record<string,CalloutSecret> = {};
-            Object.keys(authTempl.placeholders).forEach(keyReplacement => {
-                // get the secret to replace with
-                const secret = c.authenticator!.templateMappings[keyReplacement];
-                if (!secret) {
-                    // unable to find required secret
-                    throw new Error(`Unable to find required secret for authenticator <${keyReplacement}>`);
-                }
-                templateMappings[keyReplacement] = secret;
-            })
-            
-            // run it
-            const authHeaders = await authTempl.executor(templateMappings, c.authenticator.endpoint);
-            Object.keys(authHeaders).forEach(key => headers[key] = authHeaders[key]);
-        }
-
-        // add additional headers
-        if (c.headers) {
-            // loop the keys
-            Object.keys(c.headers).forEach(key => headers[key] = c.headers![key]);
-        }
-
-        // set content-type if specified
-        if (c.contentType) {
-            headers["content-type"] = c.contentType;
-        }
-
-        // compute body
-        let body: string | undefined = undefined;
-        if (c.bodyTemplate && ctx) {
-            body = Handlebars.compile(c.bodyTemplate)(ctx);
-        } else if (c.bodyTemplate) {
-            body = c.bodyTemplate;
-        }
-
-        // compute path and url
-        const path = Handlebars.compile(c.pathTemplate)(ctx);
-        const url = `${c.endpoint.baseUrl}${path}`;
-
-        // run callout
-        const resp = await this.request<T>({
-            method: c.method === "GET" ? HttpMethod.GET : c.method === "POST" ? HttpMethod.POST : c.method === "PUT" ? HttpMethod.PUT : HttpMethod.DELETE,
-            url,
-            body,
-            headers
-        })
+        const req = await this.prepareCallout(user, c, ctx);
+        const resp = await this.request<T>(req);
 
         // return
         return resp;

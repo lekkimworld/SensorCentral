@@ -25,6 +25,7 @@ const TEMPLATE_HELP = `
         <tr><td><code>{{timestamp}}</code></td><td>ISO 8601 UTC timestamp of when the event fired</td><td>All</td></tr>
         <tr><td><code>{{sensorValue}}</code></td><td>The sensor reading that triggered the event</td><td>onSensorSample</td></tr>
         <tr><td><code>{{deviceId}}</code></td><td>The device ID the sensor belongs to</td><td>onSensorSample</td></tr>
+        <tr><td><code>{{secrets.&lt;name&gt;}}</code></td><td>Value of the secret with the given name</td><td>All</td></tr>
     </tbody>
 </table>
 <h6>Examples</h6>
@@ -32,6 +33,8 @@ const TEMPLATE_HELP = `
 <code>/api/notify/{{targetId}}</code>
 <p class="mt-2"><strong>Body template (JSON):</strong></p>
 <code>{"sensor": "{{targetId}}", "value": {{sensorValue}}, "trigger": "{{triggerType}}", "time": "{{timestamp}}"}</code>
+<p class="mt-2"><strong>Using a secret in a header or body:</strong></p>
+<code>{"api_key": "{{secrets.my_api_key}}"}</code>
 
 <hr>
 <h5>Test Context</h5>
