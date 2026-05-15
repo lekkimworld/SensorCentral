@@ -1,5 +1,4 @@
 import { Moment } from "moment";
-import { AlertEventType } from "./services/watchdog/alert-types";
 import { StorageService } from "./services/storage-service";
 import { AuthenticatorTemplate } from "./callout-authenticator-templates/templates";
 
@@ -436,18 +435,6 @@ export interface TopicSensorMessage {
 export interface TopicDeviceMessage {
     deviceId : string;
     device : Device | null;
-}
-
-/**
- * Type for messages published on the NOTIFY queue.
- */
-export interface QueueNotifyMessage {
-    alertId: string;
-    eventType: AlertEventType;
-    notifyType: NotifyUsing;
-    userId: string;
-    target: string;
-    data: number | undefined;
 }
 
 /**

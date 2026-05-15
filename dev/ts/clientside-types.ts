@@ -5,31 +5,7 @@ export type HouseUser = Readonly<Partial<{
     email : string;
     owner: boolean;
 }>>;
-export const ALERT_TYPES = {
-    onDeviceTimeout: "onDeviceTimeout",
-    onDeviceRestart: "onDeviceRestart",
-    onDeviceMessage: "onDeviceMessage",
-    onDeviceMessageNoSensor: "onDeviceMessageNoSensor",
-    onSensorTimeout: "onSensorTimeout"
-};
 type ObjectValues<T> = T[keyof T];
-export type AlertType = ObjectValues<typeof ALERT_TYPES>;
-
-export type Alert = Readonly<Partial<{
-    id: string;
-    active: boolean;
-    description: string;
-    target: Sensor | Device;
-    eventType: AlertType;
-
-    /*
-    eventData: string;
-
-    notifyType: types.NotifyUsing;
-
-    notifyData: string;
-    */
-}>>
 
 export const HTTP_METHODS = {
     POST: "POST",
@@ -90,7 +66,6 @@ export type Device = Readonly<Partial<{
     timeoutSeconds: number;
     sensors: Sensor[];
     house: House;
-    alerts: Alert[];
 }>>
 
 export type SensorSample = Readonly<Partial<{
@@ -109,7 +84,6 @@ export type Sensor = Readonly<Partial<{
     device: Device;
     favorite: Boolean;
     last_reading: SensorSample;
-    alerts: Alert[];
 }>>
 
 export const SensorType = {

@@ -194,17 +194,6 @@ declare global {
              * Path on which to host GraphQL endpoint (defaults to /graphql)
              */
             GRAPHQL_PATH?: string;
-
-            /**
-             * Should we just disable binary sensor timeouts.
-             *
-             */
-            ALERTS_BINARY_SENSOR_DISABLE: string;
-
-            /**
-             * Timeout in milliseonds to override default timeout of 10 minutes
-             */
-            TIMEOUT_BINARY_SENSOR: string;
         }
     }
 }

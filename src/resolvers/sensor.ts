@@ -1,11 +1,8 @@
 import { IsEnum, Length } from "class-validator";
 import { Arg, Ctx, Field, FieldResolver, ID, InputType, Mutation, ObjectType, Query, registerEnumType, Resolver, Root } from "type-graphql";
-import * as alert_types from "../services/watchdog/alert-types";
 import { SensorQueryData } from "../services/storage-service";
 import * as types from "../types";
-import { Alert } from "./alert";
 import { Device } from "./device";
-import { OnSensorSampleEvent } from "./event";
 
 registerEnumType(types.SensorType, {
     "name": "SensorType",
@@ -78,12 +75,6 @@ export class Sensor {
 
     @Field(() => SensorSample, { nullable: true })
     last_reading: SensorSample;
-
-    @Field(() => [Alert])
-    alerts: alert_types.Alert[];
-
-    @Field(() => [OnSensorSampleEvent])
-    events: OnSensorSampleEvent[];
 }
 
 @InputType()
@@ -208,23 +199,6 @@ export class SensorResolver {
     ): Promise<SensorSample | undefined> {
         const samples = await ctx.storage.getLastNSamplesForSensor(ctx.user, sensor.id, 1);
         return !samples || samples.length === 0 ? undefined : new SensorSample(samples[0]);
-    }
-
-    @FieldResolver()
-    async alerts(
-        @Arg("active", () => types.NullableBoolean, { nullable: true }) active: types.NullableBoolean,
-        @Root() sensor: Sensor,
-        @Ctx() ctx: types.GraphQLResolverContext
-    ): Promise<Alert[]> {
-        return (await ctx.storage.getAlerts(ctx.user, sensor.storageSensor, active)).map((a) => new Alert(a));
-    }
-
-    @FieldResolver()
-    async events(
-        @Root() sensor: Sensor,
-        @Ctx() ctx: types.GraphQLResolverContext
-    ): Promise<OnSensorSampleEvent[]> {
-        return (await ctx.storage.getUserOnSensorSampleEvents(ctx.user, sensor.id)).map((e) => new OnSensorSampleEvent(e));
     }
 
     @FieldResolver()

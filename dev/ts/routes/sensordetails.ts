@@ -5,7 +5,6 @@ import detailsDelta from "./sensordetails-delta";
 import { SensorDetails } from "./sensordetails-base";
 import { Device, House, Sensor, SensorType } from "../clientside-types";
 import { RouteAction, createBreadcrumbHeader, createContainers } from "../ui-helper";
-import { addAlertsTable } from "../alerts-helper";
 import { addEventsTable } from "../events-helper";
 import { ManualSampleForm } from "../forms/manual-sample";
 import { DeleteForm } from "../forms/delete";
@@ -151,10 +150,4 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
 
     // tell module to build ui
     module.buildUI(sensorsContainer.children!.content.elem, sensor);
-
-    // add alerts
-    //addAlertsTable(elemRoot, sensor);
-
-    // add events
-    //addEventsTable(elemRoot, sensor);
 }

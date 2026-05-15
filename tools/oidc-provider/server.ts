@@ -6,10 +6,13 @@ import path from "path";
 
 dotenvConfig({ path: path.join(__dirname, ".env") });
 
-const PORT = 9876;
-const ISSUER = `http://localhost:${PORT}`;
-const CLIENT_ID = "test-client-id";
-const CLIENT_SECRET = "test-client-secret";
+const PORT = Number(process.env.OIDC_PORT || 9876);
+const HOSTNAME = process.env.OIDC_HOSTNAME || "localhost";
+const EXTERNAL_HOSTNAME = process.env.OIDC_EXTERNAL_HOSTNAME || "localhost";
+const ISSUER = `http://${HOSTNAME}:${PORT}`;
+const EXTERNAL_BASE = `http://${EXTERNAL_HOSTNAME}:${PORT}`;
+const CLIENT_ID = process.env.OIDC_CLIENT_ID || "test-client-id";
+const CLIENT_SECRET = process.env.OIDC_CLIENT_SECRET || "test-client-secret";
 
 // Generate RSA key pair for signing tokens
 const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
@@ -20,7 +23,7 @@ const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
 
 const KID = "test-key-1";
 
-const sub = process.env.OIDC_LOCAL_SUB || "local-test-user-001";
+const sub = process.env.OIDC_SUB || "local-test-user-001";
 const testUser = {
     sub,
     email: `${sub}@localhost`,
@@ -50,7 +53,7 @@ function getJwks() {
 function getDiscovery() {
     return {
         issuer: ISSUER,
-        authorization_endpoint: `${ISSUER}/authorize`,
+        authorization_endpoint: `${EXTERNAL_BASE}/authorize`,
         token_endpoint: `${ISSUER}/token`,
         userinfo_endpoint: `${ISSUER}/userinfo`,
         jwks_uri: `${ISSUER}/.well-known/jwks.json`,

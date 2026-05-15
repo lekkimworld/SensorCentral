@@ -1,10 +1,8 @@
 import { Length } from "class-validator";
 import { Arg, Ctx, Field, FieldResolver, ID, InputType, Mutation, ObjectType, Query, registerEnumType, Resolver, Root } from "type-graphql";
 import * as types from "../types";
-import { Alert } from "./alert";
 import { House } from "./house";
 import { Sensor } from "./sensor";
-import * as alert_types from "../services/watchdog/alert-types";
 import { DeleteInput } from "./common";
 
 registerEnumType(types.NullableBoolean, {
@@ -50,9 +48,6 @@ export class Device {
 
     @Field(() => House)
     house: types.House;
-
-    @Field(() => [Alert])
-    alerts: alert_types.Alert[];
 }
 
 @ObjectType()
@@ -117,15 +112,6 @@ export class DeviceResolver {
     async sensors(@Root() device: Device, @Ctx() ctx: types.GraphQLResolverContext) {
         const sensors = await ctx.storage.getSensors(ctx.user, { deviceId: device.id });
         return sensors.map((s) => new Sensor(s));
-    }
-
-    @FieldResolver()
-    async alerts(
-        @Arg("active", () => types.NullableBoolean, { nullable: true }) active: types.NullableBoolean,
-        @Root() device: Device,
-        @Ctx() ctx: types.GraphQLResolverContext
-    ): Promise<Alert[]> {
-        return (await ctx.storage.getAlerts(ctx.user, device.storageDevice, active)).map((a) => new Alert(a));
     }
 
     @Query(() => DeviceData, { description: "Returns device data for the device with the specified id if any" })

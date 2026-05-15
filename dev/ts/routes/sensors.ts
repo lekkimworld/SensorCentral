@@ -5,7 +5,6 @@ import { graphql } from "../fetch-util";
 import * as formsutil from "../forms-util";
 import { DataSet, RouteAction, createBreadcrumbHeader, createContainers } from "../ui-helper";
 import { SensorType, Device, House, Sensor } from "../clientside-types";
-import { addAlertsTable } from "../alerts-helper";
 import { DeleteForm } from "../forms/delete";
 import { DeviceForm } from "../forms/create-edit-device";
 import { DeviceJWTForm } from "../forms/device-jwt";
@@ -196,8 +195,6 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
         // build UI for sensors
         createUISensors(device);
 
-        // build UI for alerts
-        //addAlertsTable(elemRoot, device);
     };
     updateUI();
 };
