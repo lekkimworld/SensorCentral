@@ -5,10 +5,9 @@ import { Logger } from "../logger";
 import { CreateDeviceInput, UpdateDeviceInput } from "../resolvers/device";
 import { CreateHouseInput, FavoriteHouseInput, House, UpdateHouseInput } from "../resolvers/house";
 import { CreateSensorType, DeleteSensorType, FavoriteSensorsInput, UpdateSensorType } from "../resolvers/sensor";
-import { UpdatePushoverSettingsInput } from "../resolvers/settings";
 import {
-    BackendIdentity, BaseService, DataElement, Device, DeviceData, CalloutEndpoint, EventActionType, EventDefinition, EventTriggerType, getContentType, getHttpMethod, HouseUser, HttpMethod, InitCallback, NotificationSettings, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, PushoverSettings, CalloutSecret, Sensor,
-    SensorSample, SensorType, SmartmeSubscription, stringToNotifyUsing, TokenIssuerInformation, UserPrincipal,
+    BackendIdentity, BaseService, DataElement, Device, DeviceData, CalloutEndpoint, EventActionType, EventDefinition, EventTriggerType, getContentType, getHttpMethod, HouseUser, HttpMethod, InitCallback, NullableBoolean, OnSensorSampleEvent, PowerPhase, PowerType, CalloutSecret, Sensor,
+    SensorSample, SensorType, SmartmeSubscription, TokenIssuerInformation, UserPrincipal,
     CalloutAuthenticator,
     Callout
 } from "../types";
@@ -27,7 +26,7 @@ import { CreateCalloutEndpointInput, UpdateCalloutEndpointInput, DeleteCalloutEn
 import { CreateOnSensorSampleEventInput, UpdateOnSensorSampleEventInput } from "../resolvers/event";
 import { CreateCalloutSecretInput, DeleteCalloutSecretInput, UpdateCalloutSecretInput } from "../resolvers/callout-secret";
 import { DeleteInput } from "../resolvers/common";
-import { AuthenticatorTemplate, DATACLOUD_CLIENTCREDENTIALS, DATACLOUD_WEBSDK, STATIC_BEARERTOKEN, SMARTME_CLIENTCREDENTIALS, templates } from "../callout-authenticator-templates/templates";
+import { AuthenticatorTemplate, DATACLOUD_CLIENTCREDENTIALS, DATACLOUD_WEBSDK, STATIC_BEARERTOKEN, CLIENTCREDENTIALS_OAUTH, templates } from "../callout-authenticator-templates/templates";
 import { CreateCalloutAuthenticatorInput, UpdateCalloutAuthenticatorInput } from "../resolvers/callout-authenticator";
 
 const DEVICE_DATA_KEY_PREFIX = "device_data:";
@@ -1165,58 +1164,6 @@ export class StorageService extends BaseService {
     }
 
     /**
-     * Returns the notification settings for the supplied user.
-     *
-     * @param user
-     */
-    async getNotificationSettingsForUser(callingUser: BackendIdentity, userId?: string): Promise<NotificationSettings> {
-        let useUserId = userId;
-        if (this.isAllDataAccessUser(callingUser)) {
-            if (!userId) throw new Error("Must supply a userId when all-access user");
-        } else {
-            useUserId = callingUser.identity.callerId;
-        }
-        const result = await this.dbService.query(
-            "select u.email email, p.userkey pushover_userkey, p.apptoken pushover_apptoken from login_user u left outer join  pushover_info p on p.userid=u.id where u.id=$1;",
-            useUserId
-        );
-        if (!result || !result.rowCount) throw Error(`Unable to find login with ID <${userId}>`);
-        const user = await this.getUser(callingUser, useUserId!);
-
-        // build result
-        const r = result.rows[0];
-        const pushover = (function (userkey: string, apptoken: string) {
-            if (userkey && apptoken) {
-                return {
-                    apptoken,
-                    userkey,
-                } as PushoverSettings;
-            }
-        })(r.pushover_userkey, r.pushover_apptoken);
-
-        // return
-        return {
-            user,
-            pushover,
-        } as NotificationSettings;
-    }
-
-    /**
-     * Updates the settings for the user.
-     *
-     * @param user
-     * @param data
-     */
-    async updatePushoverSettings(user: BackendIdentity, data: UpdatePushoverSettingsInput): Promise<void> {
-        await this.dbService.query(
-            "insert into pushover_info (userid, userkey, apptoken) values ($1, $2, $3) on conflict (userid) do update set userkey=$2, apptoken=$3",
-            this.getUserIdFromUser(user),
-            data.pushover_userkey,
-            data.pushover_apptoken
-        );
-    }
-
-    /**
      * Returns last N number of samples read from the database for the sensor with the
      * supplied ID.
      *
@@ -1769,7 +1716,7 @@ export class StorageService extends BaseService {
             case DATACLOUD_CLIENTCREDENTIALS: return AuthenticatorTemplate.DATACLOUD_CLIENTCREDENTIALS;
             case DATACLOUD_WEBSDK: return AuthenticatorTemplate.DATACLOUD_WEBSDK;
             case STATIC_BEARERTOKEN: return AuthenticatorTemplate.STATIC_BEARERTOKEN;
-            case SMARTME_CLIENTCREDENTIALS: return AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS;
+            case CLIENTCREDENTIALS_OAUTH: return AuthenticatorTemplate.CLIENTCREDENTIALS_OAUTH;
             default: return AuthenticatorTemplate.DATACLOUD_CLIENTCREDENTIALS;
         }
     }

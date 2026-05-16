@@ -9,14 +9,14 @@ const TEMPLATES: Record<string, string> = {
     STATIC_BEARERTOKEN: "Static Bearer Token",
     DATACLOUD_CLIENTCREDENTIALS: "Data Cloud Client Credentials",
     DATACLOUD_WEBSDK: "Data Cloud WebSDK",
-    SMARTME_CLIENTCREDENTIALS: "Smart-Me Client Credentials",
+    CLIENTCREDENTIALS_OAUTH: "OAuth Client Credentials",
 };
 
 const TEMPLATE_PLACEHOLDERS: Record<string, string[]> = {
     STATIC_BEARERTOKEN: ["token"],
     DATACLOUD_CLIENTCREDENTIALS: ["client_id", "client_secret"],
     DATACLOUD_WEBSDK: ["app_source_id", "device_id"],
-    SMARTME_CLIENTCREDENTIALS: ["client_id", "client_secret"],
+    CLIENTCREDENTIALS_OAUTH: ["client_id", "client_secret"],
 };
 
 type AuthenticatorContext = CalloutAuthenticator & {

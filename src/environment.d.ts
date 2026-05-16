@@ -62,7 +62,7 @@ declare global {
             CRON_POWERMETER_SUBSCRIPTIONS_DISABLED: string;
 
             /**
-             * If set do not send notifications using email or Pushover no matter what
+             * If set do not send notifications using email no matter what
              */
             NOTIFICATIONS_DISABLED: string;
 

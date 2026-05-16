@@ -1,31 +1,12 @@
-import { get, graphql } from "../fetch-util";
-import { button, buttonClose, buttonPerformAction, ClickEvent, DataEvent, Form, InitEvent, UICatalog } from "../forms-util";
+import { get } from "../fetch-util";
+import { button, buttonClose, ClickEvent, Form, InitEvent, UICatalog } from "../forms-util";
 import * as storage from "../storage-utils";
 
 export class SettingsForm extends Form<undefined> {
     constructor() {
         super("setting", "Settings");
-        this.addEventListener("data", async e => {
-            const dataEvent = e as DataEvent;
-            const data = dataEvent.data;
-            await graphql(
-                `mutation{updateSettings(data: {pushover_userkey: "${data.pushover_userkey}", pushover_apptoken: "${data.pushover_apptoken}"})}`
-            );
-        })
         this.addEventListener("init", async (ev: Event) => {
             const catalog = (ev as InitEvent).catalog;
-            const data = (await graphql(
-                `
-                    {
-                        settings {
-                            pushover_userkey
-                            pushover_apptoken
-                        }
-                    }
-                `
-            )) as { settings: { pushover_userkey: string; pushover_apptoken: string } };
-            catalog.get("pushoverApptoken").value = data.settings.pushover_apptoken;
-            catalog.get("pushoverUserkey").value = data.settings.pushover_userkey;
             catalog.get("yourJWT").value = storage.getJWT() || "";
         })
         this.addEventListener("click", async e => {
@@ -47,16 +28,6 @@ export class SettingsForm extends Form<undefined> {
 
     body(catalog: UICatalog) {
         return `<form id="${this.name}Form" novalidate>
-                    ${catalog.textField({
-                        name: "pushoverApptoken",
-                        label: "Pushover App Token",
-                        fieldExplanation: "Specify the Pushover App Token",
-                    })}
-                    ${catalog.textField({
-                        name: "pushoverUserkey",
-                        label: "Pushover User Key",
-                        fieldExplanation: "Specify the Pushover App Token",
-                    })}
                     ${catalog.disabledTextField({
                         name: "yourJWT",
                         label: "Your JWT",
@@ -97,16 +68,7 @@ export class SettingsForm extends Form<undefined> {
             text: "Copy JWT",
             rel: "clipboard",
         })}
-                ${buttonClose()}
-                ${buttonPerformAction()}`;
-    }
-
-    
-    async getData(catalog: UICatalog): Promise<Record<string, string>> {
-        return {
-            pushover_apptoken: catalog.value("pushoverApptoken"),
-            pushover_userkey: catalog.value("pushoverUserkey"),
-        };
+                ${buttonClose()}`;
     }
     
 }

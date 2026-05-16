@@ -134,7 +134,7 @@ export class SmartmeResolver {
         const authenticator = await ctx.storage.createCalloutAuthenticator(ctx.user, {
             name: `smartme-auth-${uuid().substring(0, 8)}`,
             endpointId: endpoint.id,
-            template: AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS,
+            template: AuthenticatorTemplate.CLIENTCREDENTIALS_OAUTH,
             templateMappings: [
                 { name: "client_id", secretId: clientIdSecret.id },
                 { name: "client_secret", secretId: clientSecretSecret.id },
@@ -151,7 +151,7 @@ export class SmartmeResolver {
                     id: authenticator.id,
                     name: authenticator.name,
                     endpoint,
-                    template: AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS,
+                    template: AuthenticatorTemplate.CLIENTCREDENTIALS_OAUTH,
                     templateMappings: {
                         client_id: clientIdSecret,
                         client_secret: clientSecretSecret,
@@ -195,7 +195,7 @@ export class SmartmeResolver {
         const authenticator = await ctx.storage.createCalloutAuthenticator(ctx.user, {
             name: `smartme-auth-${uuid().substring(0, 8)}`,
             endpointId: endpoint.id,
-            template: AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS,
+            template: AuthenticatorTemplate.CLIENTCREDENTIALS_OAUTH,
             templateMappings: [
                 { name: "client_id", secretId: clientIdSecret.id },
                 { name: "client_secret", secretId: clientSecretSecret.id },
@@ -211,7 +211,7 @@ export class SmartmeResolver {
                     id: authenticator.id,
                     name: authenticator.name,
                     endpoint,
-                    template: AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS,
+                    template: AuthenticatorTemplate.CLIENTCREDENTIALS_OAUTH,
                     templateMappings: {
                         client_id: clientIdSecret,
                         client_secret: clientSecretSecret,
@@ -268,7 +268,7 @@ export class SmartmeResolver {
         const authenticator = await ctx.storage.createCalloutAuthenticator(ctx.user, {
             name: `smartme-auth-${houseId.substring(0, 8)}`,
             endpointId: endpoint.id,
-            template: AuthenticatorTemplate.SMARTME_CLIENTCREDENTIALS,
+            template: AuthenticatorTemplate.CLIENTCREDENTIALS_OAUTH,
             templateMappings: [
                 { name: "client_id", secretId: clientIdSecret.id },
                 { name: "client_secret", secretId: clientSecretSecret.id },

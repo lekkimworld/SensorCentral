@@ -3,7 +3,7 @@ import CalloutService, { MIMETYPE_FORM, MIMETYPE_JSON } from "../services/callou
 import getService from "../services/service-locator";
 import Handlebars from "handlebars";
 
-type SmartmeOAuthResponse = {
+type OAuthTokenResponse = {
     access_token: string;
     token_type: string;
     expires_in: number;
@@ -17,13 +17,13 @@ const authenticator: CalloutAuthenticatorTemplateExecutor = async (templateMappi
         client_secret: templateMappings["client_secret"]?.value,
     };
     if (!ctx.client_id || !ctx.client_secret) {
-        throw new Error(`Missing client_id or client_secret for Smart-Me OAuth`);
+        throw new Error(`Missing client_id or client_secret for OAuth client_credentials flow`);
     }
 
     const body = Handlebars.compile(payloadTemplate)(ctx);
     const calloutSvc = getService<CalloutService>(CalloutService.NAME);
 
-    const resp = await calloutSvc.request<SmartmeOAuthResponse>({
+    const resp = await calloutSvc.request<OAuthTokenResponse>({
         method: "POST",
         headers: {
             "content-type": MIMETYPE_FORM,

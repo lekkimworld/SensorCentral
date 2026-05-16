@@ -191,52 +191,9 @@ export interface BackendIdentity {
     readonly scopes : string[];
 }
 
-/**
- * Pushover settings for a user required when sending a message through 
- * the Pushover service.
- * 
- */
-export interface PushoverSettings {
-    userkey : string;
-    apptoken : string;
-}
-
-/**
- * Used when sending a message through the Pushover service.
- * 
- */
-export interface PushoverMessage {   
-    title : string;
-    message : string;
-    settings : PushoverSettings;
-}
-
 export enum NullableBoolean {
     yes = "yes",
     no = "no"
-}
-
-/**
- * The ways we can notify.
- */
-export enum NotifyUsing {
-    none = "",
-    email = "email",
-    pushover = "pushover"
-}
-export const stringToNotifyUsing = (v: string) => {
-    if (v === "email") return NotifyUsing.email;
-    if (v === "pushover") return NotifyUsing.pushover;
-    if (v === "") return NotifyUsing.none;
-    throw new Error(`${v} is not a valid NotifyUsing value`);
-}
-
-/**
- * Notification settings for a user.
- */
-export interface NotificationSettings {
-    pushover? : PushoverSettings;
-    user: UserPrincipal;
 }
 
 export type InitCallback = (err?: Error | undefined) => void

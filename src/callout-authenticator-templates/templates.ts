@@ -2,17 +2,17 @@ import { CalloutAuthenticatorTemplate } from "../types";
 import staticBearerToken from "./static-bearertoken";
 import datacloudClientCredentials from "./datacloud-clientcredentials-oauth";
 import datacloudAnonWebSDK from "./datacloud-anonymous-websdk";
-import smartmeClientCredentials from "./smartme-clientcredentials-oauth";
+import clientCredentials from "./clientcredentials-oauth";
 
 export const DATACLOUD_CLIENTCREDENTIALS = "DATACLOUD_CLIENTCREDENTIALS";
 export const STATIC_BEARERTOKEN = "STATIC_BEARERTOKEN";
 export const DATACLOUD_WEBSDK = "DATACLOUD_WEBSDK";
-export const SMARTME_CLIENTCREDENTIALS = "SMARTME_CLIENTCREDENTIALS";
+export const CLIENTCREDENTIALS_OAUTH = "CLIENTCREDENTIALS_OAUTH";
 export enum AuthenticatorTemplate {
     "DATACLOUD_CLIENTCREDENTIALS" = "DATACLOUD_CLIENTCREDENTIALS",
     "STATIC_BEARERTOKEN" = "STATIC_BEARERTOKEN",
     "DATACLOUD_WEBSDK" = "DATACLOUD_WEBSDK",
-    "SMARTME_CLIENTCREDENTIALS" = "SMARTME_CLIENTCREDENTIALS"
+    "CLIENTCREDENTIALS_OAUTH" = "CLIENTCREDENTIALS_OAUTH"
 }
 
 export const templates : Record<AuthenticatorTemplate, CalloutAuthenticatorTemplate> = {
@@ -42,13 +42,13 @@ export const templates : Record<AuthenticatorTemplate, CalloutAuthenticatorTempl
         },
         executor: datacloudAnonWebSDK
     },
-    "SMARTME_CLIENTCREDENTIALS": {
-        id: "SMARTME_CLIENTCREDENTIALS",
-        name: "Smart-Me OAuth client_credentials",
+    "CLIENTCREDENTIALS_OAUTH": {
+        id: "CLIENTCREDENTIALS_OAUTH",
+        name: "OAuth client_credentials",
         placeholders: {
-            "client_id": "The Smart-Me OAuth client ID",
-            "client_secret": "The Smart-Me OAuth client secret"
+            "client_id": "The OAuth client ID",
+            "client_secret": "The OAuth client secret"
         },
-        executor: smartmeClientCredentials
+        executor: clientCredentials
     }
 } as const;

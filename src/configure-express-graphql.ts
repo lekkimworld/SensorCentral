@@ -8,7 +8,6 @@ import ensureAuthenticated from "./middleware/ensureAuthenticated";
 import { DeviceResolver } from "./resolvers/device";
 import { HouseResolver } from "./resolvers/house";
 import { SensorResolver } from "./resolvers/sensor";
-import { SettingsResolver } from "./resolvers/settings";
 import { lookupService } from "./configure-services";
 import { CalloutAuthenticatorTemplateResolver } from "./resolvers/callout-authenticator-templates";
 import constants from "./constants";
@@ -43,7 +42,6 @@ export default  async (app : Application) => {
         resolvers: [HouseResolver,
             DeviceResolver,
             SensorResolver,
-            SettingsResolver,
             DataQueryResolver,
             SmartmeResolver,
             UsersResolver,
