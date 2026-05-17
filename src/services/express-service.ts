@@ -1,7 +1,7 @@
 import { BaseService, HttpException } from "../types";
 import { middleware as httpContextMiddleware, set as setToHttpContext } from "express-http-context";
 import express, { Express, Response, Send } from "express";
-import { json as bp_json, raw as bp_raw } from "body-parser";
+import { json as bp_json } from "body-parser";
 import path from "path";
 import attachApplicationRoutes from "../configure-express-routes";
 import configureSessionWithRedis from "../configure-express-session";
@@ -74,7 +74,6 @@ export class ExpressService extends BaseService {
         // configure app
         this.app.use(express.static(path.join(__dirname, "..", "..", "public")));
         this.app.use(bp_json());
-        this.app.use(bp_raw()); // for smart.me protobuf
         configureHandlebars(this.app);
 
         // sessions

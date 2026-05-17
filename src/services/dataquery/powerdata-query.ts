@@ -26,7 +26,7 @@ export class PowerConsumptionQueryFormatInput implements IEnsureDefaults {
     timezone: string;
 
     ensureDefaults() {
-        if (!Object.prototype.hasOwnProperty.call(this, "timezone")) {
+        if (!this.timezone) {
             this.timezone = constants.DEFAULTS.TIMEZONE;
         }
     }
@@ -74,13 +74,13 @@ export class PowerDataQueryFormatInput implements IEnsureDefaults {
     sortAscending: true;
 
     ensureDefaults() {
-        if (!Object.prototype.hasOwnProperty.call(this, "timezone")) {
+        if (!this.timezone) {
             this.timezone = constants.DEFAULTS.TIMEZONE;
         }
-        if (!Object.prototype.hasOwnProperty.call(this, "format")) {
+        if (!this.format) {
             this.format = ISO8601_DATETIME_FORMAT;
         }
-        if (!Object.prototype.hasOwnProperty.call(this, "sortAscending")) {
+        if (this.sortAscending === undefined || this.sortAscending === null) {
             this.sortAscending = true;
         }
     }

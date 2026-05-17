@@ -5,6 +5,7 @@ import attachGetRoot from "./routes/get-root";
 import attachGraphQL from "./configure-express-graphql";
 import oidcRouter from "./routes/oidc";
 import downloadRouter from "./routes/api/v1/download";
+import adminRouter from "./routes/admin";
 
 export default async (app : Application) => {
 	// add anonymous route for root data (access validated in other ways)
@@ -18,9 +19,12 @@ export default async (app : Application) => {
 
 	// add login routes (anonymous)
 	app.use("/openid", oidcRouter);
-	
+
 	// add api routes
 	app.use('/api/v1', apiV1Routes);
+
+	// admin routes (auth middleware is in express-service.ts)
+	app.use("/admin", adminRouter);
 
 	// attach graphql
 	await attachGraphQL(app);

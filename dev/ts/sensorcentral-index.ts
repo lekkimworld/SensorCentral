@@ -14,10 +14,12 @@ import sensordetailsRoute from "./routes/sensordetails";
 import aboutRoute from "./routes/about";
 import loginChooseRoute from "./routes/login-choose";
 import powerChartsRoute from "./routes/powermeter-charts";
-import powerConfigRoute from "./routes/powermeter-config";
 import calloutsRoute from "./routes/callouts";
 import calloutEditRoute from "./routes/callout-edit";
 import eventlogRoute from "./routes/eventlog";
+import cronjobsRoute from "./routes/cronjobs";
+import cronjobCreateRoute from "./routes/cronjob-create";
+import cronjobEditRoute from "./routes/cronjob-edit";
 import endpointTestChart from "./routes/testchart";
 
 const log = {
@@ -113,14 +115,16 @@ const navigationChange = async () => {
         calloutEditRoute(elemRoot, calloutId);
     } else if (hash === "#eventlog") {
         eventlogRoute(elemRoot);
+    } else if (hash === "#cronjobs") {
+        cronjobsRoute(elemRoot);
+    } else if (hash === "#cronjobs/create") {
+        cronjobCreateRoute(elemRoot);
+    } else if (hash.startsWith("#cronjobs/edit/")) {
+        const jobId = hash.split("/")[2];
+        cronjobEditRoute(elemRoot, jobId);
 
-    } else if (hash.indexOf("#powermeter") === 0) {
-        const parts = hash.split("/");
-        if (parts[1] === "config") {
-            powerConfigRoute(elemRoot);
-        } else if (parts[1] === "charts") {
-            powerChartsRoute(elemRoot);
-        }
+    } else if (hash === "#powermeter/charts") {
+        powerChartsRoute(elemRoot);
     } else if (hash.indexOf("#configuration") === 0) {
         const parts = hash.split("/");
         if (parts.length === 2 && parts[1] === "houses") {

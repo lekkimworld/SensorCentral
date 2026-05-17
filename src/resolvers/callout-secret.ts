@@ -18,6 +18,7 @@ export class CalloutSecret {
         this.id = e.id;
         this.name = e.name
         this.value = e.value.length < 10 ? "xxxxxxxxxx" : `${e.value.substring(0, e.value.length / 5)}...`;
+        this.systemManaged = e.systemManaged ?? false;
     }
 
     @Field(() => ID)
@@ -30,6 +31,9 @@ export class CalloutSecret {
     @Field(() => String)
     @Length(0, 1024)
     value: string;
+
+    @Field(() => Boolean)
+    systemManaged: boolean;
 }
 
 @InputType()

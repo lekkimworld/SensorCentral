@@ -91,6 +91,12 @@ class CalloutService extends BaseService {
                 if (!secret) throw new Error(`Unable to find required secret for authenticator <${keyReplacement}>`);
                 templateMappings[keyReplacement] = secret;
             });
+            if (authTempl.optionalPlaceholders) {
+                Object.keys(authTempl.optionalPlaceholders).forEach(keyReplacement => {
+                    const secret = c.authenticator!.templateMappings[keyReplacement];
+                    if (secret) templateMappings[keyReplacement] = secret;
+                });
+            }
             const authHeaders = await authTempl.executor(templateMappings, c.authenticator.endpoint);
             Object.keys(authHeaders).forEach(key => headers[key] = authHeaders[key]);
         }

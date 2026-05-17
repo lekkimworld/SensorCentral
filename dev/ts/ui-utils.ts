@@ -33,7 +33,7 @@ export const fillMenus = () => {
             Username: ${user.email || user.id}
             </a>
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarUsernameLink">
-                <a class="dropdown-item" href="/#powermeter/config">Powermeter Setup</a>
+                <a class="dropdown-item" href="/#cronjobs">Cron Jobs</a>
                 <a class="dropdown-item" href="/#callouts">Callouts</a>
                 <a class="dropdown-item" href="/#eventlog">Event Log</a>
                 <a class="dropdown-item" href="javascript:void(0)" id="settings">Settings</a>

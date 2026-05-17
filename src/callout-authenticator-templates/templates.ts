@@ -49,6 +49,9 @@ export const templates : Record<AuthenticatorTemplate, CalloutAuthenticatorTempl
             "client_id": "The OAuth client ID",
             "client_secret": "The OAuth client secret"
         },
+        optionalPlaceholders: {
+            "scope": "OAuth scopes (space-separated)"
+        },
         executor: clientCredentials
     }
 } as const;

@@ -451,12 +451,21 @@ export class HttpException extends Error {
       l3 = "phase3",
   }
 
-  export interface SmartmeSubscription {
-    house : House;
-    sensor : Sensor;
-    frequency : number;
-    calloutId : string;
-  }
+export enum CronJobType {
+    SMARTME_POWERMETER = "smartme_powermeter",
+}
+
+export type CronJob = {
+    id: string;
+    userId: string;
+    jobType: CronJobType;
+    active: boolean;
+    frequencyMinutes: number;
+    config: Record<string, any>;
+    calloutId?: string;
+    sensorId?: string;
+    houseId?: string;
+}
 
 export enum HttpMethod {
     GET = "GET",
@@ -487,12 +496,14 @@ export type CalloutEndpoint = {
     id: string;
     name: string;
     baseUrl: string;
+    systemManaged?: boolean;
 }
 
 export type CalloutSecret = {
     id: string;
     name: string;
     value: string;
+    systemManaged?: boolean;
 }
 
 export type CalloutAuthenticatorTemplateExecutor = (templateMappings: Record<string,CalloutSecret>, endpoint: CalloutEndpoint) => Promise<Record<string,string>>;
@@ -500,6 +511,7 @@ export type CalloutAuthenticatorTemplate = {
     id: string;
     name: string;
     placeholders: Record<string, string>;
+    optionalPlaceholders?: Record<string, string>;
     executor: CalloutAuthenticatorTemplateExecutor;
 }
 
@@ -509,6 +521,7 @@ export type CalloutAuthenticator = {
     endpoint: CalloutEndpoint;
     template: AuthenticatorTemplate;
     templateMappings: Record<string,CalloutSecret>
+    systemManaged?: boolean;
 }
 
 export type Callout = {
@@ -521,6 +534,7 @@ export type Callout = {
     pathTemplate: string;
     bodyTemplate?: string;
     contentType?: string;
+    systemManaged?: boolean;
 }
 
 export type OnSensorSampleEvent = {

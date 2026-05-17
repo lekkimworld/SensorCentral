@@ -120,7 +120,8 @@ export class EventResolver {
 
     @FieldResolver()
     async endpoint(@Root() event: OnSensorSampleEvent, @Ctx() ctx: types.GraphQLResolverContext): Promise<CalloutEndpoint> {
-        return (await ctx.storage.getCalloutEndpoints(ctx.user)).find((e) => e.id === event.endpointId)!;
+        const ep = (await ctx.storage.getCalloutEndpoints(ctx.user)).find((e) => e.id === event.endpointId)!;
+        return new CalloutEndpoint(ep);
     }
 
     @Mutation(() => OnSensorSampleEvent)

@@ -47,8 +47,6 @@ export default defineConfig({
                 { src: "dev/images/icon-32.png", dest: ".", rename: { stripBase: true, name: "favicon.ico" } },
                 { src: "dev/manifest.json", dest: ".", rename: { stripBase: true } },
                 { src: "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js", dest: "js", rename: { stripBase: true } },
-                { src: "node_modules/eonasdan-bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js", dest: "js", rename: { stripBase: true } },
-                { src: "node_modules/moment/min/moment-with-locales.min.js", dest: "js", rename: { stripBase: true } },
                 { src: "node_modules/font-awesome/fonts/*", dest: "fonts", rename: { stripBase: true } },
             ],
         }),

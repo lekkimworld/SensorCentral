@@ -39,6 +39,7 @@ export class Callout {
         this.contentType = c.contentType;
         this.endpointId = c.endpoint.id;
         this.authenticatorId = c.authenticator?.id;
+        this.systemManaged = c.systemManaged ?? false;
     }
 
     @Field(() => ID)
@@ -62,6 +63,9 @@ export class Callout {
     @Field(() => String, {nullable:true})
     @Length(0, 64)
     contentType: string | undefined;
+
+    @Field(() => Boolean)
+    systemManaged: boolean;
 }
 
 @InputType()

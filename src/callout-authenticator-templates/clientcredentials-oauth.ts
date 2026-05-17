@@ -20,7 +20,11 @@ const authenticator: CalloutAuthenticatorTemplateExecutor = async (templateMappi
         throw new Error(`Missing client_id or client_secret for OAuth client_credentials flow`);
     }
 
-    const body = Handlebars.compile(payloadTemplate)(ctx);
+    let body = Handlebars.compile(payloadTemplate)(ctx);
+    const scope = templateMappings["scope"]?.value;
+    if (scope) {
+        body += `&scope=${scope.replace(/ /g, "+")}`;
+    }
     const calloutSvc = getService<CalloutService>(CalloutService.NAME);
 
     const resp = await calloutSvc.request<OAuthTokenResponse>({

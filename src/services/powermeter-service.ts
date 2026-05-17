@@ -51,20 +51,29 @@ export class PowermeterService extends BaseService {
         // get auth user for service
         this.authUser = await this.security.getServiceBackendIdentity(PowermeterService.NAME);
 
-        // listen for subscription events
+        // listen for cron job events
         this.pubsub.subscribe(
-            `${constants.TOPICS.CONTROL}.powermeter_subscription.delete`,
-            this.listenForPowermeterSubscriptionRemove.bind(this)
+            `${constants.TOPICS.CONTROL}.cronjob.create`,
+            this.listenForCronJobCreate.bind(this)
         );
         this.pubsub.subscribe(
-            `${constants.TOPICS.CONTROL}.powermeter_subscription.create`,
-            this.listenForPowermeterSubscriptionCreate.bind(this)
+            `${constants.TOPICS.CONTROL}.cronjob.update`,
+            this.listenForCronJobUpdate.bind(this)
+        );
+        this.pubsub.subscribe(
+            `${constants.TOPICS.CONTROL}.cronjob.delete`,
+            this.listenForCronJobDelete.bind(this)
         );
 
-        // get all subscriptions
-        const subs = await this.storageService!.getAllPowermeterSubscriptions(this.authUser);
-        subs.forEach((sub) => {
-            this.addCronJob(sub.house.id, sub.sensor.deviceId, sub.sensor.id, sub.frequency, sub.calloutId);
+        // load cron jobs
+        const cronJobs = await this.storageService!.getAllCronJobs(this.authUser);
+        logger.info(`Loading ${cronJobs.length} cron job(s) from database`);
+        cronJobs.forEach((job) => {
+            if (job.active && job.calloutId && job.sensorId && job.houseId) {
+                this.addCronJobFromConfig(job.id, job.userId, job.houseId, job.sensorId, job.frequencyMinutes, job.calloutId);
+            } else if (!job.active) {
+                logger.info(`Skipping inactive cron job <${job.id}> for user <${job.userId}>`);
+            }
         });
 
         // callback
@@ -73,90 +82,88 @@ export class PowermeterService extends BaseService {
 
     private logAndGetMessage(result: TopicMessage): any {
         logger.debug(
-            `Powermeter Subscription service received message on channel ${
-                result.channel
-            } with payload=${JSON.stringify(result.data)}`
+            `Received message on channel ${result.channel} with payload=${JSON.stringify(result.data)}`
         );
         const msg = result.data as any;
         return msg;
     }
 
-    private getJobName(houseId: string): string {
-        const jobName = `powermeter_subscription_${houseId}>`;
-        return jobName;
+    private getCronJobName(jobId: string): string {
+        return `cronjob_${jobId}`;
     }
 
-    private async executeCronJob(houseId: string, deviceId: string, sensorId: string, calloutId: string) {
-        try {
-            // use callout service to fetch device data from Smart-Me via OAuth
-            const deviceData = await this.calloutService.calloutById<any>(this.authUser, calloutId, { sensorId }, { accept: "application/json" });
-            if (!deviceData) {
-                logger.warn(
-                    `Unable to find device data for sensor we queried for - house <${houseId}> sensor <${sensorId}>`
-                );
+    private addCronJobFromConfig(jobId: string, userId: string, houseId: string, sensorId: string, frequencyMinutes: number, calloutId: string) {
+        const jobName = this.getCronJobName(jobId);
+        this.cron.add(jobName, `*/${frequencyMinutes} * * * *`, async () => {
+            if (objectHasOwnProperty_Trueish(process.env, "CRON_POWERMETER_SUBSCRIPTIONS_DISABLED")) {
+                logger.warn(`Ignoring cron job due to CRON_POWERMETER_SUBSCRIPTIONS_DISABLED (${jobName})`);
                 return;
             }
+            try {
+                const deviceData = await this.calloutService.calloutById<any>(this.authUser, calloutId, { sensorId }, { accept: "application/json" });
+                if (!deviceData) {
+                    logger.warn(`Cron job <${jobId}>: no device data returned for sensor <${sensorId}>`);
+                    return;
+                }
 
-            const parsed = new SmartmeDeviceWithDataType(deviceData);
+                const parsed = new SmartmeDeviceWithDataType(deviceData);
+                const sensor = await this.storageService.getSensor(this.authUser, sensorId);
+                const deviceId = sensor.deviceId;
 
-            // publish a device event to feed watchdog
-            const payload: IngestedDeviceMessage = {
-                id: deviceId,
-            };
+                const payload: IngestedDeviceMessage = { id: deviceId };
 
-            // see if counter reading is in kwh - if yes convert to wh
-            if (parsed.counterReadingUnit === PowerUnit.kWh) {
-                logger.debug(
-                    `Powermeter counterReading is <${parsed.counterReading}> but counterReadingUnit is kWh - multiplying by 1000`
-                );
-                parsed.counterReading = parsed.counterReading * 1000;
-                parsed.counterReadingImport = parsed.counterReadingImport * 1000;
-                logger.debug(`Powermeter counterReading is now <${parsed.counterReading}> Wh`);
+                if (parsed.counterReadingUnit === PowerUnit.kWh) {
+                    parsed.counterReading = parsed.counterReading * 1000;
+                    parsed.counterReadingImport = parsed.counterReadingImport * 1000;
+                }
+
+                this.queues.publish(constants.QUEUES.DEVICE, payload).then(() => {
+                    this.queues.publish(constants.QUEUES.SENSOR, {
+                        deviceId,
+                        id: parsed.id,
+                        dt: parsed.valueDate.toISOString(),
+                        value: parsed.counterReadingImport,
+                    } as IngestedSensorMessage);
+                });
+
+                this.storageService.persistPowermeterReadingFromDeviceRequest(parsed);
+            } catch (err: any) {
+                if (err instanceof Cloudflare524Error) {
+                    logger.warn(`Cron job <${jobId}>: Cloudflare 524 (${err.message})`);
+                } else {
+                    logger.warn(`Cron job <${jobId}>: unexpected error (${err.message})`);
+                }
             }
+        }, false, { type: "cronjob", jobId, userId, houseId, sensorId });
+    }
 
-            // publish event to store as regular sensor
-            this.queues.publish(constants.QUEUES.DEVICE, payload).then(() => {
-                // send event to persist as sensor_data
-                this.queues.publish(constants.QUEUES.SENSOR, {
-                    deviceId: deviceId,
-                    id: parsed.id,
-                    dt: parsed.valueDate.toISOString(),
-                    value: parsed.counterReadingImport,
-                } as IngestedSensorMessage);
-            });
-
-            // persist full powermeter reading
-            this.storageService!.persistPowermeterReadingFromDeviceRequest(parsed);
-        } catch (err: any) {
-            if (err instanceof Cloudflare524Error) {
-                logger.warn(`Unable to get downstream resource due to Cloudflare 524 (${err.message})`);
-            } else {
-                logger.warn(`Unable to execute cron job due to unexpected error (${err.message})`);
-            }
+    private async listenForCronJobCreate(result: TopicMessage) {
+        const msg = this.logAndGetMessage(result);
+        const job = msg.new;
+        const userId = job.userId || msg.user?.identity?.callerId || "unknown";
+        logger.info(`Cron job created <${job.id}> for user <${userId}> — scheduling`);
+        if (job.calloutId && job.sensorId && job.houseId) {
+            this.addCronJobFromConfig(job.id, userId, job.houseId, job.sensorId, job.frequencyMinutes, job.calloutId);
         }
     }
 
-    private addCronJob(houseId: string, deviceId: string, sensorId: string, frequency: number, calloutId: string) {
-        logger.debug(`Creating powermeter subscription for house <${houseId}> frequency <${frequency}>`);
-        const jobName = this.getJobName(houseId);
-        this.cron.add(jobName, `*/${frequency} * * * *`, async () => {
-            if (objectHasOwnProperty_Trueish(process.env, "CRON_POWERMETER_SUBSCRIPTIONS_DISABLED")) {
-                logger.warn(
-                    `Ignoring powermeter subscription cron job due to CRON_POWERMETER_SUBSCRIPTIONS_DISABLED (${jobName})`
-                );
-                return;
-            }
-            this.executeCronJob(houseId, deviceId, sensorId, calloutId);
-        });
+    private async listenForCronJobUpdate(result: TopicMessage) {
+        const msg = this.logAndGetMessage(result);
+        const job = msg.new;
+        const userId = job.userId || msg.user?.identity?.callerId || "unknown";
+        this.cron.remove(this.getCronJobName(job.id));
+        if (job.active && job.calloutId && job.sensorId && job.houseId) {
+            logger.info(`Cron job updated <${job.id}> for user <${userId}> — rescheduling every ${job.frequencyMinutes} min`);
+            this.addCronJobFromConfig(job.id, userId, job.houseId, job.sensorId, job.frequencyMinutes, job.calloutId);
+        } else {
+            logger.info(`Cron job updated <${job.id}> for user <${userId}> — now inactive, unscheduled`);
+        }
     }
 
-    private async listenForPowermeterSubscriptionRemove(result: TopicMessage) {
+    private async listenForCronJobDelete(result: TopicMessage) {
         const msg = this.logAndGetMessage(result);
-        this.cron.remove(this.getJobName(msg.old.id));
-    }
-
-    private async listenForPowermeterSubscriptionCreate(result: TopicMessage) {
-        const msg = this.logAndGetMessage(result);
-        this.addCronJob(msg.new.houseId, msg.new.deviceId, msg.new.sensorId, msg.new.frequency, msg.new.calloutId);
+        const userId = msg.user?.identity?.callerId || "unknown";
+        logger.info(`Cron job deleted <${msg.old.id}> for user <${userId}> — unscheduling`);
+        this.cron.remove(this.getCronJobName(msg.old.id));
     }
 }

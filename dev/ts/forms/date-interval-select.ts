@@ -1,5 +1,5 @@
 import { Moment } from "moment";
-import { buttonClose, buttonPerformAction, DateControl, DateTimeControl, Form, initDatePicker, initDateTimePicker, UICatalog } from "../forms-util";
+import { buttonClose, buttonPerformAction, DateControl, Form, UICatalog } from "../forms-util";
 
 export type DateIntervalSelectFormData = {
     start: Date;
@@ -13,11 +13,6 @@ export type DateIntervalSelectFormData = {
 export class DateIntervalSelectForm extends Form<DateIntervalSelectFormData> {
     constructor() {
         super("intervalselect", "Interval Selection");
-        this.addEventListener("init", () => {
-            // init date/time pickers
-            initDatePicker({ id: "start_dt" });
-            initDatePicker({ id: "end_dt" });
-        })
     }
     body(catalog: UICatalog) {
         return `<form id="${this.name}Form" novalidate>

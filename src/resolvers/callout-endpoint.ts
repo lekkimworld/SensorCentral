@@ -18,6 +18,7 @@ export class CalloutEndpoint {
         this.id = e.id;
         this.name = e.name;
         this.baseUrl = e.baseUrl;
+        this.systemManaged = e.systemManaged ?? false;
     }
 
     @Field(() => ID)
@@ -30,6 +31,9 @@ export class CalloutEndpoint {
     @Field(() => String)
     @Length(15, 128)
     baseUrl: string;
+
+    @Field(() => Boolean)
+    systemManaged: boolean;
 }
 
 @InputType()

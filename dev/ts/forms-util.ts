@@ -1,5 +1,10 @@
 import moment, { Moment } from "moment";
+import flatpickr from "flatpickr";
+import { Danish } from "flatpickr/dist/l10n/da";
+import "flatpickr/dist/flatpickr.min.css";
 import { ObjectValues } from "./helpers";
+
+flatpickr.localize(Danish);
 
 const ID_ELEM_FORM = "sensorcentral-form";
 
@@ -117,21 +122,20 @@ type DateOptions = {
     month?: number,
     year?: number,
 }
-type InitDateTime = {
+export type InitDateTime = {
     set?: TimeOptions,
     add?: TimeOptions & DateOptions,
 }
 type FieldInitDateTimePicker = {
     id: string,
-    locale?: string,
-    format?: string,
     inline?: boolean,
-    sideBySide?: boolean,
     date?: Moment | Date,
-    dateInit?: InitDateTime
-
+    dateInit?: InitDateTime,
+    enableTime?: boolean,
+    dateOnly?: boolean,
 }
-export const initDateTimePicker = (options: FieldInitDateTimePicker) => {
+
+const resolveInitDate = (options: FieldInitDateTimePicker): Date => {
     let initDate = moment();
     if (options.date) initDate = moment(options.date);
     if (options.dateInit) {
@@ -148,31 +152,36 @@ export const initDateTimePicker = (options: FieldInitDateTimePicker) => {
             .add("minute", options.dateInit.add?.minute || 0)
             .add("second", options.dateInit.add?.second || 0);
     }
-    //@ts-ignore
-    let d = $(`#${options.id}`).datetimepicker({
-        locale: options.locale || "da_dk",
-        format: options.format,
-        inline: options.inline || false,
-        sideBySide: options.sideBySide || true,
-        icons: {
-            time: "fa fa-clock-o",
-            date: "fa fa-calendar",
-            up: "fa fa-arrow-up",
-            down: "fa fa-arrow-down",
-            next: "fa fa-arrow-right",
-            previous: "fa fa-arrow-left",
-        },
-        date: initDate
-    });
-    
-}
-
-export const initTimePicker = (options: FieldInitDateTimePicker) => {
-    initDateTimePicker(Object.assign({}, options, {format: "LT"}));
+    return initDate.toDate();
 };
 
-export const initDatePicker = (options: FieldInitDateTimePicker) => {
-    initDateTimePicker(Object.assign({}, options, { format: "L" }));
+export const initDateTimePicker = (options: FieldInitDateTimePicker): flatpickr.Instance => {
+    const enableTime = options.dateOnly ? false : (options.enableTime !== false);
+    const dateFormat = enableTime ? "d-m-Y H:i" : "d-m-Y";
+    const input = document.querySelector(`#${options.id} input`) as HTMLElement;
+    return flatpickr(input, {
+        enableTime,
+        time_24hr: true,
+        dateFormat,
+        defaultDate: resolveInitDate(options),
+        inline: options.inline || false,
+    });
+};
+
+export const initTimePicker = (options: FieldInitDateTimePicker): flatpickr.Instance => {
+    const input = document.querySelector(`#${options.id} input`) as HTMLElement;
+    return flatpickr(input, {
+        enableTime: true,
+        noCalendar: true,
+        time_24hr: true,
+        dateFormat: "H:i",
+        defaultDate: resolveInitDate(options),
+        inline: options.inline || false,
+    });
+};
+
+export const initDatePicker = (options: FieldInitDateTimePicker): flatpickr.Instance => {
+    return initDateTimePicker(Object.assign({}, options, { dateOnly: true }));
 };
 
 /**
@@ -337,15 +346,14 @@ export const buttonPerformDestructiveAction = (text = "Delete", rel = "delete") 
 };
 
 export const datetimepicker = (options: FieldOptionsDatetimePicker) => {
-    return `<label for="${options.name}Input">${options.label}</label>
-        <div class='input-group date' id='${options.name}'>
-            <input type='text' class="form-control" />
-            <span class="input-group-addon">
-                <span class="fa fa-calendar"></span>
-            </span>
+    return `<div class="form-group">
+        <label for="${options.name}Input">${options.label}</label>
+        <div id='${options.name}'>
+            <input type='text' class="form-control" id="${options.name}Input" ${options.required ? "required" : ""} />
         </div>
         ${fieldExplanation(options)}
-        ${fieldRequired(options)}`;
+        ${fieldRequired(options)}
+    </div>`;
 }
 
 export const EVENTS = {
@@ -471,25 +479,27 @@ export class ToggleButtonControl extends OnChangeControl {
     }
 }
 export class DateTimeControl extends UIControl {
+    protected fp?: flatpickr.Instance;
+
     constructor(options: FieldOptionsBasic) {
         super(options);
     }
 
     init() {
         const opts = this.options as FieldOptionsDatetimePicker;
-        initDateTimePicker({
+        this.fp = initDateTimePicker({
             id: opts.name,
             inline: true,
-            sideBySide: true,
         });
     }
 
     get moment(): Moment {
-        return $(`#${this.options.name}`).data("DateTimePicker").date();
+        const d = this.fp?.selectedDates[0];
+        return d ? moment(d) : moment();
     }
 
     get date(): Date {
-        return this.moment.toDate();
+        return this.fp?.selectedDates[0] || new Date();
     }
 }
 export class DateControl extends DateTimeControl {
@@ -502,18 +512,11 @@ export class DateControl extends DateTimeControl {
 
     init() {
         const opts = this.options as FieldOptionsDatetimePicker;
-        const initArgs = {
+        this.fp = initDatePicker({
             id: opts.name,
             inline: true,
-            sideBySide: true,
-        } as FieldInitDateTimePicker;
-        if (this.adjust) initArgs.dateInit = this.adjust;
-        initDatePicker(initArgs);
-    }
-
-    get moment(): Moment {
-        // the returned date is midnight the day before the selected date so we add a day
-        return $(`#${this.options.name}`).data("DateTimePicker").date();
+            dateInit: this.adjust,
+        });
     }
 }
 export class NumberControl extends UIControl {
@@ -730,93 +733,3 @@ export class ErrorForm extends Form<Error> {
     }
 }
 
-/*
-const DEVICE_EDIT_WATCHDOG = {
-    "name": "watchdog",
-    "html": (formname, ctx) => {
-        return {
-            "html": `<div class="modal fade" id="${formname}Modal" tabindex="-1" role="dialog" aria-labelledby="${formname}ModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="${formname}ModalLabel">Watchdog</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <p>
-                    This dialog allows you to change the watchdog settings for the selected 
-                    device. You may indicate whether notifications about the device is on (i.e. sent), 
-                    off (i.e. NOT sent) or muted. If muted you have to specify a date/time the notifications 
-                    are muted until. After that date/time notifications are sent as if the watchdog was set to 
-                    "on".
-                    </p>
-                    <p>
-                    Remember that watchdogs are personal and these settings only applies to you.
-                    </p>
-                    ${dropdown({
-                        name: "state", 
-                        label: "State", 
-                        fieldExplanation: "Select the state to set for the device watchdog", 
-                        dropdownOptions: {
-                            "yes": "On",
-                            "no": "Off",
-                            "muted": "Muted"
-                        }, 
-                        addBlank: false, 
-                        required: true, 
-                        validationText: "You must specify a watchdog state"
-                    })}
-                    ${datetimepicker({
-                        name: "dt", 
-                        label: "Muted until", 
-                        fieldExplanation: "Specify the muted until date/time"
-                    })}
-                </div>
-                <div class="modal-footer">
-                    ${button({
-                        text: "Save", 
-                        rel: "save"
-                    })}
-                    ${buttonClose("Cancel")}
-                </div>
-            </div>
-        </div>
-    </div>`,
-        "callback": () => {
-            initDateTimePicker({
-                id: "dt"
-            });
-        }};
-    },
-    device: undefined,
-    "fnInit": (formdata, device) => {
-        formdata.device = device;
-        return fetcher.graphql(`{device(id:"${device.id}"){id,name,watchdog{notify,muted_until}}}`).then(data => {
-            const wd = data.device.watchdog;
-            if (wd.muted_until) {
-                $("#dt").data("DateTimePicker").date(moment(wd.muted_until).set("seconds", 0).set("milliseconds", 0));
-            } else {
-                $("#dt").data("DateTimePicker").date(moment().set("minutes", 0).set("seconds", 0).set("milliseconds", 0).add(1, "hour"));
-            }
-            $("#stateInput").val(wd.notify);
-            return Promise.resolve();
-        })
-        
-    },
-    "fnClickHandler": (formdata, house, rel) => {
-        if (rel === "save") {
-            const state = $("#stateInput").val();
-            const mutedUntil = state === "muted" ? $("#dt").data("DateTimePicker").date() : undefined;
-            
-            // update
-            fetcher.graphql(`mutation{updateDeviceWatchdog(data:{id:"${formdata.device.id}",notify:"${state}", muted_until: ${mutedUntil ? `"${mutedUntil.toISOString()}"` : "\"\""}}){id,name}}`).then(() => {
-                // close form
-                removeForm();    
-            })
-        }
-    }
-}
-
-*/

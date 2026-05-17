@@ -82,11 +82,6 @@ export default {
     HTTP_CONTEXT: {
         REQUEST_ID: "requestId",
     },
-    SMARTME: {
-        CUTOFF_YEAR: process.env.SMARTME_CUTOFF_YEAR || 2015,
-        PROTOCOL: process.env.SMARTME_PROTOCOL || "https",
-        DOMAIN: process.env.SMARTME_DOMAIN || "api.smart-me.com",
-    },
     DEFAULTS: {
         SERVICE: {
             LOOKUP_TIMEOUT: process.env.SERVICE_LOOKUP_TIMEOUT
@@ -122,6 +117,11 @@ export default {
         },
         GRAPHQL: {
             PATH: process.env.GRAPHQL_PATH || "/graphql",
+        },
+        CRONJOB: {
+            DEFAULT_FREQUENCY_MINUTES: process.env.CRONJOB_DEFAULT_FREQUENCY_MINUTES
+                ? Number.parseInt(process.env.CRONJOB_DEFAULT_FREQUENCY_MINUTES)
+                : 5,
         },
         EVENT_LOG: {
             TTL_SECS: process.env.EVENT_LOG_TTL_SECS

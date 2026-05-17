@@ -7,10 +7,10 @@ import { TestResultForm } from "../forms/test-result";
 import { createContainers } from "../ui-helper";
 import * as uiutils from "../ui-utils";
 
-type RequestedSecret = Required<Pick<CalloutSecret, "id" | "name" | "value">>;
-type RequestedEndpoint = Required<Pick<CalloutEndpoint, "id" | "name" | "baseUrl">>;
-type RequestedAuthenticator = Required<Pick<CalloutAuthenticator, "id" | "name">> & { template: string; endpoint: { id: string }; templateMappings: Array<{ name: string; secret: { id: string } }> };
-type RequestedCallout = Required<Pick<Callout, "id" | "name" | "method" | "pathTemplate">> & Pick<Callout, "bodyTemplate" | "endpoint" | "authenticator">;
+type RequestedSecret = Required<Pick<CalloutSecret, "id" | "name" | "value">> & { systemManaged: boolean };
+type RequestedEndpoint = Required<Pick<CalloutEndpoint, "id" | "name" | "baseUrl">> & { systemManaged: boolean };
+type RequestedAuthenticator = Required<Pick<CalloutAuthenticator, "id" | "name">> & { systemManaged: boolean; template: string; endpoint: { id: string }; templateMappings: Array<{ name: string; secret: { id: string } }> };
+type RequestedCallout = Required<Pick<Callout, "id" | "name" | "method" | "pathTemplate">> & Pick<Callout, "bodyTemplate" | "endpoint" | "authenticator"> & { systemManaged: boolean };
 
 export default (elemRoot: JQuery<HTMLElement>) => {
     const updateUI = async () => {
@@ -28,16 +28,19 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                     id
                     name
                     value
+                    systemManaged
                 }
                 endpoints: calloutEndpoints {
                     id
                     name
                     baseUrl
+                    systemManaged
                 }
                 authenticators: calloutAuthenticators {
                     id
                     name
                     template
+                    systemManaged
                     endpoint { id }
                     templateMappings { name, secret { id } }
                 }
@@ -48,6 +51,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                     pathTemplate
                     bodyTemplate
                     contentType
+                    systemManaged
                     endpoint { id }
                     authenticator { id }
                 }
@@ -102,9 +106,9 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                     return {
                         id: a.id,
                         data: a,
-                        columns: [a.name, a.template],
-                        click: function () {
-                            new AuthenticatorForm(this.data).show();
+                        columns: [a.systemManaged ? `${a.name} <span class="badge badge-secondary">system</span>` : a.name, a.template],
+                        click: a.systemManaged ? undefined : function () {
+                            new AuthenticatorForm(a).show();
                         },
                     };
                 }),
@@ -152,9 +156,9 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                     return {
                         id: c.id,
                         data: c,
-                        columns: [c.name, c.method],
-                        click: function () {
-                            document.location.hash = `#callouts/edit/${this.data.id}`;
+                        columns: [c.systemManaged ? `${c.name} <span class="badge badge-secondary">system</span>` : c.name, c.method],
+                        click: c.systemManaged ? undefined : function () {
+                            document.location.hash = `#callouts/edit/${c.id}`;
                         },
                     };
                 }),
@@ -194,8 +198,8 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                     return {
                         id: endpoint.id,
                         data: endpoint,
-                        columns: [endpoint.name, endpoint.baseUrl],
-                        click: function () {
+                        columns: [endpoint.systemManaged ? `${endpoint.name} <span class="badge badge-secondary">system</span>` : endpoint.name, endpoint.baseUrl],
+                        click: endpoint.systemManaged ? undefined : function () {
                             new EndpointForm(endpoint).show();
                         },
                     };
@@ -236,8 +240,8 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                     return {
                         id: s.id,
                         data: s,
-                        columns: [s.name, s.value],
-                        click: function () {
+                        columns: [s.systemManaged ? `${s.name} <span class="badge badge-secondary">system</span>` : s.name, s.value],
+                        click: s.systemManaged ? undefined : function () {
                             new SecretForm(s).show();
                         },
                     };

@@ -34,6 +34,7 @@ export type CalloutEndpoint = Readonly<
         name: string;
         baseUrl: string;
         bearerToken?: string;
+        systemManaged: boolean;
     }>
 >;
 
@@ -42,6 +43,7 @@ export type CalloutSecret = Readonly<
         id: string;
         name: string;
         value: string;
+        systemManaged: boolean;
     }>
 >;
 
@@ -89,6 +91,7 @@ export type Sensor = Readonly<Partial<{
 export type CalloutAuthenticator = Readonly<Partial<{
     id: string;
     name: string;
+    systemManaged: boolean;
 }>>
 
 export type Callout = Readonly<Partial<{
@@ -100,6 +103,7 @@ export type Callout = Readonly<Partial<{
     contentType: string;
     endpoint: { id: string };
     authenticator: { id: string };
+    systemManaged: boolean;
 }>>
 
 export type EventDefinition = Readonly<Partial<{

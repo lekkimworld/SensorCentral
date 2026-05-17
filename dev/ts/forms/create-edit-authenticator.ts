@@ -16,7 +16,7 @@ const TEMPLATE_PLACEHOLDERS: Record<string, string[]> = {
     STATIC_BEARERTOKEN: ["token"],
     DATACLOUD_CLIENTCREDENTIALS: ["client_id", "client_secret"],
     DATACLOUD_WEBSDK: ["app_source_id", "device_id"],
-    CLIENTCREDENTIALS_OAUTH: ["client_id", "client_secret"],
+    CLIENTCREDENTIALS_OAUTH: ["client_id", "client_secret", "scope"],
 };
 
 type AuthenticatorContext = CalloutAuthenticator & {

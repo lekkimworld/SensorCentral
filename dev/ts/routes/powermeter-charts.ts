@@ -1,15 +1,23 @@
 import * as uiutils from "../ui-utils";
 import { graphql } from "../fetch-util";
 import moment from "moment-timezone";
-import {Chart, ChartConfiguration} from "chart.js";
+import {Chart, ChartConfiguration, TimeScale} from "chart.js";
+import "chartjs-adapter-date-fns";
+import { da } from "date-fns/locale";
+import flatpickr from "flatpickr";
 import { datetimepicker, dropdown, initDateTimePicker } from "../forms-util";
-import { TIMEZONE, DATETIME_DATETIME_SHORT } from "../date-utils";
+import { TIMEZONE } from "../date-utils";
+
+Chart.register(TimeScale);
 
 const ISO8601 = "YYYY-MM-DDTHH:mm:ss.SSS[Z]";
 
+let fpStart: flatpickr.Instance;
+let fpEnd: flatpickr.Instance;
+
 const getState = () => {
-    const moment_start = $("#startdt").data("DateTimePicker").date().utc();
-    const moment_end = $("#enddt").data("DateTimePicker").date().utc();
+    const moment_start = moment(fpStart.selectedDates[0]).utc();
+    const moment_end = moment(fpEnd.selectedDates[0]).utc();
     const str_start = moment_start.format(ISO8601);
     const str_end = moment_end.format(ISO8601);
     return {
@@ -76,7 +84,7 @@ const buildLineChartWithDataset = async (elemChart, datasets) => {
 
     const labelSource = datasets[Object.keys(datasets)[0]];
     const labels = filter(labelSource.data, filterCount).map((d) => {
-        return moment.utc(d.x).tz(TIMEZONE).format(DATETIME_DATETIME_SHORT);
+        return moment.utc(d.x).tz(TIMEZONE).toDate();
     });
 
     const chartData = {
@@ -90,6 +98,17 @@ const buildLineChartWithDataset = async (elemChart, datasets) => {
             scales: {
                 x: {
                     type: "time",
+                    time: {
+                        unit: "hour",
+                        displayFormats: {
+                            hour: "dd/MM HH:mm",
+                        },
+                    },
+                    adapters: {
+                        date: {
+                            locale: da,
+                        },
+                    },
                 },
             },
         },
@@ -103,7 +122,7 @@ const buildLineChartWithDataset = async (elemChart, datasets) => {
                 fill: true,
                 backgroundColor: colorMap[Object.keys(colorMap)[idx]],
                 borderColor: colorMap[Object.keys(colorMap)[idx]],
-                data: filter(datasets[key].data, filterCount),
+                data: filter(datasets[key].data, filterCount).map((d) => d.y),
             };
         })
     );
@@ -120,7 +139,7 @@ const buildLineChartWithDataset = async (elemChart, datasets) => {
 
 const buildBarChartWithDataset = async (elemChart, dataset) => {
     const labels = dataset.data.map((d) => {
-        return d.x;
+        return moment.utc(d.x, "YYYY-MM-DD HH").tz(TIMEZONE).toDate();
     });
 
     const chartData = {
@@ -134,6 +153,17 @@ const buildBarChartWithDataset = async (elemChart, dataset) => {
             scales: {
                 x: {
                     type: "time",
+                    time: {
+                        unit: "hour",
+                        displayFormats: {
+                            hour: "dd/MM HH'h'",
+                        },
+                    },
+                    adapters: {
+                        date: {
+                            locale: da,
+                        },
+                    },
                 },
             },
         },
@@ -146,7 +176,7 @@ const buildBarChartWithDataset = async (elemChart, dataset) => {
             fill: true,
             backgroundColor: colorMap.green,
             borderColor: colorMap.green,
-            data: dataset.data,
+            data: dataset.data.map((d) => d.y),
         },
     ];
 
@@ -208,7 +238,7 @@ const loadChartData = async (subscription, house, type) => {
 
 const buildChartForHouse = async (elemRoot, house) => {
     const data = await graphql(`{
-        subscriptions: smartmeGetSubscriptions {sensorId, houseId}
+        subscriptions: cronJobs {sensorId, houseId}
     }`);
     const subscriptions = data.subscriptions;
 
@@ -330,18 +360,16 @@ const buildBaseUI = (elemRoot, houses) => {
         </div>
         `);
     $("#filterCountInput").val("30");
-    initDateTimePicker({id: "startdt", dateInit: {
-
-    }});
-    initDateTimePicker({ id: "enddt", dateInit: {
+    fpStart = initDateTimePicker({id: "startdt", dateInit: {}});
+    fpEnd = initDateTimePicker({ id: "enddt", dateInit: {
         add: {
             day: 1
         }
     } });
 
     // change handler
-    $("#startdt").on("dp.change", rebuildChartHandler);
-    $("#enddt").on("dp.change", rebuildChartHandler);
+    fpStart.config.onChange.push(rebuildChartHandler);
+    fpEnd.config.onChange.push(rebuildChartHandler);
     $("#filterCountInput").on("change", rebuildChartHandler);
     $("#houseInput").on("change", rebuildChartHandler);
 

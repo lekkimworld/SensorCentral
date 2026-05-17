@@ -18,13 +18,13 @@ import { CalloutSecretResolver } from "./resolvers/callout-secret";
 import { DataQueryResolver } from "./resolvers/data";
 import { EventResolver } from "./resolvers/event";
 import { PowerPriceResolver } from "./resolvers/powerprice";
-import { SmartmeResolver } from "./resolvers/smartme";
 import { UsersResolver } from "./resolvers/user";
 import { StorageService } from "./services/storage-service";
 import { BackendIdentity, GraphQLResolverContext } from "./types";
 import { CalloutResolver } from "./resolvers/callout";
 import { CalloutAuthenticatorResolver } from "./resolvers/callout-authenticator";
 import { EventLogResolver } from "./resolvers/event-log";
+import { CronJobResolver } from "./resolvers/cronjob";
 
 const logger = new Logger("configure-express-graphql");
 const path = constants.DEFAULTS.GRAPHQL.PATH;
@@ -43,7 +43,6 @@ export default  async (app : Application) => {
             DeviceResolver,
             SensorResolver,
             DataQueryResolver,
-            SmartmeResolver,
             UsersResolver,
             EventResolver,
             EventDefinitionResolver,
@@ -53,7 +52,8 @@ export default  async (app : Application) => {
             CalloutEndpointResolver,
             CalloutSecretResolver,
             CalloutAuthenticatorTemplateResolver,
-            EventLogResolver
+            EventLogResolver,
+            CronJobResolver
         ],
         dateScalarMode: "isoDate"
     })

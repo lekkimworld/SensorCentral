@@ -182,18 +182,14 @@ declare global {
             SESSION_TIMEOUT_SECONDS: string;
 
             /**
-             * Domain for smart-me api (defaults to api.smart-me.com)
-             */
-            SMARTME_DOMAIN: string;
-            /**
-             * Protocol to use when contacting smart-me (defaults to https)
-             */
-            SMARTME_PROTOCOL: "http" | "https";
-
-            /**
              * Path on which to host GraphQL endpoint (defaults to /graphql)
              */
             GRAPHQL_PATH?: string;
+
+            /**
+             * Default cron job frequency in minutes (defaults to 5)
+             */
+            CRONJOB_DEFAULT_FREQUENCY_MINUTES?: string;
         }
     }
 }

@@ -63,7 +63,8 @@ export class CalloutAuthenticator {
         this.name = e.name;
         this.endpointId = e.endpoint.id;
         this.template = e.template;
-        this.templateMappings = Object.keys(e.templateMappings).map(key => new CalloutAuthenticatorTemplateMapping(key, e.templateMappings[key]));
+        this.templateMappings = Object.keys(e.templateMappings).map(key => new CalloutAuthenticatorTemplateMapping(key, new CalloutSecret(e.templateMappings[key])));
+        this.systemManaged = e.systemManaged ?? false;
     }
 
     @Field(() => ID)
@@ -78,6 +79,9 @@ export class CalloutAuthenticator {
 
     @Field(() => [CalloutAuthenticatorTemplateMapping])
     templateMappings: Array<CalloutAuthenticatorTemplateMapping>;
+
+    @Field(() => Boolean)
+    systemManaged: boolean;
 }
 
 @InputType()
