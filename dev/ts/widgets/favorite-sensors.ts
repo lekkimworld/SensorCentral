@@ -1,5 +1,6 @@
 import {graphql} from "../fetch-util";
 import * as dateutils from "../date-utils";
+import { formatNumber } from "../number-utils";
 import * as uiutils from "../ui-utils";
 
 export default async (elem: JQuery<HTMLElement>) => {
@@ -35,7 +36,7 @@ export default async (elem: JQuery<HTMLElement>) => {
                     "columns": [
                         sensor.name,
                         type_img,
-                        sensor.last_reading ? `${sensor.last_reading.value} (${dateutils.formatDMYTime(sensor.last_reading.dt)})` : "None found"
+                        sensor.last_reading ? `${formatNumber(sensor.last_reading.value)} (${dateutils.formatDMYTime(sensor.last_reading.dt)})` : "None found"
                     ],
                     "click": function() {
                         document.location.hash = `configuration/house/${sensor.device.house.id}/device/${sensor.device.id}/sensor/${sensor.id}`

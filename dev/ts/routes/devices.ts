@@ -1,8 +1,6 @@
 import * as uiutils from "../ui-utils";
 import { graphql } from "../fetch-util";
-import {HouseForm} from "../forms/create-edit-house";
 import {DeleteForm} from "../forms/delete";
-import {DeviceForm} from "../forms/create-edit-device";
 import {HouseAccessForm} from "../forms/house-access";
 import * as dateutils from "../date-utils";
 import { Device, House } from "../clientside-types";
@@ -40,7 +38,7 @@ export default (elemRoot: JQuery<HTMLElement>, houseId: string) => {
                 rel: "create",
                 icon: "plus",
                 click: async () => {
-                    new DeviceForm(house, undefined).addEventListener("data", document.location.reload).show();
+                    document.location.hash = `configuration/house/${houseId}/device/create`;
                 },
             },
             {
@@ -54,7 +52,7 @@ export default (elemRoot: JQuery<HTMLElement>, houseId: string) => {
                 rel: "edit",
                 icon: "pencil",
                 click: async function () {
-                    new HouseForm(house).show();
+                    document.location.hash = `configuration/house/${houseId}/edit`;
                 },
             },
             {

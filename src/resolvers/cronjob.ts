@@ -4,6 +4,8 @@ import * as types from "../types";
 import constants from "../constants";
 import { AuthenticatorTemplate } from "../callout-authenticator-templates/templates";
 import { v4 as uuid } from "uuid";
+import getService from "../services/service-locator";
+import CalloutService, { MIMETYPE_FORM, MIMETYPE_JSON } from "../services/callout-service";
 
 registerEnumType(types.CronJobType, {
     name: "CronJobType",
@@ -40,7 +42,7 @@ export class CreateSmartmeCronJobInput {
     @Field(() => Number, { nullable: true })
     frequencyMinutes?: number;
 
-    @Field(() => String, { nullable: true, description: "Smart-Me device ID. If omitted, uses the sensor ID." })
+    @Field(() => String, { nullable: true, description: "Smart-Me device ID. If omitted, auto-discovered from the /Devices endpoint." })
     deviceId?: string;
 }
 
@@ -82,7 +84,6 @@ export class CronJobResolver {
         const sensor = await ctx.storage.getSensor(ctx.user, data.sensorId);
         const houseId = data.houseId;
         const frequency = data.frequencyMinutes || constants.DEFAULTS.CRONJOB.DEFAULT_FREQUENCY_MINUTES;
-        const smartmeDeviceId = data.deviceId || data.sensorId;
         const suffix = houseId.substring(0, 8);
 
         const endpoint = await ctx.storage.createCalloutEndpoint(ctx.user, {
@@ -118,6 +119,11 @@ export class CronJobResolver {
             templateMappings,
         }, true);
 
+        let smartmeDeviceId = data.deviceId;
+        if (!smartmeDeviceId) {
+            smartmeDeviceId = await this.discoverSmartmeDeviceId(data.clientId, data.clientSecret, endpoint.baseUrl);
+        }
+
         const calloutId = uuid();
         await ctx.storage.createUserCallout(ctx.user, {
             id: calloutId,
@@ -147,6 +153,29 @@ export class CronJobResolver {
             sensorId: job.sensorId,
             houseId: job.houseId,
         };
+    }
+
+    private async discoverSmartmeDeviceId(clientId: string, clientSecret: string, baseUrl: string): Promise<string> {
+        const calloutSvc = getService<CalloutService>(CalloutService.NAME);
+
+        const tokenResp = await calloutSvc.request<{ access_token: string }>({
+            method: "POST",
+            url: `${baseUrl}/oauth/token`,
+            headers: { "content-type": MIMETYPE_FORM, "accept": MIMETYPE_JSON },
+            body: `grant_type=client_credentials&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}&scope=device.read`,
+        });
+
+        const devices = await calloutSvc.request<Array<{ Id: string; Name: string }>>({
+            method: "GET",
+            url: `${baseUrl}/Devices`,
+            headers: { "Authorization": `Bearer ${tokenResp.access_token}`, "accept": MIMETYPE_JSON },
+        });
+
+        if (!devices || devices.length === 0) {
+            throw new Error("No devices found on Smart-Me account. Please specify a device ID manually.");
+        }
+
+        return devices[0].Id;
     }
 
     @Mutation(() => CronJobOutput, {

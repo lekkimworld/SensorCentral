@@ -86,7 +86,7 @@ describe ("callout-service.request", () => {
         mockFetch.mockImplementation(() : any => {
             return {
                 ok: true,
-                json() {}
+                text() { return Promise.resolve("{}"); }
             }
         })
         await new CalloutService().request({
@@ -196,6 +196,83 @@ describe ("callout-service.callout", () => {
             headers: {"x-foo": "bar"}
         } as RequestData)
 
+    })
+
+    it("test secrets available in body and path templates", async () => {
+        const calloutSvc = c!;
+        secrets = [
+            { id: "s1", name: "My Token", value: "secret123" },
+            { id: "s2", name: "API Key", value: "key456" },
+        ];
+
+        await calloutSvc.callout(ident, {
+            id: "id",
+            name: "myname",
+            method: HttpMethod.POST,
+            endpoint: {
+                id: "endpoint_id", name: "foo", baseUrl: "https://example.com"
+            },
+            pathTemplate: "/notify/{{secrets.my_token}}",
+            bodyTemplate: '{"key": "{{secrets.api_key}}"}'
+        }, {});
+
+        expect(calloutSvc.request).toHaveBeenCalledWith({
+            method: HttpMethod.POST,
+            url: "https://example.com/notify/secret123",
+            body: '{"key": "key456"}',
+            headers: {}
+        } as RequestData);
+    })
+
+    it("test app dictionary available in body and path templates", async () => {
+        const calloutSvc = c!;
+        secrets = [];
+
+        await calloutSvc.callout(ident, {
+            id: "id",
+            name: "myname",
+            method: HttpMethod.POST,
+            endpoint: {
+                id: "endpoint_id", name: "foo", baseUrl: "https://hooks.example.com"
+            },
+            pathTemplate: "/callback",
+            bodyTemplate: '{"url": "{{app.url}}/api/v1/data", "host": "{{app.hostname}}", "proto": "{{app.protocol}}"}'
+        }, {});
+
+        expect(calloutSvc.request).toHaveBeenCalledWith({
+            method: HttpMethod.POST,
+            url: "https://hooks.example.com/callback",
+            body: expect.stringContaining('"proto": "'),
+            headers: {}
+        } as RequestData);
+        const call = (calloutSvc.request as jest.Mock).mock.calls[0][0] as RequestData;
+        const body = JSON.parse(call.body!);
+        expect(body.proto).toBe("https");
+        expect(body.host).toBeTruthy();
+        expect(body.url).toMatch(/^https?:\/\/.+\/api\/v1\/data$/);
+    })
+
+    it("test app and secrets combined in templates", async () => {
+        const calloutSvc = c!;
+        secrets = [
+            { id: "s1", name: "webhook secret", value: "wh_abc" },
+        ];
+
+        await calloutSvc.callout(ident, {
+            id: "id",
+            name: "myname",
+            method: HttpMethod.POST,
+            endpoint: {
+                id: "endpoint_id", name: "foo", baseUrl: "https://hooks.example.com"
+            },
+            pathTemplate: "/hook/{{secrets.webhook_secret}}",
+            bodyTemplate: '{"callback": "{{app.url}}/events"}'
+        }, {});
+
+        const call = (calloutSvc.request as jest.Mock).mock.calls[0][0] as RequestData;
+        expect(call.url).toBe("https://hooks.example.com/hook/wh_abc");
+        const body = JSON.parse(call.body!);
+        expect(body.callback).toMatch(/^https?:\/\/.+\/events$/);
     })
 
     it("test authenticator", async () => {

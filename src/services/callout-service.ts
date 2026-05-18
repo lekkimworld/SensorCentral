@@ -108,7 +108,10 @@ class CalloutService extends BaseService {
             headers["content-type"] = c.contentType;
         }
 
-        const templateCtx = Object.assign({}, ctx, { secrets: this.buildSecretsLookup(secrets) });
+        const protocol = constants.APP.PROTOCOL;
+        const domain = constants.APP.DOMAIN || "localhost";
+        const app = { protocol, hostname: domain, url: `${protocol}://${domain}` };
+        const templateCtx = Object.assign({}, ctx, { secrets: this.buildSecretsLookup(secrets), app });
 
         let body: string | undefined = undefined;
         if (c.bodyTemplate && ctx) {

@@ -1,8 +1,5 @@
 import { Callout, CalloutAuthenticator, CalloutEndpoint, CalloutSecret } from "../clientside-types";
 import { graphql, graphqlTyped } from "../fetch-util";
-import { AuthenticatorForm } from "../forms/create-edit-authenticator";
-import { EndpointForm } from "../forms/create-edit-endpoint";
-import { SecretForm } from "../forms/create-edit-secret";
 import { TestResultForm } from "../forms/test-result";
 import { createContainers } from "../ui-helper";
 import * as uiutils from "../ui-utils";
@@ -76,7 +73,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 rel: "create-authenticator",
                 icon: "plus",
                 click: async function () {
-                    new AuthenticatorForm().show();
+                    document.location.hash = "authenticators/create";
                 },
             },
             {
@@ -108,7 +105,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                         data: a,
                         columns: [a.systemManaged ? `${a.name} <span class="badge badge-secondary">system</span>` : a.name, a.template],
                         click: a.systemManaged ? undefined : function () {
-                            new AuthenticatorForm(a).show();
+                            document.location.hash = `authenticators/edit/${a.id}`;
                         },
                     };
                 }),
@@ -178,7 +175,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 rel: "create-endpoint",
                 icon: "plus",
                 click: async function () {
-                    new EndpointForm().show();
+                    document.location.hash = "endpoints/create";
                 },
             },
             {
@@ -200,7 +197,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                         data: endpoint,
                         columns: [endpoint.systemManaged ? `${endpoint.name} <span class="badge badge-secondary">system</span>` : endpoint.name, endpoint.baseUrl],
                         click: endpoint.systemManaged ? undefined : function () {
-                            new EndpointForm(endpoint).show();
+                            document.location.hash = `endpoints/edit/${endpoint.id}`;
                         },
                     };
                 }),
@@ -220,7 +217,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 rel: "create-secret",
                 icon: "plus",
                 click: async function () {
-                    new SecretForm().show();
+                    document.location.hash = "secrets/create";
                 },
             },
             {
@@ -242,7 +239,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                         data: s,
                         columns: [s.systemManaged ? `${s.name} <span class="badge badge-secondary">system</span>` : s.name, s.value],
                         click: s.systemManaged ? undefined : function () {
-                            new SecretForm(s).show();
+                            document.location.hash = `secrets/edit/${s.id}`;
                         },
                     };
                 }),

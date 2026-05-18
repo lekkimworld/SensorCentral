@@ -6,9 +6,7 @@ import * as formsutil from "../forms-util";
 import { DataSet, RouteAction, createBreadcrumbHeader, createContainers } from "../ui-helper";
 import { SensorType, Device, House, Sensor } from "../clientside-types";
 import { DeleteForm } from "../forms/delete";
-import { DeviceForm } from "../forms/create-edit-device";
 import { DeviceJWTForm } from "../forms/device-jwt";
-import { SensorForm } from "../forms/create-edit-sensor";
 import { DeviceData } from "../forms/device-data";
 import RefreshAction from "../charting/actions/refresh-action";
 import DateIntervalAction from "../charting/actions/date-interval-action";
@@ -38,7 +36,7 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
                 rel: "create",
                 icon: "plus",
                 click: async () => {
-                    new SensorForm(device).addEventListener("data", document.location.reload).show();
+                    document.location.hash = `configuration/house/${houseId}/device/${deviceId}/sensor/create`;
                 },
             },
             {
@@ -65,7 +63,7 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
                 rel: "edit",
                 icon: "pencil",
                 click: async () => {
-                    new DeviceForm(device.house, device).show();
+                    document.location.hash = `configuration/house/${houseId}/device/${deviceId}/edit`;
                 },
             },
             {

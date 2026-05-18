@@ -3,7 +3,6 @@ import * as uiutils from "./ui-utils";
 import { Callout, Device, EventDefinition, Sensor } from "./clientside-types";
 import { graphql } from "./fetch-util";
 import { DeleteForm } from "./forms/delete";
-import { EventDefinitionForm } from "./forms/create-edit-event-definition";
 
 type CalloutLookup = Required<Pick<Callout, "id" | "name">>;
 
@@ -33,7 +32,7 @@ export const addEventDefinitionsTable = (
             rel: "create",
             icon: "plus",
             click: async () => {
-                new EventDefinitionForm(target, isDevice).show();
+                document.location.hash = `eventdefs/create/${target.id}/${isDevice ? "device" : "sensor"}`;
             },
         },
         {
@@ -91,7 +90,7 @@ export const addEventDefinitionsTable = (
                     d.active ? "Yes" : "No",
                 ],
                 click: function () {
-                    new EventDefinitionForm(target, isDevice, this.data).show();
+                    document.location.hash = `eventdefs/edit/${this.data.id}/${isDevice ? "device" : "sensor"}/${target.id}`;
                 },
             })),
         });

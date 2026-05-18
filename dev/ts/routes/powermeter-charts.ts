@@ -1,14 +1,15 @@
 import * as uiutils from "../ui-utils";
 import { graphql } from "../fetch-util";
+import { formatNumber } from "../number-utils";
 import moment from "moment-timezone";
-import {Chart, ChartConfiguration, TimeScale} from "chart.js";
+import {Chart, ChartConfiguration, TimeScale, Tooltip} from "chart.js";
 import "chartjs-adapter-date-fns";
 import { da } from "date-fns/locale";
 import flatpickr from "flatpickr";
 import { datetimepicker, dropdown, initDateTimePicker } from "../forms-util";
 import { TIMEZONE } from "../date-utils";
 
-Chart.register(TimeScale);
+Chart.register(TimeScale, Tooltip);
 
 const ISO8601 = "YYYY-MM-DDTHH:mm:ss.SSS[Z]";
 
@@ -95,6 +96,13 @@ const buildLineChartWithDataset = async (elemChart, datasets) => {
         type: "line",
         data: chartData,
         options: {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (ctx: any) => `${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}`,
+                    },
+                },
+            },
             scales: {
                 x: {
                     type: "time",
@@ -108,6 +116,11 @@ const buildLineChartWithDataset = async (elemChart, datasets) => {
                         date: {
                             locale: da,
                         },
+                    },
+                },
+                y: {
+                    ticks: {
+                        callback: (value: string | number) => formatNumber(Number(value)),
                     },
                 },
             },
@@ -150,6 +163,13 @@ const buildBarChartWithDataset = async (elemChart, dataset) => {
         type: "bar",
         data: chartData,
         options: {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (ctx: any) => `${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}`,
+                    },
+                },
+            },
             scales: {
                 x: {
                     type: "time",
@@ -163,6 +183,11 @@ const buildBarChartWithDataset = async (elemChart, dataset) => {
                         date: {
                             locale: da,
                         },
+                    },
+                },
+                y: {
+                    ticks: {
+                        callback: (value: string | number) => formatNumber(Number(value)),
                     },
                 },
             },

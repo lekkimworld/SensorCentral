@@ -1,12 +1,13 @@
-import { Legend, LegendItem, BarController, BarElement, CategoryScale, Chart, ChartDataset, LineController, LineElement, LinearScale, PointElement, TimeScale } from "chart.js";
+import { Legend, LegendItem, Tooltip, BarController, BarElement, CategoryScale, Chart, ChartDataset, LineController, LineElement, LinearScale, PointElement, TimeScale } from "chart.js";
 import "chartjs-adapter-date-fns";
 import { da } from "date-fns/locale";
 import moment, { Moment } from "moment";
 import { v4 as uuid } from "uuid";
 import constants from "../constants";
+import { formatNumber } from "../number-utils";
 import { ActionIcon, DataElement, DataSet, getFontAwesomeIcon } from "../ui-helper";
 import * as uiutils from "../ui-utils";
-Chart.register(Legend, BarController, BarElement, LineController, CategoryScale, TimeScale, LinearScale, PointElement, LineElement );
+Chart.register(Legend, Tooltip, BarController, BarElement, LineController, CategoryScale, TimeScale, LinearScale, PointElement, LineElement );
 
 const ID_CHART_BASE = "sensorChart";
 const ID_CHART_CONTAINER = `${ID_CHART_BASE}_container`;
@@ -52,11 +53,21 @@ const getChartDatasets = (options: ChartContainerOptions, datasets: Array<DataSe
 const getChartOptions = (state: ChartState, options: ChartContainerOptions, datasets: Array<DataSet>) => {
     const scales : any = {
         x: {},
-        y: {}
+        y: {
+            ticks: {
+                callback: (value: string | number) => formatNumber(Number(value)),
+            },
+        }
     }
     const result : any = {
         responsive: true,
-        plugins: {},
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: (ctx: any) => `${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}`,
+                },
+            },
+        },
         scales
     };
     if (options.type === "stacked-bar") {

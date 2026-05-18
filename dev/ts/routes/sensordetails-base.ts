@@ -1,4 +1,5 @@
 import * as uiutils from "../ui-utils";
+import { formatNumber } from "../number-utils";
 import moment, {Moment} from "moment";
 
 export const ID_SAMPLES_DIV = "samples";
@@ -46,7 +47,7 @@ export const samplesTable = (sensor, samples) => {
             }).map(s => {
                 return {
                     "data": s,
-                    "columns": isXDate ? [s.moment.format("DD/MM-YYYY"), s.moment.format("HH:mm"), s.y] : [s.x, s.y]
+                    "columns": isXDate ? [s.moment.format("DD/MM-YYYY"), s.moment.format("HH:mm"), formatNumber(s.y)] : [s.x, formatNumber(s.y)]
                 }
             })
     });

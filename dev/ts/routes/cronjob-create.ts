@@ -68,8 +68,8 @@ export default async (elemRoot: JQuery<HTMLElement>) => {
                     </div>
                     <div class="form-group">
                         <label for="deviceIdInput">Smart-Me Device ID (optional)</label>
-                        <input type="text" class="form-control" id="deviceIdInput" placeholder="Leave blank to use sensor ID">
-                        <small class="form-text text-muted">The Smart-Me device ID. If omitted, the sensor ID is used.</small>
+                        <input type="text" class="form-control" id="deviceIdInput" placeholder="Leave blank to auto-discover">
+                        <small class="form-text text-muted">The Smart-Me device ID. If omitted, auto-discovered from the /Devices endpoint.</small>
                     </div>
                 </div>
             </div>

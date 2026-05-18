@@ -7,9 +7,7 @@ import { Device, House, Sensor, SensorType } from "../clientside-types";
 import { RouteAction, createBreadcrumbHeader, createContainers } from "../ui-helper";
 import { addEventsTable } from "../events-helper";
 import { addEventDefinitionsTable } from "../event-definitions-helper";
-import { ManualSampleForm } from "../forms/manual-sample";
 import { DeleteForm } from "../forms/delete";
-import { SensorForm } from "../forms/create-edit-sensor";
 import { DownloadForm } from "../forms/download";
 import { DataEvent } from "../forms-util";
 import { Moment } from "moment";
@@ -48,12 +46,8 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
             rel: "create",
             icon: "plus",
             click: async () => {
-                new ManualSampleForm(sensor)
-                    .addEventListener("postdata", () => {
-                        actions.find((a) => a.rel === "refresh")!.click();
-                    })
-                    .show();
-                    return Promise.resolve();
+                document.location.hash = `samples/create/${sensor.id}`;
+                return Promise.resolve();
             },
         });
     }
@@ -85,7 +79,7 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
         rel: "edit",
         icon: "pencil",
         click: () => {
-            new SensorForm(sensor.device, sensor).show();
+            document.location.hash = `configuration/house/${sensor.device.house.id}/device/${sensor.device.id}/sensor/${sensor.id}/edit`;
             return Promise.resolve();
         },
     });

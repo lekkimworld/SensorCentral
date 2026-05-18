@@ -3,7 +3,6 @@ import * as uiutils from "./ui-utils";
 import { CalloutEndpoint, OnSensorSampleEvent, Sensor } from "./clientside-types";
 import { graphql } from "./fetch-util";
 import { DeleteForm } from "./forms/delete";
-import { OnSensorSampleEventForm } from "./forms/create-edit-event";
 
 export type UIContext<P, R> = {
     title: Container;
@@ -25,7 +24,7 @@ const createUIEvents = (ctx: UIContext<Sensor, OnSensorSampleEvent>) => {
                 rel: "create",
                 icon: "plus",
                 click: async () => {
-                    new OnSensorSampleEventForm(ctx.parent).show();
+                    document.location.hash = `events/create/${ctx.parent.id}`;
                 },
             },
             {
@@ -81,7 +80,7 @@ const updateUIEvents = async (ctx: UIContext<Sensor, OnSensorSampleEvent>) => {
                 data: e,
                 columns: [e.path, e.method, e.bodyTemplate || ""],
                 click: function () {
-                    new OnSensorSampleEventForm(ctx.parent, this.data).show();
+                    document.location.hash = `events/edit/${this.data.id}/${ctx.parent.id}`;
                 },
             };
         }),

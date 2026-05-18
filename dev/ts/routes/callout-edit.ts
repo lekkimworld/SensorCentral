@@ -26,6 +26,9 @@ const TEMPLATE_HELP = `
         <tr><td><code>{{sensorValue}}</code></td><td>The sensor reading that triggered the event</td><td>onSensorSample</td></tr>
         <tr><td><code>{{deviceId}}</code></td><td>The device ID the sensor belongs to</td><td>onSensorSample</td></tr>
         <tr><td><code>{{secrets.&lt;name&gt;}}</code></td><td>Value of the secret with the given name</td><td>All</td></tr>
+        <tr><td><code>{{app.url}}</code></td><td>Full application URL (e.g. https://example.com or http://localhost:8080)</td><td>All</td></tr>
+        <tr><td><code>{{app.protocol}}</code></td><td>Application protocol (http/https)</td><td>All</td></tr>
+        <tr><td><code>{{app.hostname}}</code></td><td>Application host (including port if non-standard)</td><td>All</td></tr>
     </tbody>
 </table>
 <h6>Examples</h6>
@@ -125,7 +128,7 @@ export default async (elemRoot: JQuery<HTMLElement>, calloutId?: string) => {
                     <div class="form-group">
                         <label for="pathTemplateInput">Path Template</label>
                         <input type="text" class="form-control" id="pathTemplateInput" placeholder="/path/to/resource" value="${callout?.pathTemplate || ""}">
-                        <small class="form-text text-muted">Handlebars template appended to the endpoint base URL (can be empty if base URL is the full path)</small>
+                        <small class="form-text text-muted">Handlebars template appended to the endpoint base URL. Supports template variables (can be empty if base URL is the full path).</small>
                     </div>
                     <div class="form-group">
                         <label for="bodyTemplateInput">Body Template</label>
@@ -176,12 +179,12 @@ export default async (elemRoot: JQuery<HTMLElement>, calloutId?: string) => {
             const result = await graphql(`mutation {
                 updateCallout(data: {
                     id: "${callout!.id}"
-                    name: "${d.name}"
+                    name: ${JSON.stringify(d.name)}
                     endpointId: "${d.endpointId}"
                     method: ${d.method}
                     ${d.authenticatorId ? `authenticatorId: "${d.authenticatorId}"` : ""}
                     ${d.contentType ? `contentType: "${d.contentType}"` : ""}
-                    pathTemplate: "${d.pathTemplate}"
+                    pathTemplate: ${JSON.stringify(d.pathTemplate)}
                     ${d.bodyTemplate ? `bodyTemplate: ${JSON.stringify(d.bodyTemplate)}` : ""}
                 }) { id }
             }`);
@@ -189,12 +192,12 @@ export default async (elemRoot: JQuery<HTMLElement>, calloutId?: string) => {
         } else {
             const result = await graphql(`mutation {
                 createCallout(data: {
-                    name: "${d.name}"
+                    name: ${JSON.stringify(d.name)}
                     endpointId: "${d.endpointId}"
                     method: ${d.method}
                     ${d.authenticatorId ? `authenticatorId: "${d.authenticatorId}"` : ""}
                     ${d.contentType ? `contentType: "${d.contentType}"` : ""}
-                    pathTemplate: "${d.pathTemplate}"
+                    pathTemplate: ${JSON.stringify(d.pathTemplate)}
                     ${d.bodyTemplate ? `bodyTemplate: ${JSON.stringify(d.bodyTemplate)}` : ""}
                 }) { id }
             }`);

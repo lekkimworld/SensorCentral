@@ -1,5 +1,4 @@
 import * as  uiutils from "../ui-utils";
-import {HouseForm} from "../forms/create-edit-house";
 import {graphql} from "../fetch-util";
 import { House, HouseUser } from "../clientside-types";
 import { createContainers } from "../ui-helper";
@@ -22,7 +21,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 rel: "create",
                 icon: "plus",
                 click: async function () {
-                    new HouseForm().show();
+                    document.location.hash = "configuration/houses/create";
                 },
             },
             {

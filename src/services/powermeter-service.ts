@@ -120,7 +120,7 @@ export class PowermeterService extends BaseService {
                 this.queues.publish(constants.QUEUES.DEVICE, payload).then(() => {
                     this.queues.publish(constants.QUEUES.SENSOR, {
                         deviceId,
-                        id: parsed.id,
+                        id: sensorId,
                         dt: parsed.valueDate.toISOString(),
                         value: parsed.counterReadingImport,
                     } as IngestedSensorMessage);
