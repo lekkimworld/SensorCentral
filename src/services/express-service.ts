@@ -60,7 +60,7 @@ export class ExpressService extends BaseService {
 
         if (process.env.NODE_ENV !== "development") {
             this.app.enable("trust proxy");
-            this.app.get("*", async (req, res, next) => {
+            this.app.get("*path", async (req, res, next) => {
                 if (req.secure || constants.APP.NO_PROD_TLS) {
                     next();
                 } else {
