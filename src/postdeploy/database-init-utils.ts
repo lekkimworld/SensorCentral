@@ -44,12 +44,18 @@ const executeSQLFile = (filename: string): Promise<void> => {
             logger.debug(`[SQL] Adding line: ${line}`);
             lines.push(line);
 
-        }).on("close", () => {
+        }).on("close", async () => {
             const sqldata = lines.join("");
-            logger.info(`[SQL] Executing SQL commands`);
-            pool.query(sqldata).then(() => resolve()).catch(err => {
+            const statements = sqldata.split(";").map(s => s.trim()).filter(s => s.length > 0);
+            logger.info(`[SQL] Executing ${statements.length} SQL statement(s)`);
+            try {
+                for (const stmt of statements) {
+                    await pool.query(stmt);
+                }
+                resolve();
+            } catch (err) {
                 reject(err);
-            })
+            }
         })
     })
 }
@@ -164,71 +170,45 @@ const updateSchemaVersion = (source: number, target: number): Promise<void> => {
     return executeSQLFile(`version_${source}_to_${target}.sql`);
 };
 
-export default (processExit: boolean) : Promise<void> => {
-    return pool.query("BEGIN")
-        .then(() => {
-            // query for database_version table
-            return pool.query(`select * from information_schema.tables where table_name='database_version'`);
-        })
-        .then((result) => {
+export default async (processExit: boolean) : Promise<void> => {
+    try {
+        const tableCheck = await pool.query(`select * from information_schema.tables where table_name='database_version'`);
+
+        if (tableCheck.rowCount === 0) {
+            logger.info("No database_version table exists in schema - create entire schema");
+            await buildEntireSchema();
+        } else {
+            const result = await pool.query("select version from database_version");
             if (result.rowCount === 0) {
-                // no database_version table exists - create entire schema
-                logger.info("No database_version table exists in schema - create entire schema");
-                return buildEntireSchema();
+                logger.info("No rows in database_version table - create entire schema");
+                await buildEntireSchema();
             } else {
-                // check version of database
-                return pool.query("select version from database_version").then((result) => {
-                    if (result.rowCount === 0) {
-                        // no rows in version table - create entire schema
-                        logger.info("No rows in database_version table - create entire schema");
-                        return buildEntireSchema();
-                    } else {
-                        // get version from database
-                        let version = result.rows[0].version;
-                        return new Promise<void>(async (resolve) => {
-                            // loop until at latest version
-                            while (version < TARGET_DATABASE_VERSION) {
-                                logger.info(`Database is at version <${version}> - target is <${TARGET_DATABASE_VERSION}> - run script`);
-                                await updateSchemaVersion(version, version+1);
+                let version = result.rows[0].version;
+                while (version < TARGET_DATABASE_VERSION) {
+                    logger.info(`Database is at version <${version}> - target is <${TARGET_DATABASE_VERSION}> - run script`);
 
-                                // increment
-                                version++;
-                            }
-
-                            logger.info("We are at the newest version...");
-                            resolve();
-                        })
+                    if (objectHasOwnProperty_Trueish(process.env, "DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE")) {
+                        logger.info(`DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE set - aborting schema upgrade`);
+                        throw new Error(`DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE set - aborting schema upgrade`);
                     }
-                });
+
+                    await updateSchemaVersion(version, version + 1);
+                    version++;
+                }
+                logger.info("We are at the newest version...");
             }
-        })
-        .then(() => {
-            if (objectHasOwnProperty_Trueish(process.env, "DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE")) {
-                logger.info(
-                    `DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE set - aborting schema upgrade- throwing exception...`
-                );
-                throw new Error(`DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE set - aborting schema upgrade`);
-            }
-            logger.info("Committing...");
-            return Promise.all([Promise.resolve(0), pool.query("COMMIT")]);
-        })
-        .catch(async (err) => {
-            logger.error(`Schema upgrade failed: ${err.message}`);
-            logger.info("!! ROLLING BACK !!");
-            await pool.query("ROLLBACK");
-            throw err;
-        })
-        .then(() => {
-            logger.info("Schema upgrade completed successfully");
-            pool.end();
-            if (processExit) process.exit(0);
-        })
-        .catch((err) => {
-            pool.end();
-            if (processExit) {
-                logger.error("Exiting process due to schema upgrade failure");
-                process.exit(1);
-            }
-            throw new Error(`Database schema upgrade failed: ${err.message}`);
-        });
+        }
+
+        logger.info("Schema upgrade completed successfully");
+        pool.end();
+        if (processExit) process.exit(0);
+    } catch (err: any) {
+        logger.error(`Schema upgrade failed: ${err.message}`);
+        pool.end();
+        if (processExit) {
+            logger.error("Exiting process due to schema upgrade failure");
+            process.exit(1);
+        }
+        throw new Error(`Database schema upgrade failed: ${err.message}`);
+    }
 };

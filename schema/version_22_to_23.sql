@@ -1,6 +1,9 @@
 -- Drop legacy powermeter subscription table (replaced by cron_job)
 DROP TABLE IF EXISTS powermeter_subscription;
 
+-- Add DATACLOUD_WEBSDK to the authenticator template enum
+ALTER TYPE CALLOUT_AUTHENTICATOR_TEMPLATE ADD VALUE 'DATACLOUD_WEBSDK';
+
 -- Add system_managed flag to callout infra tables
 ALTER TABLE callout_secret ADD COLUMN IF NOT EXISTS system_managed boolean NOT NULL DEFAULT false;
 ALTER TABLE callout_endpoint ADD COLUMN IF NOT EXISTS system_managed boolean NOT NULL DEFAULT false;

@@ -1,4 +1,3 @@
 DROP TABLE IF EXISTS pushover_info;
 ALTER TYPE callout_authenticator_template RENAME VALUE 'SMARTME_CLIENTCREDENTIALS' TO 'CLIENTCREDENTIALS_OAUTH';
-UPDATE callout_authenticator SET template='CLIENTCREDENTIALS_OAUTH' WHERE template='SMARTME_CLIENTCREDENTIALS';
 UPDATE database_version SET version=22;
