@@ -31,11 +31,32 @@ const TEMPLATE_HELP = `
         <tr><td><code>{{app.hostname}}</code></td><td>Application host (including port if non-standard)</td><td>All</td></tr>
     </tbody>
 </table>
+
+<h6>Target Object</h6>
+<p>The <code>target</code> variable contains the fully hydrated sensor or device that triggered the event, including related objects:</p>
+<table class="table table-sm table-bordered">
+    <thead>
+        <tr><th>Variable</th><th>Description</th><th>Triggers</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>{{target.id}}</code></td><td>ID of the target</td><td>All</td></tr>
+        <tr><td><code>{{target.name}}</code></td><td>Name of the sensor or device</td><td>All</td></tr>
+        <tr><td><code>{{target.house.id}}</code></td><td>House ID</td><td>onDeviceTimeout</td></tr>
+        <tr><td><code>{{target.house.name}}</code></td><td>House name</td><td>onDeviceTimeout</td></tr>
+        <tr><td><code>{{target.device.id}}</code></td><td>Device ID the sensor belongs to</td><td>onSensorSample, onSensorTimeout</td></tr>
+        <tr><td><code>{{target.device.name}}</code></td><td>Device name</td><td>onSensorSample, onSensorTimeout</td></tr>
+        <tr><td><code>{{target.device.house.id}}</code></td><td>House ID (via device)</td><td>onSensorSample, onSensorTimeout</td></tr>
+        <tr><td><code>{{target.device.house.name}}</code></td><td>House name (via device)</td><td>onSensorSample, onSensorTimeout</td></tr>
+        <tr><td><code>{{target.type}}</code></td><td>Sensor type (gauge, counter, delta, binary)</td><td>onSensorSample, onSensorTimeout</td></tr>
+        <tr><td><code>{{target.label}}</code></td><td>Sensor label</td><td>onSensorSample, onSensorTimeout</td></tr>
+    </tbody>
+</table>
+
 <h6>Examples</h6>
 <p><strong>Path template:</strong></p>
 <code>/api/notify/{{targetId}}</code>
 <p class="mt-2"><strong>Body template (JSON):</strong></p>
-<code>{"sensor": "{{targetId}}", "value": {{sensorValue}}, "trigger": "{{triggerType}}", "time": "{{timestamp}}"}</code>
+<code>{"sensor": "{{target.name}}", "house": "{{target.device.house.name}}", "value": {{sensorValue}}, "trigger": "{{triggerType}}", "time": "{{timestamp}}"}</code>
 <p class="mt-2"><strong>Using a secret in a header or body:</strong></p>
 <code>{"api_key": "{{secrets.my_api_key}}"}</code>
 
@@ -48,6 +69,7 @@ const TEMPLATE_HELP = `
     </thead>
     <tbody>
         <tr><td><code>targetId</code></td><td>test-000-000</td></tr>
+        <tr><td><code>target</code></td><td><em>(not set)</em></td></tr>
         <tr><td><code>triggerType</code></td><td>manual_test</td></tr>
         <tr><td><code>timestamp</code></td><td><em>(current UTC time)</em></td></tr>
         <tr><td><code>sensorValue</code></td><td><em>(not set)</em></td></tr>

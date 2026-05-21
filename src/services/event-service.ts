@@ -1,7 +1,7 @@
 import moment from "moment-timezone";
 import constants from "../constants";
 import { Logger } from "../logger";
-import { BackendIdentity, BaseService, EventActionType, EventDefinition, EventTriggerType, InitCallback, Sensor, TopicControlMessage, TopicSensorMessage } from "../types";
+import { BackendIdentity, BaseService, Device, EventActionType, EventDefinition, EventTriggerType, InitCallback, Sensor, TopicControlMessage, TopicSensorMessage } from "../types";
 import CalloutService from "./callout-service";
 import { IdentityService } from "./identity-service";
 import { PubsubService, TopicMessage } from "./pubsub-service";
@@ -198,6 +198,18 @@ export class EventService extends BaseService {
         await this.storage.persistSensorSample(sensor, value, moment.utc());
     }
 
+    private async hydrateTarget(ev: EventDefinition, targetId: string): Promise<Sensor | Device | undefined> {
+        try {
+            if (ev.triggerType === EventTriggerType.onDeviceTimeout) {
+                return await this.storage.getDevice(this.identity, targetId);
+            } else {
+                return await this.storage.getSensor(this.identity, targetId);
+            }
+        } catch {
+            return undefined;
+        }
+    }
+
     private async executeCallout(ev: EventDefinition, targetId: string, extra?: Record<string, any>) {
         const calloutId = ev.actionConfig.calloutId;
         if (!calloutId) {
@@ -208,8 +220,10 @@ export class EventService extends BaseService {
         }
 
         const userIdentity = this.identityService.getImpersonationIdentity(this.identity, ev.userId);
+        const target = await this.hydrateTarget(ev, targetId);
         const ctx = {
             targetId,
+            target,
             triggerType: ev.triggerType,
             timestamp: moment.utc().toISOString(),
             ...extra,
