@@ -3,7 +3,7 @@ NODE_ENV=$1
 if [ "$NODE_ENV" != "development" ] && [ "$NODE_ENV" != "production" ]; then
     echo "Parameter must be 'development' OR 'production'"
     exit 1
-fi 
+fi
 
 VERSION=`cat package.json | jq ".version" -r`
 if [ "$NODE_ENV" == "development" ]; then
@@ -18,19 +18,20 @@ echo "Version, minor: ${VERSION_SPLIT[1]}"
 echo "Version, patch: ${VERSION_SPLIT[2]}"
 echo "Commit: $GITCOMMIT"
 
-# build
-docker build \
+PLATFORMS="linux/arm64,linux/amd64"
+TAGS="--tag lekkim/sensorcentral:$VERSION"
+if [ "$NODE_ENV" == "production" ]; then
+    TAGS="$TAGS --tag lekkim/sensorcentral:${VERSION_SPLIT[0]}.${VERSION_SPLIT[1]}"
+    TAGS="$TAGS --tag lekkim/sensorcentral:${VERSION_SPLIT[0]}"
+fi
+
+# build and push multi-platform image
+docker buildx build \
+    --platform $PLATFORMS \
     --build-arg APP_GITCOMMIT=$GITCOMMIT \
     --build-arg APP_VERSION="$VERSION" \
     --build-arg APP_NODE_ENV="$NODE_ENV" \
-    --tag lekkim/sensorcentral:$VERSION \
+    $TAGS \
+    --push \
     .
-echo "Built image and tagged as ${VERSION}"
-
-if [ "$NODE_ENV" == "production" ]; then
-    # add additional tags
-    echo "Tagging as ${VERSION_SPLIT[0]}.${VERSION_SPLIT[1]}"
-    docker image tag lekkim/sensorcentral:$VERSION lekkim/sensorcentral:${VERSION_SPLIT[0]}.${VERSION_SPLIT[1]}
-    echo "Tagging as ${VERSION_SPLIT[0]}"
-    docker image tag lekkim/sensorcentral:$VERSION lekkim/sensorcentral:${VERSION_SPLIT[0]}
-fi
+echo "Built and pushed multi-platform image ($PLATFORMS) as ${VERSION}"
