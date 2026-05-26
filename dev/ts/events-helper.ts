@@ -2,7 +2,6 @@ import {Container, createContainers} from "./ui-helper";
 import * as uiutils from "./ui-utils";
 import { CalloutEndpoint, OnSensorSampleEvent, Sensor } from "./clientside-types";
 import { graphql } from "./fetch-util";
-import { DeleteForm } from "./forms/delete";
 
 export type UIContext<P, R> = {
     title: Container;
@@ -53,25 +52,6 @@ const updateUIEvents = async (ctx: UIContext<Sensor, OnSensorSampleEvent>) => {
     }
 
     uiutils.appendDataTable(elemEventsContent, {
-        actions: [
-            {
-                rel: "trash",
-                icon: "trash",
-                click: async (actionCtx) => {
-                    const f = new DeleteForm({
-                        id: actionCtx.id,
-                        name: actionCtx.data.description,
-                        title: "Delete Event?",
-                        message: "Are you absolutely sure you want to DELETE this event?",
-                    }).addEventListener("data", async () => {
-                        await graphql(`mutation {
-                            deleteEvent(data: {id: "${actionCtx.id}"})
-                        }`);
-                        updateUIEvents(ctx);
-                    })
-                }
-            }
-        ],
         headers: ["PATH", "METHOD", "BODY TEMPLATE"],
         classes: ["", "d-none d-md-table-cell", "d-none d-sm-table-cell"],
         rows: events.map((e) => {

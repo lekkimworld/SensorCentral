@@ -2,7 +2,6 @@ import { createContainers } from "./ui-helper";
 import * as uiutils from "./ui-utils";
 import { Callout, Device, Sensor } from "./clientside-types";
 import { graphql } from "./fetch-util";
-import { DeleteForm } from "./forms/delete";
 import { Cron } from "croner";
 import { formatDMYTime } from "./date-utils";
 
@@ -77,24 +76,6 @@ export const addCalloutCronJobSection = (
         }
 
         uiutils.appendDataTable(contentElem, {
-            actions: [
-                {
-                    rel: "trash",
-                    icon: "trash",
-                    click: async (actionCtx) => {
-                        const calloutName = callouts.find(c => c.id === actionCtx.data.calloutId)?.name || "";
-                        new DeleteForm({
-                            id: actionCtx.id,
-                            name: calloutName,
-                            title: "Delete Scheduled Callout?",
-                            message: "This will stop the scheduled execution. The callout itself will not be deleted.",
-                        }).addEventListener("data", async () => {
-                            await graphql(`mutation { deleteCronJob(id: "${actionCtx.id}") }`);
-                            await loadAndRender();
-                        });
-                    },
-                },
-            ],
             headers: ["CALLOUT", "SCHEDULE", "ACTIVE"],
             classes: ["", "", ""],
             rows: jobs.map((j) => {
