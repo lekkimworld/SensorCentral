@@ -453,6 +453,7 @@ export class HttpException extends Error {
 
 export enum CronJobType {
     SMARTME_POWERMETER = "smartme_powermeter",
+    CALLOUT = "callout",
 }
 
 export type CronJob = {
@@ -465,6 +466,7 @@ export type CronJob = {
     calloutId?: string;
     sensorId?: string;
     houseId?: string;
+    deviceId?: string;
 }
 
 export enum HttpMethod {

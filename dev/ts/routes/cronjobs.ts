@@ -1,6 +1,8 @@
 import { graphql } from "../fetch-util";
 import { createContainers } from "../ui-helper";
 import * as uiutils from "../ui-utils";
+import { Cron } from "croner";
+import { formatDMYTime } from "../date-utils";
 
 type CronJobEntry = {
     id: string;
@@ -8,12 +10,30 @@ type CronJobEntry = {
     active: boolean;
     frequencyMinutes: number;
     calloutId?: string;
+    cronExpression?: string;
     sensorId?: string;
+    deviceId?: string;
     houseId?: string;
 };
 
+type CalloutLookup = { id: string; name: string };
+
 const JOB_TYPE_LABELS: Record<string, string> = {
-    smartme_powermeter: "Smart-Me Powermeter",
+    SMARTME_POWERMETER: "Smart-Me Powermeter",
+    CALLOUT: "Scheduled Callout",
+};
+
+const describeSchedule = (job: CronJobEntry): string => {
+    if (job.cronExpression) {
+        try {
+            const c = new Cron(job.cronExpression);
+            const next = c.nextRun();
+            return next ? `${job.cronExpression} (next: ${formatDMYTime(next)})` : job.cronExpression;
+        } catch {
+            return job.cronExpression;
+        }
+    }
+    return `${job.frequencyMinutes} min`;
 };
 
 export default async (elemRoot: JQuery<HTMLElement>) => {
@@ -43,8 +63,12 @@ export default async (elemRoot: JQuery<HTMLElement>) => {
 
 const loadJobs = async (contentElem: JQuery<HTMLElement>) => {
     contentElem.html("");
-    const data = await graphql(`{ cronJobs { id, jobType, active, frequencyMinutes, sensorId, houseId } }`);
+    const data = await graphql(`{
+        cronJobs { id, jobType, active, frequencyMinutes, calloutId, cronExpression, sensorId, deviceId, houseId }
+        callouts { id, name }
+    }`);
     const jobs = (data.cronJobs || []) as CronJobEntry[];
+    const callouts = (data.callouts || []) as CalloutLookup[];
 
     if (!jobs.length) {
         contentElem.html("No cron jobs configured. Click + to create one.");
@@ -57,26 +81,33 @@ const loadJobs = async (contentElem: JQuery<HTMLElement>) => {
                 rel: "delete-cronjob",
                 icon: "remove",
                 click: async (actionCtx: any) => {
-                    if (!confirm("Delete this cron job and its associated callout infrastructure?")) return;
+                    if (!confirm("Delete this cron job?")) return;
                     await graphql(`mutation { deleteCronJob(id: "${actionCtx.id}") }`);
-                    document.location.reload();
+                    await loadJobs(contentElem);
                 },
             },
         ],
-        headers: ["TYPE", "SENSOR", "FREQUENCY", "ACTIVE"],
-        classes: ["", "", "", ""],
-        rows: jobs.map((j) => ({
-            id: j.id,
-            data: j,
-            click: function () {
-                document.location.hash = `#cronjobs/edit/${j.id}`;
-            },
-            columns: [
-                JOB_TYPE_LABELS[j.jobType] || j.jobType,
-                j.sensorId || "-",
-                `${j.frequencyMinutes} min`,
-                j.active ? '<span class="text-success">Yes</span>' : '<span class="text-muted">No</span>',
-            ],
-        })),
+        headers: ["TYPE", "CALLOUT", "TARGET", "SCHEDULE", "ACTIVE"],
+        classes: ["", "", "d-none d-md-table-cell", "", ""],
+        rows: jobs.map((j) => {
+            const calloutName = j.calloutId
+                ? (callouts.find(c => c.id === j.calloutId)?.name || j.calloutId.substring(0, 8))
+                : "-";
+            const target = j.sensorId || j.deviceId || "-";
+            return {
+                id: j.id,
+                data: j,
+                click: function () {
+                    document.location.hash = `#cronjobs/edit/${j.id}`;
+                },
+                columns: [
+                    JOB_TYPE_LABELS[j.jobType] || j.jobType,
+                    calloutName,
+                    target.length > 12 ? target.substring(0, 12) + "…" : target,
+                    describeSchedule(j),
+                    j.active ? '<span class="text-success">Yes</span>' : '<span class="text-muted">No</span>',
+                ],
+            };
+        }),
     });
 };

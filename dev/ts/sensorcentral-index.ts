@@ -37,6 +37,7 @@ import eventdefEditRoute from "./routes/eventdef-edit";
 import eventCreateRoute from "./routes/event-create";
 import eventEditRoute from "./routes/event-edit";
 import manualSampleRoute from "./routes/manual-sample";
+import cronjobCreateCalloutRoute from "./routes/cronjob-create-callout";
 import endpointTestChart from "./routes/testchart";
 
 const log = {
@@ -161,6 +162,9 @@ const navigationChange = async () => {
         cronjobsRoute(elemRoot);
     } else if (hash === "#cronjobs/create") {
         cronjobCreateRoute(elemRoot);
+    } else if (hash.startsWith("#cronjobs/create-callout")) {
+        const params = new URLSearchParams(hash.split("?")[1] || "");
+        cronjobCreateCalloutRoute(elemRoot, params);
     } else if (hash.startsWith("#cronjobs/edit/")) {
         const jobId = hash.split("/")[2];
         cronjobEditRoute(elemRoot, jobId);

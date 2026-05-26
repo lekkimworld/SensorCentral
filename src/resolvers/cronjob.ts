@@ -6,6 +6,7 @@ import { AuthenticatorTemplate } from "../callout-authenticator-templates/templa
 import { v4 as uuid } from "uuid";
 import getService from "../services/service-locator";
 import CalloutService, { MIMETYPE_FORM, MIMETYPE_JSON } from "../services/callout-service";
+import { Cron } from "croner";
 
 registerEnumType(types.CronJobType, {
     name: "CronJobType",
@@ -21,6 +22,8 @@ export class CronJobOutput {
     @Field(() => String, { nullable: true }) calloutId?: string;
     @Field(() => String, { nullable: true }) sensorId?: string;
     @Field(() => String, { nullable: true }) houseId?: string;
+    @Field(() => String, { nullable: true }) deviceId?: string;
+    @Field(() => String, { nullable: true }) cronExpression?: string;
 }
 
 @InputType()
@@ -47,6 +50,21 @@ export class CreateSmartmeCronJobInput {
 }
 
 @InputType()
+export class CreateCalloutCronJobInput {
+    @Field(() => String)
+    calloutId: string;
+
+    @Field(() => String)
+    cronExpression: string;
+
+    @Field(() => String, { nullable: true })
+    sensorId?: string;
+
+    @Field(() => String, { nullable: true })
+    deviceId?: string;
+}
+
+@InputType()
 export class UpdateCronJobInput {
     @Field(() => String)
     id: string;
@@ -56,6 +74,9 @@ export class UpdateCronJobInput {
 
     @Field(() => Number, { nullable: true })
     frequencyMinutes?: number;
+
+    @Field(() => String, { nullable: true })
+    cronExpression?: string;
 }
 
 @Resolver()
@@ -71,6 +92,8 @@ export class CronJobResolver {
             calloutId: j.calloutId,
             sensorId: j.sensorId,
             houseId: j.houseId,
+            deviceId: j.deviceId,
+            cronExpression: j.config?.cronExpression,
         }));
     }
 
@@ -155,6 +178,53 @@ export class CronJobResolver {
         };
     }
 
+    @Mutation(() => CronJobOutput, {
+        description: "Creates a callout cron job that executes an existing callout on a schedule",
+    })
+    async createCalloutCronJob(
+        @Arg("data") data: CreateCalloutCronJobInput,
+        @Ctx() ctx: types.GraphQLResolverContext
+    ): Promise<CronJobOutput> {
+        if (!data.sensorId && !data.deviceId) {
+            throw new Error("Either sensorId or deviceId must be provided");
+        }
+        if (data.sensorId && data.deviceId) {
+            throw new Error("Provide either sensorId or deviceId, not both");
+        }
+
+        try {
+            new Cron(data.cronExpression);
+        } catch (err: any) {
+            throw new Error(`Invalid cron expression: ${err.message}`);
+        }
+
+        const callout = await ctx.storage.getUserCallout(ctx.user, data.calloutId);
+        if (!callout) {
+            throw new Error(`Callout not found: ${data.calloutId}`);
+        }
+
+        const job = await ctx.storage.createCronJob(ctx.user, {
+            jobType: types.CronJobType.CALLOUT,
+            frequencyMinutes: 0,
+            config: { cronExpression: data.cronExpression },
+            calloutId: data.calloutId,
+            sensorId: data.sensorId,
+            deviceId: data.deviceId,
+        });
+
+        return {
+            id: job.id,
+            jobType: job.jobType,
+            active: job.active,
+            frequencyMinutes: job.frequencyMinutes,
+            calloutId: job.calloutId,
+            sensorId: job.sensorId,
+            houseId: job.houseId,
+            deviceId: job.deviceId,
+            cronExpression: data.cronExpression,
+        };
+    }
+
     private async discoverSmartmeDeviceId(clientId: string, clientSecret: string, baseUrl: string): Promise<string> {
         const calloutSvc = getService<CalloutService>(CalloutService.NAME);
 
@@ -179,15 +249,33 @@ export class CronJobResolver {
     }
 
     @Mutation(() => CronJobOutput, {
-        description: "Updates a cron job's active state and/or frequency",
+        description: "Updates a cron job's active state, frequency, and/or cron expression",
     })
     async updateCronJob(
         @Arg("data") data: UpdateCronJobInput,
         @Ctx() ctx: types.GraphQLResolverContext
     ): Promise<CronJobOutput> {
+        if (data.cronExpression) {
+            try {
+                new Cron(data.cronExpression);
+            } catch (err: any) {
+                throw new Error(`Invalid cron expression: ${err.message}`);
+            }
+        }
+
+        let configUpdate: Record<string, any> | undefined;
+        if (data.cronExpression) {
+            const jobs = await ctx.storage.getCronJobs(ctx.user);
+            const existing = jobs.find(j => j.id === data.id);
+            if (existing) {
+                configUpdate = { ...existing.config, cronExpression: data.cronExpression };
+            }
+        }
+
         const job = await ctx.storage.updateCronJob(ctx.user, data.id, {
             active: data.active,
             frequencyMinutes: data.frequencyMinutes,
+            config: configUpdate,
         });
         return {
             id: job.id,
@@ -197,11 +285,13 @@ export class CronJobResolver {
             calloutId: job.calloutId,
             sensorId: job.sensorId,
             houseId: job.houseId,
+            deviceId: job.deviceId,
+            cronExpression: job.config?.cronExpression,
         };
     }
 
     @Mutation(() => Boolean, {
-        description: "Deletes a cron job and its associated system-managed callout infrastructure",
+        description: "Deletes a cron job and its associated system-managed callout infrastructure (for smartme jobs only)",
     })
     async deleteCronJob(
         @Arg("id") id: string,
@@ -211,9 +301,9 @@ export class CronJobResolver {
         const job = jobs.find(j => j.id === id);
         if (!job) throw new Error(`Cron job not found: ${id}`);
 
-        if (job.calloutId) {
+        if (job.jobType === types.CronJobType.SMARTME_POWERMETER && job.calloutId) {
             const callout = await ctx.storage.getUserCallout(ctx.user, job.calloutId);
-            if (callout) {
+            if (callout && callout.systemManaged) {
                 const endpointId = callout.endpoint.id;
                 const authenticator = callout.authenticator;
 

@@ -2033,6 +2033,7 @@ export class StorageService extends BaseService {
             calloutId: row.callout_id,
             sensorId: row.sensor_id,
             houseId: row.house_id,
+            deviceId: row.device_id,
         } as CronJob));
     }
 
@@ -2050,6 +2051,7 @@ export class StorageService extends BaseService {
             calloutId: row.callout_id,
             sensorId: row.sensor_id,
             houseId: row.house_id,
+            deviceId: row.device_id,
         } as CronJob));
     }
 
@@ -2060,16 +2062,18 @@ export class StorageService extends BaseService {
         calloutId?: string;
         sensorId?: string;
         houseId?: string;
+        deviceId?: string;
     }): Promise<CronJob> {
         const userid = user.identity.callerId;
         const id = uuid();
         await this.dbService.query(
-            "insert into cron_job (id, userid, job_type, frequency_minutes, config, callout_id, sensor_id, house_id) values ($1,$2,$3,$4,$5,$6,$7,$8)",
+            "insert into cron_job (id, userid, job_type, frequency_minutes, config, callout_id, sensor_id, house_id, device_id) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
             id, userid, input.jobType, input.frequencyMinutes,
             JSON.stringify(input.config),
             input.calloutId || null,
             input.sensorId || null,
-            input.houseId || null
+            input.houseId || null,
+            input.deviceId || null
         );
 
         this.eventService!.publish(`${constants.TOPICS.CONTROL}.cronjob.create`, {
@@ -2087,12 +2091,14 @@ export class StorageService extends BaseService {
             calloutId: input.calloutId,
             sensorId: input.sensorId,
             houseId: input.houseId,
+            deviceId: input.deviceId,
         };
     }
 
     async updateCronJob(user: BackendIdentity, id: string, input: {
         active?: boolean;
         frequencyMinutes?: number;
+        config?: Record<string, any>;
     }): Promise<CronJob> {
         const userid = user.identity.callerId;
         const fields: string[] = [];
@@ -2104,6 +2110,10 @@ export class StorageService extends BaseService {
         if (input.frequencyMinutes !== undefined) {
             fields.push(`frequency_minutes=$${args.length + 1}`);
             args.push(input.frequencyMinutes);
+        }
+        if (input.config !== undefined) {
+            fields.push(`config=$${args.length + 1}`);
+            args.push(JSON.stringify(input.config));
         }
         if (!fields.length) throw new Error("No fields to update");
         const result = await this.dbService.query(
@@ -2122,6 +2132,7 @@ export class StorageService extends BaseService {
             calloutId: row.callout_id,
             sensorId: row.sensor_id,
             houseId: row.house_id,
+            deviceId: row.device_id,
         };
         this.eventService!.publish(`${constants.TOPICS.CONTROL}.cronjob.update`, {
             new: job,

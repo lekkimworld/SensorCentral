@@ -11,6 +11,7 @@ import { DeviceData } from "../forms/device-data";
 import RefreshAction from "../charting/actions/refresh-action";
 import DateIntervalAction from "../charting/actions/date-interval-action";
 import { addEventDefinitionsTable } from "../event-definitions-helper";
+import { addCalloutCronJobSection } from "../callout-cronjob-helper";
 
 // create type for data and request it
 type RequestedHouse = Required<Pick<House, "id" | "name">>;
@@ -196,6 +197,9 @@ export default async (elemRoot: JQuery<HTMLElement>, houseId: string, deviceId: 
 
         // build UI for event definitions
         addEventDefinitionsTable(elemRoot, device, true);
+
+        // build UI for scheduled callouts
+        addCalloutCronJobSection(elemRoot, device, true);
     };
     updateUI();
 };

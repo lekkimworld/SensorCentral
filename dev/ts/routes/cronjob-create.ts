@@ -24,6 +24,7 @@ export default async (elemRoot: JQuery<HTMLElement>) => {
                         <label for="jobTypeInput">Job Type</label>
                         <select class="form-control" id="jobTypeInput" required>
                             <option value="smartme_powermeter">Smart-Me Powermeter</option>
+                            <option value="callout">Scheduled Callout</option>
                         </select>
                         <small class="form-text text-muted">The type of cron job to create</small>
                     </div>
@@ -78,6 +79,13 @@ export default async (elemRoot: JQuery<HTMLElement>) => {
             <a href="#cronjobs" class="btn btn-secondary">Back</a>
         </form>
     `);
+
+    document.getElementById("jobTypeInput")?.addEventListener("change", () => {
+        const val = (document.getElementById("jobTypeInput") as HTMLSelectElement).value;
+        if (val === "callout") {
+            document.location.hash = "#cronjobs/create-callout";
+        }
+    });
 
     document.getElementById("saveCronJob")?.addEventListener("click", async () => {
         const form = document.getElementById("cronjobCreateForm") as HTMLFormElement;
