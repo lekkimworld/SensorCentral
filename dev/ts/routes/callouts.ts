@@ -3,6 +3,7 @@ import { graphql, graphqlTyped } from "../fetch-util";
 import { TestResultForm } from "../forms/test-result";
 import { createContainers } from "../ui-helper";
 import * as uiutils from "../ui-utils";
+import { formatDMYTime } from "../date-utils";
 
 type RequestedSecret = Required<Pick<CalloutSecret, "id" | "name" | "value">> & { systemManaged: boolean };
 type RequestedEndpoint = Required<Pick<CalloutEndpoint, "id" | "name" | "baseUrl">> & { systemManaged: boolean };
@@ -312,7 +313,7 @@ export default (elemRoot: JQuery<HTMLElement>) => {
                 id: String(idx),
                 data: e,
                 columns: [
-                    new Date(e.timestamp).toLocaleString(),
+                    formatDMYTime(e.timestamp),
                     e.triggerType,
                     e.targetPath
                         ? `<a href="${e.targetPath}">${e.targetName}</a>`

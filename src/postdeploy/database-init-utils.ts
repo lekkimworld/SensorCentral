@@ -14,7 +14,7 @@ dotenv_config();
 // get log
 const logger = new Logger("database-init-utils");
 
-const TARGET_DATABASE_VERSION = 23;
+const TARGET_DATABASE_VERSION = 24;
 
 const url = new URL(process.env.DATABASE_URL as string);
 const config: PoolConfig = {

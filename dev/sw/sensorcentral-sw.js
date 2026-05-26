@@ -14,8 +14,6 @@ const filesToCache = [
     "/fonts/fontawesome-webfont.woff",
     "/fonts/fontawesome-webfont.woff2",
     "/js/bootstrap.bundle.min.js",
-    "/js/moment-with-locales.min.js",
-    "/js/bootstrap-datetimepicker.min.js",
     "/css/bundle.css",
     "/js/bundle.js"
 ];

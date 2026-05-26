@@ -7,6 +7,7 @@ import { Device, House, Sensor, SensorType } from "../clientside-types";
 import { RouteAction, createBreadcrumbHeader, createContainers } from "../ui-helper";
 import { addEventsTable } from "../events-helper";
 import { addEventDefinitionsTable } from "../event-definitions-helper";
+import { addCalloutCronJobSection } from "../callout-cronjob-helper";
 import { DeleteForm } from "../forms/delete";
 import { DownloadForm } from "../forms/download";
 import { DataEvent } from "../forms-util";
@@ -148,4 +149,7 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
 
     // build UI for event definitions
     addEventDefinitionsTable(elemRoot, sensor, false);
+
+    // build UI for scheduled callouts
+    addCalloutCronJobSection(elemRoot, sensor, false);
 }

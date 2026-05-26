@@ -2,6 +2,7 @@ import { graphql } from "../fetch-util";
 import { TestResultForm } from "../forms/test-result";
 import { createContainers } from "../ui-helper";
 import * as uiutils from "../ui-utils";
+import { formatDMYTime } from "../date-utils";
 
 type EventLogEntry = {
     timestamp: string;
@@ -68,7 +69,7 @@ const loadLog = async (contentElem: JQuery<HTMLElement>) => {
             id: String(idx),
             data: e,
             columns: [
-                new Date(e.timestamp).toLocaleString(),
+                formatDMYTime(e.timestamp),
                 e.triggerType,
                 e.targetPath
                     ? `<a href="${e.targetPath}">${e.targetName}</a>`
