@@ -1,7 +1,8 @@
 #!/bin/bash
 NODE_ENV=$1
 if [ "$NODE_ENV" != "development" ] && [ "$NODE_ENV" != "production" ]; then
-    echo "Parameter must be 'development' OR 'production'"
+    echo "Usage: build_docker.sh <development|production> [platform(s)]"
+    echo "  platform(s): linux/arm64, linux/amd64, or linux/arm64,linux/amd64 (default: both)"
     exit 1
 fi
 
@@ -18,7 +19,7 @@ echo "Version, minor: ${VERSION_SPLIT[1]}"
 echo "Version, patch: ${VERSION_SPLIT[2]}"
 echo "Commit: $GITCOMMIT"
 
-PLATFORMS="linux/arm64,linux/amd64"
+PLATFORMS="${2:-linux/arm64,linux/amd64}"
 TAGS="--tag lekkim/sensorcentral:$VERSION"
 if [ "$NODE_ENV" == "production" ]; then
     TAGS="$TAGS --tag lekkim/sensorcentral:${VERSION_SPLIT[0]}.${VERSION_SPLIT[1]}"
