@@ -121,6 +121,7 @@ const renderCalloutForm = (formElem: JQuery<HTMLElement>, job: CronJobEntry, cal
             </div>
             <hr>
             <button type="button" class="btn btn-primary mr-2" id="saveCronJob">Save</button>
+            <button type="button" class="btn btn-danger mr-2" id="deleteCronJob">Delete</button>
             <a href="#cronjobs" class="btn btn-secondary">Back</a>
         </form>
     `);
@@ -178,6 +179,12 @@ const renderCalloutForm = (formElem: JQuery<HTMLElement>, job: CronJobEntry, cal
         }`);
         document.location.hash = "#cronjobs";
     });
+
+    document.getElementById("deleteCronJob")?.addEventListener("click", async () => {
+        if (!confirm("Are you sure you want to delete this cron job?")) return;
+        await graphql(`mutation { deleteCronJob(id: "${job.id}") }`);
+        document.location.hash = "#cronjobs";
+    });
 };
 
 const renderSmartmeForm = (formElem: JQuery<HTMLElement>, job: CronJobEntry) => {
@@ -214,6 +221,7 @@ const renderSmartmeForm = (formElem: JQuery<HTMLElement>, job: CronJobEntry) => 
             </div>
             <hr>
             <button type="button" class="btn btn-primary mr-2" id="saveCronJob">Save</button>
+            <button type="button" class="btn btn-danger mr-2" id="deleteCronJob">Delete</button>
             <a href="#cronjobs" class="btn btn-secondary">Back</a>
         </form>
     `);
@@ -229,6 +237,12 @@ const renderSmartmeForm = (formElem: JQuery<HTMLElement>, job: CronJobEntry) => 
                 frequencyMinutes: ${frequencyMinutes}
             }) { id }
         }`);
+        document.location.hash = "#cronjobs";
+    });
+
+    document.getElementById("deleteCronJob")?.addEventListener("click", async () => {
+        if (!confirm("Are you sure you want to delete this cron job?")) return;
+        await graphql(`mutation { deleteCronJob(id: "${job.id}") }`);
         document.location.hash = "#cronjobs";
     });
 };

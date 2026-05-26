@@ -2,7 +2,6 @@ import { createContainers } from "./ui-helper";
 import * as uiutils from "./ui-utils";
 import { Callout, Device, EventDefinition, Sensor } from "./clientside-types";
 import { graphql } from "./fetch-util";
-import { DeleteForm } from "./forms/delete";
 
 type CalloutLookup = Required<Pick<Callout, "id" | "name">>;
 
@@ -61,23 +60,6 @@ export const addEventDefinitionsTable = (
         }
 
         uiutils.appendDataTable(contentElem, {
-            actions: [
-                {
-                    rel: "trash",
-                    icon: "trash",
-                    click: async (actionCtx) => {
-                        new DeleteForm({
-                            id: actionCtx.id,
-                            name: `${actionCtx.data.triggerType} / ${actionCtx.data.actionType}`,
-                            title: "Delete Event Definition?",
-                            message: "Are you sure you want to delete this event definition?",
-                        }).addEventListener("data", async () => {
-                            await graphql(`mutation { deleteEventDefinition(id: "${actionCtx.id}") }`);
-                            await loadAndRender();
-                        });
-                    },
-                },
-            ],
             headers: ["TRIGGER", "ACTION", "CONFIG", "ACTIVE"],
             classes: ["", "", "d-none d-md-table-cell", ""],
             rows: defs.map((d) => ({

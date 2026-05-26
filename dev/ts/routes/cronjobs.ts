@@ -76,17 +76,6 @@ const loadJobs = async (contentElem: JQuery<HTMLElement>) => {
     }
 
     uiutils.appendDataTable(contentElem, {
-        actions: [
-            {
-                rel: "delete-cronjob",
-                icon: "remove",
-                click: async (actionCtx: any) => {
-                    if (!confirm("Delete this cron job?")) return;
-                    await graphql(`mutation { deleteCronJob(id: "${actionCtx.id}") }`);
-                    await loadJobs(contentElem);
-                },
-            },
-        ],
         headers: ["TYPE", "CALLOUT", "TARGET", "SCHEDULE", "ACTIVE"],
         classes: ["", "", "d-none d-md-table-cell", "", ""],
         rows: jobs.map((j) => {
