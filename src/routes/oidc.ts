@@ -55,7 +55,7 @@ router.get("/callback/:provider", async (req, res, next) => {
                 const code = new URL(`${req.protocol}://${req.get("host")}${req.originalUrl}`).searchParams.get("code");
                 let resp = await fetch(oidcEndpoint.tokenEndpoint!, {
                     method: "POST",
-                    body: `client_id=${oidcEndpoint.clientId}&client_secret=${oidcEndpoint.clientSecret}&redirect_uri=${oidcEndpoint.redirectUri}&code=${code}`,
+                    body: `client_id=${oidcEndpoint.clientId}&client_secret=${oidcEndpoint.clientSecret}&redirect_uri=${oidcEndpoint.redirectUri}&code=${code}&code_verifier=${codeVerifier}`,
                     headers: {
                         "content-type": "application/x-www-form-urlencoded",
                         accept: "application/json",

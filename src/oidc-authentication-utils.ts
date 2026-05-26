@@ -108,6 +108,13 @@ export const getOidcConfig = async (provider: string): Promise<client.Configurat
             );
             break;
         case LoginSource.github:
+            config = new client.Configuration({
+                issuer: "https://github.com",
+                authorization_endpoint: oidcEndpoint.authorizationEndpoint!,
+                token_endpoint: oidcEndpoint.tokenEndpoint!,
+                userinfo_endpoint: oidcEndpoint.userinfoEndpoint!,
+            }, oidcEndpoint.clientId, oidcEndpoint.clientSecret);
+            break;
         case LoginSource.local:
             config = await client.discovery(
                 new URL(oidcEndpoint.providerUrl),
