@@ -115,6 +115,7 @@ export default {
             CURRENCY: "DKK",
             AREA: "DK2",
         },
+        OIDC_FORCE_LOGIN_FAILURE: process.env.OIDC_FORCE_LOGIN_FAILURE === "true" || process.env.OIDC_FORCE_LOGIN_FAILURE === "1",
         GRAPHQL: {
             PATH: process.env.GRAPHQL_PATH || "/graphql",
         },

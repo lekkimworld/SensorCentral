@@ -6,6 +6,7 @@ import { CreateLoginUserInput, IdentityService } from "../services/identity-serv
 import { lookupService } from "../configure-services";
 import { buildBaseHandlebarsContext } from "../utils";
 import { Logger } from "../logger";
+import constants from "../constants";
 
 type OidcClaims = {
     fn: string;
@@ -24,7 +25,7 @@ router.get("/callback/:provider", async (req, res, next) => {
     if (!nonce) return next(new HttpException(417, `No nonce found (<${nonce}>)`));
 
     try {
-        if (process.env.OIDC_FORCE_LOGIN_FAILURE) {
+        if (constants.DEFAULTS.OIDC_FORCE_LOGIN_FAILURE) {
             throw new Error(`Forced login failure for testing (OIDC_FORCE_LOGIN_FAILURE is set)`);
         }
 
@@ -119,9 +120,17 @@ router.get("/callback/:provider", async (req, res, next) => {
         if (err.cause) logger.error(`Cause: ${JSON.stringify(err.cause)}`);
         logger.debug(`Session codeVerifier defined: ${!!codeVerifier}, nonce defined: ${!!nonce}`);
 
-        const errorDetail = err.error_description || err.error || err.message || String(err);
-        return res.render("loginfailed", Object.assign({}, buildBaseHandlebarsContext(), { error_detail: errorDetail }));
+        session!.loginError = err.error_description || err.error || err.message || String(err);
+        session!.save();
+        return res.redirect("/openid/loginfailed");
     }
+})
+
+router.get("/loginfailed", (req, res) => {
+    const errorDetail = req.session?.loginError;
+    delete req.session!.loginError;
+    req.session!.save();
+    return res.render("loginfailed", Object.assign({}, buildBaseHandlebarsContext(), { error_detail: errorDetail }));
 })
 
 router.get("/loggedin", ({ res }) => {

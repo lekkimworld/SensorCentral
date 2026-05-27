@@ -14,6 +14,7 @@ declare module "express-session" {
         nonce: string;
         codeVerifier: string;
         browserResponse: BrowserLoginResponse;
+        loginError: string;
 
         // used when adding login provider
         oidc_add: boolean;

@@ -77,7 +77,9 @@ const navigationChange = async () => {
     const hash = document.location.hash;
     const path = document.location.pathname;
 
-    if ("/openid/loggedin" === path) {
+    if ("/openid/loginfailed" === path) {
+        return;
+    } else if ("/openid/loggedin" === path) {
         // user has been logged it - go ask for a JWT based on us having a session
         try {
             const body = await get("/api/v1/login/jwt");
