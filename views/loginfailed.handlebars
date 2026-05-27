@@ -1,0 +1,9 @@
+<h2>Login Failed</h2>
+<p>We were unable to complete the login. Please try again or use a different provider.</p>
+<p><a href="/">Back to home</a></p>
+{{#if error_detail}}
+<details class="mt-4">
+    <summary class="text-muted"><small>Technical details</small></summary>
+    <pre class="mt-2"><small>{{error_detail}}</small></pre>
+</details>
+{{/if}}

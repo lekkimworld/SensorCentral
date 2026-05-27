@@ -24,6 +24,10 @@ router.get("/callback/:provider", async (req, res, next) => {
     if (!nonce) return next(new HttpException(417, `No nonce found (<${nonce}>)`));
 
     try {
+        if (process.env.OIDC_FORCE_LOGIN_FAILURE) {
+            throw new Error(`Forced login failure for testing (OIDC_FORCE_LOGIN_FAILURE is set)`);
+        }
+
         const oidcEndpoint = getOidcEndpoint(req.params.provider as string);
         let oidcClaims: OidcClaims | undefined;
 
@@ -109,8 +113,14 @@ router.get("/callback/:provider", async (req, res, next) => {
 
         session!.browserResponse = output;
         res.redirect("/openid/loggedin");
-    } catch (err) {
-        return next(new HttpException(417, `Unable to perform callback (${err}`, err))
+    } catch (err: any) {
+        logger.error(`OIDC callback error for provider <${req.params.provider}>: ${err.message || err}`);
+        if (err.error) logger.error(`OAuth error: ${err.error}, description: ${err.error_description}, status: ${err.status}`);
+        if (err.cause) logger.error(`Cause: ${JSON.stringify(err.cause)}`);
+        logger.debug(`Session codeVerifier defined: ${!!codeVerifier}, nonce defined: ${!!nonce}`);
+
+        const errorDetail = err.error_description || err.error || err.message || String(err);
+        return res.render("loginfailed", Object.assign({}, buildBaseHandlebarsContext(), { error_detail: errorDetail }));
     }
 })
 
