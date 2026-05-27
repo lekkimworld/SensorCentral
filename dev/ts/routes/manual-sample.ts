@@ -90,6 +90,6 @@ export default async (elemRoot: JQuery<HTMLElement>, sensorId: string) => {
             dt,
         });
 
-        document.location.hash = `#/house/${sensor.device.house.id}/device/${sensor.device.id}/sensor/${sensorId}`;
+        document.location.hash = `#configuration/house/${sensor.device.house.id}/device/${sensor.device.id}/sensor/${sensorId}`;
     });
 };
