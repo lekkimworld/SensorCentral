@@ -111,6 +111,10 @@ A built-in test OIDC provider for local development. Start it with `npm run oidc
 
 Set `OIDC_LOCAL_SUB` on the provider process to override the `sub` claim (used to match a user in `login_oidc_mapping`). This lets you log in as an existing user during local testing.
 
+#### Testing login failures
+
+Set `OIDC_FORCE_LOGIN_FAILURE` to any value to force the OIDC callback to fail after the provider redirects back. This renders the login-failed page so you can verify the error UI without needing an actual misconfiguration.
+
 ### Notification Templates
 
 All notification template variables are optional and use Handlebars syntax. Available context: `{{app.name}}`, `{{sensor.id}}`, `{{sensor.name}}`, `{{device.id}}`, `{{device.name}}`, `{{data.*}}`, `{{url.target}}`, `{{url.app}}`.
