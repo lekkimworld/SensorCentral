@@ -24,6 +24,7 @@ TAGS="--tag lekkim/sensorcentral:$VERSION"
 if [ "$NODE_ENV" == "production" ]; then
     TAGS="$TAGS --tag lekkim/sensorcentral:${VERSION_SPLIT[0]}.${VERSION_SPLIT[1]}"
     TAGS="$TAGS --tag lekkim/sensorcentral:${VERSION_SPLIT[0]}"
+    TAGS="$TAGS --tag lekkim/sensorcentral:latest"
 fi
 
 # build and push multi-platform image

@@ -59,20 +59,7 @@ export class ExpressService extends BaseService {
         this.app = express();
         this.app.disable("x-powered-by");
 
-        if (process.env.NODE_ENV !== "development") {
-            this.app.enable("trust proxy");
-            this.app.get("*path", async (req, res, next) => {
-                if (req.secure || constants.APP.NO_PROD_TLS) {
-                    next();
-                } else {
-                    const redirectUrl = `https://${req.headers.host}${req.originalUrl}`;
-                    logger.info(`User is not using TLS - redirecting user to ${redirectUrl}`);
-                    res.redirect(redirectUrl);
-                }
-            });
-        }
-
-        // health check endpoint (no auth, no session, no middleware)
+        // health check endpoint (before TLS redirect, no auth, no session)
         this.app.get("/health", async (_req, res) => {
             const checks: Record<string, string> = {};
 
@@ -105,6 +92,19 @@ export class ExpressService extends BaseService {
             const healthy = checks.redis === "ok" && checks.db === "ok";
             res.status(healthy ? 200 : 503).json({ status: healthy ? "ok" : "degraded", checks });
         });
+
+        if (process.env.NODE_ENV !== "development") {
+            this.app.enable("trust proxy");
+            this.app.get("*path", async (req, res, next) => {
+                if (req.secure || constants.APP.NO_PROD_TLS) {
+                    next();
+                } else {
+                    const redirectUrl = `https://${req.headers.host}${req.originalUrl}`;
+                    logger.info(`User is not using TLS - redirecting user to ${redirectUrl}`);
+                    res.redirect(redirectUrl);
+                }
+            });
+        }
 
         // configure app
         this.app.use(express.static(path.join(__dirname, "..", "..", "public")));
