@@ -79,6 +79,27 @@ const main = async () => {
 	logger.info("Start adding cron jobs");
 	const cron = services.getService(CronService.NAME) as CronService;
 	cron.add("load-powerdata-daily", "0 1 * * *", cronjobPowerdata, true);
+
+	// healthchecks.io ping (every minute)
+	const healthchecksUrl = process.env.HEALTHCHECKS_URL;
+	if (healthchecksUrl) {
+		cron.add("healthchecks-ping", "* * * * *", async () => {
+			try {
+				const resp = await fetch(`http://localhost:${process.env.PORT || 8080}/health`);
+				if (resp.ok) {
+					await fetch(healthchecksUrl);
+				} else {
+					await fetch(`${healthchecksUrl}/fail`);
+				}
+			} catch (err) {
+				try { await fetch(`${healthchecksUrl}/fail`); } catch {}
+			}
+		});
+		logger.info("Registered healthchecks.io ping cron job");
+	} else {
+		logger.info("HEALTHCHECKS_URL not set - skipping healthchecks.io integration");
+	}
+
 	logger.info("Done adding cron jobs");
 
 	// start server

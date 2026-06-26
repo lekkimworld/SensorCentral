@@ -21,6 +21,17 @@ import { get as getFromHttpContext } from "express-http-context";
 
 export type LogMessage = string | Record<string,string|number|boolean|any>;
 
+function timestamp(): string {
+    const now = new Date();
+    const y = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const h = String(now.getHours()).padStart(2, "0");
+    const mi = String(now.getMinutes()).padStart(2, "0");
+    const s = String(now.getSeconds()).padStart(2, "0");
+    return `${y}-${mo}-${d} ${h}:${mi}:${s}`;
+}
+
 export class Logger {
     _level: Level;
     _name: string;
@@ -35,10 +46,12 @@ export class Logger {
     protected getLogMessage(level: Level, msg: LogMessage, err?: Error) {
         const constants = require("./constants").default;
         const reqId = getFromHttpContext(constants.HTTP_CONTEXT.REQUEST_ID);
-        const prefix = `[${reqId || ""}] [${this._name}] [${level.name}]`;
+        const ts = timestamp();
+        const prefix = `${ts} [${reqId || ""}] [${this._name}] [${level.name}]`;
 
         if (this._system) {
             const loggerCtx = {
+                timestamp: ts,
                 request: {
                     id: reqId || "",
                 },
@@ -51,7 +64,7 @@ export class Logger {
                 },
             };
             const logObj = Object.assign(loggerCtx, typeof msg === "string" ? { message: msg } : msg);
-            return `${this._name.toUpperCase()} ${JSON.stringify(logObj)}`;
+            return `${ts} ${this._name.toUpperCase()} ${JSON.stringify(logObj)}`;
         } else if (err) {
             return `${prefix} - ${msg} (${err.message})`;
         } else {

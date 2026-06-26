@@ -25,4 +25,7 @@ RUN echo "APP_GITCOMMIT=$APP_GITCOMMIT" > .env && \
     echo "APP_VERSION=$APP_VERSION" >> .env && \
     echo "NODE_ENV=$APP_NODE_ENV" >> .env
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
+
 CMD [ "node", "server-dist/workers/worker_web.js" ]

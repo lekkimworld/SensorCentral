@@ -5,8 +5,9 @@ import { json as bp_json } from "body-parser";
 import path from "path";
 import attachApplicationRoutes from "../configure-express-routes";
 import configureSessionWithRedis from "../configure-express-session";
-import { lookupService } from "../configure-services";
+import { getService, lookupService } from "../configure-services";
 import { RedisService } from "../services/redis-service";
+import { DatabaseService } from "../services/database-service";
 import configureHandlebars from "../configure-express-handlebars";
 import formatHttpException from "../middleware/formatHttpException";
 import { Logger } from "../logger";
@@ -70,6 +71,40 @@ export class ExpressService extends BaseService {
                 }
             });
         }
+
+        // health check endpoint (no auth, no session, no middleware)
+        this.app.get("/health", async (_req, res) => {
+            const checks: Record<string, string> = {};
+
+            // check redis
+            try {
+                const redis = getService<RedisService>(RedisService.NAME);
+                if (redis) {
+                    await redis.getClient().ping();
+                    checks.redis = "ok";
+                } else {
+                    checks.redis = "not initialized";
+                }
+            } catch (err: any) {
+                checks.redis = err.message || "failed";
+            }
+
+            // check database
+            try {
+                const db = getService<DatabaseService>(DatabaseService.NAME);
+                if (db) {
+                    await db.query("SELECT 1");
+                    checks.db = "ok";
+                } else {
+                    checks.db = "not initialized";
+                }
+            } catch (err: any) {
+                checks.db = err.message || "failed";
+            }
+
+            const healthy = checks.redis === "ok" && checks.db === "ok";
+            res.status(healthy ? 200 : 503).json({ status: healthy ? "ok" : "degraded", checks });
+        });
 
         // configure app
         this.app.use(express.static(path.join(__dirname, "..", "..", "public")));
