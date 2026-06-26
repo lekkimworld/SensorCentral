@@ -90,7 +90,12 @@ export class ExpressService extends BaseService {
             }
 
             const healthy = checks.redis === "ok" && checks.db === "ok";
-            res.status(healthy ? 200 : 503).json({ status: healthy ? "ok" : "degraded", checks });
+            res.status(healthy ? 200 : 503).json({
+                status: healthy ? "ok" : "degraded",
+                version: constants.APP.VERSION,
+                commit: constants.APP.GITCOMMIT,
+                checks,
+            });
         });
 
         if (process.env.NODE_ENV !== "development") {

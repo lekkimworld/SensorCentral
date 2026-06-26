@@ -56,11 +56,16 @@ Application I use with my family to gather telemetry and sensor data from our ho
 | `TIMEZONE` | `Europe/Copenhagen` | Timezone for date formatting |
 | `DATETIME_FORMAT` | `D-M-YYYY [kl.] k:mm` | Moment.js format string for displaying dates |
 | `WEB_CONCURRENCY` | `1` | Number of web worker processes |
+| `CRONJOB_DEFAULT_FREQUENCY_MINUTES` | `5` | Default frequency in minutes for cron jobs |
 | `CRON_POWERMETER_SUBSCRIPTIONS_DISABLED` | — | If set, disable powermeter subscription cron jobs |
 | `NOTIFICATIONS_DISABLED` | — | If set, disable all email/Pushover notifications |
 | `NOTIFICATIONS_EMAIL_OVERRIDE` | — | Send all notification emails to this address instead |
 | `ALERTS_BINARY_SENSOR_DISABLE` | — | If set to trueish, disable binary sensor alert timeouts |
 | `ALERTS_TIMEOUT_BINARY_SENSOR` | `600000` | Binary sensor timeout in milliseconds (10 min default) |
+| `EVENT_LOG_TTL_SECS` | `604800` | Time-to-live in seconds for event log entries (7 days default) |
+| `EVENT_LOG_MAX_ENTRIES` | `100` | Maximum number of event log entries to keep |
+| `EVENT_LOG_PAGE_SIZE` | `20` | Number of event log entries per page |
+| `HEALTHCHECKS_URL` | — | Healthchecks.io ping URL. If set, pings every minute based on `/health` status |
 | `WATCHDOG_DISABLED_DEVICES` | — | Comma-separated device IDs to exclude from watchdog |
 | `WATCHDOG_INTERVAL_DEVICES` | — | Interval for device watchdog checks |
 | `WATCHDOG_INTERVAL_SENSORS` | — | Interval for sensor watchdog checks |
