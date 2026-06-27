@@ -83,16 +83,23 @@ const main = async () => {
 	// healthchecks.io ping (every minute)
 	const healthchecksUrl = process.env.HEALTHCHECKS_URL;
 	if (healthchecksUrl) {
+		const fetchOpts = { signal: AbortSignal.timeout(10000) };
 		cron.add("healthchecks-ping", "* * * * *", async () => {
 			try {
-				const resp = await fetch(`http://localhost:${process.env.PORT || 8080}/health`);
+				const resp = await fetch(`http://localhost:${process.env.PORT || 8080}/health`, fetchOpts);
+				await resp.text();
 				if (resp.ok) {
-					await fetch(healthchecksUrl);
+					const r = await fetch(healthchecksUrl, fetchOpts);
+					await r.text();
 				} else {
-					await fetch(`${healthchecksUrl}/fail`);
+					const r = await fetch(`${healthchecksUrl}/fail`, fetchOpts);
+					await r.text();
 				}
 			} catch (err) {
-				try { await fetch(`${healthchecksUrl}/fail`); } catch {}
+				try {
+					const r = await fetch(`${healthchecksUrl}/fail`, fetchOpts);
+					await r.text();
+				} catch {}
 			}
 		});
 		logger.info("Registered healthchecks.io ping cron job");
