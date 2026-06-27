@@ -84,8 +84,8 @@ const main = async () => {
 	const healthchecksUrl = process.env.HEALTHCHECKS_URL;
 	if (healthchecksUrl) {
 		const hcLogger = new Logger("healthchecks");
-		const fetchOpts = { signal: AbortSignal.timeout(10000) };
 		cron.add("healthchecks-ping", "* * * * *", async () => {
+			const fetchOpts = { signal: AbortSignal.timeout(10000) };
 			try {
 				const resp = await fetch(`http://localhost:${process.env.PORT || 8080}/health`, fetchOpts);
 				await resp.text();
@@ -101,7 +101,7 @@ const main = async () => {
 			} catch (err) {
 				hcLogger.warn(`Health check error: ${err.message}`);
 				try {
-					const r = await fetch(`${healthchecksUrl}/fail`, fetchOpts);
+					const r = await fetch(`${healthchecksUrl}/fail`, { signal: AbortSignal.timeout(10000) });
 					await r.text();
 				} catch (innerErr) {
 					hcLogger.error(`Failed to report failure to healthchecks.io: ${innerErr.message}`);
