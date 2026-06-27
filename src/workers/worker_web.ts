@@ -80,28 +80,25 @@ const main = async () => {
 	const cron = services.getService(CronService.NAME) as CronService;
 	cron.add("load-powerdata-daily", "0 1 * * *", cronjobPowerdata, true);
 
-	// healthchecks.io ping (every minute)
+	// healthchecks.io ping (every minute) - checks DB/Redis directly without HTTP self-fetch
 	const healthchecksUrl = process.env.HEALTHCHECKS_URL;
 	if (healthchecksUrl) {
 		const hcLogger = new Logger("healthchecks");
 		cron.add("healthchecks-ping", "* * * * *", async () => {
 			const fetchOpts = { signal: AbortSignal.timeout(10000) };
 			try {
-				const resp = await fetch(`http://localhost:${process.env.PORT || 8080}/health`, fetchOpts);
-				await resp.text();
-				if (resp.ok) {
-					hcLogger.debug("Local health check OK - pinging healthchecks.io");
-					const r = await fetch(healthchecksUrl, fetchOpts);
-					await r.text();
-				} else {
-					hcLogger.warn(`Local health check returned ${resp.status} - sending fail to healthchecks.io`);
-					const r = await fetch(`${healthchecksUrl}/fail`, fetchOpts);
-					await r.text();
-				}
+				const redis = services.getService(RedisService.NAME) as RedisService;
+				await redis.getClient().ping();
+				const db = services.getService(DatabaseService.NAME) as DatabaseService;
+				await db.query("SELECT 1");
+
+				hcLogger.debug("Local health check OK - pinging healthchecks.io");
+				const r = await fetch(healthchecksUrl, fetchOpts);
+				await r.text();
 			} catch (err) {
 				hcLogger.warn(`Health check error: ${err.message}`);
 				try {
-					const r = await fetch(`${healthchecksUrl}/fail`, { signal: AbortSignal.timeout(10000) });
+					const r = await fetch(`${healthchecksUrl}/fail`, fetchOpts);
 					await r.text();
 				} catch (innerErr) {
 					hcLogger.error(`Failed to report failure to healthchecks.io: ${innerErr.message}`);
