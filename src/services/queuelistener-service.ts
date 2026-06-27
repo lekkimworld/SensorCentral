@@ -143,146 +143,94 @@ export class QueueListenerService extends BaseService {
      * 3. If yes and no: Create augmented sensor reading object and post to sensor topic
      */
     private addListenerToSensorQueue() {
-        this.queues.subscribe(constants.QUEUES.SENSOR, (result : QueueSubscription) => {
-            // cast
+        this.queues.subscribe(constants.QUEUES.SENSOR, async (result : QueueSubscription) => {
             const msg = result.data as IngestedSensorMessage;
             let persistValue = msg.value;
 
-            // see if we know the sensor
-            this.storage
-                .getSensor(this.authUser, msg.id)
-                .then((sensor) => {
-                    // known sensor - persist reading (with dt if supplied)
-                    let dt: Moment | undefined;
-                    if (msg.dt) {
-                        dt = moment.utc(msg.dt);
-                    } else {
-                        dt = moment.utc();
-                    }
-                    let from_dt: Moment | undefined;
-                    if (msg.duration) {
-                        from_dt = moment(dt).subtract(msg.duration, "second");
-                    }
+            let sensor: Sensor | undefined;
+            let device: Device | undefined;
 
-                    // clamp value if binary sensor
-                    if (sensor.type === SensorType.binary) {
-                        if (msg.value === 0) {
-                            persistValue = 0;
-                        } else {
-                            persistValue = 1;
-                        }
-                    }
-                    return this.storage.persistSensorSample(sensor, persistValue, dt, from_dt).then(() => {
-                        // mark msg as consumed
-                        result.callback();
+            try {
+                sensor = await this.storage.getSensor(this.authUser, msg.id);
 
-                        // return promise
-                        return Promise.all([sensor, sensor.device]);
-                    });
-                })
-                .catch(() => {
-                    // unknown sensor - mark msg as consumed and return promise
-                    result.callback();
-                    return Promise.all([
-                        Promise.resolve(undefined),
-                        this.storage.getDevice(this.authUser, msg.deviceId),
-                    ]);
-                })
-                .then((data: any) => {
-                    const sensor: Sensor | undefined = data[0];
-                    const device = data[1] as Device;
+                let dt: Moment;
+                if (msg.dt) {
+                    dt = moment.utc(msg.dt);
+                } else {
+                    dt = moment.utc();
+                }
+                let from_dt: Moment | undefined;
+                if (msg.duration) {
+                    from_dt = moment(dt).subtract(msg.duration, "second");
+                }
 
-                    // create an augmented sensor reading and post to topic
-                    const payload = {
-                        deviceId: device.id,
-                        value: persistValue,
-                        sensorId: msg.id,
-                    } as TopicSensorMessage;
+                if (sensor.type === SensorType.binary) {
+                    persistValue = msg.value === 0 ? 0 : 1;
+                }
 
-                    // publish
-                    const subChannel = sensor ? `known.${msg.id}` : `unknown.${msg.id}`;
-                    this.pubsub.publish(
-                        `${constants.TOPICS.SENSOR}.${subChannel}`, payload
-                    ).then(() => {
-                        logger.debug(`Posted augmented sensor message to ${constants.TOPICS.SENSOR}`);
-                    });
-                });
+                await this.storage.persistSensorSample(sensor, persistValue, dt, from_dt);
+                device = sensor.device;
+            } catch {
+                sensor = undefined;
+                device = await this.storage.getDevice(this.authUser, msg.deviceId);
+            }
+
+            const payload = {
+                deviceId: device!.id,
+                value: persistValue,
+                sensorId: msg.id,
+            } as TopicSensorMessage;
+
+            const subChannel = sensor ? `known.${msg.id}` : `unknown.${msg.id}`;
+            await this.pubsub.publish(`${constants.TOPICS.SENSOR}.${subChannel}`, payload);
         });
     }
 
     private addListenerToControlQueue() {
-        this.queues.subscribe(constants.QUEUES.CONTROL, (result: QueueSubscription) => {
-            // cast
+        this.queues.subscribe(constants.QUEUES.CONTROL, async (result: QueueSubscription) => {
             const msg = result.data as IngestedControlMessage;
 
-            // see if we know the device
-            this.storage
-                .getDevice(this.authUser, msg.id)
-                .catch(() => {
-                    return Promise.resolve(null);
-                })
-                .then((device: Device | null) => {
-                    // mark msg as consumed
-                    result.callback();
+            let device: Device | null = null;
+            try {
+                device = await this.storage.getDevice(this.authUser, msg.id);
+            } catch {}
 
-                    // created augmented message
-                    const payload = {
-                        deviceId: msg.id,
-                        device: device,
-                        type: msg.type,
-                    } as TopicControlMessage;
+            const payload = {
+                deviceId: msg.id,
+                device: device,
+                type: msg.type,
+            } as TopicControlMessage;
 
-                    // publish
-                    const subChannel = device
-                        ? `known.${msg.target}.${msg.type}`
-                        : `unknown.${msg.target}.${msg.type}`;
-                    this.pubsub.publish(
-                        `${constants.TOPICS.CONTROL}.${subChannel}`,
-                        payload
-                    );
-                });
+            const subChannel = device
+                ? `known.${msg.target}.${msg.type}`
+                : `unknown.${msg.target}.${msg.type}`;
+            await this.pubsub.publish(`${constants.TOPICS.CONTROL}.${subChannel}`, payload);
         });
     }
 
     private addListenerToDeviceQueue() {
-        this.queues.subscribe(constants.QUEUES.DEVICE, (result: QueueSubscription) => {
-            // cast
+        this.queues.subscribe(constants.QUEUES.DEVICE, async (result: QueueSubscription) => {
             const msg = result.data as IngestedDeviceMessage;
-            logger.debug(
-                `Received message on <${constants.QUEUES.DEVICE}> with data <${msg}>`
-            );
+            logger.debug(`Received message on <${constants.QUEUES.DEVICE}> with data <${msg}>`);
 
-            // see if we know the device
-            this.storage
-                .getDevice(this.authUser, msg.id)
-                .catch(() => {
-                    return Promise.resolve(null);
-                })
-                .then((device: Device | null) => {
-                    // mark msg as consumed
-                    result.callback();
+            let device: Device | null = null;
+            try {
+                device = await this.storage.getDevice(this.authUser, msg.id);
+            } catch {}
 
-                    // create augmented device and post to topic
-                    const payload = {
-                        deviceId: msg.id,
-                        device: device,
-                    } as TopicDeviceMessage;
+            const payload = {
+                deviceId: msg.id,
+                device: device,
+            } as TopicDeviceMessage;
 
-                    // update last ping
-                    if (device) {
-                        logger.debug(`Received message on <${constants.QUEUES.DEVICE}> and we know the device <${device.id}> - update last device ping`);
-                        this.updateDeviceLastPing(device.id);
-                    }
+            if (device) {
+                this.updateDeviceLastPing(device.id);
+            }
+            if (device && msg.deviceData) {
+                this.storage.setDeviceData(device.id, msg.deviceData);
+            }
 
-                    // if any device data update redis
-                    if (device && msg.deviceData) {
-                        logger.debug(`Received message on <${constants.QUEUES.DEVICE}> and we know the device <${device.id}> and there is deviceData - update data in Redis`);
-                        this.storage.setDeviceData(device.id, msg.deviceData);
-                    }
-
-                    // publish
-                    this.pubsub.publish(`${constants.TOPICS.DEVICE}.${device ? "known" : "unknown"}`, payload);
-                });
+            await this.pubsub.publish(`${constants.TOPICS.DEVICE}.${device ? "known" : "unknown"}`, payload);
         });
     }
 

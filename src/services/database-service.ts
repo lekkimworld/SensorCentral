@@ -17,7 +17,9 @@ const config: PoolConfig = {
     "host": url.hostname,
     "port": url.port ? Number.parseInt(url.port) : 5432,
     "user": url.username,
-    "password": url.password
+    "password": url.password,
+    "connectionTimeoutMillis": 5000,
+    "statement_timeout": 30000,
 };
 if (process.env.NODE_ENV === "production" && process.env.DATABASE_SSL) {
     config.ssl = {

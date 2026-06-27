@@ -16,9 +16,8 @@ const logger = new Logger("queue-service");
 export type QueueSubscription = {
     queueName: string;
     data: object;
-    callback: () => void;
 };
-export type QueueSubscriptionCallback = (result: QueueSubscription) => void;
+export type QueueSubscriptionCallback = (result: QueueSubscription) => void | Promise<void>;
 export type QueueSubscriptionErrorCallback = (err: Error) => void;
 
 class WorkerWrapper {
@@ -34,25 +33,21 @@ class WorkerWrapper {
             const str = job.data as string;
             const data = JSON.parse(str);
             logger.debug(`Received message on queue <${queueName}> with data <${str}>`);
-            
-            // loop listeners
+
+            // loop listeners sequentially to maintain backpressure
             logger.trace(`Calling back to <${this.listeners.length}> listeners for queue <${queueName}>`);
-            this.listeners.forEach((l, idx) => {
-                // callback to each
+            for (let idx = 0; idx < this.listeners.length; idx++) {
                 try {
                     logger.trace(`Calling back to listener idx <${idx}> on queue <${queueName}>`);
-                    l({
+                    await this.listeners[idx]({
                         queueName,
                         data,
-                        callback: () => {
-                            logger.warn(`Callback on callback to queue <${queueName}>`);
-                        }
-                    })
+                    });
                     logger.trace(`Successfully called listener idx <${idx}> on queue <${queueName}>`);
                 } catch (err) {
                     logger.warn(`Error calling listener idx <${idx}> on queue <${queueName}>`, err);
                 }
-            })
+            }
         }, {
             connection: redisClient
         })
