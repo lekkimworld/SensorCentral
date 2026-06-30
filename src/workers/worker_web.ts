@@ -27,6 +27,7 @@ import { PowerpriceService } from "../services/powerprice-service";
 import { QueueService } from "../services/queue-service";
 import CalloutService from "../services/callout-service";
 import { ExpressService } from "../services/express-service";
+import { recordStatusSnapshot } from "../routes/admin";
 
 // number of workers we should create
 const logger = new Logger("worker_web");
@@ -109,6 +110,14 @@ const main = async () => {
 	} else {
 		logger.info("HEALTHCHECKS_URL not set - skipping healthchecks.io integration");
 	}
+
+	cron.add("status-snapshot", "* * * * *", async () => {
+		try {
+			await recordStatusSnapshot();
+		} catch (err) {
+			logger.warn(`Status snapshot error: ${err.message}`);
+		}
+	});
 
 	logger.info("Done adding cron jobs");
 

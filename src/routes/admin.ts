@@ -106,6 +106,32 @@ router.get("/cronjobs/json", async (_req, res) => {
     res.json(jobs);
 });
 
+const STATUS_HISTORY_KEY = "admin:status_history";
+const STATUS_HISTORY_MAX = 360; // 6 hours at 1 sample/min
+
+export async function recordStatusSnapshot() {
+    const db = getService<DatabaseService>(DatabaseService.NAME);
+    const redis = getService<RedisService>(RedisService.NAME);
+    if (!redis) return;
+
+    const snapshot: any = { ts: new Date().toISOString() };
+    if (db && db._pool) {
+        snapshot.pool = {
+            total: db._pool.totalCount,
+            idle: db._pool.idleCount,
+            waiting: db._pool.waitingCount,
+        };
+    }
+    snapshot.mem = {
+        rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    };
+
+    const client = redis.getClient();
+    await client.lpush(STATUS_HISTORY_KEY, JSON.stringify(snapshot));
+    await client.ltrim(STATUS_HISTORY_KEY, 0, STATUS_HISTORY_MAX - 1);
+}
+
 router.get("/status/json", async (_req, res) => {
     const db = getService<DatabaseService>(DatabaseService.NAME);
     const redis = getService<RedisService>(RedisService.NAME);
@@ -141,11 +167,20 @@ router.get("/status/json", async (_req, res) => {
     res.json(status);
 });
 
+router.get("/status/history", async (_req, res) => {
+    const redis = getService<RedisService>(RedisService.NAME);
+    if (!redis) return res.json([]);
+    const raw = await redis.getClient().lrange(STATUS_HISTORY_KEY, 0, STATUS_HISTORY_MAX - 1);
+    const history = raw.map(s => JSON.parse(s)).reverse();
+    res.json(history);
+});
+
 router.get("/status", (_req, res) => {
     res.send(`<!DOCTYPE html>
 <html>
 <head>
     <title>System Status - SensorCentral Admin</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background: #f5f5f5; }
         h1 { color: #333; }
@@ -154,6 +189,9 @@ router.get("/status", (_req, res) => {
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
         .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .card h2 { margin-top: 0; font-size: 16px; color: #555; text-transform: uppercase; }
+        .chart-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 16px; }
+        .chart-card h2 { margin-top: 0; font-size: 16px; color: #555; text-transform: uppercase; }
+        .chart-container { position: relative; height: 250px; }
         .metric { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
         .metric:last-child { border-bottom: none; }
         .metric .label { color: #666; }
@@ -169,7 +207,15 @@ router.get("/status", (_req, res) => {
     <div class="grid" id="status">
         <div class="card"><p style="color:#999">Loading...</p></div>
     </div>
-    <p class="refresh-info">Auto-refreshes every 5 seconds</p>
+    <div class="chart-card">
+        <h2>Database Pool (last 6 hours)</h2>
+        <div class="chart-container"><canvas id="poolChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+        <h2>Memory (last 6 hours)</h2>
+        <div class="chart-container"><canvas id="memChart"></canvas></div>
+    </div>
+    <p class="refresh-info">Live metrics refresh every 5s. History sampled every minute (up to 6 hours).</p>
     <script>
         function fmt(seconds) {
             const d = Math.floor(seconds / 86400);
@@ -182,6 +228,71 @@ router.get("/status", (_req, res) => {
             if (val >= warnAt) return "value warn";
             return "value";
         }
+        function timeLabel(iso) {
+            const d = new Date(iso);
+            return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        }
+
+        const chartOpts = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: "index" },
+            scales: {
+                x: { ticks: { maxTicksLimit: 12, font: { size: 11 } } },
+                y: { beginAtZero: true, ticks: { font: { size: 11 } } }
+            },
+            plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 12 } } } },
+            elements: { point: { radius: 0 }, line: { tension: 0.3, borderWidth: 2 } }
+        };
+
+        let poolChart, memChart;
+
+        async function loadHistory() {
+            try {
+                const r = await fetch("/admin/status/history");
+                const history = await r.json();
+                if (!history.length) return;
+
+                const labels = history.map(h => timeLabel(h.ts));
+                const poolTotal = history.map(h => h.pool?.total ?? 0);
+                const poolActive = history.map(h => (h.pool?.total ?? 0) - (h.pool?.idle ?? 0));
+                const poolWaiting = history.map(h => h.pool?.waiting ?? 0);
+                const memRss = history.map(h => h.mem?.rss ?? 0);
+                const memHeap = history.map(h => h.mem?.heapUsed ?? 0);
+
+                const poolCtx = document.getElementById("poolChart").getContext("2d");
+                if (poolChart) poolChart.destroy();
+                poolChart = new Chart(poolCtx, {
+                    type: "line",
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: "Active", data: poolActive, borderColor: "#2196f3", backgroundColor: "rgba(33,150,243,0.1)", fill: true },
+                            { label: "Total", data: poolTotal, borderColor: "#66bb6a", backgroundColor: "transparent" },
+                            { label: "Waiting", data: poolWaiting, borderColor: "#f44336", backgroundColor: "rgba(244,67,54,0.1)", fill: true }
+                        ]
+                    },
+                    options: chartOpts
+                });
+
+                const memCtx = document.getElementById("memChart").getContext("2d");
+                if (memChart) memChart.destroy();
+                memChart = new Chart(memCtx, {
+                    type: "line",
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: "RSS (MB)", data: memRss, borderColor: "#ff9800", backgroundColor: "rgba(255,152,0,0.1)", fill: true },
+                            { label: "Heap Used (MB)", data: memHeap, borderColor: "#9c27b0", backgroundColor: "rgba(156,39,176,0.1)", fill: true }
+                        ]
+                    },
+                    options: chartOpts
+                });
+            } catch (e) {
+                console.error("Failed to load history", e);
+            }
+        }
+
         async function refresh() {
             try {
                 const r = await fetch("/admin/status/json");
@@ -216,8 +327,11 @@ router.get("/status", (_req, res) => {
                 document.getElementById("status").innerHTML = '<div class="card"><p style="color:red">Failed to fetch status</p></div>';
             }
         }
+
         refresh();
+        loadHistory();
         setInterval(refresh, 5000);
+        setInterval(loadHistory, 60000);
     </script>
 </body>
 </html>`);
