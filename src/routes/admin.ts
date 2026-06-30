@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { CronService } from "../services/cron-service";
-import { lookupService } from "../configure-services";
+import { getService, lookupService } from "../configure-services";
+import { DatabaseService } from "../services/database-service";
+import { RedisService } from "../services/redis-service";
 
 const router = Router();
 
@@ -21,6 +23,10 @@ router.get("/", (_req, res) => {
 </head>
 <body>
     <h1>SensorCentral Admin</h1>
+    <div class="card">
+        <a href="/admin/status">System Status</a>
+        <p>Live view of database pool, Redis, and resource utilization.</p>
+    </div>
     <div class="card">
         <a href="/admin/queues">Queues (Bull Board)</a>
         <p>Monitor background job queues, view failed jobs, and retry them.</p>
@@ -98,6 +104,123 @@ router.get("/cronjobs/json", async (_req, res) => {
     const cronService = (await lookupService(CronService.NAME)) as CronService;
     const jobs = cronService.list();
     res.json(jobs);
+});
+
+router.get("/status/json", async (_req, res) => {
+    const db = getService<DatabaseService>(DatabaseService.NAME);
+    const redis = getService<RedisService>(RedisService.NAME);
+
+    const status: any = { timestamp: new Date().toISOString() };
+
+    if (db && db._pool) {
+        status.pool = {
+            total: db._pool.totalCount,
+            idle: db._pool.idleCount,
+            waiting: db._pool.waitingCount,
+            max: (db._pool as any).options?.max || 20,
+        };
+    }
+
+    if (redis) {
+        try {
+            const info = await redis.getClient().info("clients");
+            const match = info.match(/connected_clients:(\d+)/);
+            status.redis = { connectedClients: match ? parseInt(match[1]) : null };
+        } catch {
+            status.redis = { error: "unable to query" };
+        }
+    }
+
+    status.memory = {
+        rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+    };
+    status.uptime = Math.round(process.uptime());
+
+    res.json(status);
+});
+
+router.get("/status", (_req, res) => {
+    res.send(`<!DOCTYPE html>
+<html>
+<head>
+    <title>System Status - SensorCentral Admin</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background: #f5f5f5; }
+        h1 { color: #333; }
+        a { color: #0066cc; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+        .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card h2 { margin-top: 0; font-size: 16px; color: #555; text-transform: uppercase; }
+        .metric { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .metric:last-child { border-bottom: none; }
+        .metric .label { color: #666; }
+        .metric .value { font-weight: 600; font-variant-numeric: tabular-nums; }
+        .value.warn { color: #e67e00; }
+        .value.danger { color: #d32f2f; }
+        .refresh-info { color: #999; font-size: 12px; margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <p><a href="/admin">&larr; Back to Admin</a></p>
+    <h1>System Status</h1>
+    <div class="grid" id="status">
+        <div class="card"><p style="color:#999">Loading...</p></div>
+    </div>
+    <p class="refresh-info">Auto-refreshes every 5 seconds</p>
+    <script>
+        function fmt(seconds) {
+            const d = Math.floor(seconds / 86400);
+            const h = Math.floor((seconds % 86400) / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            return (d ? d + "d " : "") + h + "h " + m + "m";
+        }
+        function cls(val, warnAt, dangerAt) {
+            if (val >= dangerAt) return "value danger";
+            if (val >= warnAt) return "value warn";
+            return "value";
+        }
+        async function refresh() {
+            try {
+                const r = await fetch("/admin/status/json");
+                const d = await r.json();
+                const pool = d.pool || {};
+                const mem = d.memory || {};
+                const redis = d.redis || {};
+                document.getElementById("status").innerHTML = \`
+                    <div class="card">
+                        <h2>Database Pool</h2>
+                        <div class="metric"><span class="label">Active</span><span class="\${cls(pool.total - pool.idle, pool.max * 0.7, pool.max * 0.9)}">\${pool.total - pool.idle} / \${pool.max}</span></div>
+                        <div class="metric"><span class="label">Total</span><span class="value">\${pool.total}</span></div>
+                        <div class="metric"><span class="label">Idle</span><span class="value">\${pool.idle}</span></div>
+                        <div class="metric"><span class="label">Waiting</span><span class="\${cls(pool.waiting, 1, 5)}">\${pool.waiting}</span></div>
+                    </div>
+                    <div class="card">
+                        <h2>Redis</h2>
+                        <div class="metric"><span class="label">Connected Clients</span><span class="value">\${redis.connectedClients ?? redis.error ?? "-"}</span></div>
+                    </div>
+                    <div class="card">
+                        <h2>Memory (MB)</h2>
+                        <div class="metric"><span class="label">RSS</span><span class="value">\${mem.rss}</span></div>
+                        <div class="metric"><span class="label">Heap Used</span><span class="value">\${mem.heapUsed}</span></div>
+                        <div class="metric"><span class="label">Heap Total</span><span class="value">\${mem.heapTotal}</span></div>
+                    </div>
+                    <div class="card">
+                        <h2>Process</h2>
+                        <div class="metric"><span class="label">Uptime</span><span class="value">\${fmt(d.uptime)}</span></div>
+                    </div>
+                \`;
+            } catch (e) {
+                document.getElementById("status").innerHTML = '<div class="card"><p style="color:red">Failed to fetch status</p></div>';
+            }
+        }
+        refresh();
+        setInterval(refresh, 5000);
+    </script>
+</body>
+</html>`);
 });
 
 export default router;
