@@ -30,6 +30,7 @@ Application I use with my family to gather telemetry and sensor data from our ho
 | `LOG_LEVEL` | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
 | `LOG_LEVEL_LOGGERS` | — | Per-logger log levels, format: `LOGGER_NAME=LEVEL,LOGGER_NAME=LEVEL` |
 | `DATABASE_SSL` | — | Enable TLS for database connection (also requires `NODE_ENV=production`) |
+| `DATABASE_POOL_MAX` | `20` | Maximum number of connections in the PostgreSQL pool |
 | `DATABASE_ALLOW_SCHEMA_UPGRADE` | — | Allow database schema init/upgrade on startup |
 | `DATABASE_ALWAYS_ROLLBACK_SCHEMA_UPGRADE` | — | Always rollback schema upgrades and throw (for testing) |
 | `REDIS_TLS_URL` | — | TLS URL for Redis (used instead of `REDIS_URL` when set) |
@@ -55,6 +56,7 @@ Application I use with my family to gather telemetry and sensor data from our ho
 | `SERVICES_NUDGE_RETRY_SECONDS` | `2` | Seconds between service dependency resolution nudges |
 | `TIMEZONE` | `Europe/Copenhagen` | Timezone for date formatting |
 | `DATETIME_FORMAT` | `D-M-YYYY [kl.] k:mm` | Moment.js format string for displaying dates |
+| `REQUEST_TIMEOUT_MS` | `15000` | Maximum time in ms before Express returns 504 Gateway Timeout |
 | `WEB_CONCURRENCY` | `1` | Number of web worker processes |
 | `CRONJOB_DEFAULT_FREQUENCY_MINUTES` | `5` | Default frequency in minutes for cron jobs |
 | `CRON_POWERMETER_SUBSCRIPTIONS_DISABLED` | — | If set, disable powermeter subscription cron jobs |

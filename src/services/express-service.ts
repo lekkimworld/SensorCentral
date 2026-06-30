@@ -89,13 +89,40 @@ export class ExpressService extends BaseService {
                 checks.db = err.message || "failed";
             }
 
+            let pool: Record<string, number> | undefined;
+            try {
+                const db = getService<DatabaseService>(DatabaseService.NAME);
+                if (db && db._pool) {
+                    pool = {
+                        total: db._pool.totalCount,
+                        idle: db._pool.idleCount,
+                        waiting: db._pool.waitingCount,
+                    };
+                }
+            } catch {}
+
             const healthy = checks.redis === "ok" && checks.db === "ok";
             res.status(healthy ? 200 : 503).json({
                 status: healthy ? "ok" : "degraded",
                 version: constants.APP.VERSION,
                 commit: constants.APP.GITCOMMIT,
                 checks,
+                pool,
             });
+        });
+
+        const REQUEST_TIMEOUT_MS = process.env.REQUEST_TIMEOUT_MS
+            ? Number.parseInt(process.env.REQUEST_TIMEOUT_MS)
+            : 15000;
+        this.app.use((req, res, next) => {
+            const timer = setTimeout(() => {
+                if (!res.headersSent) {
+                    logger.warn(`Request timeout after ${REQUEST_TIMEOUT_MS}ms: ${req.method} ${req.path}`);
+                    res.status(504).json({ error: "Gateway Timeout", path: req.path });
+                }
+            }, REQUEST_TIMEOUT_MS);
+            res.on("close", () => clearTimeout(timer));
+            next();
         });
 
         if (process.env.NODE_ENV !== "development") {

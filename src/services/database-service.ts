@@ -18,6 +18,8 @@ const config: PoolConfig = {
     "port": url.port ? Number.parseInt(url.port) : 5432,
     "user": url.username,
     "password": url.password,
+    "max": process.env.DATABASE_POOL_MAX ? Number.parseInt(process.env.DATABASE_POOL_MAX) : 20,
+    "idleTimeoutMillis": 30000,
     "connectionTimeoutMillis": 5000,
     "statement_timeout": 30000,
 };
@@ -69,6 +71,16 @@ export class DatabaseService extends BaseService {
                 reject(new Error("Unable to get database connection within 5 retries"));
             });;
 
+            this._pool.on("connect", () => {
+                logger.debug(`Pool connect — total: ${this._pool.totalCount}, idle: ${this._pool.idleCount}, waiting: ${this._pool.waitingCount}`);
+            });
+            this._pool.on("remove", () => {
+                logger.debug(`Pool remove — total: ${this._pool.totalCount}, idle: ${this._pool.idleCount}, waiting: ${this._pool.waitingCount}`);
+            });
+            this._pool.on("error", (err) => {
+                logger.error(`Pool error: ${err.message}`);
+            });
+
             // see if database is initialized
             logger.info("Looking for DATABASE_ALLOW_SCHEMA_UPGRADE environment variable");
             if (objectHasOwnProperty_Trueish(process.env, "DATABASE_ALLOW_SCHEMA_UPGRADE")) {
@@ -94,7 +106,10 @@ export class DatabaseService extends BaseService {
     }
 
     query(query: string, ...args: Array<any>): Promise<QueryResult> {
-        if (this._pool) return this._pool.query(query, args);
-        return Promise.reject();
+        if (!this._pool) return Promise.reject();
+        if (this._pool.waitingCount > 0) {
+            logger.warn(`Pool saturated — total: ${this._pool.totalCount}, idle: ${this._pool.idleCount}, waiting: ${this._pool.waitingCount}`);
+        }
+        return this._pool.query(query, args);
     }
 }
