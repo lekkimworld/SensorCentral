@@ -22,7 +22,7 @@ RUN npx tsc -p src/tsconfig.json && npm run build
 
 # Write .env with build-time metadata
 RUN echo "APP_GITCOMMIT=$APP_GITCOMMIT" > .env && \
-    echo "APP_VERSION=$APP_VERSION" >> .env && \
+    echo "APP_VERSION=${APP_VERSION:-$(node -p "require('./package.json').version")}" >> .env && \
     echo "NODE_ENV=$APP_NODE_ENV" >> .env
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

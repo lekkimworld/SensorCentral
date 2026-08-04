@@ -107,7 +107,7 @@ export class DatabaseService extends BaseService {
 
     query(query: string, ...args: Array<any>): Promise<QueryResult> {
         if (!this._pool) return Promise.reject();
-        if (this._pool.waitingCount > 0) {
+        if (this._pool.waitingCount > 0 && this._pool.idleCount === 0) {
             logger.warn(`Pool saturated — total: ${this._pool.totalCount}, idle: ${this._pool.idleCount}, waiting: ${this._pool.waitingCount}`);
         }
         return this._pool.query(query, args);
