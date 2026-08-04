@@ -64,9 +64,11 @@ export class ExpressService extends BaseService {
             const checks: Record<string, string> = {};
 
             // check redis
+            let redisStatus: string | undefined;
             try {
                 const redis = getService<RedisService>(RedisService.NAME);
                 if (redis) {
+                    redisStatus = redis.getClient().status;
                     await redis.getClient().ping();
                     checks.redis = "ok";
                 } else {
@@ -101,12 +103,13 @@ export class ExpressService extends BaseService {
                 }
             } catch {}
 
-            const healthy = checks.redis === "ok" && checks.db === "ok";
+            const healthy = checks.redis === "ok" && checks.db === "ok" && redisStatus === "ready";
             res.status(healthy ? 200 : 503).json({
                 status: healthy ? "ok" : "degraded",
                 version: constants.APP.VERSION,
                 commit: constants.APP.GITCOMMIT,
                 checks,
+                redis: redisStatus,
                 pool,
             });
         });
