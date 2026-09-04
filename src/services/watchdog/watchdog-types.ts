@@ -1,6 +1,6 @@
 import { Logger } from "../../logger";
 import { Device, Sensor } from "../../types";
-import Watchdog from "watchdog";
+import { Watchdog } from "watchdog";
 
 const logger = new Logger("watchdog-types");
 

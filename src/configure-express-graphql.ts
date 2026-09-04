@@ -55,7 +55,6 @@ export default  async (app : Application) => {
             EventLogResolver,
             CronJobResolver
         ],
-        dateScalarMode: "isoDate"
     })
 
     // create server

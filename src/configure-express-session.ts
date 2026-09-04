@@ -1,5 +1,5 @@
 import session, { SessionOptions } from "express-session";
-import RedisStore from "connect-redis";
+import { RedisStore } from "connect-redis";
 import constants from "./constants";
 import { Redis } from "ioredis";
 import { v4 as uuid } from "uuid";

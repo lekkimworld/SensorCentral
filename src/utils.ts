@@ -52,7 +52,7 @@ export class PromisifiedSemaphore {
     }
     async take(): Promise<void> {
         return new Promise<void>((resolve) => {
-            this._sem.take(resolve);
+            this._sem.take(() => resolve());
         });
     }
     leave(): void {

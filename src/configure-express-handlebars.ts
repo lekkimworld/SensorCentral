@@ -1,10 +1,9 @@
 import { Application } from "express";
 import Handlebars from "handlebars";
-import exphbs from "express-handlebars";
+import { engine } from "express-handlebars";
 
 export default (app : Application) => {
-    // add handlebars
-    app.engine('handlebars', exphbs({defaultLayout: 'main'}));
+    app.engine('handlebars', engine({defaultLayout: 'main'}));
     app.set('view engine', 'handlebars');
 
     Handlebars.registerHelper({
