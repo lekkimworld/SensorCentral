@@ -1,5 +1,5 @@
 import { BaseService } from "../types";
-import nodemailer from "nodemailer";
+import nodemailer, { Transporter } from "nodemailer";
 import { Logger } from "../logger";
 
 const logger = new Logger("email-service");
@@ -29,7 +29,7 @@ export class EmailMessage {
 
 export class EmailService extends BaseService {
     public static NAME = "email";
-    private transporter: nodemailer.Transporter | undefined;
+    private transporter: Transporter | undefined;
 
     constructor() {
         super(EmailService.NAME);

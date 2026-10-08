@@ -6,6 +6,9 @@ if [ "$NODE_ENV" != "development" ] && [ "$NODE_ENV" != "production" ]; then
     exit 1
 fi
 
+BASE_IMAGE=$(grep -m1 '^FROM ' Dockerfile | awk '{print $2}')
+docker pull "$BASE_IMAGE"
+
 VERSION=`cat package.json | jq ".version" -r`
 if [ "$NODE_ENV" == "development" ]; then
     VERSION=$VERSION-dev
