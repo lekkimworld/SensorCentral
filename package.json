@@ -1,6 +1,6 @@
 {
     "name": "sensorcentral",
-    "version": "1.17.0",
+    "version": "1.17.1",
     "description": "",
     "main": "src/workers/worker_web.ts",
     "scripts": {
@@ -70,7 +70,7 @@
         "moment-timezone": "^0.6.3",
         "node-excel": "^0.5.0",
         "node-excel-export": "^1.4.4",
-        "nodemailer": "^9.0.6",
+        "nodemailer": "^10.0.15",
         "nordpool": "^5.1.0",
         "openid-client": "^6.8.7",
         "pg": "^8.23.0",
